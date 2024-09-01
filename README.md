@@ -6,9 +6,14 @@ A rough client-server architecture replica of YouTube with Flask and MySQL.
 
 ### Requirements
 
-To install the requirements,
+To install the server requirements,
 ```bash
-pip install -r requirements.txt
+pip install -r ./Server/requirements.txt
+```
+
+To install the client requirements,
+```bash
+pip install -r ./Client/requirements.txt
 ```
 
 ### Starting server
