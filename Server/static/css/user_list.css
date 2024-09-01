@@ -1,4 +1,4 @@
-@import "http://127.0.0.1:8080/css/roboto.css";
+@import "{{ url_for('static', filename='/css/roboto.css') }}";
 
 *,
 *:after,

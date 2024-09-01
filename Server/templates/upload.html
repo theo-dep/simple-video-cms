@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Upload</title>
-    <link rel="stylesheet" href="http://127.0.0.1:8080/css/upload.css">
-    <link rel="stylesheet" href="http://127.0.0.1:8080/css/video.css">
-    <link rel="icon" href="http://127.0.0.1:8080/favicon.png" type="image/png">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/upload.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/video.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
 </head>
 
 <body>
@@ -16,7 +16,7 @@
     <input type="text" name="title" id="title" placeholder="Enter title here" required>
     <button type="submit">Upload</button>
   </form>
-  <script src='http://127.0.0.1:8080/js/jquery.js'></script>
-  <script  src="http://127.0.0.1:8080/js/upload.js"></script>
+  <script src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+  <script  src="{{ url_for('static', filename='js/upload.js') }}"></script>
 </body>
 </html>
