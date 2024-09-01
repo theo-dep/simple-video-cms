@@ -8,7 +8,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 class Database:
     def __init__(self): # WORKS
-        self.db = pymysql.connect(host="localhost", user="root", passwd="*********", db="video")
+        self.db = pymysql.connect(
+            host=os.getenv('MYSQL_DB_URL', 'localhost'),
+            user=os.getenv('MYSQL_ROOT_USER', 'root'),
+            passwd=os.getenv('MYSQL_ROOT_PASSWORD', '1234'),
+            db=os.getenv('MYSQL_DB_NAME', 'video')
+        )
         self.cur = self.db.cursor()
 
     def get_most_viewed(self): # WORKS

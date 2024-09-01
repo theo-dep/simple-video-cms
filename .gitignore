@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+
+Server/static/videos/*
+!Server/static/videos/README.md
+Server/static/images/*
+!Server/static/images/README.md

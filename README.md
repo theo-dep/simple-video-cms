@@ -35,6 +35,13 @@ python3 ./Client/client.py
 
 Visit http://127.0.0.1:5000
 
+### Docker
+
+Install Docker Compose then,
+```bash
+docker compose up -d
+```
+
 # Screenshots
 
 ## Normal user
