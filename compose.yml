@@ -7,7 +7,7 @@ services:
     environment:
       SERVER_URL: http://server:8080
     volumes:
-      - ./Server/static:/VideoHub/static
+      - ./Client/static:/VideoHub/static
     ports:
       - 5000:5000
     depends_on:
@@ -21,7 +21,7 @@ services:
       MYSQL_ROOT_PASSWORD: "6y51^HsXrNcx"
       MYSQL_DB_URL: db
     volumes:
-      - ./Server/static:/VideoHub/static
+      - ./Server/templates:/VideoHub/templates
     depends_on:
       - db
 

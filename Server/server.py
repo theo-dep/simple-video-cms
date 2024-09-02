@@ -38,7 +38,7 @@ def return_video(video_ID):
     - Returns the video file with the corresponding video ID.
     """
     if request.method == 'GET':
-        return send_file('./static/videos/{}.mp4'.format(video_ID), mimetype='video/mp4')
+        return send_file('./data/videos/{}.mp4'.format(video_ID), mimetype='video/mp4')
 
 
 
@@ -48,7 +48,7 @@ def return_image(video_ID):
     - Returns the image file with the corresponding video ID.
     """
     if request.method == 'GET':
-        return send_file('./static/images/{}.jpg'.format(video_ID), mimetype='image/jpg')
+        return send_file('./data/images/{}.jpg'.format(video_ID), mimetype='image/jpg')
 
 
 
@@ -241,8 +241,9 @@ def upload_video():
         username = request.form['username']
         title = request.form['title']
         file = request.form['file']
-        filename = open('./static/videos/{}.mp4'.format(video_ID), "wb")
-        filename.write(base64.b64decode(file))
+        os.makedirs('./data/videos', exist_ok=True)
+        with open('./data/videos/{}.mp4'.format(video_ID), "wb") as filename:
+            filename.write(base64.b64decode(file))
         db.upload_video(video_ID, username, title)
         save_image(video_ID)
         return video_ID

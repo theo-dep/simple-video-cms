@@ -97,8 +97,8 @@ class Database:
             for row in self.cur.fetchall():
                 videos_to_delete.append(row[0]) # Get video IDs of all videos uploaded by the user.
             for ID in videos_to_delete:
-                os.remove('static/videos/' + str(ID) + '.mp4') # Deletes the video from the static/videos directory.
-                os.remove('static/images/' + str(ID) + '.jpg') # Deletes the image from the static/images directory.
+                os.remove('./data/videos/' + str(ID) + '.mp4') # Deletes the video from the data/videos directory.
+                os.remove('./data/images/' + str(ID) + '.jpg') # Deletes the image from the data/images directory.
             self.cur.execute("DELETE FROM users WHERE username = \"{}\"".format(username))
             self.db.commit()
         except:
@@ -204,8 +204,8 @@ class Database:
         try:
             self.cur.execute("DELETE FROM videos WHERE video_ID = \"{}\"".format(video_ID))
             self.db.commit()
-            os.remove('static/videos/' + str(video_ID) + '.mp4')
-            os.remove('static/images/' + str(video_ID) + '.jpg')
+            os.remove('./data/videos/' + str(video_ID) + '.mp4')
+            os.remove('./data/images/' + str(video_ID) + '.jpg')
         except:
             self.db.rollback()
 
