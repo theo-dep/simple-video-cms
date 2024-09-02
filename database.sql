@@ -32,7 +32,7 @@ DROP TABLE IF EXISTS `admins`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `admins` (
   `username` varchar(20) NOT NULL,
-  `password` varchar(100) DEFAULT NULL,
+  `password` varchar(162) DEFAULT NULL,
   PRIMARY KEY (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -108,7 +108,7 @@ DROP TABLE IF EXISTS `users`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `users` (
   `username` varchar(20) NOT NULL,
-  `password` varchar(100) DEFAULT NULL,
+  `password` varchar(162) DEFAULT NULL,
   PRIMARY KEY (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -158,7 +158,7 @@ UNLOCK TABLES;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`localhost`*/ /*!50003 TRIGGER add_date BEFORE INSERT ON `videos`
+/*!50003 CREATE*/ /*!50017 DEFINER=`root`@`%`*/ /*!50003 TRIGGER add_date BEFORE INSERT ON `videos`
 FOR EACH ROW
 BEGIN
 SET NEW.upload_date = DATE(NOW());
@@ -209,7 +209,7 @@ UNLOCK TABLES;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `add_to_fav`(IN ID VARCHAR(50), IN watcher VARCHAR(20))
+CREATE DEFINER=`root`@`%` PROCEDURE `add_to_fav`(IN ID VARCHAR(50), IN watcher VARCHAR(20))
 BEGIN
 DECLARE count1 VARCHAR(10);
 DECLARE cur1 CURSOR FOR (SELECT count FROM watched WHERE video_ID = ID AND username = watcher AND NOT EXISTS (SELECT * FROM favourites WHERE username = watcher AND video_ID = ID));
