@@ -446,6 +446,40 @@ def results():
 
 
 
+@app.route("/image/<video_ID>", methods = ['GET'])
+@nocache
+def request_image(video_ID):
+    """
+    In GET request
+        - Selects the image corresponding to <video_ID> from the database.
+    """
+    if request.method == 'GET':
+        if 'user' in session:
+            is_admin = (requests.get(url='{}/is-admin/{}'.format(SERVER_URL, session['user'])).content).decode("utf-8") # Done
+            if is_admin == "True":
+                abort(403)
+        image = ((requests.get(url='{}/image/{}'.format(SERVER_URL, video_ID)).content)) # Done
+        return image
+
+
+
+@app.route("/video/<video_ID>", methods = ['GET'])
+@nocache
+def request_video(video_ID):
+    """
+    In GET request
+        - Selects the video corresponding to <video_ID> from the database.
+    """
+    if request.method == 'GET':
+        if 'user' in session:
+            is_admin = (requests.get(url='{}/is-admin/{}'.format(SERVER_URL, session['user'])).content).decode("utf-8") # Done
+            if is_admin == "True":
+                abort(403)
+        video = ((requests.get(url='{}/video/{}'.format(SERVER_URL, video_ID)).content)) # Done
+        return video
+
+
+
 @app.route("/random", methods = ['GET'])
 @nocache
 def random_video():

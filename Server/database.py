@@ -110,7 +110,7 @@ class Database:
         """
         try:
             view_count = 0
-            self.cur.execute("INSERT INTO videos VALUES(\"{}\", \"{}\", \"{}\", {}, NULL)".format(video_ID, title, username, view_count))
+            self.cur.execute("INSERT INTO videos VALUES(\"{}\", \"{}\", \"{}\", {}, CURRENT_TIMESTAMP)".format(video_ID, title, username, view_count))
             self.db.commit()
         except:
             self.db.rollback()

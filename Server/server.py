@@ -10,10 +10,6 @@ from image_capture import save_image
 app = Flask(__name__)
 db = database.Database()
 
-UPLOAD_FOLDER = 'static/videos'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-
 
 @app.route("/html/<filename>", methods = ['GET'])
 def return_html(filename):
@@ -22,36 +18,6 @@ def return_html(filename):
     """
     if request.method == 'GET':
         return send_file('./templates/{}'.format(filename), mimetype='text/html')
-
-
-
-@app.route("/css/<filename>", methods = ['GET'])
-def return_css(filename):
-    """
-    - Returns the css file with the corresponding filename.
-    """
-    if request.method == 'GET':
-        return send_file('./static/css/{}'.format(filename), mimetype='text/css')
-
-
-
-@app.route("/js/<filename>", methods = ['GET'])
-def return_js(filename):
-    """
-    - Returns the js file with the corresponding filename.
-    """
-    if request.method == 'GET':
-        return send_file('./static/js/{}'.format(filename), mimetype='text/js')
-
-
-
-@app.route("/favicon.png", methods = ['GET'])
-def return_favicon():
-    """
-    - Returns the favicon image.
-    """
-    if request.method == 'GET':
-        return send_file('./static/img/favicon.png', mimetype='image/png')
 
 
 

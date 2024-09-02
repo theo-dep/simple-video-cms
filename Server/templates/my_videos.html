@@ -44,7 +44,7 @@
        <div class="row">
            <div class="col-xs-12 col-sm-3 col-md-3">
               <a href="{{ url_for('watch_video', v = i) }}">
-                 <img height="152" width="270" src="{{ url_for('static', filename='image/{{ i }}') }}" class="img-responsive">
+                 <img height="152" width="270" src="/image/{{ i }}" class="img-responsive">
                </a>
            </div>
            <h4><a style="color:#16A085;text-decoration:none;" href="{{ url_for('watch_video', v = i) }}">{{ user_videos[i][0] }}</a></h4>
