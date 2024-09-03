@@ -8,7 +8,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 class Database:
     def __init__(self): # WORKS
-        self.db = pymysql.connect(host="localhost", user="root", passwd="*********", db="video")
+        self.db = pymysql.connect(
+            host=os.getenv('MYSQL_DB_URL', 'localhost'),
+            user=os.getenv('MYSQL_ROOT_USER', 'root'),
+            passwd=os.getenv('MYSQL_ROOT_PASSWORD', '1234'),
+            db=os.getenv('MYSQL_DB_NAME', 'video')
+        )
         self.cur = self.db.cursor()
 
     def get_most_viewed(self): # WORKS
@@ -92,8 +97,8 @@ class Database:
             for row in self.cur.fetchall():
                 videos_to_delete.append(row[0]) # Get video IDs of all videos uploaded by the user.
             for ID in videos_to_delete:
-                os.remove('static/videos/' + str(ID) + '.mp4') # Deletes the video from the static/videos directory.
-                os.remove('static/images/' + str(ID) + '.jpg') # Deletes the image from the static/images directory.
+                os.remove('./data/videos/' + str(ID) + '.mp4') # Deletes the video from the data/videos directory.
+                os.remove('./data/images/' + str(ID) + '.jpg') # Deletes the image from the data/images directory.
             self.cur.execute("DELETE FROM users WHERE username = \"{}\"".format(username))
             self.db.commit()
         except:
@@ -105,7 +110,7 @@ class Database:
         """
         try:
             view_count = 0
-            self.cur.execute("INSERT INTO videos VALUES(\"{}\", \"{}\", \"{}\", {}, NULL)".format(video_ID, title, username, view_count))
+            self.cur.execute("INSERT INTO videos VALUES(\"{}\", \"{}\", \"{}\", {}, CURRENT_TIMESTAMP)".format(video_ID, title, username, view_count))
             self.db.commit()
         except:
             self.db.rollback()
@@ -199,8 +204,8 @@ class Database:
         try:
             self.cur.execute("DELETE FROM videos WHERE video_ID = \"{}\"".format(video_ID))
             self.db.commit()
-            os.remove('static/videos/' + str(video_ID) + '.mp4')
-            os.remove('static/images/' + str(video_ID) + '.jpg')
+            os.remove('./data/videos/' + str(video_ID) + '.mp4')
+            os.remove('./data/images/' + str(video_ID) + '.jpg')
         except:
             self.db.rollback()
 

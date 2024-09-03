@@ -10,10 +10,6 @@ from image_capture import save_image
 app = Flask(__name__)
 db = database.Database()
 
-UPLOAD_FOLDER = 'static/videos'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-
 
 @app.route("/html/<filename>", methods = ['GET'])
 def return_html(filename):
@@ -22,36 +18,6 @@ def return_html(filename):
     """
     if request.method == 'GET':
         return send_file('./templates/{}'.format(filename), mimetype='text/html')
-
-
-
-@app.route("/css/<filename>", methods = ['GET'])
-def return_css(filename):
-    """
-    - Returns the css file with the corresponding filename.
-    """
-    if request.method == 'GET':
-        return send_file('./static/css/{}'.format(filename), mimetype='text/css')
-
-
-
-@app.route("/js/<filename>", methods = ['GET'])
-def return_js(filename):
-    """
-    - Returns the js file with the corresponding filename.
-    """
-    if request.method == 'GET':
-        return send_file('./static/js/{}'.format(filename), mimetype='text/js')
-
-
-
-@app.route("/favicon.png", methods = ['GET'])
-def return_favicon():
-    """
-    - Returns the favicon image.
-    """
-    if request.method == 'GET':
-        return send_file('./static/img/favicon.png', mimetype='image/png')
 
 
 
@@ -72,7 +38,7 @@ def return_video(video_ID):
     - Returns the video file with the corresponding video ID.
     """
     if request.method == 'GET':
-        return send_file('./static/videos/{}.mp4'.format(video_ID), mimetype='video/mp4')
+        return send_file('./data/videos/{}.mp4'.format(video_ID), mimetype='video/mp4')
 
 
 
@@ -82,7 +48,7 @@ def return_image(video_ID):
     - Returns the image file with the corresponding video ID.
     """
     if request.method == 'GET':
-        return send_file('./static/images/{}.jpg'.format(video_ID), mimetype='image/jpg')
+        return send_file('./data/images/{}.jpg'.format(video_ID), mimetype='image/jpg')
 
 
 
@@ -275,8 +241,9 @@ def upload_video():
         username = request.form['username']
         title = request.form['title']
         file = request.form['file']
-        filename = open('./static/videos/{}.mp4'.format(video_ID), "wb")
-        filename.write(base64.b64decode(file))
+        os.makedirs('./data/videos', exist_ok=True)
+        with open('./data/videos/{}.mp4'.format(video_ID), "wb") as filename:
+            filename.write(base64.b64decode(file))
         db.upload_video(video_ID, username, title)
         save_image(video_ID)
         return video_ID
@@ -569,4 +536,4 @@ def remove_flag():
 
 
 if __name__ == '__main__':
-    app.run(port=8080, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)

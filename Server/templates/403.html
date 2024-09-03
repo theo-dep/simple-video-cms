@@ -2,9 +2,9 @@
 <html>
 <head>
 	<title>Page Forbidden</title>
-	<link rel="stylesheet" href="http://127.0.0.1:8080/css/404.css">
-	<link href='http://127.0.0.1:8080/css/font.css' rel='stylesheet' type='text/css'>
-  <link rel="icon" href="http://127.0.0.1:8080/favicon.png" type="image/png">
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/404.css') }}">
+	<link href="{{ url_for('static', filename='css/font.css') }}" rel='stylesheet' type='text/css'>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
 </head>
 <body class="back">
 	<div class="main">
