@@ -1,0 +1,18 @@
+FROM alpine-builder AS builder
+
+RUN apk add --no-cache \
+        mariadb-connector-c-dev
+
+ADD main.cpp /sources/
+
+WORKDIR /build
+
+RUN g++ -std=c++23 -static -o server -O2 -I/sources -DCPPHTTPLIB_USE_POLL /sources/main.cpp \
+        && strip server
+
+# --------------------------------------------------------------------------------
+FROM scratch
+
+COPY --from=builder /build/server /server
+
+CMD ["/server"]
