@@ -1,7 +1,7 @@
-#include <httplib.hpp>
+#include "server.h"
 
 int main()
 {
-    httplib::Server server;
-    server.listen("0.0.0.0", 5000);
+    Server server;
+    return server.start();
 }

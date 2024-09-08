@@ -4,4 +4,4 @@ RUN apk add --no-cache \
     make \
     g++
 
-ADD third-party/ /sources/
+ADD *.h *.cpp Makefile third-party/ /sources/

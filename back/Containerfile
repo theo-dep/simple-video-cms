@@ -3,16 +3,13 @@ FROM alpine-builder AS builder
 RUN apk add --no-cache \
         mariadb-connector-c-dev
 
-ADD main.cpp /sources/
+ADD *.h *.cpp /sources/
 
-WORKDIR /build
-
-RUN g++ -std=c++23 -static -o server -O2 -I/sources -DCPPHTTPLIB_USE_POLL /sources/main.cpp \
-        && strip server
+RUN make -C /sources -j -k server LDFLAGS="-lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
 
 # --------------------------------------------------------------------------------
 FROM scratch
 
-COPY --from=builder /build/server /server
+COPY --from=builder /sources/server /server
 
 CMD ["/server"]

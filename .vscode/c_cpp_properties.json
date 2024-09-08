@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/builder",
+                "${workspaceFolder}/builder/third-party"
+            ],
+            "defines": [
+                "CPPHTTPLIB_USE_POLL"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "compilerArgs": ["-std=c++23", "-static", "-O2", "-Wall", "-Wextra", "-Werror"],
+            "cStandard": "c17",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}
