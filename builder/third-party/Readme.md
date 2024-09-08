@@ -18,7 +18,7 @@
 
 ## mysql-modern-cpp
 
-- v1.1.0.0
+- from v1.1.0.0, take modified version of https://github.com/theo-dep/mysql-modern-cpp/
 - Without polyfill/optional.hpp
 - https://github.com/daotrungkien/mysql-modern-cpp/
 
