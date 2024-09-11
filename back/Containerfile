@@ -5,7 +5,10 @@ RUN apk add --no-cache \
 
 ADD *.h *.cpp ${SOURCE_DIR}/
 
-RUN make -C ${SOURCE_DIR} -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="-lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
+#RUN mariadb_config
+RUN make -C ${SOURCE_DIR} -j -k server \
+        CXXFLAGS="${CXXFLAGS} -I/usr/include/mysql -I/usr/include/mysql/mysql" \
+        LDFLAGS="-L/usr/lib/ -lmariadb -lz -ldl -lssl -lcrypto"
 
 # --------------------------------------------------------------------------------
 FROM scratch

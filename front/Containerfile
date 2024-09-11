@@ -2,7 +2,7 @@ FROM alpine-builder AS builder
 
 ADD *.h *.cpp ${SOURCE_DIR}/
 
-RUN make -C ${SOURCE_DIR} -j -k server CXXFLAGS="${CXXFLAGS}"
+RUN make -C ${SOURCE_DIR} -j -k server CXXFLAGS="-static ${CXXFLAGS}"
 
 # --------------------------------------------------------------------------------
 FROM scratch
