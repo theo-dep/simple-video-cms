@@ -37,15 +37,7 @@ void Server::serve_template()
 {
     Get("/html/:html", [](const httplib::Request& req, httplib::Response& res) {
         const std::string html{ req.path_params.at("html") };
-        const std::filesystem::path htmlFile{ "templates/" + html };
-        if (std::filesystem::exists(htmlFile)) {
-            const std::ifstream stream(htmlFile.string());
-            std::stringstream buffer;
-            buffer << stream.rdbuf();
-            res.set_content(buffer.str(), "text/html");
-        } else {
-            res.status = httplib::StatusCode::NotFound_404;
-        }
+        res.set_file_content("./templates/" + html, "text/html");
     });
 }
 

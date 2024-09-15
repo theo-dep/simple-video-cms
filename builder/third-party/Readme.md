@@ -2,8 +2,7 @@
 
 ## cpp-httplib
 
-- v0.17.2
-- renamed httplib.h to httplib.hpp
+- v0.18.0
 - https://github.com/yhirose/cpp-httplib
 
 ## inja

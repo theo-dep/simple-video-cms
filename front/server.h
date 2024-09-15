@@ -2,7 +2,7 @@
 
 #include "session.h"
 
-#include <httplib.hpp>
+#include <httplib.h>
 #include <inja.hpp>
 
 class Server : protected httplib::Server
