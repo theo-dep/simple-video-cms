@@ -35,7 +35,7 @@ Server::Server() : httplib::Server()
 int Server::start()
 {
     constexpr const char* host{ "0.0.0.0" };
-    constexpr int port{ 80 };
+    constexpr int port{ 8080 };
     std::cout << std::format("Serving HTTP on {0} port {1} ...", host, port) << std::endl;
     return (listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }

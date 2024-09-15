@@ -5,3 +5,4 @@ Server/data/
 
 *.o
 **/server
+*.log

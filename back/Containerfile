@@ -8,7 +8,7 @@ ADD *.h *.cpp ${SOURCE_DIR}/
 #RUN mariadb_config
 RUN make -C ${SOURCE_DIR} -j -k server \
         CXXFLAGS="${CXXFLAGS} -I/usr/include/mysql -I/usr/include/mysql/mysql" \
-        LDFLAGS="-L/usr/lib/ -lmariadb -lz -ldl -lssl -lcrypto"
+        LDFLAGS="${LDFLAGS} -L/usr/lib/ -lmariadb -lz -ldl -lssl -lcrypto"
 
 # --------------------------------------------------------------------------------
 FROM scratch

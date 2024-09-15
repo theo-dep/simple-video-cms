@@ -1,5 +1,5 @@
 CXX = g++
-override CXXFLAGS += -std=c++23 -O2 -Wall -Wextra -Werror -DCPPHTTPLIB_USE_POLL
+override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -DCPPHTTPLIB_USE_POLL
 override LDFLAGS +=
 
 SRCS = $(wildcard *.cpp)
