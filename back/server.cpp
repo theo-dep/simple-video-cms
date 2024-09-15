@@ -6,7 +6,6 @@
 
 #include <filesystem>
 #include <format>
-#include <iostream>
 
 Server::Server() : httplib::Server()
 {
@@ -29,7 +28,7 @@ int Server::start()
 {
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
-    std::cout << std::format("Serving HTTP on {0} port {1} ...", host, port) << std::endl;
+    MSG(std::format("Serving HTTP on {0} port {1} ...", host, port));
     return (listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
@@ -37,7 +36,8 @@ void Server::serve_template()
 {
     Get("/html/:html", [](const httplib::Request& req, httplib::Response& res) {
         const std::string html{ req.path_params.at("html") };
-        res.set_file_content("./templates/" + html, "text/html");
+        const std::filesystem::path html_path{ std::filesystem::current_path() / "templates" / html };
+        res.set_file_content(html_path.string(), "text/html");
     });
 }
 

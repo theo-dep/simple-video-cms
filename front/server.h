@@ -24,6 +24,5 @@ protected:
 protected:
     Session _session;
 
-    inja::json _data;
     inja::Environment _env;
 };

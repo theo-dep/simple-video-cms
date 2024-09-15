@@ -4,28 +4,16 @@
 
 #include <mysql+++.h>
 
-#include <format>
-#include <iostream>
-
 daotk::mysql::connect_options connect_options()
 {
-    return {
+    daotk::mysql::connect_options options{
         sc::get_env("MYSQL_DB_URL", "localhost"),
         sc::get_env("MYSQL_ROOT_USER", "root"),
         sc::get_env("MYSQL_ROOT_PASSWORD", "1234"),
-        sc::get_env("MYSQL_DB_NAME", "video"),
-        0,
-        false,
-        "",
-        "",
-        static_cast<unsigned int>(std::stoi(sc::get_env("MYSQL_DB_PORT", "3306"))),
-        0
+        sc::get_env("MYSQL_DB_NAME", "video")
     };
-}
-
-std::string log(const std::string& what)
-{
-    return std::format(R"({} - {})", sc::time_local(), what);
+    options.port = std::stoi(sc::get_env("MYSQL_DB_PORT", "3306"));
+    return options;
 }
 
 Database::Database()
@@ -36,7 +24,7 @@ std::vector<std::string> Database::most_viewed()
 {
     daotk::mysql::connection conn;
     if (!conn.open(connect_options())) {
-        std::cerr << log("Fail to open database connection") << std::endl;
+        ERR("Fail to open database connection");
         return {};
     }
 

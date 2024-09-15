@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <string>
 
 namespace httplib
@@ -12,6 +13,13 @@ namespace sc
 {
     std::string time_local();
     std::string log(const httplib::Request& req, const httplib::Response& res);
+    std::string log(const char* func, int line, const char* file, const std::string& message);
 
     std::string get_env(const std::string& key, const std::string& default_value);
 }
+
+#define MSG(message) \
+    std::cout << sc::log(__FUNCTION__, __LINE__, __FILE__, message) << std::endl;
+
+#define ERR(message) \
+    std::cerr << sc::log(__FUNCTION__, __LINE__, __FILE__, message) << std::endl;

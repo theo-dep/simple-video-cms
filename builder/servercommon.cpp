@@ -32,6 +32,11 @@ std::string sc::log(const httplib::Request& req, const httplib::Response& res)
                        body_bytes_sent, http_referer, http_user_agent);
 }
 
+std::string sc::log(const char* func, int line, const char* file, const std::string& message)
+{
+    return std::format(R"({} - {} - {} ({} at line {}))", time_local(), message, func, file, line);
+}
+
 std::string sc::get_env(const std::string& key, const std::string& default_value)
 {
     const char* const db_url_env{ std::getenv(key.c_str()) };

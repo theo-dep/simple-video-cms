@@ -5,8 +5,8 @@
 #include "servercommon.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <format>
-#include <iostream>
 #include <ranges>
 
 Server::Server() : httplib::Server()
@@ -23,7 +23,8 @@ Server::Server() : httplib::Server()
     set_exception_handler();
     set_logger();
 
-    set_mount_point("/static", "./static");
+    const std::filesystem::path static_path{ std::filesystem::current_path() / "static" };
+    set_mount_point("/static", static_path.string());
 
     set_post_routing_handler([this](const httplib::Request& /*req*/, httplib::Response& res) {
         set_no_cache_headers(res);
@@ -36,7 +37,7 @@ int Server::start()
 {
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
-    std::cout << std::format("Serving HTTP on {0} port {1} ...", host, port) << std::endl;
+    MSG(std::format("Serving HTTP on {0} port {1} ...", host, port));
     return (listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
@@ -50,7 +51,7 @@ void Server::set_no_cache_headers(httplib::Response& res)
 
 void Server::set_error_handler()
 {
-    httplib::Server::set_error_handler([this](const httplib::Request& /*req*/, httplib::Response& res) {
+    httplib::Server::set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
         std::string body;
 
         Client cli;
@@ -67,14 +68,14 @@ void Server::set_error_handler()
                 body = cli.get_generic_error(res.status, httplib::status_message(res.status));
         }
 
-        body = _env.render(body, _data);
+        // body = _env.render(body, _data);
         res.set_content(body, "text/html");
     });
 }
 
 void Server::set_exception_handler()
 {
-    httplib::Server::set_exception_handler([this](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
+    httplib::Server::set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
         constexpr int error_code{ httplib::StatusCode::InternalServerError_500 };
         std::string message;
         try {
@@ -84,6 +85,8 @@ void Server::set_exception_handler()
         } catch (...) {
             message = "Unknown Exception";
         }
+
+        ERR(message);
 
         Client cli;
         std::string body{ cli.get_generic_error(error_code, message) };
@@ -119,7 +122,7 @@ void Server::serve_home()
         }
 
         const std::vector<std::string> most_viewed_video_ids{ cli.get_most_viewed() };
-        inja::json most_viewed{ inja::json::array() };
+        inja::json most_viewed = inja::json::array();
 
         for (const std::string& id : most_viewed_video_ids) {
             const std::string title{ cli.video_title(id) };
@@ -128,10 +131,13 @@ void Server::serve_home()
             most_viewed[id] = { title, views, uploader };
         }
 
-        _data["is_logged"] = is_logged;
-        _data["most_viewed"] = most_viewed;
+        const inja::json data{
+            { "is_logged", is_logged },
+            { "most_viewed", most_viewed }
+        };
+        MSG(data.dump());
 
-        const std::string body{ _env.render(cli.get_homepage(), _data) };
+        const std::string body{ _env.render(cli.get_homepage(), data) };
         res.set_content(body, "text/html");
     });
 }
