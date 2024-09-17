@@ -15,4 +15,10 @@ FROM scratch
 
 COPY --from=builder /sources/server /server
 
+#RUN ldd /server or /sources/server in alpine image
+COPY --from=builder /usr/lib/libmariadb* /usr/lib/libstdc++* /usr/lib/libgcc* /usr/lib/
+COPY --from=builder /lib/ld-musl* /lib/libz* /lib/libssl* /lib/libcrypto* /lib/
+
+ENV LD_LIBRARY_PATH=/usr/lib:/lib
+
 CMD ["/server"]
