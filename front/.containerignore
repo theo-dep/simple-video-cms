@@ -1,2 +1,5 @@
 Containerfile
 static/
+Makefile
+*.o
+server

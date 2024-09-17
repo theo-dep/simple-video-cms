@@ -3,9 +3,9 @@ FROM alpine-builder AS builder
 RUN apk add --no-cache \
         mariadb-connector-c-dev
 
-ADD *.h *.cpp /sources/
+ADD *.h *.cpp ${SOURCE_DIR}/
 
-RUN make -C /sources -j -k server LDFLAGS="-lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
+RUN make -C ${SOURCE_DIR} -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="-lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
 
 # --------------------------------------------------------------------------------
 FROM scratch

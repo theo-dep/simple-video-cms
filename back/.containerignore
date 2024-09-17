@@ -1,2 +1,5 @@
 Containerfile
 templates/
+Makefile
+*.o
+server

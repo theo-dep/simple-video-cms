@@ -17,3 +17,11 @@ down:
 
 clean:
 	docker compose rm
+
+local_build:
+	bash local_build.sh
+
+local_clean:
+	make -C back clean
+	make -C front clean
+	find . -type f -name '*.o' -delete
