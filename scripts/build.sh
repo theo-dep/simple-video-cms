@@ -7,7 +7,7 @@ COMMON_DIR=${SOURCE_DIR}/builder
 CXXFLAGS="-g -I${COMMON_DIR}/third-party -I${COMMON_DIR}"
 
 echo Build common...
-declare -a commons=("servercommon" "serialization")
+declare -a commons=("servercommon" "stringutils")
 declare -a common_objets
 for common in "${commons[@]}"
 do
@@ -22,4 +22,4 @@ echo Build back...
 make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${common_objets} -lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
 
 echo Build front...
-make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${common_objets}"
+make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${common_objets} -lcrypto"

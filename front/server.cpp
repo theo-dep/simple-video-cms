@@ -1,8 +1,8 @@
 #include "server.h"
 
 #include "client.h"
-#include "serialization.h"
 #include "servercommon.h"
+#include "stringutils.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -15,7 +15,7 @@ Server::Server() noexcept : httplib::Server()
         constexpr char delim = '/';
         std::vector<std::string> str_args(args.size());
         std::ranges::transform(args, str_args.begin(), [](const inja::json* val) -> std::string { return val->get<std::string>(); });
-        const std::string url{ sz::join(str_args, delim) };
+        const std::string url{ su::join(str_args, delim) };
         return url;
     });
 

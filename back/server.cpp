@@ -1,8 +1,8 @@
 #include "server.h"
 
 #include "database.h"
-#include "serialization.h"
 #include "servercommon.h"
+#include "stringutils.h"
 
 #include <httplib.h>
 
@@ -55,7 +55,7 @@ inline void server::serve_most_viewed(httplib::Server& server) noexcept
 {
     server.Get("/most-viewed", [](const httplib::Request& /*req*/, httplib::Response& res) {
         const std::vector<std::string> ids{ database::most_viewed() };
-        res.set_content(sz::join(ids), "plain/text");
+        res.set_content(su::join(ids), "plain/text");
     });
 }
 

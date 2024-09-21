@@ -1,7 +1,7 @@
 #include "client.h"
 
-#include "serialization.h"
 #include "servercommon.h"
+#include "stringutils.h"
 
 #include <httplib.h>
 
@@ -67,7 +67,7 @@ std::vector<std::string> client::get_most_viewed() noexcept
 {
     const httplib::Result res{ client().Get("/most-viewed") };
     const std::string str_ids{ get_page(res) };
-    return sz::split(str_ids);
+    return su::split(str_ids);
 }
 
 std::string client::video_title(const std::string& id) noexcept
