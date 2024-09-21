@@ -1,5 +1,7 @@
 #include "session.h"
 
+#include <cstring>
+
 std::string Session::create_session(const std::string& username) noexcept
 {
     const std::lock_guard<std::mutex> lock(_mutex);
@@ -30,15 +32,24 @@ bool Session::is_valid_session(const std::string& session_id) const noexcept
     return _sessions.find(session_id) != _sessions.end();
 }
 
+bool Session::is_valid_session_from_cookie(const std::string& cookie) const noexcept
+{
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    return is_valid_session(session_id);
+}
+
+namespace session
+{
+    constexpr const char* cookie_key() { return "Session-ID="; }
+}
+
 std::string Session::extract_session_id_from_cookie(const std::string& cookie) noexcept
 {
-    static const std::string key("Session-ID=");
-
     std::string session_id;
 
-    std::size_t start{ cookie.find(key) };
+    std::size_t start{ cookie.find(session::cookie_key()) };
     if (start != std::string::npos) {
-        start += key.length();
+        start += std::strlen(session::cookie_key());
         std::size_t end{ cookie.find(';', start) };
         if (end == std::string::npos) {
             end = cookie.length();
@@ -47,6 +58,11 @@ std::string Session::extract_session_id_from_cookie(const std::string& cookie) n
     }
 
     return session_id;
+}
+
+std::string Session::insert_session_id_to_cookie(const std::string& session_id) noexcept
+{
+    return (session::cookie_key() + session_id + ";");
 }
 
 std::string Session::generate_session_id() noexcept

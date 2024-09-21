@@ -63,6 +63,18 @@ std::string client::get_homepage() noexcept
     return get_page(res);
 }
 
+std::string client::get_login() noexcept
+{
+    const httplib::Result res{ client().Get("/html/login.html") };
+    return get_page(res);
+}
+
+std::string client::get_signup() noexcept
+{
+    const httplib::Result res{ client().Get("/html/signup.html") };
+    return get_page(res);
+}
+
 std::vector<std::string> client::get_most_viewed() noexcept
 {
     const httplib::Result res{ client().Get("/most-viewed") };
@@ -92,6 +104,20 @@ bool client::is_admin(const std::string& session_id) noexcept
 {
     const httplib::Result res{ client().Get("/is-admin/" + session_id) };
     return (get_page(res) == "true");
+}
+
+bool client::is_valid_user(const std::string& username) noexcept
+{
+    (void)username;
+    return false;
+}
+
+bool client::add_user(const std::string& session_id, const std::string& username, const std::string& password) noexcept
+{
+    (void)session_id;
+    (void)username;
+    (void)password;
+    return false;
 }
 
 std::string client::get_page(const httplib::Result& res) noexcept

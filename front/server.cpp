@@ -31,6 +31,9 @@ Server::Server() noexcept : httplib::Server()
     });
 
     serve_home();
+
+    serve_login();
+    serve_signup();
 }
 
 int Server::start() noexcept
@@ -135,5 +138,58 @@ void Server::serve_home() noexcept
 
         const std::string body{ _env.render(client::get_homepage(), data) };
         res.set_content(body, "text/html");
+    });
+}
+
+void Server::serve_login() noexcept
+{
+    Get("/login", [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string cookie{ req.get_header_value("Cookie") };
+        if (_session.is_valid_session_from_cookie(cookie)) {
+            res.set_redirect("/");
+            return;
+        }
+
+        const inja::json data{ { "loginError", res.has_header("loginError") } };
+        const std::string body{ _env.render(client::get_login(), data) };
+        res.set_content(body, "text/html");
+    }).Post("/login", [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string password{ su::sha256(req.get_param_value("password")) };
+        if (password.empty()) {
+            res.set_header("loginError", "");
+            res.set_redirect("/login");
+            return;
+        }
+
+        std::string username{ req.get_param_value("username") };
+        su::trim(username);
+        su::lower(username);
+
+        const bool is_valid_username{ client::is_valid_user(username) };
+        if (is_valid_username) {
+            const std::string session_id{ _session.create_session(username) };
+            client::add_user(session_id, username, password);
+            res.set_header("Cookie", Session::insert_session_id_to_cookie(session_id));
+            res.set_redirect("/");
+        } else {
+            res.set_header("loginError", "");
+            res.set_redirect("/login");
+        }
+    });
+}
+
+void Server::serve_signup() noexcept
+{
+    Get("/signup", [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string cookie{ req.get_header_value("Cookie") };
+        if (_session.is_valid_session_from_cookie(cookie)) {
+            res.set_redirect("/");
+            return;
+        }
+
+        const inja::json data{ { "signupError", false } };
+        const std::string body{ _env.render(client::get_signup(), data) };
+        res.set_content(body, "text/html");
+    }).Post("/signup", [this](const httplib::Request&, httplib::Response&) {
     });
 }

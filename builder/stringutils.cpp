@@ -23,6 +23,21 @@ std::vector<std::string> su::split(const std::string& str, char delim) noexcept
     return list;
 }
 
+void su::trim(std::string& str) noexcept
+{
+    static const auto ischar{ [](const std::string::value_type& c) -> bool { return !std::isspace(c); } };
+    // trim left
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), ischar));
+    // trim right
+    str.erase(std::find_if(str.rbegin(), str.rend(), ischar).base(), str.end());
+}
+
+void su::lower(std::string& str) noexcept
+{
+    static const auto tolower{ [](const std::string::value_type& c) -> std::string::value_type { return std::tolower(c); } };
+    std::transform(str.cbegin(), str.cend(), str.begin(), tolower);
+}
+
 // https://github.com/openssl/openssl/blob/master/demos/digest/EVP_MD_demo.c
 std::string su::sha512(const std::string& str) noexcept
 {

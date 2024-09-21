@@ -20,6 +20,8 @@ protected:
     void set_logger() noexcept;
 
     void serve_home() noexcept;
+    void serve_login() noexcept;
+    void serve_signup() noexcept;
 
 protected:
     Session _session;
