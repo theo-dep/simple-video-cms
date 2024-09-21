@@ -80,29 +80,42 @@ inline void server::serve_most_viewed(httplib::Server& server) noexcept
 
 inline void server::serve_video_title(httplib::Server& server) noexcept
 {
-    server.Get("/title/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
-        // TODO
+    server.Get("/title/:video_id", [](const httplib::Request& req, httplib::Response& res) {
+        const std::string video_id{ req.path_params.at("video_id") };
+        const std::string video_title{ database::video_title(video_id) };
+        res.set_content(video_title, "plain/text");
     });
 }
 
 inline void server::serve_video_views(httplib::Server& server) noexcept
 {
-    server.Get("/views/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
-        // TODO
+    server.Get("/views/:video_id", [](const httplib::Request& req, httplib::Response& res) {
+        const std::string video_id{ req.path_params.at("video_id") };
+        const int video_views{ database::video_views(video_id) };
+        res.set_content(std::to_string(video_views), "plain/text");
     });
 }
 
 inline void server::serve_video_uploader(httplib::Server& server) noexcept
 {
-    server.Get("/uploader/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
-        // TODO
+    server.Get("/uploader/:video_id", [](const httplib::Request& req, httplib::Response& res) {
+        const std::string video_id{ req.path_params.at("video_id") };
+        const std::string video_uploader{ database::video_uploader(video_id) };
+        res.set_content(video_uploader, "plain/text");
     });
 }
 
 inline void server::serve_is_admin(httplib::Server& server) noexcept
 {
-    server.Get("/is-admin/:session_id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
-        // TODO
+    server.Get("/is-admin/:session_id", [](const httplib::Request& req, httplib::Response& res) {
+        const std::string session_id{ req.path_params.at("session_id") };
+        const std::optional<bool> is_admin{ database::is_admin(session_id) };
+        if (!is_admin.has_value()) {
+            res.set_content("", "plain/text");
+            return;
+        }
+
+        res.set_content(is_admin.value() ? "true" : "false", "plain/text");
     });
 }
 

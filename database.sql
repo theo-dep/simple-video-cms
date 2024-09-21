@@ -18,6 +18,17 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
+DROP TABLE IF EXISTS `sessions`;
+CREATE TABLE `sessions` (
+  `session_id` varchar(20) NOT NULL,
+  `admin_name` varchar(20) DEFAULT NULL,
+  `user_name` varchar(20) DEFAULT NULL,
+  PRIMARY KEY (`session_id`),
+  CONSTRAINT `sessions_ibfk_1` FOREIGN KEY (`admin_name`) REFERENCES `admins` (`username`) ON DELETE CASCADE,
+  CONSTRAINT `sessions_ibfk_2` FOREIGN KEY (`user_name`) REFERENCES `users` (`username`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
 DROP TABLE IF EXISTS `videos`;
 CREATE TABLE `videos` (
   `video_ID` varchar(50) NOT NULL,
