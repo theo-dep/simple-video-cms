@@ -26,7 +26,7 @@ services:
       - db
 
   db:
-    image: mysql:latest
+    image: mysql:9.0.1
     volumes:
       - ./database.sql:/docker-entrypoint-initdb.d/database.sql
     environment:
