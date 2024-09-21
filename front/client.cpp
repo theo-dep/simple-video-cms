@@ -3,6 +3,8 @@
 #include "serialization.h"
 #include "servercommon.h"
 
+#include <httplib.h>
+
 #include <format>
 
 constexpr const char* generic_error_html{
@@ -26,65 +28,73 @@ constexpr const char* generic_error_html{
  )"
 };
 
-Client::Client() : httplib::Client(sc::get_env("SERVER_URL", "localhost:8080"))
+namespace client
 {
+    std::string get_page(const httplib::Result& res) noexcept;
+    httplib::Client& client() noexcept;
 }
 
-std::string Client::get_404_error()
+httplib::Client& client::client() noexcept
 {
-    const httplib::Result res{ Get("/html/404.html") };
+    static httplib::Client client(sc::get_env("SERVER_URL", "localhost:8080"));
+    return client;
+}
+
+std::string client::get_404_error() noexcept
+{
+    const httplib::Result res{ client().Get("/html/404.html") };
     return get_page(res);
 }
 
-std::string Client::get_403_error()
+std::string client::get_403_error() noexcept
 {
-    const httplib::Result res{ Get("/html/403.html") };
+    const httplib::Result res{ client().Get("/html/403.html") };
     return get_page(res);
 }
 
-std::string Client::get_generic_error(int error, const std::string& message)
+std::string client::get_generic_error(int error, const std::string& message) noexcept
 {
     return std::format(generic_error_html, "Error", error, message, CPPHTTPLIB_VERSION);
 }
 
-std::string Client::get_homepage()
+std::string client::get_homepage() noexcept
 {
-    const httplib::Result res{ Get("/html/homepage.html") };
+    const httplib::Result res{ client().Get("/html/homepage.html") };
     return get_page(res);
 }
 
-std::vector<std::string> Client::get_most_viewed()
+std::vector<std::string> client::get_most_viewed() noexcept
 {
-    const httplib::Result res{ Get("/most-viewed") };
+    const httplib::Result res{ client().Get("/most-viewed") };
     const std::string str_ids{ get_page(res) };
     return sz::split(str_ids);
 }
 
-std::string Client::video_title(const std::string& id)
+std::string client::video_title(const std::string& id) noexcept
 {
-    const httplib::Result res{ Get("/title/" + id) };
+    const httplib::Result res{ client().Get("/title/" + id) };
     return get_page(res);
 }
 
-int Client::video_views(const std::string& id)
+int client::video_views(const std::string& id) noexcept
 {
-    const httplib::Result res{ Get("/views/" + id) };
+    const httplib::Result res{ client().Get("/views/" + id) };
     return std::stoi(get_page(res));
 }
 
-std::string Client::video_uploader(const std::string& id)
+std::string client::video_uploader(const std::string& id) noexcept
 {
-    const httplib::Result res{ Get("/uploader/" + id) };
+    const httplib::Result res{ client().Get("/uploader/" + id) };
     return get_page(res);
 }
 
-bool Client::is_admin(const std::string& session_id)
+bool client::is_admin(const std::string& session_id) noexcept
 {
-    const httplib::Result res{ Get("/is-admin/" + session_id) };
+    const httplib::Result res{ client().Get("/is-admin/" + session_id) };
     return (get_page(res) == "true");
 }
 
-std::string Client::get_page(const httplib::Result& res)
+std::string client::get_page(const httplib::Result& res) noexcept
 {
     if (!res)
         return get_generic_error(static_cast<int>(res.error()), httplib::to_string(res.error()));

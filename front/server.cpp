@@ -9,7 +9,7 @@
 #include <format>
 #include <ranges>
 
-Server::Server() : httplib::Server()
+Server::Server() noexcept : httplib::Server()
 {
     _env.add_callback("url_for", [](const inja::Arguments& args) {
         constexpr char delim = '/';
@@ -33,7 +33,7 @@ Server::Server() : httplib::Server()
     serve_home();
 }
 
-int Server::start()
+int Server::start() noexcept
 {
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -41,7 +41,7 @@ int Server::start()
     return (listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void Server::set_no_cache_headers(httplib::Response& res)
+void Server::set_no_cache_headers(httplib::Response& res) noexcept
 {
     res.set_header("Last-Modified", sc::time_local());
     res.set_header("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0");
@@ -49,23 +49,22 @@ void Server::set_no_cache_headers(httplib::Response& res)
     res.set_header("Expires", "-1");
 }
 
-void Server::set_error_handler()
+void Server::set_error_handler() noexcept
 {
     httplib::Server::set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
         std::string body;
 
-        Client cli;
         switch (res.status) {
             case httplib::StatusCode::NotFound_404:
-                body = cli.get_404_error();
+                body = client::get_404_error();
                 break;
 
             case httplib::StatusCode::Forbidden_403:
-                body = cli.get_403_error();
+                body = client::get_403_error();
                 break;
 
             default:
-                body = cli.get_generic_error(res.status, httplib::status_message(res.status));
+                body = client::get_generic_error(res.status, httplib::status_message(res.status));
         }
 
         // body = _env.render(body, _data);
@@ -73,7 +72,7 @@ void Server::set_error_handler()
     });
 }
 
-void Server::set_exception_handler()
+void Server::set_exception_handler() noexcept
 {
     httplib::Server::set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
         constexpr int error_code{ httplib::StatusCode::InternalServerError_500 };
@@ -88,8 +87,7 @@ void Server::set_exception_handler()
 
         ERR(message);
 
-        Client cli;
-        std::string body{ cli.get_generic_error(error_code, message) };
+        std::string body{ client::get_generic_error(error_code, message) };
         // body = _env.render(body, _data);
 
         res.set_content(body, "text/html");
@@ -97,37 +95,35 @@ void Server::set_exception_handler()
     });
 }
 
-void Server::set_logger()
+void Server::set_logger() noexcept
 {
     httplib::Server::set_logger([](const httplib::Request& req, const httplib::Response& res) {
         std::cout << sc::log(req, res) << std::endl;
     });
 }
 
-void Server::serve_home()
+void Server::serve_home() noexcept
 {
     Get("/", [this](const httplib::Request& req, httplib::Response& res) {
-        Client cli;
-
         const std::string cookie{ req.get_header_value("Cookie") };
         const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
         bool is_logged{ false };
         if (_session.is_valid_session(session_id)) {
             is_logged = true;
-            const bool is_admin{ cli.is_admin(session_id) };
+            const bool is_admin{ client::is_admin(session_id) };
             if (is_admin) {
                 res.set_redirect("/dashboard");
                 return;
             }
         }
 
-        const std::vector<std::string> most_viewed_video_ids{ cli.get_most_viewed() };
+        const std::vector<std::string> most_viewed_video_ids{ client::get_most_viewed() };
         inja::json most_viewed = inja::json::array();
 
         for (const std::string& id : most_viewed_video_ids) {
-            const std::string title{ cli.video_title(id) };
-            const int views{ cli.video_views(id) };
-            const std::string uploader{ cli.video_uploader(id) };
+            const std::string title{ client::video_title(id) };
+            const int views{ client::video_views(id) };
+            const std::string uploader{ client::video_uploader(id) };
             most_viewed[id] = { title, views, uploader };
         }
 
@@ -137,7 +133,7 @@ void Server::serve_home()
         };
         MSG(data.dump());
 
-        const std::string body{ _env.render(cli.get_homepage(), data) };
+        const std::string body{ _env.render(client::get_homepage(), data) };
         res.set_content(body, "text/html");
     });
 }

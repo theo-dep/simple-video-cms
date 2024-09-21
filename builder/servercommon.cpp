@@ -5,7 +5,7 @@
 #include <chrono>
 #include <format>
 
-std::string sc::time_local()
+std::string sc::time_local() noexcept
 {
     const std::chrono::time_point p{ std::chrono::system_clock::now() };
     const std::time_t t{ std::chrono::system_clock::to_time_t(p) };
@@ -15,7 +15,7 @@ std::string sc::time_local()
     return ss.str();
 }
 
-std::string sc::log(const httplib::Request& req, const httplib::Response& res)
+std::string sc::log(const httplib::Request& req, const httplib::Response& res) noexcept
 {
     const std::string remote_user("-"); // TODO:
     const std::string request(std::format("{} {} {}", req.method, req.path, req.version));
@@ -32,12 +32,12 @@ std::string sc::log(const httplib::Request& req, const httplib::Response& res)
                        body_bytes_sent, http_referer, http_user_agent);
 }
 
-std::string sc::log(const char* func, int line, const char* file, const std::string& message)
+std::string sc::log(const char* func, int line, const char* file, const std::string& message) noexcept
 {
     return std::format(R"({} - {} - {} ({} at line {}))", time_local(), message, func, file, line);
 }
 
-std::string sc::get_env(const std::string& key, const std::string& default_value)
+std::string sc::get_env(const std::string& key, const std::string& default_value) noexcept
 {
     const char* const db_url_env{ std::getenv(key.c_str()) };
     return (db_url_env ? std::string(db_url_env) : default_value);

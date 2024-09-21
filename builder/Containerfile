@@ -5,6 +5,6 @@ RUN apk add --no-cache \
     g++
 
 ENV SOURCE_DIR=/sources
-ENV CXXFLAGS="-O2 -I${SOURCE_DIR}"
+ENV CXXFLAGS="-O3 -I${SOURCE_DIR}"
 
 ADD *.h *.cpp Makefile third-party/ ${SOURCE_DIR}/

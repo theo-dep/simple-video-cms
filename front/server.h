@@ -8,18 +8,18 @@
 class Server : protected httplib::Server
 {
 public:
-    Server();
+    Server() noexcept;
 
-    int start();
+    int start() noexcept;
 
 protected:
-    void set_no_cache_headers(httplib::Response& res);
+    void set_no_cache_headers(httplib::Response& res) noexcept;
 
-    void set_error_handler();
-    void set_exception_handler();
-    void set_logger();
+    void set_error_handler() noexcept;
+    void set_exception_handler() noexcept;
+    void set_logger() noexcept;
 
-    void serve_home();
+    void serve_home() noexcept;
 
 protected:
     Session _session;

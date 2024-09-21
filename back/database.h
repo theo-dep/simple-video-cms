@@ -3,10 +3,7 @@
 #include <string>
 #include <vector>
 
-class Database
+namespace database
 {
-public:
-    Database();
-
-    std::vector<std::string> most_viewed();
-};
+    std::vector<std::string> most_viewed() noexcept;
+}

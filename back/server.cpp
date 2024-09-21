@@ -4,76 +4,85 @@
 #include "serialization.h"
 #include "servercommon.h"
 
+#include <httplib.h>
+
 #include <filesystem>
 #include <format>
 
-Server::Server() : httplib::Server()
+namespace server
 {
-    set_logger([](const httplib::Request& req, const httplib::Response& res) {
+    void serve_template(httplib::Server& server) noexcept;
+    void serve_most_viewed(httplib::Server& server) noexcept;
+    void serve_video_title(httplib::Server& server) noexcept;
+    void serve_video_views(httplib::Server& server) noexcept;
+    void serve_video_uploader(httplib::Server& server) noexcept;
+    void serve_is_admin(httplib::Server& server) noexcept;
+}
+
+int server::start() noexcept
+{
+    httplib::Server server;
+    server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
         std::cout << sc::log(req, res) << std::endl;
     });
 
-    serve_template();
+    serve_template(server);
 
-    serve_most_viewed();
+    serve_most_viewed(server);
 
-    serve_video_title();
-    serve_video_views();
-    serve_video_uploader();
+    serve_video_title(server);
+    serve_video_views(server);
+    serve_video_uploader(server);
 
-    serve_is_admin();
-}
+    serve_is_admin(server);
 
-int Server::start()
-{
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
     MSG(std::format("Serving HTTP on {0} port {1} ...", host, port));
-    return (listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
+    return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void Server::serve_template()
+inline void server::serve_template(httplib::Server& server) noexcept
 {
-    Get("/html/:html", [](const httplib::Request& req, httplib::Response& res) {
+    server.Get("/html/:html", [](const httplib::Request& req, httplib::Response& res) {
         const std::string html{ req.path_params.at("html") };
         const std::filesystem::path html_path{ std::filesystem::current_path() / "templates" / html };
         res.set_file_content(html_path.string(), "text/html");
     });
 }
 
-void Server::serve_most_viewed()
+inline void server::serve_most_viewed(httplib::Server& server) noexcept
 {
-    Get("/most-viewed", [](const httplib::Request& /*req*/, httplib::Response& res) {
-        Database db;
-        const std::vector<std::string> ids{ db.most_viewed() };
+    server.Get("/most-viewed", [](const httplib::Request& /*req*/, httplib::Response& res) {
+        const std::vector<std::string> ids{ database::most_viewed() };
         res.set_content(sz::join(ids), "plain/text");
     });
 }
 
-void Server::serve_video_title()
+inline void server::serve_video_title(httplib::Server& server) noexcept
 {
-    Get("/title/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
+    server.Get("/title/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
         // TODO
     });
 }
 
-void Server::serve_video_views()
+inline void server::serve_video_views(httplib::Server& server) noexcept
 {
-    Get("/views/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
+    server.Get("/views/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
         // TODO
     });
 }
 
-void Server::serve_video_uploader()
+inline void server::serve_video_uploader(httplib::Server& server) noexcept
 {
-    Get("/uploader/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
+    server.Get("/uploader/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
         // TODO
     });
 }
 
-void Server::serve_is_admin()
+inline void server::serve_is_admin(httplib::Server& server) noexcept
 {
-    Get("/is-admin/:session_id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
+    server.Get("/is-admin/:session_id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
         // TODO
     });
 }

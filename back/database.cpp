@@ -4,7 +4,7 @@
 
 #include <mysql+++.h>
 
-daotk::mysql::connect_options connect_options()
+inline daotk::mysql::connect_options connect_options() noexcept
 {
     daotk::mysql::connect_options options{
         sc::get_env("MYSQL_DB_URL", "localhost"),
@@ -16,11 +16,7 @@ daotk::mysql::connect_options connect_options()
     return options;
 }
 
-Database::Database()
-{
-}
-
-std::vector<std::string> Database::most_viewed()
+std::vector<std::string> database::most_viewed() noexcept
 {
     daotk::mysql::connection conn;
     if (!conn.open(connect_options())) {

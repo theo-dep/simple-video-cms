@@ -2,6 +2,5 @@
 
 int main()
 {
-    Server server;
-    return server.start();
+    return server::start();
 }

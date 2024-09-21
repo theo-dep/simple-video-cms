@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <ranges>
 
-std::string sz::join(const std::vector<std::string>& list, char delim)
+std::string sz::join(const std::vector<std::string>& list, char delim) noexcept
 {
     const std::string str{ std::ranges::fold_left(list | std::views::join_with(delim), std::string{}, std::plus{}) };
     return str;
 }
 
-std::vector<std::string> sz::split(const std::string& str, char delim)
+std::vector<std::string> sz::split(const std::string& str, char delim) noexcept
 {
     // const std::vector<std::string> list{ std::ranges::split_view(str, delim) | std::ranges::to<std::vector>() };
     std::vector<std::string> list;
