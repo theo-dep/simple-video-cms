@@ -48,24 +48,6 @@ inline const daotk::mysql::connect_options& database::connect_options() noexcept
     return options;
 }
 
-std::optional<bool> database::is_admin(const std::string& session_id) noexcept
-{
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
-        ERR("Fail to open database connection");
-        return std::nullopt;
-    }
-
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT IF(admin_name IS NOT NULL, true, false) FROM sessions WHERE session_id = '%s'", session_id.c_str())
-            .get_value<bool>();
-    }
-    END_QUERY
-
-    return std::nullopt;
-}
-
 std::vector<std::string> database::most_viewed() noexcept
 {
     daotk::mysql::connection conn;
@@ -142,6 +124,25 @@ std::string database::video_uploader(const std::string& video_id) noexcept
     return {};
 }
 
+bool database::is_admin(const std::string& username) noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return false;
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT username FROM admins WHERE username = '%s'", username.c_str())
+            .get_value<std::optional<std::string>>()
+            .has_value();
+    }
+    END_QUERY
+
+    return false;
+}
+
 bool database::is_valid_username(const std::string& username) noexcept
 {
     daotk::mysql::connection conn;
@@ -210,11 +211,4 @@ std::string database::get_password(const std::string& username) noexcept
     END_QUERY
 
     return {};
-}
-
-void database::update_session(const std::string& session_id, const std::string& username) noexcept
-{
-    (void)session_id;
-    (void)username;
-    // conn.exec("INSERT OR UPDATE INTO sessions VALUES(%s, %s)", session_id, username);
 }

@@ -113,8 +113,7 @@ void Server::serve_home() noexcept
         bool is_logged{ false };
         if (_session.is_valid_session(session_id)) {
             is_logged = true;
-            const bool is_admin{ client::is_admin(session_id) };
-            if (is_admin) {
+            if (client::is_admin(_session.user_from_session(session_id))) {
                 res.set_redirect("/dashboard");
                 return;
             }
@@ -176,7 +175,6 @@ void Server::serve_login() noexcept
         const bool is_valid_user{ client::is_valid_user(username, password) };
         if (is_valid_user) {
             const std::string session_id{ _session.create_session(username) };
-            client::update_session(session_id, username);
             res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
             res.set_redirect("/");
         } else {

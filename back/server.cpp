@@ -46,7 +46,6 @@ int server::start() noexcept
     serve_is_valid_username(server);
     serve_add_user(server);
     serve_is_valid_user(server);
-    serve_update_session(server);
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
@@ -107,22 +106,29 @@ inline void server::serve_video_uploader(httplib::Server& server) noexcept
 
 inline void server::serve_is_admin(httplib::Server& server) noexcept
 {
-    server.Get("/is-admin/:session_id", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string session_id{ req.path_params.at("session_id") };
-        const std::optional<bool> is_admin{ database::is_admin(session_id) };
-        if (!is_admin.has_value()) {
-            res.set_content("", "plain/text");
+    server.Get("/is-admin", [](const httplib::Request& req, httplib::Response& res) {
+        if (!req.has_header("username")) {
+            ERR("Missing header data");
+            res.status = httplib::StatusCode::InternalServerError_500;
             return;
         }
 
-        res.set_content(is_admin.value() ? "true" : "false", "plain/text");
+        const std::string username{ req.get_header_value("username") };
+        const bool is_admin{ database::is_admin(username) };
+        res.set_content(su::bool_to_string(is_admin), "plain/text");
     });
 }
 
 inline void server::serve_is_valid_username(httplib::Server& server) noexcept
 {
-    server.Get("/is-valid-username/:username", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string username{ req.path_params.at("username") };
+    server.Get("/is-valid-username", [](const httplib::Request& req, httplib::Response& res) {
+        if (!req.has_header("username")) {
+            ERR("Missing header data");
+            res.status = httplib::StatusCode::InternalServerError_500;
+            return;
+        }
+
+        const std::string username{ req.get_header_value("username") };
         const bool is_valid_username{ database::is_valid_username(username) };
         res.set_content(su::bool_to_string(is_valid_username), "plain/text");
     });
@@ -131,13 +137,13 @@ inline void server::serve_is_valid_username(httplib::Server& server) noexcept
 inline void server::serve_add_user(httplib::Server& server) noexcept
 {
     server.Post("/add-user/:username", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string username{ req.path_params.at("username") };
-        if (!req.has_file("password") || req.get_file_value("username").content != username) {
+        if (!req.has_file("password") || !req.has_file("username")) {
             ERR("Missing multipart form data");
             res.status = httplib::StatusCode::InternalServerError_500;
             return;
         }
 
+        const std::string username{ req.get_file_value("username").content };
         const std::string password{ req.get_file_value("password").content };
         database::add_user(username, password);
     });
@@ -157,20 +163,5 @@ inline void server::serve_is_valid_user(httplib::Server& server) noexcept
 
         const std::string database_password{ database::get_password(username) };
         res.set_content(su::bool_to_string(password == database_password), "plain/text");
-    });
-}
-
-inline void server::serve_update_session(httplib::Server& server) noexcept
-{
-    server.Post("/update-session/:username", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string username{ req.path_params.at("username") };
-        if (!req.has_file("session_id") || req.get_file_value("username").content != username) {
-            ERR("Missing multipart form data");
-            res.status = httplib::StatusCode::InternalServerError_500;
-            return;
-        }
-
-        const std::string session_id{ req.get_file_value("session_id").content };
-        database::update_session(session_id, username);
     });
 }
