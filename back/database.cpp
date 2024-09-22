@@ -48,6 +48,12 @@ inline const daotk::mysql::connect_options& database::connect_options() noexcept
     return options;
 }
 
+bool database::is_open() noexcept
+{
+    daotk::mysql::connection conn;
+    return conn.open(connect_options());
+}
+
 std::vector<std::string> database::most_viewed() noexcept
 {
     daotk::mysql::connection conn;

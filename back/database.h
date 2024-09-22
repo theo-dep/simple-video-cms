@@ -5,6 +5,8 @@
 
 namespace database
 {
+    bool is_open() noexcept;
+
     std::vector<std::string> most_viewed() noexcept;
 
     std::string video_title(const std::string& video_id) noexcept;
