@@ -12,7 +12,6 @@ namespace client
     std::string get_homepage() noexcept;
 
     std::string get_login() noexcept;
-    std::string get_signup() noexcept;
 
     std::vector<std::string> get_most_viewed() noexcept;
 
