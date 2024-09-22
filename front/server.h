@@ -21,6 +21,9 @@ protected:
 
     void serve_home() noexcept;
 
+    void serve_login() noexcept;
+    void serve_logout() noexcept;
+
 protected:
     Session _session;
 

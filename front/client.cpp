@@ -1,7 +1,7 @@
 #include "client.h"
 
-#include "serialization.h"
 #include "servercommon.h"
+#include "stringutils.h"
 
 #include <httplib.h>
 
@@ -63,11 +63,17 @@ std::string client::get_homepage() noexcept
     return get_page(res);
 }
 
+std::string client::get_login() noexcept
+{
+    const httplib::Result res{ client().Get("/html/login.html") };
+    return get_page(res);
+}
+
 std::vector<std::string> client::get_most_viewed() noexcept
 {
     const httplib::Result res{ client().Get("/most-viewed") };
     const std::string str_ids{ get_page(res) };
-    return sz::split(str_ids);
+    return su::split(str_ids);
 }
 
 std::string client::video_title(const std::string& id) noexcept
@@ -91,7 +97,41 @@ std::string client::video_uploader(const std::string& id) noexcept
 bool client::is_admin(const std::string& session_id) noexcept
 {
     const httplib::Result res{ client().Get("/is-admin/" + session_id) };
-    return (get_page(res) == "true");
+    return su::string_to_bool(get_page(res));
+}
+
+bool client::is_valid_username(const std::string& username) noexcept
+{
+    const httplib::Result res{ client().Get("/is-valid-username/" + username) };
+    return su::string_to_bool(get_page(res));
+}
+
+void client::add_user(const std::string& username, const std::string& password) noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "password", password, "", "" }
+    };
+    client().Post("/add-user/" + username, items);
+}
+
+bool client::is_valid_user(const std::string& username, const std::string& password) noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "password", password, "", "" }
+    };
+    const httplib::Result res{ client().Post("/is-valid-user", items) };
+    return su::string_to_bool(get_page(res));
+}
+
+void client::update_session(const std::string& session_id, const std::string& username) noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "session_id", session_id, "", "" }
+    };
+    client().Post("/update-session/" + username, items);
 }
 
 std::string client::get_page(const httplib::Result& res) noexcept

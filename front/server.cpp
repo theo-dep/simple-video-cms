@@ -1,8 +1,8 @@
 #include "server.h"
 
 #include "client.h"
-#include "serialization.h"
 #include "servercommon.h"
+#include "stringutils.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -15,7 +15,7 @@ Server::Server() noexcept : httplib::Server()
         constexpr char delim = '/';
         std::vector<std::string> str_args(args.size());
         std::ranges::transform(args, str_args.begin(), [](const inja::json* val) -> std::string { return val->get<std::string>(); });
-        const std::string url{ sz::join(str_args, delim) };
+        const std::string url{ su::join(str_args, delim) };
         return url;
     });
 
@@ -31,6 +31,9 @@ Server::Server() noexcept : httplib::Server()
     });
 
     serve_home();
+
+    serve_login();
+    serve_logout();
 }
 
 int Server::start() noexcept
@@ -135,5 +138,59 @@ void Server::serve_home() noexcept
 
         const std::string body{ _env.render(client::get_homepage(), data) };
         res.set_content(body, "text/html");
+    });
+}
+
+void Server::serve_login() noexcept
+{
+    static constexpr const char* loginRootString{ "/login" };
+
+    static const auto set_login_content{
+        [this](httplib::Response& res, bool login_error) {
+            const inja::json data{ { "loginError", login_error } };
+            MSG(data.dump());
+            const std::string body{ _env.render(client::get_login(), data) };
+            res.set_content(body, "text/html");
+        }
+    };
+
+    Get(loginRootString, [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string cookie{ req.get_header_value("Cookie") };
+        if (_session.is_valid_session_from_cookie(cookie)) {
+            res.set_redirect("/");
+            return;
+        }
+
+        set_login_content(res, false);
+    }).Post(loginRootString, [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string password{ su::sha512(req.get_param_value("password")) };
+        if (password.empty()) {
+            set_login_content(res, true);
+            return;
+        }
+
+        std::string username{ req.get_param_value("username") };
+        su::trim(username);
+        su::lower(username);
+
+        const bool is_valid_user{ client::is_valid_user(username, password) };
+        if (is_valid_user) {
+            const std::string session_id{ _session.create_session(username) };
+            client::update_session(session_id, username);
+            res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
+            res.set_redirect("/");
+        } else {
+            set_login_content(res, true);
+        }
+    });
+}
+
+void Server::serve_logout() noexcept
+{
+    Get("/logout", [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string cookie{ req.get_header_value("Cookie") };
+        const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+        _session.remove_session(session_id);
+        res.set_redirect("/");
     });
 }
