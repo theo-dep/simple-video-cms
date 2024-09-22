@@ -103,21 +103,41 @@ std::string client::video_uploader(const std::string& id) noexcept
 bool client::is_admin(const std::string& session_id) noexcept
 {
     const httplib::Result res{ client().Get("/is-admin/" + session_id) };
-    return (get_page(res) == "true");
+    return su::string_to_bool(get_page(res));
 }
 
-bool client::is_valid_user(const std::string& username) noexcept
+bool client::is_valid_username(const std::string& username) noexcept
 {
-    (void)username;
-    return false;
+    const httplib::Result res{ client().Get("/is-valid-username/" + username) };
+    return su::string_to_bool(get_page(res));
 }
 
-bool client::add_user(const std::string& session_id, const std::string& username, const std::string& password) noexcept
+void client::add_user(const std::string& username, const std::string& password) noexcept
 {
-    (void)session_id;
-    (void)username;
-    (void)password;
-    return false;
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "password", password, "", "" }
+    };
+    client().Post("/add-user/" + username, items);
+}
+
+bool client::is_valid_user(const std::string& username, const std::string& password) noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "password", password, "", "" }
+    };
+    const httplib::Result res{ client().Post("/is-valid-user", items) };
+    return su::string_to_bool(get_page(res));
+}
+
+void client::update_session(const std::string& session_id, const std::string& username) noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "session_id", session_id, "", "" }
+    };
+    client().Post("/update-session/" + username, items);
 }
 
 std::string client::get_page(const httplib::Result& res) noexcept

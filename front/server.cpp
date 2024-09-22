@@ -143,21 +143,29 @@ void Server::serve_home() noexcept
 
 void Server::serve_login() noexcept
 {
-    Get("/login", [this](const httplib::Request& req, httplib::Response& res) {
+    static constexpr const char* loginRootString{ "/login" };
+
+    static const auto set_login_content{
+        [this](httplib::Response& res, bool login_error) {
+            const inja::json data{ { "loginError", login_error } };
+            MSG(data.dump());
+            const std::string body{ _env.render(client::get_login(), data) };
+            res.set_content(body, "text/html");
+        }
+    };
+
+    Get(loginRootString, [this](const httplib::Request& req, httplib::Response& res) {
         const std::string cookie{ req.get_header_value("Cookie") };
         if (_session.is_valid_session_from_cookie(cookie)) {
             res.set_redirect("/");
             return;
         }
 
-        const inja::json data{ { "loginError", res.has_header("loginError") } };
-        const std::string body{ _env.render(client::get_login(), data) };
-        res.set_content(body, "text/html");
-    }).Post("/login", [this](const httplib::Request& req, httplib::Response& res) {
-        const std::string password{ su::sha256(req.get_param_value("password")) };
+        set_login_content(res, false);
+    }).Post(loginRootString, [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string password{ su::sha512(req.get_param_value("password")) };
         if (password.empty()) {
-            res.set_header("loginError", "");
-            res.set_redirect("/login");
+            set_login_content(res, true);
             return;
         }
 
@@ -165,15 +173,14 @@ void Server::serve_login() noexcept
         su::trim(username);
         su::lower(username);
 
-        const bool is_valid_username{ client::is_valid_user(username) };
-        if (is_valid_username) {
+        const bool is_valid_user{ client::is_valid_user(username, password) };
+        if (is_valid_user) {
             const std::string session_id{ _session.create_session(username) };
-            client::add_user(session_id, username, password);
+            client::update_session(session_id, username);
             res.set_header("Cookie", Session::insert_session_id_to_cookie(session_id));
             res.set_redirect("/");
         } else {
-            res.set_header("loginError", "");
-            res.set_redirect("/login");
+            set_login_content(res, true);
         }
     });
 }
@@ -190,6 +197,28 @@ void Server::serve_signup() noexcept
         const inja::json data{ { "signupError", false } };
         const std::string body{ _env.render(client::get_signup(), data) };
         res.set_content(body, "text/html");
-    }).Post("/signup", [this](const httplib::Request&, httplib::Response&) {
+    }).Post("/signup", [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string password{ su::sha512(req.get_param_value("password")) };
+        if (password.empty()) {
+            res.set_header("signupError", "");
+            res.set_redirect("/signup");
+            return;
+        }
+
+        std::string username{ req.get_param_value("username") };
+        su::trim(username);
+        su::lower(username);
+
+        const bool is_valid_username{ client::is_valid_username(username) };
+        if (is_valid_username) {
+            client::add_user(username, password);
+            const std::string session_id{ _session.create_session(username) };
+            client::update_session(session_id, username);
+            res.set_header("Cookie", Session::insert_session_id_to_cookie(session_id));
+            res.set_redirect("/");
+        } else {
+            res.set_header("signup", "");
+            res.set_redirect("/signup");
+        }
     });
 }

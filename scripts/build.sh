@@ -12,8 +12,8 @@ declare -a common_objets
 for common in "${commons[@]}"
 do
     make -C ${COMMON_DIR} ${common}.o CXXFLAGS="${CXXFLAGS}" && (
-        cp ${COMMON_DIR}/${common}.o ${SOURCE_DIR}/back;
-        cp ${COMMON_DIR}/${common}.o ${SOURCE_DIR}/front
+        cp -f ${COMMON_DIR}/${common}.o ${SOURCE_DIR}/back;
+        cp -f ${COMMON_DIR}/${common}.o ${SOURCE_DIR}/front
     ) && common_objets+=" ${common}.o"
 done
 

@@ -5,19 +5,15 @@ USE `video`;
 DROP TABLE IF EXISTS `admins`;
 CREATE TABLE `admins` (
   `username` varchar(20) NOT NULL,
-  `password` varchar(162) DEFAULT NULL,
+  `password` varchar(128) DEFAULT NULL,
   PRIMARY KEY (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-LOCK TABLES `admins` WRITE;
-INSERT INTO `admins` VALUES ('admin','pbkdf2:sha256:50000$SBkHcINZ$b75c69ba6594761c955e9928b2ef5f83c56fee70b5e872bdfc416e9cedbd69bf');
-UNLOCK TABLES;
 
 
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
   `username` varchar(20) NOT NULL,
-  `password` varchar(162) DEFAULT NULL,
+  `password` varchar(128) DEFAULT NULL,
   PRIMARY KEY (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

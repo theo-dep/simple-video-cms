@@ -38,6 +38,16 @@ void su::lower(std::string& str) noexcept
     std::transform(str.cbegin(), str.cend(), str.begin(), tolower);
 }
 
+std::string su::bool_to_string(bool b) noexcept
+{
+    return (b ? "true" : "false");
+}
+
+bool su::string_to_bool(const std::string& str) noexcept
+{
+    return (str == "true");
+}
+
 // https://github.com/openssl/openssl/blob/master/demos/digest/EVP_MD_demo.c
 std::string su::sha512(const std::string& str) noexcept
 {
