@@ -177,7 +177,7 @@ void Server::serve_login() noexcept
         if (is_valid_user) {
             const std::string session_id{ _session.create_session(username) };
             client::update_session(session_id, username);
-            res.set_header("Cookie", Session::insert_session_id_to_cookie(session_id));
+            res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
             res.set_redirect("/");
         } else {
             set_login_content(res, true);
@@ -214,7 +214,7 @@ void Server::serve_signup() noexcept
             client::add_user(username, password);
             const std::string session_id{ _session.create_session(username) };
             client::update_session(session_id, username);
-            res.set_header("Cookie", Session::insert_session_id_to_cookie(session_id));
+            res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
             res.set_redirect("/");
         } else {
             res.set_header("signup", "");
