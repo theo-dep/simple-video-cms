@@ -16,4 +16,8 @@ namespace database
     void add_user(const std::string& username, const std::string& password) noexcept;
     void add_admin(const std::string& username, const std::string& password) noexcept;
     std::string get_password(const std::string& username) noexcept;
+
+    int user_count() noexcept;
+    int video_count() noexcept;
+    int view_count() noexcept;
 }

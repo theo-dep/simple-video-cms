@@ -23,4 +23,9 @@ namespace client
     bool is_valid_username(const std::string& username) noexcept;
     void add_user(const std::string& username, const std::string& password) noexcept;
     bool is_valid_user(const std::string& username, const std::string& password) noexcept;
+
+    int user_count() noexcept;
+    int video_count() noexcept;
+    int view_count() noexcept;
+    std::string dashboard() noexcept;
 }

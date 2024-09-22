@@ -131,6 +131,30 @@ bool client::is_valid_user(const std::string& username, const std::string& passw
     return su::string_to_bool(get_page(res));
 }
 
+int client::user_count() noexcept
+{
+    const httplib::Result res{ client().Get("/user-count") };
+    return std::stoi(get_page(res));
+}
+
+int client::video_count() noexcept
+{
+    const httplib::Result res{ client().Get("/video-count") };
+    return std::stoi(get_page(res));
+}
+
+int client::view_count() noexcept
+{
+    const httplib::Result res{ client().Get("/view-count") };
+    return std::stoi(get_page(res));
+}
+
+std::string client::dashboard() noexcept
+{
+    const httplib::Result res{ client().Get("/html/dashboard.html") };
+    return get_page(res);
+}
+
 std::string client::get_page(const httplib::Result& res) noexcept
 {
     if (!res)

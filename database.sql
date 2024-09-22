@@ -23,7 +23,7 @@ CREATE TABLE `videos` (
   `video_ID` varchar(50) NOT NULL,
   `video_title` varchar(200) DEFAULT NULL,
   `uploader` varchar(20) DEFAULT NULL,
-  `view_count` varchar(10) DEFAULT NULL,
+  `view_count` INTEGER DEFAULT 0,
   `upload_date` date DEFAULT NULL,
   PRIMARY KEY (`video_ID`),
   KEY `uploader` (`uploader`),

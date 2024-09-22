@@ -15,9 +15,8 @@ namespace server
 
     void serve_template(httplib::Server& server) noexcept;
     void serve_most_viewed(httplib::Server& server) noexcept;
-    void serve_video_title(httplib::Server& server) noexcept;
-    void serve_video_views(httplib::Server& server) noexcept;
-    void serve_video_uploader(httplib::Server& server) noexcept;
+    void serve_video_stats(httplib::Server& server) noexcept;
+    void serve_admin_stats(httplib::Server& server) noexcept;
     void serve_is_admin(httplib::Server& server) noexcept;
     void serve_is_valid_username(httplib::Server& server) noexcept;
     void serve_add_user(httplib::Server& server) noexcept;
@@ -38,9 +37,8 @@ int server::start() noexcept
 
     serve_most_viewed(server);
 
-    serve_video_title(server);
-    serve_video_views(server);
-    serve_video_uploader(server);
+    serve_video_stats(server);
+    serve_admin_stats(server);
 
     serve_is_admin(server);
     serve_is_valid_username(server);
@@ -77,31 +75,39 @@ inline void server::serve_most_viewed(httplib::Server& server) noexcept
     });
 }
 
-inline void server::serve_video_title(httplib::Server& server) noexcept
+inline void server::serve_video_stats(httplib::Server& server) noexcept
 {
     server.Get("/title/:video_id", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string video_id{ req.path_params.at("video_id") };
-        const std::string video_title{ database::video_title(video_id) };
-        res.set_content(video_title, "plain/text");
-    });
+              const std::string video_id{ req.path_params.at("video_id") };
+              const std::string video_title{ database::video_title(video_id) };
+              res.set_content(video_title, "plain/text");
+          })
+        .Get("/views/:video_id", [](const httplib::Request& req, httplib::Response& res) {
+            const std::string video_id{ req.path_params.at("video_id") };
+            const int video_views{ database::video_views(video_id) };
+            res.set_content(std::to_string(video_views), "plain/text");
+        })
+        .Get("/uploader/:video_id", [](const httplib::Request& req, httplib::Response& res) {
+            const std::string video_id{ req.path_params.at("video_id") };
+            const std::string video_uploader{ database::video_uploader(video_id) };
+            res.set_content(video_uploader, "plain/text");
+        });
 }
 
-inline void server::serve_video_views(httplib::Server& server) noexcept
+inline void server::serve_admin_stats(httplib::Server& server) noexcept
 {
-    server.Get("/views/:video_id", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string video_id{ req.path_params.at("video_id") };
-        const int video_views{ database::video_views(video_id) };
-        res.set_content(std::to_string(video_views), "plain/text");
-    });
-}
-
-inline void server::serve_video_uploader(httplib::Server& server) noexcept
-{
-    server.Get("/uploader/:video_id", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string video_id{ req.path_params.at("video_id") };
-        const std::string video_uploader{ database::video_uploader(video_id) };
-        res.set_content(video_uploader, "plain/text");
-    });
+    server.Get("/user-count", [](const httplib::Request& /*req*/, httplib::Response& res) {
+              const int user_count{ database::user_count() };
+              res.set_content(std::to_string(user_count), "plain/text");
+          })
+        .Get("/video-count", [](const httplib::Request& /*req*/, httplib::Response& res) {
+            const int video_count{ database::video_count() };
+            res.set_content(std::to_string(video_count), "plain/text");
+        })
+        .Get("/view-count", [](const httplib::Request& /*req*/, httplib::Response& res) {
+            const int view_count{ database::view_count() };
+            res.set_content(std::to_string(view_count), "plain/text");
+        });
 }
 
 inline void server::serve_is_admin(httplib::Server& server) noexcept

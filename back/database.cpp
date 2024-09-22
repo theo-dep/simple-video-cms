@@ -59,7 +59,7 @@ std::vector<std::string> database::most_viewed() noexcept
     std::vector<std::string> ids;
     BEGIN_QUERY
     {
-        conn.query("SELECT video_ID FROM videos ORDER BY CAST(view_count as decimal) DESC LIMIT 10")
+        conn.query("SELECT video_ID FROM videos ORDER BY view_count DESC LIMIT 10")
             .each([&ids](std::string id) {
                 ids.push_back(id);
                 return true;
@@ -116,7 +116,7 @@ std::string database::video_uploader(const std::string& video_id) noexcept
 
     BEGIN_QUERY
     {
-        return conn.query("SELECT uploader FROM videos WHERE video_ID = %s", video_id)
+        return conn.query("SELECT uploader FROM videos WHERE video_ID = '%s'", video_id)
             .get_value<std::string>();
     }
     END_QUERY
@@ -211,4 +211,59 @@ std::string database::get_password(const std::string& username) noexcept
     END_QUERY
 
     return {};
+}
+
+int database::user_count() noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return -1;
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT COUNT(*) FROM users")
+            .get_value<int>();
+    }
+    END_QUERY
+
+    return -1;
+}
+
+int database::video_count() noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return -1;
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT COUNT(*) FROM videos")
+            .get_value<int>();
+    }
+    END_QUERY
+
+    return -1;
+}
+
+int database::view_count() noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return -1;
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT SUM(view_count) FROM videos")
+            .get_value<std::optional<int>>()
+            .value_or(0);
+    }
+    END_QUERY
+
+    return -1;
 }
