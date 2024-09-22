@@ -33,6 +33,7 @@ Server::Server() noexcept : httplib::Server()
     serve_home();
 
     serve_login();
+    serve_logout();
 }
 
 int Server::start() noexcept
@@ -181,5 +182,15 @@ void Server::serve_login() noexcept
         } else {
             set_login_content(res, true);
         }
+    });
+}
+
+void Server::serve_logout() noexcept
+{
+    Get("/logout", [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string cookie{ req.get_header_value("Cookie") };
+        const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+        _session.remove_session(session_id);
+        res.set_redirect("/");
     });
 }
