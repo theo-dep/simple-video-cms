@@ -31,6 +31,7 @@ Server::Server() noexcept : httplib::Server()
     });
 
     serve_home();
+    serve_dashboard();
 
     serve_login();
     serve_logout();
@@ -113,8 +114,7 @@ void Server::serve_home() noexcept
         bool is_logged{ false };
         if (_session.is_valid_session(session_id)) {
             is_logged = true;
-            const bool is_admin{ client::is_admin(session_id) };
-            if (is_admin) {
+            if (client::is_admin(_session.user_from_session(session_id))) {
                 res.set_redirect("/dashboard");
                 return;
             }
@@ -137,6 +137,34 @@ void Server::serve_home() noexcept
         MSG(data.dump());
 
         const std::string body{ _env.render(client::get_homepage(), data) };
+        res.set_content(body, "text/html");
+    });
+}
+
+void Server::serve_dashboard() noexcept
+{
+    Get("/dashboard", [this](const httplib::Request& req, httplib::Response& res) {
+        const std::string cookie{ req.get_header_value("Cookie") };
+        const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+        if (!_session.is_valid_session(session_id)) {
+            res.set_redirect("/login");
+            return;
+        }
+
+        if (!client::is_admin(_session.user_from_session(session_id))) {
+            const std::string body{ client::get_403_error() };
+            res.set_content(body, "text/html");
+            return;
+        }
+
+        const inja::json data{
+            { "user_count", client::user_count() },
+            { "video_count", client::video_count() },
+            { "view_count", client::view_count() }
+        };
+        MSG(data.dump());
+
+        const std::string body{ _env.render(client::dashboard(), data) };
         res.set_content(body, "text/html");
     });
 }
@@ -176,7 +204,6 @@ void Server::serve_login() noexcept
         const bool is_valid_user{ client::is_valid_user(username, password) };
         if (is_valid_user) {
             const std::string session_id{ _session.create_session(username) };
-            client::update_session(session_id, username);
             res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
             res.set_redirect("/");
         } else {

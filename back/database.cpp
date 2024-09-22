@@ -48,6 +48,12 @@ inline const daotk::mysql::connect_options& database::connect_options() noexcept
     return options;
 }
 
+bool database::is_open() noexcept
+{
+    daotk::mysql::connection conn;
+    return conn.open(connect_options());
+}
+
 std::vector<std::string> database::most_viewed() noexcept
 {
     daotk::mysql::connection conn;
@@ -59,7 +65,7 @@ std::vector<std::string> database::most_viewed() noexcept
     std::vector<std::string> ids;
     BEGIN_QUERY
     {
-        conn.query("SELECT video_ID FROM videos ORDER BY CAST(view_count as decimal) DESC LIMIT 10")
+        conn.query("SELECT video_ID FROM videos ORDER BY view_count DESC LIMIT 10")
             .each([&ids](std::string id) {
                 ids.push_back(id);
                 return true;
@@ -68,6 +74,79 @@ std::vector<std::string> database::most_viewed() noexcept
     END_QUERY
 
     return ids;
+}
+
+std::string database::video_title(const std::string& video_id) noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return {};
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT video_title FROM videos WHERE video_ID = '%s'", video_id.c_str())
+            .get_value<std::string>();
+    }
+    END_QUERY
+
+    return {};
+}
+
+int database::video_views(const std::string& video_id) noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return -1;
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT view_count FROM videos WHERE video_ID = '%s'", video_id.c_str())
+            .get_value<int>();
+    }
+    END_QUERY
+
+    return -1;
+}
+
+std::string database::video_uploader(const std::string& video_id) noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return {};
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT uploader FROM videos WHERE video_ID = '%s'", video_id)
+            .get_value<std::string>();
+    }
+    END_QUERY
+
+    return {};
+}
+
+bool database::is_admin(const std::string& username) noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return false;
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT username FROM admins WHERE username = '%s'", username.c_str())
+            .get_value<std::optional<std::string>>()
+            .has_value();
+    }
+    END_QUERY
+
+    return false;
 }
 
 bool database::is_valid_username(const std::string& username) noexcept
@@ -140,15 +219,57 @@ std::string database::get_password(const std::string& username) noexcept
     return {};
 }
 
-void database::update_session(const std::string& session_id, const std::string& username) noexcept
+int database::user_count() noexcept
 {
     daotk::mysql::connection conn;
     if (!conn.open(connect_options())) {
         ERR("Fail to open database connection");
-        return;
+        return -1;
     }
 
-    (void)session_id;
-    (void)username;
-    // conn.exec("INSERT OR UPDATE INTO sessions VALUES(%s, %s)", session_id, username);
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT COUNT(*) FROM users")
+            .get_value<int>();
+    }
+    END_QUERY
+
+    return -1;
+}
+
+int database::video_count() noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return -1;
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT COUNT(*) FROM videos")
+            .get_value<int>();
+    }
+    END_QUERY
+
+    return -1;
+}
+
+int database::view_count() noexcept
+{
+    daotk::mysql::connection conn;
+    if (!conn.open(connect_options())) {
+        ERR("Fail to open database connection");
+        return -1;
+    }
+
+    BEGIN_QUERY
+    {
+        return conn.query("SELECT SUM(view_count) FROM videos")
+            .get_value<std::optional<int>>()
+            .value_or(0);
+    }
+    END_QUERY
+
+    return -1;
 }

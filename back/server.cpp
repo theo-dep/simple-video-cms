@@ -15,9 +15,8 @@ namespace server
 
     void serve_template(httplib::Server& server) noexcept;
     void serve_most_viewed(httplib::Server& server) noexcept;
-    void serve_video_title(httplib::Server& server) noexcept;
-    void serve_video_views(httplib::Server& server) noexcept;
-    void serve_video_uploader(httplib::Server& server) noexcept;
+    void serve_video_stats(httplib::Server& server) noexcept;
+    void serve_admin_stats(httplib::Server& server) noexcept;
     void serve_is_admin(httplib::Server& server) noexcept;
     void serve_is_valid_username(httplib::Server& server) noexcept;
     void serve_add_user(httplib::Server& server) noexcept;
@@ -38,15 +37,13 @@ int server::start() noexcept
 
     serve_most_viewed(server);
 
-    serve_video_title(server);
-    serve_video_views(server);
-    serve_video_uploader(server);
+    serve_video_stats(server);
+    serve_admin_stats(server);
 
     serve_is_admin(server);
     serve_is_valid_username(server);
     serve_add_user(server);
     serve_is_valid_user(server);
-    serve_update_session(server);
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
@@ -78,38 +75,66 @@ inline void server::serve_most_viewed(httplib::Server& server) noexcept
     });
 }
 
-inline void server::serve_video_title(httplib::Server& server) noexcept
+inline void server::serve_video_stats(httplib::Server& server) noexcept
 {
-    server.Get("/title/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
-        // TODO
-    });
+    server.Get("/title/:video_id", [](const httplib::Request& req, httplib::Response& res) {
+              const std::string video_id{ req.path_params.at("video_id") };
+              const std::string video_title{ database::video_title(video_id) };
+              res.set_content(video_title, "plain/text");
+          })
+        .Get("/views/:video_id", [](const httplib::Request& req, httplib::Response& res) {
+            const std::string video_id{ req.path_params.at("video_id") };
+            const int video_views{ database::video_views(video_id) };
+            res.set_content(std::to_string(video_views), "plain/text");
+        })
+        .Get("/uploader/:video_id", [](const httplib::Request& req, httplib::Response& res) {
+            const std::string video_id{ req.path_params.at("video_id") };
+            const std::string video_uploader{ database::video_uploader(video_id) };
+            res.set_content(video_uploader, "plain/text");
+        });
 }
 
-inline void server::serve_video_views(httplib::Server& server) noexcept
+inline void server::serve_admin_stats(httplib::Server& server) noexcept
 {
-    server.Get("/views/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
-        // TODO
-    });
-}
-
-inline void server::serve_video_uploader(httplib::Server& server) noexcept
-{
-    server.Get("/uploader/:id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
-        // TODO
-    });
+    server.Get("/user-count", [](const httplib::Request& /*req*/, httplib::Response& res) {
+              const int user_count{ database::user_count() };
+              res.set_content(std::to_string(user_count), "plain/text");
+          })
+        .Get("/video-count", [](const httplib::Request& /*req*/, httplib::Response& res) {
+            const int video_count{ database::video_count() };
+            res.set_content(std::to_string(video_count), "plain/text");
+        })
+        .Get("/view-count", [](const httplib::Request& /*req*/, httplib::Response& res) {
+            const int view_count{ database::view_count() };
+            res.set_content(std::to_string(view_count), "plain/text");
+        });
 }
 
 inline void server::serve_is_admin(httplib::Server& server) noexcept
 {
-    server.Get("/is-admin/:session_id", [](const httplib::Request& /*req*/, httplib::Response& /*res*/) {
-        // TODO
+    server.Get("/is-admin", [](const httplib::Request& req, httplib::Response& res) {
+        if (!req.has_header("username")) {
+            ERR("Missing header data");
+            res.status = httplib::StatusCode::InternalServerError_500;
+            return;
+        }
+
+        const std::string username{ req.get_header_value("username") };
+        const bool is_admin{ database::is_admin(username) };
+        res.set_content(su::bool_to_string(is_admin), "plain/text");
     });
 }
 
 inline void server::serve_is_valid_username(httplib::Server& server) noexcept
 {
-    server.Get("/is-valid-username/:username", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string username{ req.path_params.at("username") };
+    server.Get("/is-valid-username", [](const httplib::Request& req, httplib::Response& res) {
+        if (!req.has_header("username")) {
+            ERR("Missing header data");
+            res.status = httplib::StatusCode::InternalServerError_500;
+            return;
+        }
+
+        const std::string username{ req.get_header_value("username") };
         const bool is_valid_username{ database::is_valid_username(username) };
         res.set_content(su::bool_to_string(is_valid_username), "plain/text");
     });
@@ -118,13 +143,13 @@ inline void server::serve_is_valid_username(httplib::Server& server) noexcept
 inline void server::serve_add_user(httplib::Server& server) noexcept
 {
     server.Post("/add-user/:username", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string username{ req.path_params.at("username") };
-        if (!req.has_file("password") || req.get_file_value("username").content != username) {
+        if (!req.has_file("password") || !req.has_file("username")) {
             ERR("Missing multipart form data");
             res.status = httplib::StatusCode::InternalServerError_500;
             return;
         }
 
+        const std::string username{ req.get_file_value("username").content };
         const std::string password{ req.get_file_value("password").content };
         database::add_user(username, password);
     });
@@ -144,20 +169,5 @@ inline void server::serve_is_valid_user(httplib::Server& server) noexcept
 
         const std::string database_password{ database::get_password(username) };
         res.set_content(su::bool_to_string(password == database_password), "plain/text");
-    });
-}
-
-inline void server::serve_update_session(httplib::Server& server) noexcept
-{
-    server.Post("/update-session/:username", [](const httplib::Request& req, httplib::Response& res) {
-        const std::string username{ req.path_params.at("username") };
-        if (!req.has_file("session_id") || req.get_file_value("username").content != username) {
-            ERR("Missing multipart form data");
-            res.status = httplib::StatusCode::InternalServerError_500;
-            return;
-        }
-
-        const std::string session_id{ req.get_file_value("session_id").content };
-        database::update_session(session_id, username);
     });
 }
