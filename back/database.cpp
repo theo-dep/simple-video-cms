@@ -1,275 +1,241 @@
 #include "database.h"
 
+#include "databaseschema.h"
 #include "servercommon.h"
 
-#include <mysql+++.h>
+#include <ormpp.hpp>
 
-#include <format>
+#include <memory>
+#include <ranges>
 
 namespace database
 {
-    const daotk::mysql::connect_options& connect_options() noexcept;
+    using dbng = ormpp::dbng<ormpp::mysql>;
+    std::unique_ptr<dbng> connection() noexcept;
+
+    std::optional<Admin> admin(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept;
+    std::optional<User> user(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept;
+    std::optional<Video> video(const std::unique_ptr<dbng>& conn, const std::string& id) noexcept;
 }
 
-#define BEGIN_QUERY try
-#define END_QUERY                                                                                      \
-    catch (const daotk::mysql::mysql_exception& exp)                                                   \
-    {                                                                                                  \
-        ERR(std::format("Query failed with error: {} ({})", exp.error_message(), exp.error_number())); \
-    }                                                                                                  \
-    catch (const daotk::mysql::mysqlpp_exception& exp)                                                 \
-    {                                                                                                  \
-        ERR(std::format("Query failed with error: {}", exp.error_message()));                          \
-    }                                                                                                  \
-    catch (const std::exception& exp)                                                                  \
-    {                                                                                                  \
-        ERR(std::format("Query failed with error: {}", exp.what()));                                   \
-    }                                                                                                  \
-    catch (...)                                                                                        \
-    {                                                                                                  \
-        ERR("Unknown fail");                                                                           \
+inline std::unique_ptr<database::dbng> database::connection() noexcept
+{
+    std::unique_ptr conn{ std::make_unique<dbng>() };
+    return (conn->connect(sc::get_env("MYSQL_DB_URL", "localhost").c_str(),
+                          sc::get_env("MYSQL_ROOT_USER", "root").c_str(),
+                          sc::get_env("MYSQL_ROOT_PASSWORD", "1234").c_str(),
+                          sc::get_env("MYSQL_DB_NAME", "video").c_str(),
+                          /*timeout*/ 0,
+                          std::stoi(sc::get_env("MYSQL_DB_PORT", "3306")))
+                ? std::move(conn)
+                : nullptr);
+}
+
+bool database::create_tables() noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        ERR("Fail to open database connection");
+        return false;
     }
 
-inline const daotk::mysql::connect_options& database::connect_options() noexcept
-{
-    static const daotk::mysql::connect_options options{
-        []() -> daotk::mysql::connect_options {
-            daotk::mysql::connect_options options{
-                sc::get_env("MYSQL_DB_URL", "localhost"),
-                sc::get_env("MYSQL_ROOT_USER", "root"),
-                sc::get_env("MYSQL_ROOT_PASSWORD", "1234"),
-                sc::get_env("MYSQL_DB_NAME", "video")
-            };
-            options.port = std::stoi(sc::get_env("MYSQL_DB_PORT", "3306"));
-            options.charset = "utf8";
-            return options;
-        }()
-    };
-    return options;
+    {
+        ormpp_auto_key key{ "id" };
+        ormpp_not_null not_null{ { "username", "password" } };
+        if (!conn->create_datatable<Admin>(key, not_null)) {
+            ERR("Fail to create Admin table");
+            return false;
+        }
+        if (!conn->create_datatable<User>(key, not_null)) {
+            ERR("Fail to create User table");
+            return false;
+        }
+    }
+    {
+        ormpp_key key{ "id" };
+        ormpp_not_null not_null{ { "id" } };
+        if (!conn->create_datatable<Video>(key, not_null)) {
+            ERR("Fail to create Video table");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool database::is_open() noexcept
 {
-    daotk::mysql::connection conn;
-    return conn.open(connect_options());
+    const std::unique_ptr conn{ connection() };
+    return (conn != nullptr);
 }
 
 std::vector<std::string> database::most_viewed() noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return {};
     }
 
-    std::vector<std::string> ids;
-    BEGIN_QUERY
-    {
-        conn.query("SELECT video_ID FROM videos ORDER BY view_count DESC LIMIT 10")
-            .each([&ids](std::string id) {
-                ids.push_back(id);
-                return true;
-            });
-    }
-    END_QUERY
+    using return_t = std::tuple<std::string>;
+    constexpr auto transform_func{ [](const return_t& v) constexpr { return std::get<0>(v); } };
 
+    const std::vector tuple_ids{ conn->query_s<return_t>("SELECT id FROM Video ORDER BY view_count DESC LIMIT 10") };
+    std::vector<std::string> ids(tuple_ids.size());
+    std::ranges::copy(std::views::transform(tuple_ids, transform_func), ids.begin());
     return ids;
+}
+
+inline std::optional<Video> database::video(const std::unique_ptr<dbng>& conn, const std::string& id) noexcept
+{
+    const std::vector videos{ conn->query_s<Video>("id=?", id) };
+    return (videos.empty() ? std::nullopt : std::optional{ videos[0] });
 }
 
 std::string database::video_title(const std::string& video_id) noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return {};
     }
 
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT video_title FROM videos WHERE video_ID = '%s'", video_id.c_str())
-            .get_value<std::string>();
-    }
-    END_QUERY
-
-    return {};
+    return video(conn, video_id).value_or(Video{}).title;
 }
 
 int database::video_views(const std::string& video_id) noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return -1;
     }
 
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT view_count FROM videos WHERE video_ID = '%s'", video_id.c_str())
-            .get_value<int>();
-    }
-    END_QUERY
-
-    return -1;
+    return video(conn, video_id).value_or(Video{}).view_count;
 }
 
 std::string database::video_uploader(const std::string& video_id) noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return {};
     }
 
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT uploader FROM videos WHERE video_ID = '%s'", video_id)
-            .get_value<std::string>();
-    }
-    END_QUERY
+    return video(conn, video_id).value_or(Video{}).uploader;
+}
 
-    return {};
+std::optional<Admin> database::admin(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept
+{
+    const std::vector admins{ conn->query_s<Admin>("username=?", username) };
+    return (admins.empty() ? std::nullopt : std::optional{ admins[0] });
+}
+
+std::optional<User> database::user(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept
+{
+    const std::vector users{ conn->query_s<User>("username=?", username) };
+    return (users.empty() ? std::nullopt : std::optional{ users[0] });
 }
 
 bool database::is_admin(const std::string& username) noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return false;
     }
 
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT username FROM admins WHERE username = '%s'", username.c_str())
-            .get_value<std::optional<std::string>>()
-            .has_value();
-    }
-    END_QUERY
-
-    return false;
+    return admin(conn, username).has_value();
 }
 
 bool database::is_valid_username(const std::string& username) noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return false;
     }
 
-    BEGIN_QUERY
-    {
-        return ((conn.query("SELECT COUNT(*) FROM users WHERE username = '%s'", username.c_str())
-                     .get_value<int>() == 1) ||
-                (conn.query("SELECT COUNT(*) FROM admins WHERE username = '%s'", username.c_str())
-                     .get_value<int>() == 1));
-    }
-    END_QUERY
-
-    return false;
+    return (user(conn, username).has_value() || admin(conn, username).has_value());
 }
 
 void database::add_user(const std::string& username, const std::string& password) noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return;
     }
 
-    BEGIN_QUERY
-    {
-        conn.exec("INSERT INTO users VALUES ('%s', '%s')", username.c_str(), password.c_str());
-    }
-    END_QUERY
+    User user;
+    user.username = username;
+    user.password = password;
+    conn->insert(user);
 }
 
 void database::add_admin(const std::string& username, const std::string& password) noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return;
     }
 
-    BEGIN_QUERY
-    {
-        conn.exec("INSERT INTO admins VALUES ('%s', '%s')", username.c_str(), password.c_str());
-    }
-    END_QUERY
+    Admin admin;
+    admin.username = username;
+    admin.password = password;
+    conn->insert(admin);
 }
 
 std::string database::get_password(const std::string& username) noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return {};
     }
 
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT password FROM users WHERE username = '%s'", username.c_str())
-            .get_value<std::optional<std::string>>()
-            .value_or(conn.query("SELECT password FROM admins WHERE username = '%s'", username.c_str())
-                          .get_value<std::string>());
+    if (const std::optional u{ user(conn, username) }; u.has_value()) {
+        return u->password;
     }
-    END_QUERY
+
+    if (const std::optional user{ admin(conn, username) }; user.has_value()) {
+        return user->password;
+    }
 
     return {};
 }
 
 int database::user_count() noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return -1;
     }
 
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT COUNT(*) FROM users")
-            .get_value<int>();
-    }
-    END_QUERY
-
-    return -1;
+    return conn->query_s<User>().size();
 }
 
 int database::video_count() noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return -1;
     }
 
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT COUNT(*) FROM videos")
-            .get_value<int>();
-    }
-    END_QUERY
-
-    return -1;
+    return conn->query_s<Video>().size();
 }
 
 int database::view_count() noexcept
 {
-    daotk::mysql::connection conn;
-    if (!conn.open(connect_options())) {
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
         ERR("Fail to open database connection");
         return -1;
     }
 
-    BEGIN_QUERY
-    {
-        return conn.query("SELECT SUM(view_count) FROM videos")
-            .get_value<std::optional<int>>()
-            .value_or(0);
-    }
-    END_QUERY
-
-    return -1;
+    const std::vector view_counts{ conn->query_s<std::tuple<int>>("SELECT SUM(view_count) FROM Video") };
+    return (view_counts.empty() ? -1 : std::get<0>(view_counts[0]));
 }

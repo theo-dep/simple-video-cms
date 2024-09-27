@@ -19,7 +19,9 @@ done
 
 echo Build back...
 # from mysql_config
-make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${common_objets} -lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
+make -C ${SOURCE_DIR}/back -j -k server \
+    CXXFLAGS="${CXXFLAGS} -DORMPP_ENABLE_LOG -I/usr/include/mysql -I${COMMON_DIR}/third-party/ormpp" \
+    LDFLAGS="${common_objets} -lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
 
 echo Build front...
 make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${common_objets} -lcrypto"

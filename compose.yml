@@ -36,7 +36,6 @@ services:
 
   db:
     image: mysql:9.0.1
-    volumes:
-      - ./database.sql:/docker-entrypoint-initdb.d/database.sql
     environment:
+      MYSQL_DATABASE: video
       MYSQL_ROOT_PASSWORD: "6y51^HsXrNcx"

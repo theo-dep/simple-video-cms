@@ -27,6 +27,11 @@ namespace server
 
 int server::start() noexcept
 {
+    if (!database::create_tables()) {
+        ERR("Fail to create database tables");
+        return EXIT_FAILURE;
+    }
+
     create_admin();
 
     httplib::Server server;
