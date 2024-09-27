@@ -29,6 +29,8 @@ namespace server
     template <sc::ERequestMethod Method>
     void login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session);
     void logout(const httplib::Request& req, httplib::Response& res, Session& session);
+
+    void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
 }
 
 int server::start() noexcept
@@ -55,7 +57,9 @@ int server::start() noexcept
         .Get("/login", sc::serve(login<sc::ERequestMethod::GET>, std::ref(env), std::ref(session)))
         .Post("/login", sc::serve(login<sc::ERequestMethod::POST>, std::ref(env), std::ref(session)))
 
-        .Get("/logout", sc::serve(logout, std::ref(session)));
+        .Get("/logout", sc::serve(logout, std::ref(session)))
+
+        .Get("/user-list", sc::serve(user_list, std::ref(env), std::cref(session)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -241,4 +245,17 @@ inline void server::logout(const httplib::Request& req, httplib::Response& res, 
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     session.remove_session(session_id);
     res.set_redirect("/");
+}
+
+inline void server::user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session)
+{
+    if (!is_logged_and_admin(req, res, session)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
+
+    const std::vector<std::string> user_list{ client::user_list() };
+    const inja::json data{ { "user_dict", user_list } };
+    DEBUG(data.dump());
+
+    const std::string body{ env.render(client::user_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
 }

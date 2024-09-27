@@ -23,4 +23,6 @@ namespace database
     int user_count() noexcept;
     int video_count() noexcept;
     int view_count() noexcept;
+
+    std::vector<std::string> user_list() noexcept;
 }

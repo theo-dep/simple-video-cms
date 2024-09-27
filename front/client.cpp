@@ -74,6 +74,12 @@ std::string client::login_page() noexcept
     return format_page(res);
 }
 
+std::string client::user_list_page() noexcept
+{
+    const httplib::Result res{ client().Get("/html/user_list.html") };
+    return format_page(res);
+}
+
 std::vector<std::string> client::most_viewed_video_list() noexcept
 {
     const httplib::Result res{ client().Get("/most-viewed") };
@@ -158,6 +164,13 @@ std::string client::dashboard_page() noexcept
 {
     const httplib::Result res{ client().Get("/html/dashboard.html") };
     return format_page(res);
+}
+
+std::vector<std::string> client::user_list() noexcept
+{
+    const httplib::Result res{ client().Get("/user-list") };
+    const std::string str_usernames{ format_page(res) };
+    return su::split(str_usernames);
 }
 
 std::string client::format_page(const httplib::Result& res) noexcept

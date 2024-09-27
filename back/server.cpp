@@ -40,6 +40,8 @@ namespace server
 
     void add_user(const httplib::Request& req, httplib::Response& res) noexcept;
     void is_valid_user(const httplib::Request& req, httplib::Response& res) noexcept;
+
+    void user_list(const httplib::Request& req, httplib::Response& res) noexcept;
 }
 
 int server::start() noexcept
@@ -74,7 +76,9 @@ int server::start() noexcept
         .Get("/is-valid-username", sc::serve(is_valid_username))
 
         .Post("/add-user", sc::serve(add_user))
-        .Post("/is-valid-user", sc::serve(is_valid_user));
+        .Post("/is-valid-user", sc::serve(is_valid_user))
+
+        .Get("/user-list", sc::serve(user_list));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
@@ -191,4 +195,10 @@ inline void server::is_valid_user(const httplib::Request& req, httplib::Response
 
     const std::string database_password{ database::get_password(username) };
     res.set_content(su::bool_to_string(password == database_password), "plain/text");
+}
+
+inline void server::user_list(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+{
+    const std::vector<std::string> usernames{ database::user_list() };
+    res.set_content(su::join(usernames), "plain/text");
 }

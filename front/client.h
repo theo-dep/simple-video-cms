@@ -13,6 +13,8 @@ namespace client
 
     std::string login_page() noexcept;
 
+    std::string user_list_page() noexcept;
+
     std::vector<std::string> most_viewed_video_list() noexcept;
 
     std::string video_title(const std::string& id) noexcept;
@@ -28,4 +30,6 @@ namespace client
     int video_count() noexcept;
     int view_count() noexcept;
     std::string dashboard_page() noexcept;
+
+    std::vector<std::string> user_list() noexcept;
 }

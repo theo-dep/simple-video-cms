@@ -14,6 +14,9 @@ namespace database
     using dbng = ormpp::dbng<ormpp::mysql>;
     std::unique_ptr<dbng> connection() noexcept;
 
+    template <typename T>
+    std::vector<T> transform(const std::vector<std::tuple<T>>& query_out) noexcept;
+
     std::optional<Admin> admin(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept;
     std::optional<User> user(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept;
     std::optional<Video> video(const std::unique_ptr<dbng>& conn, const std::string& id) noexcept;
@@ -70,6 +73,18 @@ bool database::is_open() noexcept
     return (conn != nullptr);
 }
 
+template <typename T>
+std::vector<T> database::transform(const std::vector<std::tuple<T>>& query_out) noexcept
+{
+    constexpr auto transform_func{
+        []<typename U>(const std::tuple<U>& v) constexpr -> U { return std::get<0>(v); }
+    };
+
+    std::vector<T> out(query_out.size());
+    std::ranges::copy(std::views::transform(query_out, transform_func), out.begin());
+    return out;
+}
+
 std::vector<std::string> database::most_viewed() noexcept
 {
     const std::unique_ptr conn{ connection() };
@@ -78,13 +93,8 @@ std::vector<std::string> database::most_viewed() noexcept
         return {};
     }
 
-    using return_t = std::tuple<std::string>;
-    constexpr auto transform_func{ [](const return_t& v) constexpr { return std::get<0>(v); } };
-
-    const std::vector tuple_ids{ conn->query_s<return_t>("SELECT id FROM Video ORDER BY view_count DESC LIMIT 10") };
-    std::vector<std::string> ids(tuple_ids.size());
-    std::ranges::copy(std::views::transform(tuple_ids, transform_func), ids.begin());
-    return ids;
+    const std::vector tuple_ids{ conn->query_s<std::tuple<std::string>>("SELECT id FROM Video ORDER BY view_count DESC LIMIT 10") };
+    return transform(tuple_ids);
 }
 
 inline std::optional<Video> database::video(const std::unique_ptr<dbng>& conn, const std::string& id) noexcept
@@ -247,4 +257,16 @@ int database::view_count() noexcept
 
     const std::vector view_counts{ conn->query_s<std::tuple<int>>("SELECT SUM(view_count) FROM Video") };
     return (view_counts.empty() ? -1 : std::get<0>(view_counts[0]));
+}
+
+std::vector<std::string> database::user_list() noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        ERR("Fail to open database connection");
+        return {};
+    }
+
+    const std::vector tuple_usernames{ conn->query_s<std::tuple<std::string>>("SELECT username FROM User") };
+    return transform(tuple_usernames);
 }
