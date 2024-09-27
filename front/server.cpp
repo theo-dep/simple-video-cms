@@ -3,50 +3,62 @@
 #include "client.h"
 #include "crypto.h"
 #include "servercommon.h"
+#include "session.h"
 #include "stringutils.h"
+
+#include <httplib.h>
+#include <inja.hpp>
 
 #include <algorithm>
 #include <filesystem>
 #include <format>
 #include <ranges>
 
-Server::Server() noexcept : httplib::Server()
+namespace server
 {
-    _env.add_callback("url_for", [](const inja::Arguments& args) {
-        constexpr char delim = '/';
-        std::vector<std::string> str_args(args.size());
-        std::ranges::transform(args, str_args.begin(), [](const inja::json* val) -> std::string { return val->get<std::string>(); });
-        const std::string url{ su::join(str_args, delim) };
-        return url;
-    });
+    void set_no_cache_headers(httplib::Response& res) noexcept;
 
-    set_error_handler();
-    set_exception_handler();
-    set_logger();
+    void set_error_handler(httplib::Server& server) noexcept;
+    void set_exception_handler(httplib::Server& server) noexcept;
+    void set_logger(httplib::Server& server) noexcept;
+
+    void serve_home(httplib::Server& server, inja::Environment& env, const Session& session) noexcept;
+    void serve_dashboard(httplib::Server& server, inja::Environment& env, const Session& session) noexcept;
+
+    void serve_login(httplib::Server& server, inja::Environment& env, Session& session) noexcept;
+    void serve_logout(httplib::Server& server, Session& session) noexcept;
+}
+
+int server::start() noexcept
+{
+    inja::Environment env;
+    Session session;
+    httplib::Server server;
+
+    set_error_handler(server);
+    set_exception_handler(server);
+    set_logger(server);
 
     const std::filesystem::path static_path{ std::filesystem::current_path() / "static" };
-    set_mount_point("/static", static_path.string());
+    server.set_mount_point("/static", static_path.string());
 
-    set_post_routing_handler([this](const httplib::Request& /*req*/, httplib::Response& res) {
+    server.set_post_routing_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
         set_no_cache_headers(res);
     });
 
-    serve_home();
-    serve_dashboard();
+    serve_home(server, env, session);
+    serve_dashboard(server, env, session);
 
-    serve_login();
-    serve_logout();
-}
+    serve_login(server, env, session);
+    serve_logout(server, session);
 
-int Server::start() noexcept
-{
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
     MSG(std::format("Serving HTTP on {0} port {1} ...", host, port));
-    return (listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
+    return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-void Server::set_no_cache_headers(httplib::Response& res) noexcept
+inline void server::set_no_cache_headers(httplib::Response& res) noexcept
 {
     res.set_header("Last-Modified", sc::time_local());
     res.set_header("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0");
@@ -54,9 +66,9 @@ void Server::set_no_cache_headers(httplib::Response& res) noexcept
     res.set_header("Expires", "-1");
 }
 
-void Server::set_error_handler() noexcept
+inline void server::set_error_handler(httplib::Server& server) noexcept
 {
-    httplib::Server::set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
+    server.set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
         std::string body;
 
         switch (res.status) {
@@ -72,14 +84,14 @@ void Server::set_error_handler() noexcept
                 body = client::get_generic_error(res.status, httplib::status_message(res.status));
         }
 
-        // body = _env.render(body, _data);
+        // body = env.render(body, _data);
         res.set_content(body, "text/html");
     });
 }
 
-void Server::set_exception_handler() noexcept
+inline void server::set_exception_handler(httplib::Server& server) noexcept
 {
-    httplib::Server::set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
+    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
         constexpr int error_code{ httplib::StatusCode::InternalServerError_500 };
         std::string message;
         try {
@@ -93,29 +105,29 @@ void Server::set_exception_handler() noexcept
         ERR(message);
 
         std::string body{ client::get_generic_error(error_code, message) };
-        // body = _env.render(body, _data);
+        // body = env.render(body, _data);
 
         res.set_content(body, "text/html");
         res.status = error_code;
     });
 }
 
-void Server::set_logger() noexcept
+inline void server::set_logger(httplib::Server& server) noexcept
 {
-    httplib::Server::set_logger([](const httplib::Request& req, const httplib::Response& res) {
+    server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
         std::cout << sc::log(req, res) << std::endl;
     });
 }
 
-void Server::serve_home() noexcept
+inline void server::serve_home(httplib::Server& server, inja::Environment& env, const Session& session) noexcept
 {
-    Get("/", [this](const httplib::Request& req, httplib::Response& res) {
+    server.Get("/", [&](const httplib::Request& req, httplib::Response& res) {
         const std::string cookie{ req.get_header_value("Cookie") };
         const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
         bool is_logged{ false };
-        if (_session.is_valid_session(session_id)) {
+        if (session.is_valid_session(session_id)) {
             is_logged = true;
-            if (client::is_admin(_session.user_from_session(session_id))) {
+            if (client::is_admin(session.user_from_session(session_id))) {
                 res.set_redirect("/dashboard");
                 return;
             }
@@ -137,22 +149,22 @@ void Server::serve_home() noexcept
         };
         MSG(data.dump());
 
-        const std::string body{ _env.render(client::get_homepage(), data) };
+        const std::string body{ env.render(client::get_homepage(), data) };
         res.set_content(body, "text/html");
     });
 }
 
-void Server::serve_dashboard() noexcept
+inline void server::serve_dashboard(httplib::Server& server, inja::Environment& env, const Session& session) noexcept
 {
-    Get("/dashboard", [this](const httplib::Request& req, httplib::Response& res) {
+    server.Get("/dashboard", [&](const httplib::Request& req, httplib::Response& res) {
         const std::string cookie{ req.get_header_value("Cookie") };
         const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
-        if (!_session.is_valid_session(session_id)) {
+        if (!session.is_valid_session(session_id)) {
             res.set_redirect("/login");
             return;
         }
 
-        if (!client::is_admin(_session.user_from_session(session_id))) {
+        if (!client::is_admin(session.user_from_session(session_id))) {
             const std::string body{ client::get_403_error() };
             res.set_content(body, "text/html");
             return;
@@ -165,60 +177,59 @@ void Server::serve_dashboard() noexcept
         };
         MSG(data.dump());
 
-        const std::string body{ _env.render(client::dashboard(), data) };
+        const std::string body{ env.render(client::dashboard(), data) };
         res.set_content(body, "text/html");
     });
 }
 
-void Server::serve_login() noexcept
+inline void server::serve_login(httplib::Server& server, inja::Environment& env, Session& session) noexcept
 {
-    static constexpr const char* loginRootString{ "/login" };
-
-    static const auto set_login_content{
-        [this](httplib::Response& res, bool login_error) {
+    static const std::function<void(httplib::Response&, bool)> set_login_content{
+        [&](httplib::Response& res, bool login_error) {
             const inja::json data{ { "loginError", login_error } };
             MSG(data.dump());
-            const std::string body{ _env.render(client::get_login(), data) };
+            const std::string body{ env.render(client::get_login(), data) };
             res.set_content(body, "text/html");
         }
     };
 
-    Get(loginRootString, [this](const httplib::Request& req, httplib::Response& res) {
-        const std::string cookie{ req.get_header_value("Cookie") };
-        if (_session.is_valid_session_from_cookie(cookie)) {
-            res.set_redirect("/");
-            return;
-        }
+    server.Get("/login", [&](const httplib::Request& req, httplib::Response& res) {
+              const std::string cookie{ req.get_header_value("Cookie") };
+              if (session.is_valid_session_from_cookie(cookie)) {
+                  res.set_redirect("/");
+                  return;
+              }
 
-        set_login_content(res, false);
-    }).Post(loginRootString, [this](const httplib::Request& req, httplib::Response& res) {
-        const std::string password{ crypto::sha512(req.get_param_value("password")) };
-        if (password.empty()) {
-            set_login_content(res, true);
-            return;
-        }
+              set_login_content(res, false);
+          })
+        .Post("/login", [&](const httplib::Request& req, httplib::Response& res) {
+            const std::string password{ crypto::sha512(req.get_param_value("password")) };
+            if (password.empty()) {
+                set_login_content(res, true);
+                return;
+            }
 
-        std::string username{ req.get_param_value("username") };
-        su::trim(username);
-        su::lower(username);
+            std::string username{ req.get_param_value("username") };
+            su::trim(username);
+            su::lower(username);
 
-        const bool is_valid_user{ client::is_valid_user(username, password) };
-        if (is_valid_user) {
-            const std::string session_id{ _session.create_session(username) };
-            res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
-            res.set_redirect("/");
-        } else {
-            set_login_content(res, true);
-        }
-    });
+            const bool is_valid_user{ client::is_valid_user(username, password) };
+            if (is_valid_user) {
+                const std::string session_id{ session.create_session(username) };
+                res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
+                res.set_redirect("/");
+            } else {
+                set_login_content(res, true);
+            }
+        });
 }
 
-void Server::serve_logout() noexcept
+inline void server::serve_logout(httplib::Server& server, Session& session) noexcept
 {
-    Get("/logout", [this](const httplib::Request& req, httplib::Response& res) {
+    server.Get("/logout", [&](const httplib::Request& req, httplib::Response& res) {
         const std::string cookie{ req.get_header_value("Cookie") };
         const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
-        _session.remove_session(session_id);
+        session.remove_session(session_id);
         res.set_redirect("/");
     });
 }
