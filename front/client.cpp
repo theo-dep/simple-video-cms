@@ -85,7 +85,7 @@ std::string client::video_title(const std::string& id) noexcept
 int client::video_views(const std::string& id) noexcept
 {
     const httplib::Result res{ client().Get("/views/" + id) };
-    return std::stoi(get_page(res));
+    return su::string_to_int(get_page(res));
 }
 
 std::string client::video_uploader(const std::string& id) noexcept
@@ -134,19 +134,19 @@ bool client::is_valid_user(const std::string& username, const std::string& passw
 int client::user_count() noexcept
 {
     const httplib::Result res{ client().Get("/user-count") };
-    return std::stoi(get_page(res));
+    return su::string_to_int(get_page(res));
 }
 
 int client::video_count() noexcept
 {
     const httplib::Result res{ client().Get("/video-count") };
-    return std::stoi(get_page(res));
+    return su::string_to_int(get_page(res));
 }
 
 int client::view_count() noexcept
 {
     const httplib::Result res{ client().Get("/view-count") };
-    return std::stoi(get_page(res));
+    return su::string_to_int(get_page(res));
 }
 
 std::string client::dashboard() noexcept

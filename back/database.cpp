@@ -2,6 +2,7 @@
 
 #include "databaseschema.h"
 #include "servercommon.h"
+#include "stringutils.h"
 
 #include <ormpp.hpp>
 
@@ -26,7 +27,7 @@ inline std::unique_ptr<database::dbng> database::connection() noexcept
                           sc::get_env("MYSQL_ROOT_PASSWORD", "1234").c_str(),
                           sc::get_env("MYSQL_DB_NAME", "video").c_str(),
                           /*timeout*/ 0,
-                          std::stoi(sc::get_env("MYSQL_DB_PORT", "3306")))
+                          su::string_to_int(sc::get_env("MYSQL_DB_PORT", "3306")))
                 ? std::move(conn)
                 : nullptr);
 }

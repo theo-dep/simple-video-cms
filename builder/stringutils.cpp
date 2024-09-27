@@ -43,3 +43,17 @@ bool su::string_to_bool(const std::string& str) noexcept
 {
     return (str == "true");
 }
+
+int su::string_to_int(const std::string& str, bool* ok) noexcept
+{
+    if (ok != nullptr)
+        *ok = true;
+
+    try {
+        return std::stoi(str);
+    } catch (...) {
+        if (ok != nullptr)
+            *ok = false;
+        return 0;
+    }
+}
