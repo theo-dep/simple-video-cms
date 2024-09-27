@@ -7,7 +7,7 @@ COMMON_DIR=${SOURCE_DIR}/builder
 CXXFLAGS="-g -DDEBUG_LOG -I${COMMON_DIR}/third-party -I${COMMON_DIR}"
 
 echo Build common...
-declare -a commons=("crypto" "servercommon" "stringutils")
+declare -a commons=($(find ${COMMON_DIR} -type f -name "*.cpp" -exec basename {} .cpp \;))
 declare -a common_objets
 for common in "${commons[@]}"
 do
