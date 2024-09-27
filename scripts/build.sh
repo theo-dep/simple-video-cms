@@ -7,7 +7,7 @@ COMMON_DIR=${SOURCE_DIR}/builder
 CXXFLAGS="-g -I${COMMON_DIR}/third-party -I${COMMON_DIR}"
 
 echo Build common...
-declare -a commons=("servercommon" "stringutils")
+declare -a commons=("crypto" "servercommon" "stringutils")
 declare -a common_objets
 for common in "${commons[@]}"
 do

@@ -1,5 +1,6 @@
 #include "server.h"
 
+#include "crypto.h"
 #include "database.h"
 #include "servercommon.h"
 #include "stringutils.h"
@@ -54,7 +55,7 @@ int server::start() noexcept
 inline void server::create_admin() noexcept
 {
     const std::string username{ sc::get_env("MYSQL_ADMIN_USERNAME", "admin") };
-    const std::string password{ su::sha512(sc::get_env("MYSQL_ADMIN_PASSWORD", "admin")) };
+    const std::string password{ crypto::sha512(sc::get_env("MYSQL_ADMIN_PASSWORD", "admin")) };
     database::add_admin(username, password);
 }
 

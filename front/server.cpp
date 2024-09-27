@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include "client.h"
+#include "crypto.h"
 #include "servercommon.h"
 #include "stringutils.h"
 
@@ -191,7 +192,7 @@ void Server::serve_login() noexcept
 
         set_login_content(res, false);
     }).Post(loginRootString, [this](const httplib::Request& req, httplib::Response& res) {
-        const std::string password{ su::sha512(req.get_param_value("password")) };
+        const std::string password{ crypto::sha512(req.get_param_value("password")) };
         if (password.empty()) {
             set_login_content(res, true);
             return;
