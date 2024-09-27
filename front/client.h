@@ -14,6 +14,7 @@ namespace client
     std::string login_page() noexcept;
 
     std::string user_list_page() noexcept;
+    std::string add_user_page() noexcept;
 
     std::vector<std::string> most_viewed_video_list() noexcept;
 

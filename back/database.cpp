@@ -159,7 +159,7 @@ bool database::is_admin(const std::string& username) noexcept
     return admin(conn, username).has_value();
 }
 
-bool database::is_valid_username(const std::string& username) noexcept
+bool database::is_user(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -167,7 +167,7 @@ bool database::is_valid_username(const std::string& username) noexcept
         return false;
     }
 
-    return (user(conn, username).has_value() || admin(conn, username).has_value());
+    return user(conn, username).has_value();
 }
 
 void database::add_user(const std::string& username, const std::string& password) noexcept

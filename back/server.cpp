@@ -165,7 +165,7 @@ inline void server::is_valid_username(const httplib::Request& req, httplib::Resp
     }
 
     const std::string username{ req.get_header_value("username") };
-    const bool is_valid_username{ database::is_valid_username(username) };
+    const bool is_valid_username{ database::is_user(username) == false };
     res.set_content(su::bool_to_string(is_valid_username), "plain/text");
 }
 

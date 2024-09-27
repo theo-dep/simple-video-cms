@@ -32,19 +32,23 @@
           <th>Username</th>
           <!--<th>Number of videos</th>-->
           <th></th>
-          <th></th>
+          <th style="text-align: right;">
+            <a href="/add-user">
+              <img src="static/img/person-add.svg" alt="add a new user" />
+            </a>
+          </th>
         </tr>
       </thead>
       <tbody>
         {% for username in user_dict %}
         <tr>
           <td style="color:#FFFFFF;" data-title="Username">{{ username }}</td>
-          <!--<td style="color:#FFFFFF;" data-title="Number of videos">{{ username.0 }}</td>-->
+          <!--<td style="color:#FFFFFF;" data-title="Number of videos">{{ username }}</td>-->
           <td style="color:#FFFFFF;" data-title="Update">
-            <a style="color:#16A085;text-decoration:none;" href="/admin-update-user/{{ username }}">Update</a>
+            <a style="color:#16A085;text-decoration:none;" href="/update-user/{{ username }}">Update</a>
           </td>
           <td style="color:#FFFFFF;" data-title="Delete">
-            <a style="color:#16A085;text-decoration:none;" href="/admin-delete-user/{{ username }}">Delete</a>
+            <a style="color:#16A085;text-decoration:none;" href="/delete-user/{{ username }}">Delete</a>
           </td>
         </tr>
         {% endfor %}

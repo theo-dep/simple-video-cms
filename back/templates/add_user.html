@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>VideoHub</title>
+  <link rel="stylesheet" href="/static/css/reset-min.css">
+  <link rel='stylesheet prefetch' href="/static/css/roboto.css">
+  <link rel='stylesheet prefetch' href="/static/css/monsterrat.css">
+  <link rel='stylesheet prefetch' href="/static/css/font-awesome.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/alert.css">
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+</head>
+
+<body>
+  <div class="container">
+    <div class="info">
+      <a style="text-decoration: none;" href="/">
+        <h1 style="color:#16A085;">VideoHub</h1>
+      </a>
+    </div>
+  </div>
+  <div class="form">
+    <form class="login-form" action="/add-user" method="post">
+      {% if create_error %}
+      <div class="alert">
+        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+        Passwords do not match
+      </div>
+      {% else if invalid_username %}
+      <div class="alert">
+        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
+        Username already taken
+      </div>
+      {% endif %}
+      <input type="text" name="username" placeholder="username" required autofocus />
+      <input type="password" name="password" placeholder="password" required />
+      <input type="password" name="confirm-password" placeholder="password" required />
+      <button>Create</button>
+    </form>
+  </div>
+</body>
+
+</html>

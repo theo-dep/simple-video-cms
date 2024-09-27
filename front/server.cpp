@@ -31,6 +31,8 @@ namespace server
     void logout(const httplib::Request& req, httplib::Response& res, Session& session);
 
     void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
+    template <sc::ERequestMethod Method>
+    void add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
 }
 
 int server::start() noexcept
@@ -59,7 +61,10 @@ int server::start() noexcept
 
         .Get("/logout", sc::serve(logout, std::ref(session)))
 
-        .Get("/user-list", sc::serve(user_list, std::ref(env), std::cref(session)));
+        .Get("/user-list", sc::serve(user_list, std::ref(env), std::cref(session)))
+
+        .Get("/add-user", sc::serve(add_user<sc::ERequestMethod::GET>, std::ref(env), std::cref(session)))
+        .Post("/add-user", sc::serve(add_user<sc::ERequestMethod::POST>, std::ref(env), std::cref(session)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -258,4 +263,53 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
 
     const std::string body{ env.render(client::user_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
+}
+
+template <sc::ERequestMethod Method>
+inline void server::add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session)
+{
+    if (!is_logged_and_admin(req, res, session)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
+
+    const std::function<void(httplib::Response&, bool, bool)> set_add_user_content{
+        [&](httplib::Response& res, bool create_error, bool invalid_username) {
+            const inja::json data{
+                { "create_error", create_error },
+                { "invalid_username", invalid_username }
+            };
+            DEBUG(data.dump());
+            const std::string body{ env.render(client::add_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+            res.set_content(body, "text/html");
+        }
+    };
+
+    if constexpr (Method == sc::ERequestMethod::GET) {
+        set_add_user_content(res, false, false);
+    } else if constexpr (Method == sc::ERequestMethod::POST) {
+        const std::string password{ crypto::sha512(req.get_param_value("password")) };
+        if (password.empty()) {
+            set_add_user_content(res, true, false);
+            return;
+        }
+
+        const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
+        if (confirm_password != password) {
+            set_add_user_content(res, true, false);
+            return;
+        }
+
+        std::string username{ req.get_param_value("username") };
+        su::trim(username);
+        su::lower(username);
+
+        const bool is_valid_username{ client::is_valid_username(username) };
+        if (is_valid_username) {
+            client::add_user(username, password);
+            res.set_redirect("/user-list");
+        } else {
+            set_add_user_content(res, false, true);
+        }
+    } else {
+        static_assert(false, "Method not defined");
+    }
 }
