@@ -12,7 +12,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-%.o: %.cpp
+%.o: %.cpp $(wildcard *.h)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:

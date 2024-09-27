@@ -15,11 +15,10 @@
 - v3.11.3
 - https://github.com/nlohmann/json
 
-## mysql-modern-cpp
+## ormpp
 
-- from v1.1.0.0, take modified version of https://github.com/theo-dep/mysql-modern-cpp/
-- Without polyfill/optional.hpp
-- https://github.com/daotrungkien/mysql-modern-cpp/
+- v0.1.3
+- https://github.com/qicosmos/ormpp
 
 ## rapidfuzz-cpp
 

@@ -13,7 +13,8 @@ FROM scratch
 COPY --from=builder /sources/server /server
 
 #RUN ldd /server or /sources/server in alpine image
-COPY --from=builder /lib/libcrypto* /lib/
+COPY --from=builder /usr/lib/libstdc++* /usr/lib/libgcc* /usr/lib/
+COPY --from=builder /lib/ld-musl* /lib/libcrypto* /lib/
 
 EXPOSE 80
 

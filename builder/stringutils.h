@@ -14,5 +14,5 @@ namespace su
     std::string bool_to_string(bool b) noexcept;
     bool string_to_bool(const std::string& str) noexcept;
 
-    std::string sha512(const std::string& str) noexcept;
+    int string_to_int(const std::string& str, bool* ok = nullptr) noexcept;
 }

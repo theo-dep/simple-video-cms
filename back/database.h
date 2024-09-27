@@ -5,6 +5,7 @@
 
 namespace database
 {
+    bool create_tables() noexcept;
     bool is_open() noexcept;
 
     std::vector<std::string> most_viewed() noexcept;

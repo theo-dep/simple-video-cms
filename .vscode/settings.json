@@ -81,6 +81,8 @@
         "typeinfo": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "format": "cpp"
+        "format": "cpp",
+        "shared_mutex": "cpp",
+        "filesystem": "cpp"
     }
 }
