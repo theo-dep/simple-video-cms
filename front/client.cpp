@@ -30,7 +30,7 @@ constexpr const char* generic_error_html{
 
 namespace client
 {
-    std::string get_page(const httplib::Result& res) noexcept;
+    std::string format_page(const httplib::Result& res) noexcept;
     httplib::Client& client() noexcept;
 }
 
@@ -40,58 +40,58 @@ httplib::Client& client::client() noexcept
     return client;
 }
 
-std::string client::get_404_error() noexcept
+std::string client::error_page_404() noexcept
 {
     const httplib::Result res{ client().Get("/html/404.html") };
-    return get_page(res);
+    return format_page(res);
 }
 
-std::string client::get_403_error() noexcept
+std::string client::error_page_403() noexcept
 {
     const httplib::Result res{ client().Get("/html/403.html") };
-    return get_page(res);
+    return format_page(res);
 }
 
-std::string client::get_generic_error(int error, const std::string& message) noexcept
+std::string client::generic_error(int error, const std::string& message) noexcept
 {
     return std::format(generic_error_html, "Error", error, message, CPPHTTPLIB_VERSION);
 }
 
-std::string client::get_homepage() noexcept
+std::string client::home_page() noexcept
 {
     const httplib::Result res{ client().Get("/html/homepage.html") };
-    return get_page(res);
+    return format_page(res);
 }
 
-std::string client::get_login() noexcept
+std::string client::login_page() noexcept
 {
     const httplib::Result res{ client().Get("/html/login.html") };
-    return get_page(res);
+    return format_page(res);
 }
 
-std::vector<std::string> client::get_most_viewed() noexcept
+std::vector<std::string> client::most_viewed_video_list() noexcept
 {
     const httplib::Result res{ client().Get("/most-viewed") };
-    const std::string str_ids{ get_page(res) };
+    const std::string str_ids{ format_page(res) };
     return su::split(str_ids);
 }
 
 std::string client::video_title(const std::string& id) noexcept
 {
     const httplib::Result res{ client().Get("/title/" + id) };
-    return get_page(res);
+    return format_page(res);
 }
 
 int client::video_views(const std::string& id) noexcept
 {
     const httplib::Result res{ client().Get("/views/" + id) };
-    return su::string_to_int(get_page(res));
+    return su::string_to_int(format_page(res));
 }
 
 std::string client::video_uploader(const std::string& id) noexcept
 {
     const httplib::Result res{ client().Get("/uploader/" + id) };
-    return get_page(res);
+    return format_page(res);
 }
 
 bool client::is_admin(const std::string& username) noexcept
@@ -100,7 +100,7 @@ bool client::is_admin(const std::string& username) noexcept
         { "username", username },
     };
     const httplib::Result res{ client().Get("/is-admin", headers) };
-    return su::string_to_bool(get_page(res));
+    return su::string_to_bool(format_page(res));
 }
 
 bool client::is_valid_username(const std::string& username) noexcept
@@ -109,7 +109,7 @@ bool client::is_valid_username(const std::string& username) noexcept
         { "username", username },
     };
     const httplib::Result res{ client().Get("/is-valid-username", headers) };
-    return su::string_to_bool(get_page(res));
+    return su::string_to_bool(format_page(res));
 }
 
 void client::add_user(const std::string& username, const std::string& password) noexcept
@@ -128,40 +128,40 @@ bool client::is_valid_user(const std::string& username, const std::string& passw
         { "password", password, "", "" }
     };
     const httplib::Result res{ client().Post("/is-valid-user", items) };
-    return su::string_to_bool(get_page(res));
+    return su::string_to_bool(format_page(res));
 }
 
 int client::user_count() noexcept
 {
     const httplib::Result res{ client().Get("/user-count") };
-    return su::string_to_int(get_page(res));
+    return su::string_to_int(format_page(res));
 }
 
 int client::video_count() noexcept
 {
     const httplib::Result res{ client().Get("/video-count") };
-    return su::string_to_int(get_page(res));
+    return su::string_to_int(format_page(res));
 }
 
 int client::view_count() noexcept
 {
     const httplib::Result res{ client().Get("/view-count") };
-    return su::string_to_int(get_page(res));
+    return su::string_to_int(format_page(res));
 }
 
-std::string client::dashboard() noexcept
+std::string client::dashboard_page() noexcept
 {
     const httplib::Result res{ client().Get("/html/dashboard.html") };
-    return get_page(res);
+    return format_page(res);
 }
 
-std::string client::get_page(const httplib::Result& res) noexcept
+std::string client::format_page(const httplib::Result& res) noexcept
 {
     if (!res)
-        return get_generic_error(static_cast<int>(res.error()), httplib::to_string(res.error()));
+        return generic_error(static_cast<int>(res.error()), httplib::to_string(res.error()));
 
     if (res->status != httplib::StatusCode::OK_200)
-        return get_generic_error(res->status, httplib::status_message(res->status));
+        return generic_error(res->status, httplib::status_message(res->status));
 
     return res->body;
 }

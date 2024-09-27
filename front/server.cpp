@@ -71,15 +71,15 @@ inline void server::set_error_handler(httplib::Server& server) noexcept
 
         switch (res.status) {
             case httplib::StatusCode::NotFound_404:
-                body = client::get_404_error();
+                body = client::error_page_404();
                 break;
 
             case httplib::StatusCode::Forbidden_403:
-                body = client::get_403_error();
+                body = client::error_page_403();
                 break;
 
             default:
-                body = client::get_generic_error(res.status, httplib::status_message(res.status));
+                body = client::generic_error(res.status, httplib::status_message(res.status));
         }
 
         // body = env.render(body, _data);
@@ -102,7 +102,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
 
         ERR(message);
 
-        std::string body{ client::get_generic_error(error_code, message) };
+        std::string body{ client::generic_error(error_code, message) };
         // body = env.render(body, _data);
 
         res.set_content(body, "text/html");
@@ -131,7 +131,7 @@ inline void server::serve_home(httplib::Server& server, inja::Environment& env, 
             }
         }
 
-        const std::vector<std::string> most_viewed_video_ids{ client::get_most_viewed() };
+        const std::vector<std::string> most_viewed_video_ids{ client::most_viewed_video_list() };
         inja::json most_viewed = inja::json::array();
 
         for (const std::string& id : most_viewed_video_ids) {
@@ -147,7 +147,7 @@ inline void server::serve_home(httplib::Server& server, inja::Environment& env, 
         };
         MSG(data.dump());
 
-        const std::string body{ env.render(client::get_homepage(), data) };
+        const std::string body{ env.render(client::home_page(), data) };
         res.set_content(body, "text/html");
     });
 }
@@ -163,7 +163,7 @@ inline void server::serve_dashboard(httplib::Server& server, inja::Environment& 
         }
 
         if (!client::is_admin(session.user_from_session(session_id))) {
-            const std::string body{ client::get_403_error() };
+            const std::string body{ client::error_page_403() };
             res.set_content(body, "text/html");
             return;
         }
@@ -175,7 +175,7 @@ inline void server::serve_dashboard(httplib::Server& server, inja::Environment& 
         };
         MSG(data.dump());
 
-        const std::string body{ env.render(client::dashboard(), data) };
+        const std::string body{ env.render(client::dashboard_page(), data) };
         res.set_content(body, "text/html");
     });
 }
@@ -186,7 +186,7 @@ inline void server::serve_login(httplib::Server& server, inja::Environment& env,
         [&](httplib::Response& res, bool login_error) {
             const inja::json data{ { "login_error", login_error } };
             MSG(data.dump());
-            const std::string body{ env.render(client::get_login(), data) };
+            const std::string body{ env.render(client::login_page(), data) };
             res.set_content(body, "text/html");
         }
     };
