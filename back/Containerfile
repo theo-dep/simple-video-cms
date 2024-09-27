@@ -7,7 +7,7 @@ ADD *.h *.cpp ${SOURCE_DIR}/
 
 #RUN mariadb_config
 RUN make -C ${SOURCE_DIR} -j -k server \
-        CXXFLAGS="${CXXFLAGS} -I/usr/include/mysql -I/usr/include/mysql/mysql" \
+        CXXFLAGS="${CXXFLAGS} -Iormpp -I/usr/include/mysql -I/usr/include/mysql/mysql" \
         LDFLAGS="${LDFLAGS} -L/usr/lib/ -lmariadb -lz -ldl -lssl -lcrypto"
 
 # --------------------------------------------------------------------------------
@@ -18,6 +18,8 @@ COPY --from=builder /sources/server /server
 #RUN ldd /server or /sources/server in alpine image
 COPY --from=builder /usr/lib/libmariadb* /usr/lib/libstdc++* /usr/lib/libgcc* /usr/lib/
 COPY --from=builder /lib/ld-musl* /lib/libz* /lib/libssl* /lib/libcrypto* /lib/
+# runtime plugins
+COPY --from=builder /usr/lib/mariadb/plugin/* /usr/lib/mariadb/plugin/
 
 ENV LD_LIBRARY_PATH=/usr/lib:/lib
 
