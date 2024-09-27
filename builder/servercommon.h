@@ -34,6 +34,12 @@ namespace sc
 #define ERR(message) \
     std::cerr << sc::log(__FUNCTION__, __LINE__, __FILE__, message) << std::endl;
 
+#ifdef DEBUG_LOG
+#define DEBUG(message) MSG(message)
+#else
+#define DEBUG(message)
+#endif
+
 template <typename Handler, typename... Args>
 std::function<void(const httplib::Request&, httplib::Response&)> sc::serve(Handler handler, Args... args) noexcept
 {

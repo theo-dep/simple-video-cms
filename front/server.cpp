@@ -148,7 +148,7 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
         { "is_logged", is_logged },
         { "most_viewed", most_viewed }
     };
-    MSG(data.dump());
+    DEBUG(data.dump());
 
     const std::string body{ env.render(client::home_page(), data) };
     res.set_content(body, "text/html");
@@ -174,7 +174,7 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
         { "video_count", client::video_count() },
         { "view_count", client::view_count() }
     };
-    MSG(data.dump());
+    DEBUG(data.dump());
 
     const std::string body{ env.render(client::dashboard_page(), data) };
     res.set_content(body, "text/html");
@@ -186,7 +186,7 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, i
     static const std::function<void(httplib::Response&, bool)> set_login_content{
         [&](httplib::Response& res, bool login_error) {
             const inja::json data{ { "login_error", login_error } };
-            MSG(data.dump());
+            DEBUG(data.dump());
             const std::string body{ env.render(client::login_page(), data) };
             res.set_content(body, "text/html");
         }
