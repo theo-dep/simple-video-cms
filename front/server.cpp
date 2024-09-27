@@ -9,10 +9,8 @@
 #include <httplib.h>
 #include <inja.hpp>
 
-#include <algorithm>
 #include <filesystem>
 #include <format>
-#include <ranges>
 
 namespace server
 {

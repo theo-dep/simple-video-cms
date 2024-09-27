@@ -25,13 +25,13 @@ void su::trim(std::string& str) noexcept
     // trim left
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), ischar));
     // trim right
-    str.erase(std::find_if(str.rbegin(), str.rend(), ischar).base(), str.end());
+    str.erase(std::ranges::find_if(std::views::reverse(str), ischar).base(), str.end());
 }
 
 void su::lower(std::string& str) noexcept
 {
     static const auto tolower{ [](const std::string::value_type& c) -> std::string::value_type { return std::tolower(c); } };
-    std::transform(str.cbegin(), str.cend(), str.begin(), tolower);
+    std::ranges::copy(std::views::transform(str, tolower), str.begin());
 }
 
 std::string su::bool_to_string(bool b) noexcept
