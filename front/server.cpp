@@ -184,7 +184,7 @@ inline void server::serve_login(httplib::Server& server, inja::Environment& env,
 {
     static const std::function<void(httplib::Response&, bool)> set_login_content{
         [&](httplib::Response& res, bool login_error) {
-            const inja::json data{ { "loginError", login_error } };
+            const inja::json data{ { "login_error", login_error } };
             MSG(data.dump());
             const std::string body{ env.render(client::get_login(), data) };
             res.set_content(body, "text/html");
