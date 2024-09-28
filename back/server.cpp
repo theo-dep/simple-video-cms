@@ -39,6 +39,7 @@ namespace server
     void is_valid_username(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void add_user(const httplib::Request& req, httplib::Response& res) noexcept;
+    void update_user(const httplib::Request& req, httplib::Response& res) noexcept;
     void is_valid_user(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void user_list(const httplib::Request& req, httplib::Response& res) noexcept;
@@ -76,6 +77,7 @@ int server::start() noexcept
         .Get("/is-valid-username", sc::serve(is_valid_username))
 
         .Post("/add-user", sc::serve(add_user))
+        .Post("/update-user", sc::serve(update_user))
         .Post("/is-valid-user", sc::serve(is_valid_user))
 
         .Get("/user-list", sc::serve(user_list));
@@ -180,6 +182,19 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     const std::string username{ req.get_file_value("username").content };
     const std::string password{ req.get_file_value("password").content };
     database::add_user(username, password);
+}
+
+inline void server::update_user(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    if (!req.has_file("password") || !req.has_file("username")) {
+        ERR("Missing multipart form data");
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::string username{ req.get_file_value("username").content };
+    const std::string password{ req.get_file_value("password").content };
+    database::update_user(username, password);
 }
 
 inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res) noexcept

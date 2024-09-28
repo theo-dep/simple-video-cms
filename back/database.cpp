@@ -188,6 +188,25 @@ void database::add_user(const std::string& username, const std::string& password
     }
 }
 
+void database::update_user(const std::string& username, const std::string& password) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        ERR("Fail to open database connection");
+        return;
+    }
+
+    // get previous user (update with where clause not available)
+    std::optional user_to_update{ user(conn, username) };
+    if (!user_to_update.has_value()) {
+        ERR("Unknown user: {}", username);
+        return;
+    }
+
+    user_to_update->password = password;
+    conn->update_some<&User::password>(user_to_update.value());
+}
+
 void database::add_admin(const std::string& username, const std::string& password) noexcept
 {
     const std::unique_ptr conn{ connection() };

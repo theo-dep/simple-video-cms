@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include "client.h"
+#include "confirmhandler.h"
 #include "crypto.h"
 #include "servercommon.h"
 #include "session.h"
@@ -33,12 +34,19 @@ namespace server
     void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
     template <sc::ERequestMethod Method>
     void add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
+
+    void confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& confirm_signal_str);
+    void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session);
+
+    template <sc::ERequestMethod Method>
+    void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session);
 }
 
 int server::start() noexcept
 {
     inja::Environment env;
     Session session;
+    ConfirmHandler confirm_handler;
     httplib::Server server;
 
     set_error_handler(server);
@@ -64,7 +72,12 @@ int server::start() noexcept
         .Get("/user-list", sc::serve(user_list, std::ref(env), std::cref(session)))
 
         .Get("/add-user", sc::serve(add_user<sc::ERequestMethod::GET>, std::ref(env), std::cref(session)))
-        .Post("/add-user", sc::serve(add_user<sc::ERequestMethod::POST>, std::ref(env), std::cref(session)));
+        .Post("/add-user", sc::serve(add_user<sc::ERequestMethod::POST>, std::ref(env), std::cref(session)))
+
+        .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session)))
+
+        .Get("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::GET>, std::ref(env), std::ref(confirm_handler), std::ref(session)))
+        .Post("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::POST>, std::ref(env), std::ref(confirm_handler), std::ref(session)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -309,6 +322,100 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
         } else {
             set_add_user_content(res, false, true);
         }
+    } else {
+        static_assert(false, "Method not defined");
+    }
+}
+
+namespace server
+{
+    constexpr const char* session_confirm_key() { return "Confirm-Signal"; }
+}
+
+inline void server::confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& confirm_signal_str)
+{
+    if (!is_logged_and_admin(req, res, session))
+        return;
+
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    session.insert_value_from_session(session_id, session_confirm_key(), confirm_signal_str);
+
+    const std::string body{ client::confirm_action_page() };
+    res.set_content(body, "text/html");
+}
+
+inline void server::confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session)
+{
+    if (!is_logged_and_admin(req, res, session))
+        return;
+
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    const std::string& confirm_signal_str{ session(session_id, session_confirm_key()) };
+
+    const bool confirm{ su::string_to_bool(req.get_param_value("response")) };
+    confirm_handler.confirm(res, confirm_signal_str, confirm);
+
+    session.remove_value_from_session(session_id, session_confirm_key());
+}
+
+template <sc::ERequestMethod Method>
+inline void server::update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session)
+{
+    if (!is_logged_and_admin(req, res, session)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
+
+    const std::string username{ req.path_params.at("username") };
+
+    const std::function<void(httplib::Response&, bool, bool)> set_update_user_content{
+        [&](httplib::Response& res, bool login_error, bool update_error) {
+            const inja::json data{
+                { "username", username },
+                { "login_error", login_error },
+                { "update_error", update_error },
+            };
+            DEBUG(data.dump());
+            const std::string body{ env.render(client::update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+            res.set_content(body, "text/html");
+        }
+    };
+
+    if constexpr (Method == sc::ERequestMethod::GET) {
+        set_update_user_content(res, false, false);
+    } else if constexpr (Method == sc::ERequestMethod::POST) {
+        const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
+        const bool is_valid_user{ client::is_valid_user(username, old_password) };
+        if (!is_valid_user) {
+            set_update_user_content(res, true, false);
+            return;
+        }
+
+        const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
+        if (new_password.empty()) {
+            set_update_user_content(res, false, true);
+            return;
+        }
+
+        const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
+        if (new_password != confirm_password) {
+            set_update_user_content(res, false, true);
+            return;
+        }
+
+        const std::string& signal_str{
+            confirm_handler.create()
+                .on_confirm([username, new_password](httplib::Response& res) {
+                    client::update_user(username, new_password);
+                    res.set_redirect("/user-list");
+                })
+                .on_deny([](httplib::Response& res) {
+                    res.set_redirect("/user-list");
+                })
+                .to_string()
+        };
+
+        confirm_action(req, res, session, signal_str);
     } else {
         static_assert(false, "Method not defined");
     }

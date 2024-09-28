@@ -11,10 +11,16 @@ public:
     Session() noexcept = default;
 
     // Create a new session for a user
-    std::string create_session(const std::string& username) noexcept;
+    const std::string& create_session(const std::string& username) noexcept;
 
     // Get the username associated with a session ID
-    std::string user_from_session(const std::string& session_id) const noexcept;
+    const std::string& user_from_session(const std::string& session_id) const noexcept;
+
+    // Access to key, value map for a session_id
+    const std::string& operator()(const std::string& session_id, const std::string& key) const noexcept;
+    const std::string& value_from_session(const std::string& session_id, const std::string& key) const noexcept;
+    void insert_value_from_session(const std::string& session_id, const std::string& key, const std::string& value) noexcept;
+    void remove_value_from_session(const std::string& session_id, const std::string& key) noexcept;
 
     // Remove a session
     void remove_session(const std::string& session_id) noexcept;
@@ -35,7 +41,7 @@ private:
     // Generate a unique session ID (for simplicity, using a counter)
     static std::string generate_session_id() noexcept;
 
-    std::unordered_map<std::string, std::string> _sessions; // session_id -> username
+    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> _sessions; // session_id -> key, value
     mutable std::mutex _mutex;
 
     // prevent copy/move

@@ -14,8 +14,6 @@
             "compilerPath": "/usr/bin/gcc",
             "compilerArgs": [
                 "-std=c++23",
-                "-static",
-                "-O2",
                 "-Wall",
                 "-Wextra",
                 "-Werror"
