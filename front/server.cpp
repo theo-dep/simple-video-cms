@@ -20,6 +20,8 @@ namespace server
     void set_exception_handler(httplib::Server& server) noexcept;
     void set_logger(httplib::Server& server) noexcept;
 
+    bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session) noexcept;
+
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session) noexcept;
     void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session) noexcept;
 
@@ -121,6 +123,24 @@ inline void server::set_logger(httplib::Server& server) noexcept
     });
 }
 
+inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session) noexcept
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    if (!session.is_valid_session(session_id)) {
+        res.set_redirect("/login");
+        return false;
+    }
+
+    if (!client::is_admin(session.user_from_session(session_id))) {
+        const std::string body{ client::error_page_403() };
+        res.set_content(body, "text/html");
+        return false;
+    }
+
+    return true;
+}
+
 inline void server::home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session) noexcept
 {
     const std::string cookie{ req.get_header_value("Cookie") };
@@ -156,18 +176,8 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
 
 inline void server::dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session) noexcept
 {
-    const std::string cookie{ req.get_header_value("Cookie") };
-    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
-    if (!session.is_valid_session(session_id)) {
-        res.set_redirect("/login");
+    if (!is_logged_and_admin(req, res, session))
         return;
-    }
-
-    if (!client::is_admin(session.user_from_session(session_id))) {
-        const std::string body{ client::error_page_403() };
-        res.set_content(body, "text/html");
-        return;
-    }
 
     const inja::json data{
         { "user_count", client::user_count() },
@@ -183,7 +193,7 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
 template <sc::ERequestMethod Method>
 inline void server::login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session) noexcept
 {
-    static const std::function<void(httplib::Response&, bool)> set_login_content{
+    const std::function<void(httplib::Response&, bool)> set_login_content{
         [&](httplib::Response& res, bool login_error) {
             const inja::json data{ { "login_error", login_error } };
             DEBUG(data.dump());
