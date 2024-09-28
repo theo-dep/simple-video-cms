@@ -11,9 +11,9 @@ constexpr const char* generic_error_html{
     R"(<html>
     <head>
         <title>{0}</title>
-        <link rel="stylesheet" href="static/css/404.css" type="text/css">
-        <link rel="stylesheet" href="static/css/font.css" type="text/css">
-        <link rel="icon" href="static/img/favicon.png" type="image/png">
+        <link rel="stylesheet" href="/static/css/404.css" type="text/css">
+        <link rel="stylesheet" href="/static/css/font.css" type="text/css">
+        <link rel="icon" href="/static/img/favicon.png" type="image/png">
     </head>
     <body class="back">
         <div class="main">
