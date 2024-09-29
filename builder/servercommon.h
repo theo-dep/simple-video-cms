@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <format>
 #include <functional>
 #include <iostream>
@@ -21,7 +22,7 @@ namespace sc
 
     std::string get_env(const std::string& key, const std::string& default_value) noexcept;
 
-    enum class ERequestMethod
+    enum class ERequestMethod : std::uint8_t
     {
         GET,
         POST
@@ -32,10 +33,10 @@ namespace sc
 }
 
 #define MSG(message, ...) \
-    std::cout << sc::log(__FUNCTION__, __LINE__, __FILE__, message __VA_OPT__(, ) __VA_ARGS__) << std::endl;
+    std::cout << sc::log(__FUNCTION__, __LINE__, __FILE__, message __VA_OPT__(, ) __VA_ARGS__) << '\n';
 
 #define ERR(message, ...) \
-    std::cerr << sc::log(__FUNCTION__, __LINE__, __FILE__, message __VA_OPT__(, ) __VA_ARGS__) << std::endl;
+    std::cerr << sc::log(__FUNCTION__, __LINE__, __FILE__, message __VA_OPT__(, ) __VA_ARGS__) << '\n';
 
 #ifdef DEBUG_LOG
 #define DEBUG(message, ...) MSG(message __VA_OPT__(, ) __VA_ARGS__)
@@ -46,7 +47,11 @@ namespace sc
 template <class... Args>
 std::string sc::log(const char* func, int line, const char* file, std::format_string<Args...> fmt, Args&&... args) noexcept
 {
-    return log(func, line, file, std::format(fmt, std::forward<Args>(args)...));
+    try {
+        return log(func, line, file, std::format(fmt, std::forward<Args>(args)...));
+    } catch (const std::exception& e) {
+        return e.what();
+    }
 }
 
 template <typename Handler, typename... Args>

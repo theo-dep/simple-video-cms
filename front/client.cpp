@@ -7,34 +7,35 @@
 
 #include <format>
 
-constexpr const char* generic_error_html{
-    R"(<html>
-    <head>
-        <title>{0}</title>
-        <link rel="stylesheet" href="/static/css/404.css" type="text/css">
-        <link rel="stylesheet" href="/static/css/font.css" type="text/css">
-        <link rel="icon" href="/static/img/favicon.png" type="image/png">
-    </head>
-    <body class="back">
-        <div class="main">
-            <br><br><br><br><br><br>
-            <h1>Error {1}</h1>
-            <h3>{2}</h3>
-            <h3>cpp-httplib/{3}<h3>
-            <a href="/" class="back">BACK TO HOME</a>
-        </div>
-    </body>
-    </html>
- )"
-};
-
 namespace client
 {
+    constexpr const char* generic_error_html{
+        R"(<html>
+           <head>
+               <title>{0}</title>
+               <link rel="stylesheet" href="/static/css/404.css" type="text/css">
+               <link rel="stylesheet" href="/static/css/font.css" type="text/css">
+               <link rel="icon" href="/static/img/favicon.png" type="image/png">
+           </head>
+           <body class="back">
+               <div class="main">
+                   <br><br><br><br><br><br>
+                   <h1>Error {1}</h1>
+                   <h3>{2}</h3>
+                   <h3>cpp-httplib/{3}<h3>
+                   <a href="/" class="back">BACK TO HOME</a>
+               </div>
+           </body>
+           </html>
+        )"
+    };
+
     std::string format_page(const httplib::Result& res) noexcept;
-    httplib::Client& client() noexcept;
+    httplib::Client& client();
 }
 
-httplib::Client& client::client() noexcept
+// construction exception catched by httplib Server::set_exception_handler
+httplib::Client& client::client()
 {
     static httplib::Client client(sc::get_env("SERVER_URL", "localhost:8080"));
     return client;
@@ -54,7 +55,11 @@ std::string client::error_page_403() noexcept
 
 std::string client::generic_error(int error, const std::string& message) noexcept
 {
-    return std::format(generic_error_html, "Error", error, message, CPPHTTPLIB_VERSION);
+    try {
+        return std::format(generic_error_html, "Error", error, message, CPPHTTPLIB_VERSION);
+    } catch (const std::exception& e) {
+        return e.what();
+    }
 }
 
 std::string client::home_page() noexcept

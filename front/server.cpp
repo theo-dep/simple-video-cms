@@ -21,12 +21,14 @@ namespace server
 
     bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session) noexcept;
 
-    void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session) noexcept;
-    void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session) noexcept;
+    // inja exceptions catched by httplib Server::set_exception_handler
+
+    void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
+    void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
 
     template <sc::ERequestMethod Method>
-    void login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session) noexcept;
-    void logout(const httplib::Request& req, httplib::Response& res, Session& session) noexcept;
+    void login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session);
+    void logout(const httplib::Request& req, httplib::Response& res, Session& session);
 }
 
 int server::start() noexcept
@@ -98,7 +100,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
         constexpr int error_code{ httplib::StatusCode::InternalServerError_500 };
         std::string message;
         try {
-            std::rethrow_exception(ep);
+            std::rethrow_exception(std::move(ep));
         } catch (const std::exception& e) {
             message = e.what();
         } catch (...) {
@@ -118,7 +120,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
 inline void server::set_logger(httplib::Server& server) noexcept
 {
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
-        std::cout << sc::log(req, res) << std::endl;
+        std::cout << sc::log(req, res) << '\n';
     });
 }
 
@@ -140,7 +142,7 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
     return true;
 }
 
-inline void server::home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session) noexcept
+inline void server::home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
@@ -169,13 +171,13 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     };
     DEBUG(data.dump());
 
-    const std::string body{ env.render(client::home_page(), data) };
+    const std::string body{ env.render(client::home_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
 
-inline void server::dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session) noexcept
+inline void server::dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session)
 {
-    if (!is_logged_and_admin(req, res, session))
+    if (!is_logged_and_admin(req, res, session)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
     const inja::json data{
@@ -185,18 +187,18 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
     };
     DEBUG(data.dump());
 
-    const std::string body{ env.render(client::dashboard_page(), data) };
+    const std::string body{ env.render(client::dashboard_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
 
 template <sc::ERequestMethod Method>
-inline void server::login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session) noexcept
+inline void server::login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session)
 {
     const std::function<void(httplib::Response&, bool)> set_login_content{
         [&](httplib::Response& res, bool login_error) {
             const inja::json data{ { "login_error", login_error } };
             DEBUG(data.dump());
-            const std::string body{ env.render(client::login_page(), data) };
+            const std::string body{ env.render(client::login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
             res.set_content(body, "text/html");
         }
     };
@@ -229,11 +231,11 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, i
             set_login_content(res, true);
         }
     } else {
-        static_assert("Method not defined");
+        static_assert(false, "Method not defined");
     }
 }
 
-inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session) noexcept
+inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };

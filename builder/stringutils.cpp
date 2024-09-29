@@ -14,14 +14,14 @@ std::vector<std::string> su::split(const std::string& str, char delim) noexcept
     // const std::vector<std::string> list{ std::ranges::split_view(str, delim) | std::ranges::to<std::vector>() };
     std::vector<std::string> list;
     for (auto&& item : std::views::split(str, delim)) {
-        list.emplace_back(std::string(item.cbegin(), item.cend()));
+        list.emplace_back(item.cbegin(), item.cend());
     }
     return list;
 }
 
 void su::trim(std::string& str) noexcept
 {
-    static const auto ischar{ [](const std::string::value_type& c) -> bool { return !std::isspace(c); } };
+    static const auto ischar{ [](const std::string::value_type& c) -> bool { return (std::isspace(c) == 0); } };
     // trim left
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), ischar));
     // trim right
@@ -30,7 +30,11 @@ void su::trim(std::string& str) noexcept
 
 void su::lower(std::string& str) noexcept
 {
-    static const auto tolower{ [](const std::string::value_type& c) -> std::string::value_type { return std::tolower(c); } };
+    static const auto tolower{
+        [](const std::string::value_type& c) -> std::string::value_type {
+            return static_cast<std::string::value_type>(std::tolower(c));
+        }
+    };
     std::ranges::copy(std::views::transform(str, tolower), str.begin());
 }
 
