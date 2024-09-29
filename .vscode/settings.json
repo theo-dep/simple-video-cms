@@ -1,5 +1,10 @@
 {
     "editor.formatOnSave": true,
+    "C_Cpp.codeAnalysis.exclude": {
+        "${workspaceFolder}/builder/third-party/**": true,
+        "/usr/include/**": true
+    },
+    "C_Cpp.codeAnalysis.clangTidy.enabled": true,
     "files.associations": {
         "*docker*.yaml": "dockercompose",
         "*docker*.yml": "dockercompose",
