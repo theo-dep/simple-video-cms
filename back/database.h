@@ -18,6 +18,7 @@ namespace database
     bool is_user(const std::string& username) noexcept;
     void add_user(const std::string& username, const std::string& password) noexcept;
     void update_user(const std::string& username, const std::string& password) noexcept;
+    void delete_user(const std::string& username) noexcept;
     void add_admin(const std::string& username, const std::string& password) noexcept;
     std::string get_password(const std::string& username) noexcept;
 

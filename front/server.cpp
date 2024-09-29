@@ -40,6 +40,7 @@ namespace server
 
     template <sc::ERequestMethod Method>
     void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session);
+    void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session);
 }
 
 int server::start() noexcept
@@ -77,7 +78,8 @@ int server::start() noexcept
         .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session)))
 
         .Get("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::GET>, std::ref(env), std::ref(confirm_handler), std::ref(session)))
-        .Post("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::POST>, std::ref(env), std::ref(confirm_handler), std::ref(session)));
+        .Post("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::POST>, std::ref(env), std::ref(confirm_handler), std::ref(session)))
+        .Get("/delete-user/:username", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -419,4 +421,27 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     } else {
         static_assert(false, "Method not defined");
     }
+}
+
+inline void server::delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session)
+{
+    if (!is_logged_and_admin(req, res, session))
+        return;
+
+    const std::string username{ req.path_params.at("username") };
+    MSG("Delete {}", username);
+
+    const std::string& signal_str{
+        confirm_handler.create()
+            .on_confirm([username](httplib::Response& res) {
+                client::delete_user(username);
+                res.set_redirect("/user-list");
+            })
+            .on_deny([](httplib::Response& res) {
+                res.set_redirect("/user-list");
+            })
+            .to_string()
+    };
+
+    confirm_action(req, res, session, signal_str);
 }

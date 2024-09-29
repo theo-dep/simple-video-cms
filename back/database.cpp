@@ -207,6 +207,17 @@ void database::update_user(const std::string& username, const std::string& passw
     conn->update_some<&User::password>(user_to_update.value());
 }
 
+void database::delete_user(const std::string& username) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        ERR("Fail to open database connection");
+        return;
+    }
+
+    conn->delete_records_s<User>("username=?", username);
+}
+
 void database::add_admin(const std::string& username, const std::string& password) noexcept
 {
     const std::unique_ptr conn{ connection() };

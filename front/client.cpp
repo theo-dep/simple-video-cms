@@ -165,6 +165,14 @@ void client::update_user(const std::string& username, const std::string& passwor
     client().Post("/update-user", items);
 }
 
+void client::delete_user(const std::string& username) noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+    };
+    client().Post("/delete-user", items);
+}
+
 bool client::is_valid_user(const std::string& username, const std::string& password) noexcept
 {
     const httplib::MultipartFormDataItems items{
