@@ -5,15 +5,15 @@
 
 namespace client
 {
-    std::string get_404_error() noexcept;
-    std::string get_403_error() noexcept;
-    std::string get_generic_error(int error, const std::string& message) noexcept;
+    std::string error_page_404() noexcept;
+    std::string error_page_403() noexcept;
+    std::string generic_error(int error, const std::string& message) noexcept;
 
-    std::string get_homepage() noexcept;
+    std::string home_page() noexcept;
 
-    std::string get_login() noexcept;
+    std::string login_page() noexcept;
 
-    std::vector<std::string> get_most_viewed() noexcept;
+    std::vector<std::string> most_viewed_video_list() noexcept;
 
     std::string video_title(const std::string& id) noexcept;
     int video_views(const std::string& id) noexcept;
@@ -27,5 +27,5 @@ namespace client
     int user_count() noexcept;
     int video_count() noexcept;
     int view_count() noexcept;
-    std::string dashboard() noexcept;
+    std::string dashboard_page() noexcept;
 }

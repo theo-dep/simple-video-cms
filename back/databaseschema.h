@@ -8,6 +8,7 @@ struct Admin
     std::string username;
     std::string password;
 };
+REGISTER_AUTO_KEY(Admin, id);
 REFLECTION(Admin, id, username, password)
 
 struct User
@@ -16,6 +17,7 @@ struct User
     std::string username;
     std::string password;
 };
+REGISTER_AUTO_KEY(User, id);
 REFLECTION(User, id, username, password)
 
 struct Video
@@ -26,4 +28,5 @@ struct Video
     int view_count;
     std::string upload_date;
 };
+REGISTER_CONFLICT_KEY(Video, id);
 REFLECTION(Video, id, title, uploader, view_count, upload_date)

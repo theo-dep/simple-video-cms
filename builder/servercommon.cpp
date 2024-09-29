@@ -3,7 +3,6 @@
 #include <httplib.h>
 
 #include <chrono>
-#include <format>
 
 std::string sc::time_local() noexcept
 {
