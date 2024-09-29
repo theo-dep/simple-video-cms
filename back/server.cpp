@@ -8,7 +8,6 @@
 #include <httplib.h>
 
 #include <filesystem>
-#include <format>
 
 namespace server
 {
@@ -79,7 +78,7 @@ int server::start() noexcept
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
-    MSG(std::format("Serving HTTP on {0} port {1} ...", host, port));
+    MSG("Serving HTTP on {0} port {1} ...", host, port);
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
