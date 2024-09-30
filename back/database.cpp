@@ -203,8 +203,12 @@ void database::update_user(const std::string& username, const std::string& passw
         return;
     }
 
-    user_to_update->password = password;
-    conn->update_some<&User::password>(user_to_update.value());
+    try {
+        user_to_update->password = password;
+        conn->update_some<&User::password>(user_to_update.value());
+    } catch (const std::exception& e) {
+        ERR("Fail to update user \"{}\" with error: {}", username, e.what());
+    }
 }
 
 void database::delete_user(const std::string& username) noexcept

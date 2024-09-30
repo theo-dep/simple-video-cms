@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace httplib
@@ -16,9 +17,9 @@ public:
     struct Signal
     {
         // called on confirm true
-        const Signal& on_confirm(std::function<void(httplib::Response&)> handle) const noexcept;
+        const Signal& on_confirm(const std::function<void(httplib::Response&)>& handle) const noexcept;
         // called on confirm false
-        const Signal& on_deny(std::function<void(httplib::Response&)> handle) const noexcept;
+        const Signal& on_deny(const std::function<void(httplib::Response&)>& handle) const noexcept;
         // transform to string to be shared by requests
         std::string to_string() const noexcept;
 
@@ -36,11 +37,12 @@ public:
     const Signal& create() noexcept;
 
     // send the confirmation to previously connected handles (transformed to string)
-    void confirm(httplib::Response& res, const std::string& confirm_signal_str, bool confirm) noexcept;
+    // exception must be catched by httplib Server::set_exception_handler
+    void confirm(httplib::Response& res, const std::string& confirm_signal_str, bool confirm);
 
 private:
     struct ConfirmHandlerImpl;
-    ConfirmHandlerImpl* _impl{ nullptr };
+    std::unique_ptr<ConfirmHandlerImpl> _impl{ nullptr };
 
     // prevent copy/move
     ConfirmHandler(const ConfirmHandler&) = delete;

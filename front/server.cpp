@@ -29,18 +29,18 @@ namespace server
 
     template <sc::ERequestMethod Method>
     void login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session);
-    void logout(const httplib::Request& req, httplib::Response& res, Session& session);
+    void logout(const httplib::Request& req, httplib::Response& res, Session& session) noexcept;
 
     void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
     template <sc::ERequestMethod Method>
     void add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
 
-    void confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& confirm_signal_str);
-    void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session);
+    void confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& confirm_signal_str) noexcept;
+    void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session) noexcept;
 
     template <sc::ERequestMethod Method>
     void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session);
-    void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session);
+    void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session) noexcept;
 }
 
 int server::start() noexcept
@@ -259,7 +259,7 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, i
     }
 }
 
-inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
+inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session) noexcept
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
@@ -334,7 +334,7 @@ namespace server
     constexpr const char* session_confirm_key() { return "Confirm-Signal"; }
 }
 
-inline void server::confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& confirm_signal_str)
+inline void server::confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& confirm_signal_str) noexcept
 {
     if (!is_logged_and_admin(req, res, session))
         return;
@@ -347,7 +347,7 @@ inline void server::confirm_action(const httplib::Request& req, httplib::Respons
     res.set_content(body, "text/html");
 }
 
-inline void server::confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session)
+inline void server::confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session) noexcept
 {
     if (!is_logged_and_admin(req, res, session))
         return;
@@ -423,7 +423,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     }
 }
 
-inline void server::delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session)
+inline void server::delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session) noexcept
 {
     if (!is_logged_and_admin(req, res, session))
         return;

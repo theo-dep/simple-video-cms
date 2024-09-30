@@ -11,7 +11,7 @@ struct SignalHash
     using hash_type = std::hash<std::string>;
     using is_transparent = void;
 
-    std::size_t operator()(std::string confirm_signal_str) const noexcept
+    std::size_t operator()(const std::string& confirm_signal_str) const noexcept
     {
         return hash_type{}(confirm_signal_str);
     }
@@ -39,15 +39,14 @@ struct ConfirmHandler::ConfirmHandlerImpl
 };
 
 ConfirmHandler::ConfirmHandler() noexcept
-    : _impl{ new ConfirmHandlerImpl }
+    : _impl{ std::make_unique<ConfirmHandlerImpl>() }
 {
 }
 
 ConfirmHandler::~ConfirmHandler() noexcept
 {
     for (const auto& [confirm_signal, connection_handle] : _impl->handle_map)
-        delete confirm_signal;
-    delete _impl;
+        delete confirm_signal; // NOLINT(cppcoreguidelines-owning-memory): need to import gsl::owner<>
 }
 
 ConfirmHandler::Signal::Signal(const ConfirmHandler& handler) noexcept
@@ -55,10 +54,10 @@ ConfirmHandler::Signal::Signal(const ConfirmHandler& handler) noexcept
 {
 }
 
-const ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(std::function<void(httplib::Response&)> handle) const noexcept
+const ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::function<void(httplib::Response&)>& handle) const noexcept
 {
     const KDBindings::ConnectionHandle confirm_handle{ _handler._impl->signal.connect(
-        [handle, this](httplib::Response& res, std::string confirm_signal_str, bool confirm) {
+        [handle, this](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) {
             if (confirm_signal_str == this && confirm && handle)
                 handle(res);
         }) };
@@ -66,10 +65,10 @@ const ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(std::function<v
     return *this;
 }
 
-const ConfirmHandler::Signal& ConfirmHandler::Signal::on_deny(std::function<void(httplib::Response&)> handle) const noexcept
+const ConfirmHandler::Signal& ConfirmHandler::Signal::on_deny(const std::function<void(httplib::Response&)>& handle) const noexcept
 {
     const KDBindings::ConnectionHandle deny_handle{ _handler._impl->signal.connect(
-        [handle, this](httplib::Response& res, std::string confirm_signal_str, bool confirm) {
+        [handle, this](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) {
             if (confirm_signal_str == this && !confirm && handle)
                 handle(res);
         }) };
@@ -80,21 +79,22 @@ const ConfirmHandler::Signal& ConfirmHandler::Signal::on_deny(std::function<void
 std::string ConfirmHandler::Signal::to_string() const noexcept
 {
     // flush the signal address
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     return std::to_string(reinterpret_cast<std::uintptr_t>(this));
 }
 
 const ConfirmHandler::Signal& ConfirmHandler::create() noexcept
 {
-    return *(_impl->handle_map.insert({ new Signal(*this), ConfirmHandlerImpl::ConnectionHandle{} }).first->first);
+    return *(_impl->handle_map.insert({ new (std::nothrow) Signal(*this), ConfirmHandlerImpl::ConnectionHandle{} }).first->first);
 }
 
-void ConfirmHandler::confirm(httplib::Response& res, const std::string& confirm_signal_str, bool confirm) noexcept
+void ConfirmHandler::confirm(httplib::Response& res, const std::string& confirm_signal_str, bool confirm)
 {
     _impl->signal.emit(res, confirm_signal_str, confirm);
 
     const decltype(_impl->handle_map)::iterator it_confirm_signal{ _impl->handle_map.find(confirm_signal_str) };
     _impl->signal.disconnect(it_confirm_signal->second.confirm_handle);
     _impl->signal.disconnect(it_confirm_signal->second.deny_handle);
-    delete it_confirm_signal->first;
+    delete it_confirm_signal->first; // NOLINT(cppcoreguidelines-owning-memory): need to import gsl::owner<>
     _impl->handle_map.erase(it_confirm_signal);
 }
