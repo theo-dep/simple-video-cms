@@ -68,9 +68,39 @@ std::string client::home_page() noexcept
     return format_page(res);
 }
 
+std::string client::dashboard_page() noexcept
+{
+    const httplib::Result res{ client().Get("/html/dashboard.html") };
+    return format_page(res);
+}
+
 std::string client::login_page() noexcept
 {
     const httplib::Result res{ client().Get("/html/login.html") };
+    return format_page(res);
+}
+
+std::string client::confirm_action_page() noexcept
+{
+    const httplib::Result res{ client().Get("/html/confirm_action.html") };
+    return format_page(res);
+}
+
+std::string client::user_list_page() noexcept
+{
+    const httplib::Result res{ client().Get("/html/user_list.html") };
+    return format_page(res);
+}
+
+std::string client::add_user_page() noexcept
+{
+    const httplib::Result res{ client().Get("/html/add_user.html") };
+    return format_page(res);
+}
+
+std::string client::update_user_page() noexcept
+{
+    const httplib::Result res{ client().Get("/html/update_user.html") };
     return format_page(res);
 }
 
@@ -123,7 +153,24 @@ void client::add_user(const std::string& username, const std::string& password) 
         { "username", username, "", "" },
         { "password", password, "", "" }
     };
-    client().Post("/add-user/" + username, items);
+    client().Post("/add-user", items);
+}
+
+void client::update_user(const std::string& username, const std::string& password) noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "password", password, "", "" }
+    };
+    client().Post("/update-user", items);
+}
+
+void client::delete_user(const std::string& username) noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+    };
+    client().Post("/delete-user", items);
 }
 
 bool client::is_valid_user(const std::string& username, const std::string& password) noexcept
@@ -154,10 +201,11 @@ int client::view_count() noexcept
     return su::string_to_int(format_page(res));
 }
 
-std::string client::dashboard_page() noexcept
+std::vector<std::string> client::user_list() noexcept
 {
-    const httplib::Result res{ client().Get("/html/dashboard.html") };
-    return format_page(res);
+    const httplib::Result res{ client().Get("/user-list") };
+    const std::string str_usernames{ format_page(res) };
+    return su::split(str_usernames);
 }
 
 std::string client::format_page(const httplib::Result& res) noexcept

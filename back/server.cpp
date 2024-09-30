@@ -39,7 +39,11 @@ namespace server
     void is_valid_username(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void add_user(const httplib::Request& req, httplib::Response& res) noexcept;
+    void update_user(const httplib::Request& req, httplib::Response& res) noexcept;
+    void delete_user(const httplib::Request& req, httplib::Response& res) noexcept;
     void is_valid_user(const httplib::Request& req, httplib::Response& res) noexcept;
+
+    void user_list(const httplib::Request& req, httplib::Response& res) noexcept;
 }
 
 int server::start() noexcept
@@ -74,7 +78,11 @@ int server::start() noexcept
         .Get("/is-valid-username", sc::serve(is_valid_username))
 
         .Post("/add-user", sc::serve(add_user))
-        .Post("/is-valid-user", sc::serve(is_valid_user));
+        .Post("/update-user", sc::serve(update_user))
+        .Post("/delete-user", sc::serve(delete_user))
+        .Post("/is-valid-user", sc::serve(is_valid_user))
+
+        .Get("/user-list", sc::serve(user_list));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
@@ -161,7 +169,7 @@ inline void server::is_valid_username(const httplib::Request& req, httplib::Resp
     }
 
     const std::string username{ req.get_header_value("username") };
-    const bool is_valid_username{ database::is_valid_username(username) };
+    const bool is_valid_username{ !database::is_user(username) };
     res.set_content(su::bool_to_string(is_valid_username), "plain/text");
 }
 
@@ -178,6 +186,31 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     database::add_user(username, password);
 }
 
+inline void server::update_user(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    if (!req.has_file("password") || !req.has_file("username")) {
+        ERR("Missing multipart form data");
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::string username{ req.get_file_value("username").content };
+    const std::string password{ req.get_file_value("password").content };
+    database::update_user(username, password);
+}
+
+inline void server::delete_user(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    if (!req.has_file("username")) {
+        ERR("Missing multipart form data");
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::string username{ req.get_file_value("username").content };
+    database::delete_user(username);
+}
+
 inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("password") || !req.has_file("username")) {
@@ -191,4 +224,10 @@ inline void server::is_valid_user(const httplib::Request& req, httplib::Response
 
     const std::string database_password{ database::get_password(username) };
     res.set_content(su::bool_to_string(password == database_password), "plain/text");
+}
+
+inline void server::user_list(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+{
+    const std::vector<std::string> usernames{ database::user_list() };
+    res.set_content(su::join(usernames), "plain/text");
 }

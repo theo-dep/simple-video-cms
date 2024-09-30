@@ -25,3 +25,7 @@
 - v3.0.5
 - taken amalgamated header in "extras" folder
 - https://github.com/rapidfuzz/rapidfuzz-cpp
+
+## KDBindings
+- v1.1.0
+- https://github.com/KDAB/KDBindings
