@@ -1,0 +1,39 @@
+Checks: "-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  llvm-*,
+  -llvm-namespace-comment,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  performance-*,
+  portability-*,
+  readability-*,
+  readability-identifier-naming,
+  -readability-identifier-length,
+  -readability-braces-around-statements"
+
+CheckOptions:
+  - key: readability-identifier-naming.ClassCase
+    value: "CamelCase"
+  - key: readability-identifier-naming.FunctionCase
+    value: "lower_case"
+  - key: readability-identifier-naming.MemberCase
+    value: "lower_case"
+  - key: readability-identifier-naming.VariableCase
+    value: "lower_case"
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: "UPPER_CASE"
+  - key: readability-identifier-naming.EnumCase
+    value: "CamelCase"
+  - key: readability-identifier-naming.UsePrefix
+    value: "true"
+  - key: readability-identifier-naming.Prefixes
+    value: "_"
+
+WarningsAsErrors: "*"
+
+FormatStyle: "file"
+
+HeaderFilterRegex: "^(builder|back|front)\\/\\w+\\.h$"

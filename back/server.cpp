@@ -17,7 +17,7 @@ namespace server
 
     void most_viewed(const httplib::Request& req, httplib::Response& res) noexcept;
 
-    enum class EVideoStat
+    enum class EVideoStat : std::uint8_t
     {
         TITLE,
         VIEWS,
@@ -26,7 +26,7 @@ namespace server
     template <EVideoStat Stat>
     void video_stats(const httplib::Request& req, httplib::Response& res) noexcept;
 
-    enum class EAdminCount
+    enum class EAdminCount : std::uint8_t
     {
         USERS,
         VIDEOS,
@@ -53,7 +53,7 @@ int server::start() noexcept
 
     httplib::Server server;
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
-        std::cout << sc::log(req, res) << std::endl;
+        std::cout << sc::log(req, res) << '\n';
     });
 
     server
@@ -117,7 +117,7 @@ inline void server::video_stats(const httplib::Request& req, httplib::Response& 
         const std::string video_uploader{ database::video_uploader(video_id) };
         res.set_content(video_uploader, "plain/text");
     } else {
-        static_assert("Stat not defined");
+        static_assert(false, "Stat not defined");
     }
 }
 
@@ -133,7 +133,7 @@ inline void server::admin_stats(const httplib::Request& /*req*/, httplib::Respon
     } else if constexpr (Count == EAdminCount::VIEWS) {
         count = database::view_count();
     } else {
-        static_assert("Count not defined");
+        static_assert(false, "Count not defined");
     }
 
     res.set_content(std::to_string(count), "plain/text");

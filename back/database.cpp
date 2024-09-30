@@ -168,10 +168,14 @@ void database::add_user(const std::string& username, const std::string& password
         return;
     }
 
-    User user;
-    user.username = username;
-    user.password = password;
-    conn->insert(user);
+    try {
+        User user;
+        user.username = username;
+        user.password = password;
+        conn->insert(user);
+    } catch (const std::exception& e) {
+        ERR("Fail to insert user \"{}\" with error: {}", username, e.what());
+    }
 }
 
 void database::add_admin(const std::string& username, const std::string& password) noexcept
@@ -182,10 +186,14 @@ void database::add_admin(const std::string& username, const std::string& passwor
         return;
     }
 
-    Admin admin;
-    admin.username = username;
-    admin.password = password;
-    conn->insert(admin);
+    try {
+        Admin admin;
+        admin.username = username;
+        admin.password = password;
+        conn->insert(admin);
+    } catch (const std::exception& e) {
+        ERR("Fail to insert admin \"{}\" with error: {}", username, e.what());
+    }
 }
 
 std::string database::get_password(const std::string& username) noexcept
@@ -215,7 +223,7 @@ int database::user_count() noexcept
         return -1;
     }
 
-    return conn->query_s<User>().size();
+    return static_cast<int>(conn->query_s<User>().size());
 }
 
 int database::video_count() noexcept
@@ -226,7 +234,7 @@ int database::video_count() noexcept
         return -1;
     }
 
-    return conn->query_s<Video>().size();
+    return static_cast<int>(conn->query_s<Video>().size());
 }
 
 int database::view_count() noexcept
