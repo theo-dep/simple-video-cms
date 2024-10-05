@@ -17,41 +17,48 @@ namespace server
 {
     void set_no_cache_headers(httplib::Response& res) noexcept;
 
-    void set_error_handler(httplib::Server& server) noexcept;
+    void set_error_handler(httplib::Server& server, const Client& client) noexcept;
     void set_exception_handler(httplib::Server& server) noexcept;
     void set_logger(httplib::Server& server) noexcept;
 
-    bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session) noexcept;
+    bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
 
     // inja exceptions catched by httplib Server::set_exception_handler
 
-    void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
-    void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
+    void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
     template <sc::ERequestMethod Method>
-    void login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session);
+    void login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void logout(const httplib::Request& req, httplib::Response& res, Session& session) noexcept;
 
-    void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
+    void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     template <sc::ERequestMethod Method>
-    void add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session);
+    void add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
-    void confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& confirm_signal_str) noexcept;
-    void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session) noexcept;
+    void confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const Client& client, const std::string& confirm_signal_str) noexcept;
+    void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
 
     template <sc::ERequestMethod Method>
-    void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session);
-    void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session) noexcept;
+    void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+    void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
 }
 
 int server::start() noexcept
 {
+    bool is_client_ok{ false };
+    const Client client(is_client_ok);
+    if (!is_client_ok) {
+        logging::error{ "Fail to create the client" };
+        return EXIT_FAILURE;
+    }
+
     inja::Environment env;
     Session session;
     ConfirmHandler confirm_handler;
     httplib::Server server;
 
-    set_error_handler(server);
+    set_error_handler(server, client);
     set_exception_handler(server);
     set_logger(server);
 
@@ -63,24 +70,24 @@ int server::start() noexcept
     });
 
     server
-        .Get("/", sc::serve(home, std::ref(env), std::cref(session)))
-        .Get("/dashboard", sc::serve(dashboard, std::ref(env), std::cref(session)))
+        .Get("/", sc::serve(home, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/dashboard", sc::serve(dashboard, std::ref(env), std::cref(session), std::cref(client)))
 
-        .Get("/login", sc::serve(login<sc::ERequestMethod::GET>, std::ref(env), std::ref(session)))
-        .Post("/login", sc::serve(login<sc::ERequestMethod::POST>, std::ref(env), std::ref(session)))
+        .Get("/login", sc::serve(login<sc::ERequestMethod::GET>, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/login", sc::serve(login<sc::ERequestMethod::POST>, std::ref(env), std::ref(session), std::cref(client)))
 
         .Get("/logout", sc::serve(logout, std::ref(session)))
 
-        .Get("/user-list", sc::serve(user_list, std::ref(env), std::cref(session)))
+        .Get("/user-list", sc::serve(user_list, std::ref(env), std::cref(session), std::cref(client)))
 
-        .Get("/add-user", sc::serve(add_user<sc::ERequestMethod::GET>, std::ref(env), std::cref(session)))
-        .Post("/add-user", sc::serve(add_user<sc::ERequestMethod::POST>, std::ref(env), std::cref(session)))
+        .Get("/add-user", sc::serve(add_user<sc::ERequestMethod::GET>, std::ref(env), std::cref(session), std::cref(client)))
+        .Post("/add-user", sc::serve(add_user<sc::ERequestMethod::POST>, std::ref(env), std::cref(session), std::cref(client)))
 
-        .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session)))
+        .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
-        .Get("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::GET>, std::ref(env), std::ref(confirm_handler), std::ref(session)))
-        .Post("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::POST>, std::ref(env), std::ref(confirm_handler), std::ref(session)))
-        .Get("/delete-user/:username", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session)));
+        .Get("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::GET>, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Post("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::POST>, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/delete-user/:username", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session), std::cref(client)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -96,22 +103,22 @@ inline void server::set_no_cache_headers(httplib::Response& res) noexcept
     res.set_header("Expires", "-1");
 }
 
-inline void server::set_error_handler(httplib::Server& server) noexcept
+inline void server::set_error_handler(httplib::Server& server, const Client& client) noexcept
 {
-    server.set_error_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
+    server.set_error_handler([&client](const httplib::Request& /*req*/, httplib::Response& res) {
         std::string body;
 
         switch (res.status) {
             case httplib::StatusCode::NotFound_404:
-                body = client::error_page_404();
+                body = client.error_page_404();
                 break;
 
             case httplib::StatusCode::Forbidden_403:
-                body = client::error_page_403();
+                body = client.error_page_403();
                 break;
 
             default:
-                body = client::generic_error(res.status, httplib::status_message(res.status));
+                body = Client::generic_error(res.status, httplib::status_message(res.status));
         }
 
         // body = env.render(body, _data);
@@ -134,7 +141,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
 
         logging::error{ message };
 
-        std::string body{ client::generic_error(error_code, message) };
+        std::string body{ Client::generic_error(error_code, message) };
         // body = env.render(body, _data);
 
         res.set_content(body, "text/html");
@@ -149,7 +156,7 @@ inline void server::set_logger(httplib::Server& server) noexcept
     });
 }
 
-inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session) noexcept
+inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
@@ -158,8 +165,8 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
         return false;
     }
 
-    if (!client::is_admin(session.user_from_session(session_id))) {
-        const std::string body{ client::error_page_403() };
+    if (!client.is_admin(session.user_from_session(session_id))) {
+        const std::string body{ client.error_page_403() };
         res.set_content(body, "text/html");
         return false;
     }
@@ -167,26 +174,23 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
     return true;
 }
 
-inline void server::home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session)
+inline void server::home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
-    bool is_logged{ false };
-    if (session.is_valid_session(session_id)) {
-        is_logged = true;
-        if (client::is_admin(session.user_from_session(session_id))) {
-            res.set_redirect("/dashboard");
-            return;
-        }
+    const bool is_logged{ session.is_valid_session(session_id) };
+    if (is_logged && client.is_admin(session.user_from_session(session_id))) {
+        res.set_redirect("/dashboard");
+        return;
     }
 
-    const std::vector<std::string> most_viewed_video_ids{ client::most_viewed_video_list() };
+    const std::vector<std::string> most_viewed_video_ids{ client.most_viewed_video_list() };
     inja::json most_viewed = inja::json::array();
 
     for (const std::string& id : most_viewed_video_ids) {
-        const std::string title{ client::video_title(id) };
-        const int views{ client::video_views(id) };
-        const std::string uploader{ client::video_uploader(id) };
+        const std::string title{ client.video_title(id) };
+        const int views{ client.video_views(id) };
+        const std::string uploader{ client.video_uploader(id) };
         most_viewed[id] = { title, views, uploader };
     }
 
@@ -196,34 +200,34 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     };
     logging::debug{ data.dump() };
 
-    const std::string body{ env.render(client::home_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    const std::string body{ env.render(client.home_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
 
-inline void server::dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session)
+inline void server::dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
-    if (!is_logged_and_admin(req, res, session)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
     const inja::json data{
-        { "user_count", client::user_count() },
-        { "video_count", client::video_count() },
-        { "view_count", client::view_count() }
+        { "user_count", client.user_count() },
+        { "video_count", client.video_count() },
+        { "view_count", client.view_count() }
     };
     logging::debug{ data.dump() };
 
-    const std::string body{ env.render(client::dashboard_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    const std::string body{ env.render(client.dashboard_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
 
 template <sc::ERequestMethod Method>
-inline void server::login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session)
+inline void server::login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
 {
     const std::function<void(httplib::Response&, bool)> set_login_content{
         [&](httplib::Response& res, bool login_error) {
             const inja::json data{ { "login_error", login_error } };
             logging::debug{ data.dump() };
-            const std::string body{ env.render(client::login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+            const std::string body{ env.render(client.login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
             res.set_content(body, "text/html");
         }
     };
@@ -247,7 +251,7 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, i
         su::trim(username);
         su::lower(username);
 
-        const bool is_valid_user{ client::is_valid_user(username, password) };
+        const bool is_valid_user{ client.is_valid_user(username, password) };
         if (is_valid_user) {
             const std::string session_id{ session.create_session(username) };
             res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
@@ -268,23 +272,23 @@ inline void server::logout(const httplib::Request& req, httplib::Response& res, 
     res.set_redirect("/");
 }
 
-inline void server::user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session)
+inline void server::user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
-    if (!is_logged_and_admin(req, res, session)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const std::vector<std::string> user_list{ client::user_list() };
+    const std::vector<std::string> user_list{ client.user_list() };
     const inja::json data{ { "user_dict", user_list } };
     logging::debug{ data.dump() };
 
-    const std::string body{ env.render(client::user_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    const std::string body{ env.render(client.user_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
 
 template <sc::ERequestMethod Method>
-inline void server::add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session)
+inline void server::add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
-    if (!is_logged_and_admin(req, res, session)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
     const std::function<void(httplib::Response&, bool, bool)> set_add_user_content{
@@ -294,7 +298,7 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
                 { "invalid_username", invalid_username }
             };
             logging::debug{ data.dump() };
-            const std::string body{ env.render(client::add_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+            const std::string body{ env.render(client.add_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
             res.set_content(body, "text/html");
         }
     };
@@ -318,9 +322,9 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
         su::trim(username);
         su::lower(username);
 
-        const bool is_valid_username{ client::is_valid_username(username) };
+        const bool is_valid_username{ client.is_valid_username(username) };
         if (is_valid_username) {
-            client::add_user(username, password);
+            client.add_user(username, password);
             res.set_redirect("/user-list");
         } else {
             set_add_user_content(res, false, true);
@@ -335,22 +339,22 @@ namespace server
     constexpr const char* session_confirm_key() { return "Confirm-Signal"; }
 }
 
-inline void server::confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& confirm_signal_str) noexcept
+inline void server::confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const Client& client, const std::string& confirm_signal_str) noexcept
 {
-    if (!is_logged_and_admin(req, res, session))
+    if (!is_logged_and_admin(req, res, session, client))
         return;
 
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     session.insert_value_from_session(session_id, session_confirm_key(), confirm_signal_str);
 
-    const std::string body{ client::confirm_action_page() };
+    const std::string body{ client.confirm_action_page() };
     res.set_content(body, "text/html");
 }
 
-inline void server::confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session) noexcept
+inline void server::confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
 {
-    if (!is_logged_and_admin(req, res, session))
+    if (!is_logged_and_admin(req, res, session, client))
         return;
 
     const std::string cookie{ req.get_header_value("Cookie") };
@@ -364,9 +368,9 @@ inline void server::confirm(const httplib::Request& req, httplib::Response& res,
 }
 
 template <sc::ERequestMethod Method>
-inline void server::update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session)
+inline void server::update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
-    if (!is_logged_and_admin(req, res, session)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
     const std::string username{ req.path_params.at("username") };
@@ -379,7 +383,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
                 { "update_error", update_error },
             };
             logging::debug{ data.dump() };
-            const std::string body{ env.render(client::update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+            const std::string body{ env.render(client.update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
             res.set_content(body, "text/html");
         }
     };
@@ -388,7 +392,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
         set_update_user_content(res, false, false);
     } else if constexpr (Method == sc::ERequestMethod::POST) {
         const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
-        const bool is_valid_user{ client::is_valid_user(username, old_password) };
+        const bool is_valid_user{ client.is_valid_user(username, old_password) };
         if (!is_valid_user) {
             set_update_user_content(res, true, false);
             return;
@@ -408,8 +412,8 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
 
         const std::string& signal_str{
             confirm_handler.create()
-                .on_confirm([username, new_password](httplib::Response& res) {
-                    client::update_user(username, new_password);
+                .on_confirm([username, new_password, &client](httplib::Response& res) {
+                    client.update_user(username, new_password);
                     res.set_redirect("/user-list");
                 })
                 .on_deny([](httplib::Response& res) {
@@ -418,15 +422,15 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
                 .to_string()
         };
 
-        confirm_action(req, res, session, signal_str);
+        confirm_action(req, res, session, client, signal_str);
     } else {
         static_assert(false, "Method not defined");
     }
 }
 
-inline void server::delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session) noexcept
+inline void server::delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
 {
-    if (!is_logged_and_admin(req, res, session))
+    if (!is_logged_and_admin(req, res, session, client))
         return;
 
     const std::string username{ req.path_params.at("username") };
@@ -434,8 +438,8 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 
     const std::string& signal_str{
         confirm_handler.create()
-            .on_confirm([username](httplib::Response& res) {
-                client::delete_user(username);
+            .on_confirm([username, &client](httplib::Response& res) {
+                client.delete_user(username);
                 res.set_redirect("/user-list");
             })
             .on_deny([](httplib::Response& res) {
@@ -444,5 +448,5 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
             .to_string()
     };
 
-    confirm_action(req, res, session, signal_str);
+    confirm_action(req, res, session, client, signal_str);
 }
