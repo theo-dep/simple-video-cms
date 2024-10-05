@@ -28,19 +28,19 @@ namespace server
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
-    template <sc::ERequestMethod Method>
-    void login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void logout(const httplib::Request& req, httplib::Response& res, Session& session) noexcept;
 
     void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
-    template <sc::ERequestMethod Method>
-    void add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void add_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
     void confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const Client& client, const std::string& confirm_signal_str) noexcept;
     void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
 
-    template <sc::ERequestMethod Method>
-    void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+    void update_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void update_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
 }
 
@@ -73,20 +73,20 @@ int server::start() noexcept
         .Get("/", sc::serve(home, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/dashboard", sc::serve(dashboard, std::ref(env), std::cref(session), std::cref(client)))
 
-        .Get("/login", sc::serve(login<sc::ERequestMethod::GET>, std::ref(env), std::ref(session), std::cref(client)))
-        .Post("/login", sc::serve(login<sc::ERequestMethod::POST>, std::ref(env), std::ref(session), std::cref(client)))
+        .Get("/login", sc::serve(login_get, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/login", sc::serve(login_post, std::ref(env), std::ref(session), std::cref(client)))
 
         .Get("/logout", sc::serve(logout, std::ref(session)))
 
         .Get("/user-list", sc::serve(user_list, std::ref(env), std::cref(session), std::cref(client)))
 
-        .Get("/add-user", sc::serve(add_user<sc::ERequestMethod::GET>, std::ref(env), std::cref(session), std::cref(client)))
-        .Post("/add-user", sc::serve(add_user<sc::ERequestMethod::POST>, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/add-user", sc::serve(add_user_get, std::ref(env), std::cref(session), std::cref(client)))
+        .Post("/add-user", sc::serve(add_user_post, std::ref(env), std::cref(session), std::cref(client)))
 
         .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
-        .Get("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::GET>, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
-        .Post("/update-user/:username", sc::serve(update_user<sc::ERequestMethod::POST>, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/update-user/:username", sc::serve(update_user_get, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-user/:username", sc::serve(update_user_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-user/:username", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session), std::cref(client)));
 
     constexpr const char* host{ "0.0.0.0" };
@@ -220,47 +220,49 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
     res.set_content(body, "text/html");
 }
 
-template <sc::ERequestMethod Method>
-inline void server::login(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+namespace server
 {
-    const std::function<void(httplib::Response&, bool)> set_login_content{
-        [&](httplib::Response& res, bool login_error) {
-            const inja::json data{ { "login_error", login_error } };
-            logging::debug{ data.dump() };
-            const std::string body{ env.render(client.login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
-            res.set_content(body, "text/html");
-        }
-    };
+    void set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, bool login_error);
+}
 
-    if constexpr (Method == sc::ERequestMethod::GET) {
-        const std::string cookie{ req.get_header_value("Cookie") };
-        if (session.is_valid_session_from_cookie(cookie)) {
-            res.set_redirect("/");
-            return;
-        }
+inline void server::set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, bool login_error)
+{
+    const inja::json data{ { "login_error", login_error } };
+    logging::debug{ data.dump() };
+    const std::string body{ env.render(client.login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
 
-        set_login_content(res, false);
-    } else if constexpr (Method == sc::ERequestMethod::POST) {
-        const std::string password{ crypto::sha512(req.get_param_value("password")) };
-        if (password.empty()) {
-            set_login_content(res, true);
-            return;
-        }
+inline void server::login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    if (session.is_valid_session_from_cookie(cookie)) {
+        res.set_redirect("/");
+        return;
+    }
 
-        std::string username{ req.get_param_value("username") };
-        su::trim(username);
-        su::lower(username);
+    set_login_content(res, env, client, false);
+}
 
-        const bool is_valid_user{ client.is_valid_user(username, password) };
-        if (is_valid_user) {
-            const std::string session_id{ session.create_session(username) };
-            res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
-            res.set_redirect("/");
-        } else {
-            set_login_content(res, true);
-        }
+inline void server::login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    const std::string password{ crypto::sha512(req.get_param_value("password")) };
+    if (password.empty()) {
+        set_login_content(res, env, client, true);
+        return;
+    }
+
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    const bool is_valid_user{ client.is_valid_user(username, password) };
+    if (is_valid_user) {
+        const std::string session_id{ session.create_session(username) };
+        res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
+        res.set_redirect("/");
     } else {
-        static_assert(false, "Method not defined");
+        set_login_content(res, env, client, true);
     }
 }
 
@@ -285,52 +287,57 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
     res.set_content(body, "text/html");
 }
 
-template <sc::ERequestMethod Method>
-inline void server::add_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+namespace server
+{
+    void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool create_error, bool invalid_username);
+}
+
+inline void server::set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool create_error, bool invalid_username)
+{
+    const inja::json data{
+        { "create_error", create_error },
+        { "invalid_username", invalid_username }
+    };
+    logging::debug{ data.dump() };
+    const std::string body{ env.render(client.add_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::add_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const std::function<void(httplib::Response&, bool, bool)> set_add_user_content{
-        [&](httplib::Response& res, bool create_error, bool invalid_username) {
-            const inja::json data{
-                { "create_error", create_error },
-                { "invalid_username", invalid_username }
-            };
-            logging::debug{ data.dump() };
-            const std::string body{ env.render(client.add_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
-            res.set_content(body, "text/html");
-        }
-    };
+    set_add_user_content(res, env, client, false, false);
+}
 
-    if constexpr (Method == sc::ERequestMethod::GET) {
-        set_add_user_content(res, false, false);
-    } else if constexpr (Method == sc::ERequestMethod::POST) {
-        const std::string password{ crypto::sha512(req.get_param_value("password")) };
-        if (password.empty()) {
-            set_add_user_content(res, true, false);
-            return;
-        }
+inline void server::add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
 
-        const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
-        if (confirm_password != password) {
-            set_add_user_content(res, true, false);
-            return;
-        }
+    const std::string password{ crypto::sha512(req.get_param_value("password")) };
+    if (password.empty()) {
+        set_add_user_content(res, env, client, true, false);
+        return;
+    }
 
-        std::string username{ req.get_param_value("username") };
-        su::trim(username);
-        su::lower(username);
+    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
+    if (confirm_password != password) {
+        set_add_user_content(res, env, client, true, false);
+        return;
+    }
 
-        const bool is_valid_username{ client.is_valid_username(username) };
-        if (is_valid_username) {
-            client.add_user(username, password);
-            res.set_redirect("/user-list");
-        } else {
-            set_add_user_content(res, false, true);
-        }
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    const bool is_valid_username{ client.is_valid_username(username) };
+    if (is_valid_username) {
+        client.add_user(username, password);
+        res.set_redirect("/user-list");
     } else {
-        static_assert(false, "Method not defined");
+        set_add_user_content(res, env, client, false, true);
     }
 }
 
@@ -367,65 +374,71 @@ inline void server::confirm(const httplib::Request& req, httplib::Response& res,
     session.remove_value_from_session(session_id, session_confirm_key());
 }
 
-template <sc::ERequestMethod Method>
-inline void server::update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+namespace server
+{
+    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, bool login_error, bool update_error);
+}
+
+inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, bool login_error, bool update_error)
+{
+    const inja::json data{
+        { "username", username },
+        { "login_error", login_error },
+        { "update_error", update_error },
+    };
+    logging::debug{ data.dump() };
+    const std::string body{ env.render(client.update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::update_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
+
+    const std::string username{ req.path_params.at("username") };
+    set_update_user_content(res, env, client, username, false, false);
+}
+
+inline void server::update_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
     if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
     const std::string username{ req.path_params.at("username") };
 
-    const std::function<void(httplib::Response&, bool, bool)> set_update_user_content{
-        [&](httplib::Response& res, bool login_error, bool update_error) {
-            const inja::json data{
-                { "username", username },
-                { "login_error", login_error },
-                { "update_error", update_error },
-            };
-            logging::debug{ data.dump() };
-            const std::string body{ env.render(client.update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
-            res.set_content(body, "text/html");
-        }
+    const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
+    const bool is_valid_user{ client.is_valid_user(username, old_password) };
+    if (!is_valid_user) {
+        set_update_user_content(res, env, client, username, true, false);
+        return;
+    }
+
+    const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
+    if (new_password.empty()) {
+        set_update_user_content(res, env, client, username, false, true);
+        return;
+    }
+
+    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
+    if (new_password != confirm_password) {
+        set_update_user_content(res, env, client, username, false, true);
+        return;
+    }
+
+    const std::string& signal_str{
+        confirm_handler.create()
+            .on_confirm([username, new_password, &client](httplib::Response& res) {
+                client.update_user(username, new_password);
+                res.set_redirect("/user-list");
+            })
+            .on_deny([](httplib::Response& res) {
+                res.set_redirect("/user-list");
+            })
+            .to_string()
     };
 
-    if constexpr (Method == sc::ERequestMethod::GET) {
-        set_update_user_content(res, false, false);
-    } else if constexpr (Method == sc::ERequestMethod::POST) {
-        const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
-        const bool is_valid_user{ client.is_valid_user(username, old_password) };
-        if (!is_valid_user) {
-            set_update_user_content(res, true, false);
-            return;
-        }
-
-        const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
-        if (new_password.empty()) {
-            set_update_user_content(res, false, true);
-            return;
-        }
-
-        const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
-        if (new_password != confirm_password) {
-            set_update_user_content(res, false, true);
-            return;
-        }
-
-        const std::string& signal_str{
-            confirm_handler.create()
-                .on_confirm([username, new_password, &client](httplib::Response& res) {
-                    client.update_user(username, new_password);
-                    res.set_redirect("/user-list");
-                })
-                .on_deny([](httplib::Response& res) {
-                    res.set_redirect("/user-list");
-                })
-                .to_string()
-        };
-
-        confirm_action(req, res, session, client, signal_str);
-    } else {
-        static_assert(false, "Method not defined");
-    }
+    confirm_action(req, res, session, client, signal_str);
 }
 
 inline void server::delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept

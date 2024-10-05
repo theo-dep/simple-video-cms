@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <functional>
 #include <string>
 
@@ -15,12 +14,6 @@ namespace sc
     std::string log(const httplib::Request& req, const httplib::Response& res) noexcept;
 
     std::string get_env(const std::string& key, const std::string& default_value) noexcept;
-
-    enum class ERequestMethod : std::uint8_t
-    {
-        GET,
-        POST
-    };
 
     template <typename Handler, typename... Args>
     std::function<void(const httplib::Request&, httplib::Response&)> serve(Handler handler, Args... args) noexcept;
