@@ -1,6 +1,7 @@
 #include "database.h"
 
 #include "databaseschema.h"
+#include "logging.h"
 #include "servercommon.h"
 #include "stringutils.h"
 
@@ -39,7 +40,7 @@ bool database::create_tables() noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return false;
     }
 
@@ -47,11 +48,11 @@ bool database::create_tables() noexcept
         ormpp_auto_key key{ "id" };
         ormpp_not_null not_null{ { "username", "password" } };
         if (!conn->create_datatable<Admin>(key, not_null)) {
-            ERR("Fail to create Admin table");
+            logging::error{ "Fail to create Admin table" };
             return false;
         }
         if (!conn->create_datatable<User>(key, not_null)) {
-            ERR("Fail to create User table");
+            logging::error{ "Fail to create User table" };
             return false;
         }
     }
@@ -59,7 +60,7 @@ bool database::create_tables() noexcept
         ormpp_key key{ "id" };
         ormpp_not_null not_null{ { "id" } };
         if (!conn->create_datatable<Video>(key, not_null)) {
-            ERR("Fail to create Video table");
+            logging::error{ "Fail to create Video table" };
             return false;
         }
     }
@@ -89,7 +90,7 @@ std::vector<std::string> database::most_viewed() noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return {};
     }
 
@@ -107,7 +108,7 @@ std::string database::video_title(const std::string& video_id) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return {};
     }
 
@@ -118,7 +119,7 @@ int database::video_views(const std::string& video_id) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return -1;
     }
 
@@ -129,7 +130,7 @@ std::string database::video_uploader(const std::string& video_id) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return {};
     }
 
@@ -152,7 +153,7 @@ bool database::is_admin(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return false;
     }
 
@@ -163,7 +164,7 @@ bool database::is_user(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return false;
     }
 
@@ -174,7 +175,7 @@ void database::add_user(const std::string& username, const std::string& password
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return;
     }
 
@@ -184,7 +185,7 @@ void database::add_user(const std::string& username, const std::string& password
         user.password = password;
         conn->insert(user);
     } catch (const std::exception& e) {
-        ERR("Fail to insert user \"{}\" with error: {}", username, e.what());
+        logging::error{ "Fail to insert user \"{}\" with error: {}", username, e.what() };
     }
 }
 
@@ -192,14 +193,14 @@ void database::update_user(const std::string& username, const std::string& passw
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return;
     }
 
     // get previous user (update with where clause not available)
     std::optional user_to_update{ user(conn, username) };
     if (!user_to_update.has_value()) {
-        ERR("Unknown user: {}", username);
+        logging::error{ "Unknown user: {}", username };
         return;
     }
 
@@ -207,7 +208,7 @@ void database::update_user(const std::string& username, const std::string& passw
         user_to_update->password = password;
         conn->update_some<&User::password>(user_to_update.value());
     } catch (const std::exception& e) {
-        ERR("Fail to update user \"{}\" with error: {}", username, e.what());
+        logging::error{ "Fail to update user \"{}\" with error: {}", username, e.what() };
     }
 }
 
@@ -215,7 +216,7 @@ void database::delete_user(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return;
     }
 
@@ -226,7 +227,7 @@ void database::add_admin(const std::string& username, const std::string& passwor
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return;
     }
 
@@ -236,7 +237,7 @@ void database::add_admin(const std::string& username, const std::string& passwor
         admin.password = password;
         conn->insert(admin);
     } catch (const std::exception& e) {
-        ERR("Fail to insert admin \"{}\" with error: {}", username, e.what());
+        logging::error{ "Fail to insert admin \"{}\" with error: {}", username, e.what() };
     }
 }
 
@@ -244,7 +245,7 @@ std::string database::get_password(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return {};
     }
 
@@ -263,7 +264,7 @@ int database::user_count() noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return -1;
     }
 
@@ -274,7 +275,7 @@ int database::video_count() noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return -1;
     }
 
@@ -285,7 +286,7 @@ int database::view_count() noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return -1;
     }
 
@@ -297,7 +298,7 @@ std::vector<std::string> database::user_list() noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
-        ERR("Fail to open database connection");
+        logging::error{ "Fail to open database connection" };
         return {};
     }
 

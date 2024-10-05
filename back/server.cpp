@@ -2,6 +2,7 @@
 
 #include "crypto.h"
 #include "database.h"
+#include "logging.h"
 #include "servercommon.h"
 #include "stringutils.h"
 
@@ -17,23 +18,13 @@ namespace server
 
     void most_viewed(const httplib::Request& req, httplib::Response& res) noexcept;
 
-    enum class EVideoStat : std::uint8_t
-    {
-        TITLE,
-        VIEWS,
-        UPLOADER
-    };
-    template <EVideoStat Stat>
-    void video_stats(const httplib::Request& req, httplib::Response& res) noexcept;
+    void video_title(const httplib::Request& req, httplib::Response& res) noexcept;
+    void video_views(const httplib::Request& req, httplib::Response& res) noexcept;
+    void video_uploader(const httplib::Request& req, httplib::Response& res) noexcept;
 
-    enum class EAdminCount : std::uint8_t
-    {
-        USERS,
-        VIDEOS,
-        VIEWS
-    };
-    template <EAdminCount Count>
-    void admin_stats(const httplib::Request& req, httplib::Response& res) noexcept;
+    void user_count(const httplib::Request& req, httplib::Response& res) noexcept;
+    void video_count(const httplib::Request& req, httplib::Response& res) noexcept;
+    void view_count(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void is_admin(const httplib::Request& req, httplib::Response& res) noexcept;
     void is_valid_username(const httplib::Request& req, httplib::Response& res) noexcept;
@@ -49,7 +40,7 @@ namespace server
 int server::start() noexcept
 {
     if (!database::create_tables()) {
-        ERR("Fail to create database tables");
+        logging::error{ "Fail to create database tables" };
         return EXIT_FAILURE;
     }
 
@@ -57,7 +48,7 @@ int server::start() noexcept
 
     httplib::Server server;
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
-        std::cout << sc::log(req, res) << '\n';
+        std::cout << sc::log(req, res) << std::endl;
     });
 
     server
@@ -65,13 +56,13 @@ int server::start() noexcept
 
         .Get("/most-viewed", sc::serve(most_viewed))
 
-        .Get("/title/:video_id", sc::serve(video_stats<EVideoStat::TITLE>))
-        .Get("/views/:video_id", sc::serve(video_stats<EVideoStat::VIEWS>))
-        .Get("/uploader/:video_id", sc::serve(video_stats<EVideoStat::UPLOADER>))
+        .Get("/title/:video_id", sc::serve(video_title))
+        .Get("/views/:video_id", sc::serve(video_views))
+        .Get("/uploader/:video_id", sc::serve(video_uploader))
 
-        .Get("/user-count", sc::serve(admin_stats<EAdminCount::USERS>))
-        .Get("/video-count", sc::serve(admin_stats<EAdminCount::VIDEOS>))
-        .Get("/view-count", sc::serve(admin_stats<EAdminCount::VIEWS>))
+        .Get("/user-count", sc::serve(user_count))
+        .Get("/video-count", sc::serve(video_count))
+        .Get("/view-count", sc::serve(view_count))
 
         .Get("/is-admin", sc::serve(is_admin))
 
@@ -86,7 +77,7 @@ int server::start() noexcept
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
-    MSG("Serving HTTP on {0} port {1} ...", host, port);
+    logging::info{ "Serving HTTP on {0} port {1} ...", host, port };
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
@@ -110,47 +101,49 @@ inline void server::most_viewed(const httplib::Request& /*req*/, httplib::Respon
     res.set_content(su::join(ids), "plain/text");
 }
 
-template <server::EVideoStat Stat>
-inline void server::video_stats(const httplib::Request& req, httplib::Response& res) noexcept
+inline void server::video_title(const httplib::Request& req, httplib::Response& res) noexcept
 {
     const std::string video_id{ req.path_params.at("video_id") };
-
-    if constexpr (Stat == EVideoStat::TITLE) {
-        const std::string video_title{ database::video_title(video_id) };
-        res.set_content(video_title, "plain/text");
-    } else if constexpr (Stat == EVideoStat::VIEWS) {
-        const int video_views{ database::video_views(video_id) };
-        res.set_content(std::to_string(video_views), "plain/text");
-    } else if constexpr (Stat == EVideoStat::UPLOADER) {
-        const std::string video_uploader{ database::video_uploader(video_id) };
-        res.set_content(video_uploader, "plain/text");
-    } else {
-        static_assert(false, "Stat not defined");
-    }
+    const std::string video_title{ database::video_title(video_id) };
+    res.set_content(video_title, "plain/text");
 }
 
-template <server::EAdminCount Count>
-inline void server::admin_stats(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+inline void server::video_views(const httplib::Request& req, httplib::Response& res) noexcept
 {
-    int count{};
+    const std::string video_id{ req.path_params.at("video_id") };
+    const int video_views{ database::video_views(video_id) };
+    res.set_content(std::to_string(video_views), "plain/text");
+}
 
-    if constexpr (Count == EAdminCount::USERS) {
-        count = database::user_count();
-    } else if constexpr (Count == EAdminCount::VIDEOS) {
-        count = database::video_count();
-    } else if constexpr (Count == EAdminCount::VIEWS) {
-        count = database::view_count();
-    } else {
-        static_assert(false, "Count not defined");
-    }
+inline void server::video_uploader(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    const std::string video_id{ req.path_params.at("video_id") };
+    const std::string video_uploader{ database::video_uploader(video_id) };
+    res.set_content(video_uploader, "plain/text");
+}
 
+inline void server::user_count(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+{
+    const int count{ database::user_count() };
+    res.set_content(std::to_string(count), "plain/text");
+}
+
+inline void server::video_count(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+{
+    const int count{ database::video_count() };
+    res.set_content(std::to_string(count), "plain/text");
+}
+
+inline void server::view_count(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+{
+    const int count{ database::view_count() };
     res.set_content(std::to_string(count), "plain/text");
 }
 
 inline void server::is_admin(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_header("username")) {
-        ERR("Missing header data");
+        logging::error{ "Missing header data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -163,7 +156,7 @@ inline void server::is_admin(const httplib::Request& req, httplib::Response& res
 inline void server::is_valid_username(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_header("username")) {
-        ERR("Missing header data");
+        logging::error{ "Missing header data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -176,7 +169,7 @@ inline void server::is_valid_username(const httplib::Request& req, httplib::Resp
 inline void server::add_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("password") || !req.has_file("username")) {
-        ERR("Missing multipart form data");
+        logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -189,7 +182,7 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
 inline void server::update_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("password") || !req.has_file("username")) {
-        ERR("Missing multipart form data");
+        logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -202,7 +195,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
 inline void server::delete_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("username")) {
-        ERR("Missing multipart form data");
+        logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -214,7 +207,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("password") || !req.has_file("username")) {
-        ERR("Missing multipart form data");
+        logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }

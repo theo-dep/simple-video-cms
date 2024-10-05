@@ -1,41 +1,60 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
-namespace client
+namespace httplib
 {
-    std::string error_page_404() noexcept;
-    std::string error_page_403() noexcept;
-    std::string generic_error(int error, const std::string& message) noexcept;
-
-    std::string home_page() noexcept;
-    std::string dashboard_page() noexcept;
-
-    std::string login_page() noexcept;
-
-    std::string confirm_action_page() noexcept;
-
-    std::string user_list_page() noexcept;
-    std::string add_user_page() noexcept;
-    std::string update_user_page() noexcept;
-
-    std::vector<std::string> most_viewed_video_list() noexcept;
-
-    std::string video_title(const std::string& id) noexcept;
-    int video_views(const std::string& id) noexcept;
-    std::string video_uploader(const std::string& id) noexcept;
-
-    bool is_admin(const std::string& username) noexcept;
-    bool is_valid_username(const std::string& username) noexcept;
-    void add_user(const std::string& username, const std::string& password) noexcept;
-    void update_user(const std::string& username, const std::string& password) noexcept;
-    void delete_user(const std::string& username) noexcept;
-    bool is_valid_user(const std::string& username, const std::string& password) noexcept;
-
-    int user_count() noexcept;
-    int video_count() noexcept;
-    int view_count() noexcept;
-
-    std::vector<std::string> user_list() noexcept;
+    class Client;
 }
+
+class Client
+{
+public:
+    Client(bool& create_ok) noexcept;
+    ~Client() noexcept = default;
+
+    std::string error_page_404() const noexcept;
+    std::string error_page_403() const noexcept;
+    static std::string generic_error(int error, const std::string& message) noexcept;
+
+    std::string home_page() const noexcept;
+    std::string dashboard_page() const noexcept;
+
+    std::string login_page() const noexcept;
+
+    std::string confirm_action_page() const noexcept;
+
+    std::string user_list_page() const noexcept;
+    std::string add_user_page() const noexcept;
+    std::string update_user_page() const noexcept;
+
+    std::vector<std::string> most_viewed_video_list() const noexcept;
+
+    std::string video_title(const std::string& id) const noexcept;
+    int video_views(const std::string& id) const noexcept;
+    std::string video_uploader(const std::string& id) const noexcept;
+
+    bool is_admin(const std::string& username) const noexcept;
+    bool is_valid_username(const std::string& username) const noexcept;
+    void add_user(const std::string& username, const std::string& password) const noexcept;
+    void update_user(const std::string& username, const std::string& password) const noexcept;
+    void delete_user(const std::string& username) const noexcept;
+    bool is_valid_user(const std::string& username, const std::string& password) const noexcept;
+
+    int user_count() const noexcept;
+    int video_count() const noexcept;
+    int view_count() const noexcept;
+
+    std::vector<std::string> user_list() const noexcept;
+
+private:
+    std::unique_ptr<httplib::Client> _client{ nullptr };
+
+    // prevent copy/move
+    Client(const Client&) = delete;
+    Client& operator=(const Client&) = delete;
+    Client(Client&&) = delete;
+    Client& operator=(Client&&) = delete;
+};

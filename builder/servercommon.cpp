@@ -1,18 +1,8 @@
 #include "servercommon.h"
 
+#include "logging.h"
+
 #include <httplib.h>
-
-#include <chrono>
-
-std::string sc::time_local() noexcept
-{
-    const std::chrono::time_point p{ std::chrono::system_clock::now() };
-    const std::time_t t{ std::chrono::system_clock::to_time_t(p) };
-
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&t), "%d/%b/%Y:%H:%M:%S %z");
-    return ss.str();
-}
 
 std::string sc::log(const httplib::Request& req, const httplib::Response& res) noexcept
 {
@@ -28,17 +18,8 @@ std::string sc::log(const httplib::Request& req, const httplib::Response& res) n
         //                     '"$request" $status $body_bytes_sent '
         //                     '"$http_referer" "$http_user_agent"';
         return std::format(R"({} - {} [{}] "{}" {} {} "{}" "{}")", req.remote_addr,
-                           remote_user, time_local(), request, res.status,
+                           remote_user, logging::time_local(), request, res.status,
                            body_bytes_sent, http_referer, http_user_agent);
-    } catch (const std::exception& e) {
-        return e.what();
-    }
-}
-
-std::string sc::log(const char* func, int line, const char* file, const std::string& message) noexcept
-{
-    try {
-        return std::format(R"({} - {} - {} ({} at line {}))", time_local(), message, func, file, line);
     } catch (const std::exception& e) {
         return e.what();
     }

@@ -1,4 +1,5 @@
 #include "database.h"
+#include "logging.h"
 #include "server.h"
 #include "servercommon.h"
 
@@ -7,7 +8,7 @@
 int main()
 {
     while (!database::is_open()) {
-        MSG("Wait for database...");
+        logging::info{ "Wait for database..." };
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(10s);
     }
