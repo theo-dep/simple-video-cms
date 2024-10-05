@@ -3,4 +3,4 @@
 namespace server
 {
     int start() noexcept;
-};
+}

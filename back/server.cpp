@@ -2,6 +2,7 @@
 
 #include "crypto.h"
 #include "database.h"
+#include "logging.h"
 #include "servercommon.h"
 #include "stringutils.h"
 
@@ -49,7 +50,7 @@ namespace server
 int server::start() noexcept
 {
     if (!database::create_tables()) {
-        ERR("Fail to create database tables");
+        logging::error{ "Fail to create database tables" };
         return EXIT_FAILURE;
     }
 
@@ -57,7 +58,7 @@ int server::start() noexcept
 
     httplib::Server server;
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
-        std::cout << sc::log(req, res) << '\n';
+        std::cout << sc::log(req, res) << std::endl;
     });
 
     server
@@ -86,7 +87,7 @@ int server::start() noexcept
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
-    MSG("Serving HTTP on {0} port {1} ...", host, port);
+    logging::info{ "Serving HTTP on {0} port {1} ...", host, port };
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
@@ -150,7 +151,7 @@ inline void server::admin_stats(const httplib::Request& /*req*/, httplib::Respon
 inline void server::is_admin(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_header("username")) {
-        ERR("Missing header data");
+        logging::error{ "Missing header data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -163,7 +164,7 @@ inline void server::is_admin(const httplib::Request& req, httplib::Response& res
 inline void server::is_valid_username(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_header("username")) {
-        ERR("Missing header data");
+        logging::error{ "Missing header data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -176,7 +177,7 @@ inline void server::is_valid_username(const httplib::Request& req, httplib::Resp
 inline void server::add_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("password") || !req.has_file("username")) {
-        ERR("Missing multipart form data");
+        logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -189,7 +190,7 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
 inline void server::update_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("password") || !req.has_file("username")) {
-        ERR("Missing multipart form data");
+        logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -202,7 +203,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
 inline void server::delete_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("username")) {
-        ERR("Missing multipart form data");
+        logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -214,7 +215,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("password") || !req.has_file("username")) {
-        ERR("Missing multipart form data");
+        logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }

@@ -3,6 +3,7 @@
 #include "client.h"
 #include "confirmhandler.h"
 #include "crypto.h"
+#include "logging.h"
 #include "servercommon.h"
 #include "session.h"
 #include "stringutils.h"
@@ -83,13 +84,13 @@ int server::start() noexcept
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
-    MSG("Serving HTTP on {0} port {1} ...", host, port);
+    logging::info{ "Serving HTTP on {0} port {1} ...", host, port };
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 inline void server::set_no_cache_headers(httplib::Response& res) noexcept
 {
-    res.set_header("Last-Modified", sc::time_local());
+    res.set_header("Last-Modified", logging::time_local());
     res.set_header("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0");
     res.set_header("Pragma", "no-cache");
     res.set_header("Expires", "-1");
@@ -131,7 +132,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
             message = "Unknown Exception";
         }
 
-        ERR(message);
+        logging::error{ message };
 
         std::string body{ client::generic_error(error_code, message) };
         // body = env.render(body, _data);
@@ -144,7 +145,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
 inline void server::set_logger(httplib::Server& server) noexcept
 {
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
-        std::cout << sc::log(req, res) << '\n';
+        std::cout << sc::log(req, res) << std::endl;
     });
 }
 
@@ -193,7 +194,7 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
         { "is_logged", is_logged },
         { "most_viewed", most_viewed }
     };
-    DEBUG(data.dump());
+    logging::debug{ data.dump() };
 
     const std::string body{ env.render(client::home_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
@@ -209,7 +210,7 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
         { "video_count", client::video_count() },
         { "view_count", client::view_count() }
     };
-    DEBUG(data.dump());
+    logging::debug{ data.dump() };
 
     const std::string body{ env.render(client::dashboard_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
@@ -221,7 +222,7 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, i
     const std::function<void(httplib::Response&, bool)> set_login_content{
         [&](httplib::Response& res, bool login_error) {
             const inja::json data{ { "login_error", login_error } };
-            DEBUG(data.dump());
+            logging::debug{ data.dump() };
             const std::string body{ env.render(client::login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
             res.set_content(body, "text/html");
         }
@@ -274,7 +275,7 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
 
     const std::vector<std::string> user_list{ client::user_list() };
     const inja::json data{ { "user_dict", user_list } };
-    DEBUG(data.dump());
+    logging::debug{ data.dump() };
 
     const std::string body{ env.render(client::user_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
@@ -292,7 +293,7 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
                 { "create_error", create_error },
                 { "invalid_username", invalid_username }
             };
-            DEBUG(data.dump());
+            logging::debug{ data.dump() };
             const std::string body{ env.render(client::add_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
             res.set_content(body, "text/html");
         }
@@ -377,7 +378,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
                 { "login_error", login_error },
                 { "update_error", update_error },
             };
-            DEBUG(data.dump());
+            logging::debug{ data.dump() };
             const std::string body{ env.render(client::update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
             res.set_content(body, "text/html");
         }
@@ -429,7 +430,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
         return;
 
     const std::string username{ req.path_params.at("username") };
-    MSG("Delete {}", username);
+    logging::debug{ "Delete {}", username };
 
     const std::string& signal_str{
         confirm_handler.create()
