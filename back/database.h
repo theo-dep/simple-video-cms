@@ -1,5 +1,7 @@
 #pragma once
 
+#include "types.h"
+
 #include <string>
 #include <vector>
 
@@ -8,12 +10,11 @@ namespace database
     bool create_tables() noexcept;
     bool is_open() noexcept;
 
-    std::vector<std::string> video_list() noexcept;
-    std::vector<std::string> most_viewed() noexcept;
+    std::vector<types::md5_varchar> video_list() noexcept;
+    std::vector<types::md5_varchar> most_viewed() noexcept;
 
-    std::string video_title(const std::string& video_id) noexcept;
-    int video_views(const std::string& video_id) noexcept;
-    std::string video_uploader(const std::string& video_id) noexcept;
+    std::string video_title(const types::md5_varchar& id) noexcept;
+    int video_views(const types::md5_varchar& id) noexcept;
 
     bool is_admin(const std::string& username) noexcept;
     bool is_user(const std::string& username) noexcept;
@@ -28,4 +29,6 @@ namespace database
     int view_count() noexcept;
 
     std::vector<std::string> user_list() noexcept;
+
+    void add_video(const types::md5_varchar& id, const std::string& title, const std::string& file_path) noexcept;
 }

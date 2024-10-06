@@ -1,5 +1,7 @@
 #pragma once
 
+#include "types.h"
+
 #include <ormpp.hpp>
 
 struct Admin
@@ -22,11 +24,10 @@ REFLECTION(User, id, username, password)
 
 struct Video
 {
-    int id;
+    types::md5_varchar id;
     std::string title;
-    std::string uploader;
-    int view_count;
-    std::string upload_date;
+    std::string file_path;
+    int view_count{ 0 };
 };
 REGISTER_CONFLICT_KEY(Video, id);
-REFLECTION(Video, id, title, uploader, view_count, upload_date)
+REFLECTION(Video, id, title, file_path, view_count)

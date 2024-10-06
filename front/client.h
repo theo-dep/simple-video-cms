@@ -31,13 +31,13 @@ public:
     std::string update_user_page() const noexcept;
 
     std::string video_list_page() const noexcept;
+    std::string add_video_page() const noexcept;
 
     std::vector<std::string> video_list() const noexcept;
     std::vector<std::string> most_viewed_video_list() const noexcept;
 
     std::string video_title(const std::string& id) const noexcept;
     int video_views(const std::string& id) const noexcept;
-    std::string video_uploader(const std::string& id) const noexcept;
 
     bool is_admin(const std::string& username) const noexcept;
     bool is_valid_username(const std::string& username) const noexcept;
@@ -51,6 +51,8 @@ public:
     int view_count() const noexcept;
 
     std::vector<std::string> user_list() const noexcept;
+
+    void add_video(const std::string& title, const std::string& content) const noexcept;
 
 private:
     std::unique_ptr<httplib::Client> _client{ nullptr };

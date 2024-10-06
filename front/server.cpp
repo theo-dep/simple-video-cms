@@ -23,6 +23,8 @@ namespace server
 
     bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
 
+    inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client) noexcept;
+
     // inja exceptions catched by httplib Server::set_exception_handler
 
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -44,6 +46,8 @@ namespace server
     void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
 
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 }
 
 int server::start() noexcept
@@ -91,7 +95,10 @@ int server::start() noexcept
         .Post("/update-user/:username", sc::serve(update_user_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-user/:username", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
-        .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)));
+        .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
+
+        .Get("/add-video", sc::serve(add_video_get, std::ref(env), std::cref(session), std::cref(client)))
+        .Post("/add-video", sc::serve(add_video_post, std::ref(env), std::cref(session), std::cref(client)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -178,6 +185,18 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
     return true;
 }
 
+inline inja::json server::video_dict(const std::vector<std::string>& video_ids, const Client& client) noexcept
+{
+    inja::json video_dict;
+    for (const std::string& id : video_ids) {
+        const std::string title{ client.video_title(id) };
+        const int views{ client.video_views(id) };
+        inja::json video = { { "id", id }, { "title", title }, { "views", views } };
+        video_dict += video;
+    }
+    return video_dict;
+}
+
 inline void server::home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
@@ -189,18 +208,9 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     }
 
     const std::vector<std::string> most_viewed_video_ids{ client.most_viewed_video_list() };
-    inja::json most_viewed = inja::json::array();
-
-    for (const std::string& id : most_viewed_video_ids) {
-        const std::string title{ client.video_title(id) };
-        const int views{ client.video_views(id) };
-        const std::string uploader{ client.video_uploader(id) };
-        most_viewed[id] = { title, views, uploader };
-    }
-
     const inja::json data{
         { "is_logged", is_logged },
-        { "most_viewed", most_viewed }
+        { "video_dict", video_dict(most_viewed_video_ids, client) }
     };
     logging::debug{ data.dump() };
 
@@ -474,17 +484,62 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
         return;
 
     const std::vector<std::string> video_list{ client.video_list() };
-    inja::json video_dict = inja::json::array();
-
-    for (const std::string& id : video_list) {
-        const std::string title{ client.video_title(id) };
-        const int views{ client.video_views(id) };
-        video_dict[id] = { title, views };
-    }
-
-    const inja::json data{ { "video_dict", video_dict } };
+    const inja::json data{ { "video_dict", video_dict(video_list, client) } };
     logging::debug{ data.dump() };
 
     const std::string body{ env.render(client.video_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
+}
+
+namespace server
+{
+    constexpr const char* default_video_text_helper() { return "Drag the video here or click in this area."; }
+    constexpr const char* default_video_title_placeholder() { return "Enter the video title here"; }
+    void set_add_video_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& video_text_helper, const std::string& video_title_placeholder);
+}
+
+inline void server::set_add_video_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& video_text_helper, const std::string& video_title_placeholder)
+{
+    const inja::json data{
+        { "video_text_helper", video_text_helper },
+        { "video_title_placeholder", video_title_placeholder }
+    };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.add_video_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    set_add_video_content(res, env, client, default_video_text_helper(), default_video_title_placeholder());
+}
+
+inline void server::add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string video_title{ req.get_file_value("title").content };
+    if (video_title.empty()) {
+        set_add_video_content(res, env, client, default_video_text_helper(), "Enter a non-empty video title here");
+        return;
+    }
+
+    if (!req.has_file("file")) {
+        set_add_video_content(res, env, client, default_video_text_helper(), default_video_title_placeholder());
+        return;
+    }
+
+    const httplib::MultipartFormData& item{ req.get_file_value("file") };
+    if (item.content_type != "video/mp4") {
+        set_add_video_content(res, env, client, "Drag a mp4 video here or click in this area.", default_video_title_placeholder());
+        return;
+    }
+
+    client.add_video(video_title, item.content);
+    res.set_redirect("/video-list");
 }

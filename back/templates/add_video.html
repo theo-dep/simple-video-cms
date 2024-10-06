@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>VideoHub</title>
+  <link rel="stylesheet" href="/static/css/upload.css">
+  <link rel="stylesheet" href="/static/css/video.css">
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+</head>
+
+<body>
+  <h4 align="center" class="heading2">Upload video</h4>
+  <form action="add-video" method="post" enctype=multipart/form-data>
+    <input type="file" accept="video/mp4" name=file>
+    <p>{{ video_text_helper }}</p>
+    <input type="text" name="title" id="title" placeholder="{{ video_title_placeholder }}" required>
+    <button type="submit">Upload</button>
+  </form>
+</body>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const inputs = document.querySelectorAll('form input');
+
+    inputs.forEach(input => {
+      input.addEventListener('change', () => {
+        const fullPath = input.value;
+        let filename = '';  // Initialize filename
+
+        if (fullPath) {
+          const startIndex = fullPath.lastIndexOf('\\') >= 0 ? fullPath.lastIndexOf('\\') : fullPath.lastIndexOf('/');
+          filename = fullPath.substring(startIndex + 1) || '';  // Extract the file name
+        }
+
+        // If filename has an extension, remove it, otherwise keep the filename
+        const res = filename ? filename.slice(0, filename.lastIndexOf('.')) || filename : '';
+
+        document.querySelector('form p').textContent = filename;
+        document.getElementById('title').value = res;
+      });
+    });
+  });
+</script>
+
+</html>

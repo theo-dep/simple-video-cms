@@ -40,15 +40,15 @@
   </nav>
   <br><br><br>
   <div class="container">
-    {% for i in most_viewed %}
+    {% for video in video_dict %}
     <div class="row">
       <div class="row">
         <div class="col-xs-12 col-sm-3 col-md-3">
-          <a href="/watch_video/{{ i }}">
-            <img height="152" width="270" src="/image/{{ i }}" class="img-responsive">
+          <a href="/watch_video/{{ video.id }}">
+            <img height="152" width="270" src="/image/{{ video.id }}" class="img-responsive">
           </a>
         </div>
-        <h4><a style="color:#16A085;text-decoration:none;" href="/watch_video/{{ i }}">{{ i.0 }}</a>
+        <h4><a style="color:#16A085;text-decoration:none;" href="/watch_video/{{ video.id }}">{{ video.title }}</a>
         </h4>
         <div class="col-xs-12 col-sm-9 col-md-9">
           <div class="list-group">
@@ -56,18 +56,12 @@
               <div class="row-content">
                 <div class="list-group-item-heading">
                   <p style="color:#FFFFFF;">
-                    {% if i.1 == "1" %}
-                    <small>{{ i.1 }} view</small>
+                    {% if video.views == "1" %}
+                    <small>{{ video.views }} view</small>
                     {% endif %}
-                    {% if i.1 != "1" %}
-                    <small>{{ i.1 }} views</small>
+                    {% if video.views != "1" %}
+                    <small>{{ video.views }} views</small>
                     {% endif %}
-                  </p>
-                </div>
-                <div class="list-group-item-heading">
-                  <p style="color:#FFFFFF;">
-                    <small>Uploaded by <a style="color:#16A085;text-decoration:none;" href="/user/{{ i.2 }}">{{ i.2
-                        }}</a></small>
                   </p>
                 </div>
               </div>

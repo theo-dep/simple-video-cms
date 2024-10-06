@@ -108,6 +108,12 @@ std::string Client::video_list_page() const noexcept
     return client::format_page(res);
 }
 
+std::string Client::add_video_page() const noexcept
+{
+    const httplib::Result res{ _client->Get("/html/add_video.html") };
+    return client::format_page(res);
+}
+
 std::vector<std::string> Client::video_list() const noexcept
 {
     const httplib::Result res{ _client->Get("/video-list") };
@@ -132,12 +138,6 @@ int Client::video_views(const std::string& id) const noexcept
 {
     const httplib::Result res{ _client->Get("/views/" + id) };
     return su::string_to_int(client::format_page(res));
-}
-
-std::string Client::video_uploader(const std::string& id) const noexcept
-{
-    const httplib::Result res{ _client->Get("/uploader/" + id) };
-    return client::format_page(res);
 }
 
 bool Client::is_admin(const std::string& username) const noexcept
@@ -217,6 +217,15 @@ std::vector<std::string> Client::user_list() const noexcept
     const httplib::Result res{ _client->Get("/user-list") };
     const std::string str_usernames{ client::format_page(res) };
     return su::split(str_usernames);
+}
+
+void Client::add_video(const std::string& title, const std::string& content) const noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "title", title, "", "" },
+        { "video", content, "", "" }
+    };
+    _client->Post("/add-video", items);
 }
 
 inline std::string client::generic_error(int error, const std::string& message) noexcept
