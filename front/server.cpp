@@ -42,6 +42,8 @@ namespace server
     void update_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void update_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
+
+    void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 }
 
 int server::start() noexcept
@@ -87,7 +89,9 @@ int server::start() noexcept
 
         .Get("/update-user/:username", sc::serve(update_user_get, std::ref(env), std::ref(session), std::cref(client)))
         .Post("/update-user/:username", sc::serve(update_user_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
-        .Get("/delete-user/:username", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session), std::cref(client)));
+        .Get("/delete-user/:username", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+
+        .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -462,4 +466,25 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     };
 
     confirm_action(req, res, session, client, signal_str);
+}
+
+inline void server::video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::vector<std::string> video_list{ client.video_list() };
+    inja::json video_dict = inja::json::array();
+
+    for (const std::string& id : video_list) {
+        const std::string title{ client.video_title(id) };
+        const int views{ client.video_views(id) };
+        video_dict[id] = { title, views };
+    }
+
+    const inja::json data{ { "video_dict", video_dict } };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.video_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
 }

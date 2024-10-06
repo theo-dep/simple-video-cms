@@ -30,6 +30,9 @@ public:
     std::string add_user_page() const noexcept;
     std::string update_user_page() const noexcept;
 
+    std::string video_list_page() const noexcept;
+
+    std::vector<std::string> video_list() const noexcept;
     std::vector<std::string> most_viewed_video_list() const noexcept;
 
     std::string video_title(const std::string& id) const noexcept;

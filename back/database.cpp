@@ -86,6 +86,18 @@ std::vector<T> database::transform(const std::vector<std::tuple<T>>& query_out) 
     return out;
 }
 
+std::vector<std::string> database::video_list() noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return {};
+    }
+
+    const std::vector tuple_videos{ conn->query_s<std::tuple<std::string>>("SELECT id FROM Video") };
+    return transform(tuple_videos);
+}
+
 std::vector<std::string> database::most_viewed() noexcept
 {
     const std::unique_ptr conn{ connection() };

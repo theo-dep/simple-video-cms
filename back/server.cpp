@@ -16,6 +16,7 @@ namespace server
 
     void template_page(const httplib::Request& req, httplib::Response& res) noexcept;
 
+    void video_list(const httplib::Request& req, httplib::Response& res) noexcept;
     void most_viewed(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void video_title(const httplib::Request& req, httplib::Response& res) noexcept;
@@ -54,6 +55,7 @@ int server::start() noexcept
     server
         .Get("/html/:html", sc::serve(template_page))
 
+        .Get("/video-list", sc::serve(video_list))
         .Get("/most-viewed", sc::serve(most_viewed))
 
         .Get("/title/:video_id", sc::serve(video_title))
@@ -93,6 +95,12 @@ inline void server::template_page(const httplib::Request& req, httplib::Response
     const std::string html{ req.path_params.at("html") };
     const std::filesystem::path html_path{ std::filesystem::current_path() / "templates" / html };
     res.set_file_content(html_path.string(), "text/html");
+}
+
+inline void server::video_list(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+{
+    const std::vector<std::string> ids{ database::video_list() };
+    res.set_content(su::join(ids), "plain/text");
 }
 
 inline void server::most_viewed(const httplib::Request& /*req*/, httplib::Response& res) noexcept

@@ -102,6 +102,19 @@ std::string Client::update_user_page() const noexcept
     return client::format_page(res);
 }
 
+std::string Client::video_list_page() const noexcept
+{
+    const httplib::Result res{ _client->Get("/html/video_list.html") };
+    return client::format_page(res);
+}
+
+std::vector<std::string> Client::video_list() const noexcept
+{
+    const httplib::Result res{ _client->Get("/video-list") };
+    const std::string str_ids{ client::format_page(res) };
+    return su::split(str_ids);
+}
+
 std::vector<std::string> Client::most_viewed_video_list() const noexcept
 {
     const httplib::Result res{ _client->Get("/most-viewed") };
