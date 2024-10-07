@@ -88,6 +88,26 @@
         "variant": "cpp",
         "format": "cpp",
         "shared_mutex": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "strstream": "cpp",
+        "barrier": "cpp",
+        "cfenv": "cpp",
+        "complex": "cpp",
+        "coroutine": "cpp",
+        "csetjmp": "cpp",
+        "cuchar": "cpp",
+        "expected": "cpp",
+        "propagate_const": "cpp",
+        "source_location": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "future": "cpp",
+        "latch": "cpp",
+        "scoped_allocator": "cpp",
+        "spanstream": "cpp",
+        "stacktrace": "cpp",
+        "syncstream": "cpp",
+        "typeindex": "cpp",
+        "stdfloat": "cpp"
     }
 }

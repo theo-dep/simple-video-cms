@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <format>
 #include <iostream>
 #include <source_location>
@@ -7,7 +8,10 @@
 
 namespace logging
 {
+    void init(const std::filesystem::path& log_file_path) noexcept;
+
     std::string time_local() noexcept;
+    void raw_log(const std::string& message) noexcept; // for server log
 
     template <class... Args>
     struct log
@@ -76,7 +80,7 @@ logging::log<Args...>::log(std::ostream& stream, const std::source_location& loc
     try {
         log<std::string>{ stream, location, std::format(fmt, std::forward<Args>(args)...) };
     } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        error<std::string>{ e.what(), location };
     }
 }
 
@@ -99,6 +103,6 @@ logging::debug<Args...>::debug(std::format_string<Args...> fmt, Args&&... args, 
     try {
         debug<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
     } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+        error<std::string>{ e.what(), location };
     }
 }
