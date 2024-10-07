@@ -2,6 +2,12 @@
 
 #include <chrono>
 
+namespace logging
+{
+    // only the name, without return type and parameters
+    std::string light_function_name(const std::source_location& location) noexcept;
+}
+
 std::string logging::time_local() noexcept
 {
     const std::chrono::time_point p{ std::chrono::system_clock::now() };
@@ -14,7 +20,7 @@ std::string logging::time_local() noexcept
 
 logging::log<std::string>::log(std::ostream& stream, const std::source_location& location, const std::string& message) noexcept
 {
-    stream << time_local() << " - " << message << " - " << location.function_name()
+    stream << time_local() << " - " << message << " - " << light_function_name(location)
            << " (" << location.file_name() << " at line " << location.line() << ")" << std::endl;
 }
 
@@ -36,4 +42,12 @@ logging::debug<std::string>::debug(const std::string& message, const std::source
     (void)message;
     (void)location;
 #endif
+}
+
+inline std::string logging::light_function_name(const std::source_location& location) noexcept
+{
+    const std::string function_name{ location.function_name() };
+    const std::size_t start_index{ function_name.find_first_of(' ') + 1 };
+    const std::size_t end_index{ function_name.find_first_of('(') };
+    return std::string{ function_name, start_index, end_index - start_index };
 }
