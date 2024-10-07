@@ -31,4 +31,5 @@ namespace database
     std::vector<std::string> user_list() noexcept;
 
     void add_video(const types::md5_varchar& id, const std::string& title, const std::string& file_path) noexcept;
+    void delete_video(const types::md5_varchar& id) noexcept;
 }

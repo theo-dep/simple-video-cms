@@ -228,6 +228,11 @@ void Client::add_video(const std::string& title, const std::string& content) con
     _client->Post("/add-video", items);
 }
 
+void Client::delete_video(const std::string& id) const noexcept
+{
+    _client->Post("/delete-video/" + id);
+}
+
 inline std::string client::generic_error(int error, const std::string& message) noexcept
 {
     try {

@@ -53,6 +53,7 @@ public:
     std::vector<std::string> user_list() const noexcept;
 
     void add_video(const std::string& title, const std::string& content) const noexcept;
+    void delete_video(const std::string& id) const noexcept;
 
 private:
     std::unique_ptr<httplib::Client> _client{ nullptr };

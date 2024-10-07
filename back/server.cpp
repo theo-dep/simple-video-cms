@@ -38,6 +38,7 @@ namespace server
     void user_list(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void add_video(const httplib::Request& req, httplib::Response& res) noexcept;
+    void delete_video(const httplib::Request& req, httplib::Response& res) noexcept;
 }
 
 int server::start() noexcept
@@ -78,7 +79,8 @@ int server::start() noexcept
 
         .Get("/user-list", sc::serve(user_list))
 
-        .Post("/add-video", sc::serve(add_video));
+        .Post("/add-video", sc::serve(add_video))
+        .Post("/delete-video/:video_id", sc::serve(delete_video));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
@@ -244,6 +246,8 @@ inline void server::user_list(const httplib::Request& /*req*/, httplib::Response
 namespace server
 {
     bool create_directories(const std::filesystem::path& path) noexcept;
+    bool remove(const std::filesystem::path& path) noexcept;
+    std::filesystem::path video_path() noexcept;
 }
 
 inline bool server::create_directories(const std::filesystem::path& path) noexcept
@@ -260,6 +264,22 @@ inline bool server::create_directories(const std::filesystem::path& path) noexce
     return true;
 }
 
+inline bool server::remove(const std::filesystem::path& path) noexcept
+{
+    std::error_code create_error;
+    if (!std::filesystem::remove(path, create_error) || create_error) {
+        logging::error{ "Fail to remove \"{}\" with error {}: \"{}\"", path.string(), create_error.value(), create_error.message() };
+        return false;
+    }
+
+    return true;
+}
+
+inline std::filesystem::path server::video_path() noexcept
+{
+    return std::filesystem::current_path() / "data" / "videos";
+}
+
 inline void server::add_video(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_file("title") || !req.has_file("video")) {
@@ -272,7 +292,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::string video_content{ req.get_file_value("video").content };
     const types::md5_varchar video_id{ crypto::sha1(video_title) };
 
-    const std::filesystem::path video_path{ std::filesystem::current_path() / "data" / "videos" };
+    const std::filesystem::path video_path{ server::video_path() };
     if (!server::create_directories(video_path)) {
         return;
     }
@@ -284,4 +304,17 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     }
 
     database::add_video(video_id, video_title, video_file_path.string());
+}
+
+inline void server::delete_video(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+    database::delete_video(video_id);
+
+    // clean local data
+    const std::filesystem::path video_file_path{ video_path() / video_id_str };
+    if (!server::remove(video_file_path)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+    }
 }

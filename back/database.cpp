@@ -326,3 +326,14 @@ void database::add_video(const types::md5_varchar& id, const std::string& title,
         logging::error{ "Fail to insert video \"{}\" with error: {}", title, e.what() };
     }
 }
+
+void database::delete_video(const types::md5_varchar& id) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    conn->delete_records_s<Video>("id=?", id);
+}

@@ -48,6 +48,7 @@ namespace server
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 }
 
 int server::start() noexcept
@@ -98,7 +99,8 @@ int server::start() noexcept
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
         .Get("/add-video", sc::serve(add_video_get, std::ref(env), std::cref(session), std::cref(client)))
-        .Post("/add-video", sc::serve(add_video_post, std::ref(env), std::cref(session), std::cref(client)));
+        .Post("/add-video", sc::serve(add_video_post, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(confirm_handler), std::ref(session), std::cref(client)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -542,4 +544,27 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
 
     client.add_video(video_title, item.content);
     res.set_redirect("/video-list");
+}
+
+inline void server::delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string video_id{ req.path_params.at("video_id") };
+    logging::debug{ "Delete {}", video_id };
+
+    const std::string& signal_str{
+        confirm_handler.create()
+            .on_confirm([video_id, &client](httplib::Response& res) {
+                client.delete_video(video_id);
+                res.set_redirect("/video-list");
+            })
+            .on_deny([](httplib::Response& res) {
+                res.set_redirect("/video-list");
+            })
+            .to_string()
+    };
+
+    confirm_action(req, res, session, client, signal_str);
 }
