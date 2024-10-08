@@ -8,7 +8,6 @@ Checks: "-*,
   bugprone-*,
   -bugprone-easily-swappable-parameters,
   performance-*,
-  -performance-avoid-endl,
   portability-*,
   readability-*,
   readability-identifier-naming,
@@ -30,11 +29,13 @@ CheckOptions:
     value: "CamelCase"
   - key: readability-identifier-naming.UsePrefix
     value: "true"
-  - key: readability-identifier-naming.Prefixes
+  - key: readability-identifier-naming.ProtectedMemberPrefix
+    value: "_"
+  - key: readability-identifier-naming.PrivateMemberPrefix
     value: "_"
 
 WarningsAsErrors: "*"
 
 FormatStyle: "file"
 
-HeaderFilterRegex: "^(builder|back|front)\\/\\w+\\.h$"
+HeaderFilterRegex: "^(builder/third-party/.*)$"

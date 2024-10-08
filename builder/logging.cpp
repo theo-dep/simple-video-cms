@@ -27,7 +27,7 @@ namespace logging
     private:
         std::mutex _mutex;
         std::ofstream _log_file;
-        bool _is_running;
+        bool _is_running{ true };
         std::thread _flush_thread;
 
         std::ostringstream _cout_local;
@@ -35,6 +35,13 @@ namespace logging
 
         std::streambuf* const _cout_buffer;
         std::streambuf* const _cerr_buffer;
+
+    public:
+        // prevent copy/move
+        Logger(const Logger&) = delete;
+        Logger& operator=(const Logger&) = delete;
+        Logger(Logger&&) = delete;
+        Logger& operator=(Logger&&) = delete;
     };
 
     Logger& instance(const std::filesystem::path& log_file_path = {}) noexcept;
@@ -64,9 +71,8 @@ void logging::raw_log(const std::string& message) noexcept
 logging::log<std::string>::log(std::ostream& stream, const std::source_location& location, const std::string& message) noexcept
 {
     const std::string formated_message{
-        std::format("{} - {} - {} ({} at line {})",
-                    time_local(), message, light_function_name(location),
-                    location.file_name(), location.line())
+        time_local() + " - " + message + " - " + light_function_name(location) +
+        " (" + location.file_name() + " at line " + std::to_string(location.line()) + ")"
     };
     instance().log(stream, formated_message);
 }
@@ -101,10 +107,10 @@ inline std::string logging::light_function_name(const std::source_location& loca
 
 inline logging::Logger::Logger(const std::filesystem::path& log_file_path) noexcept
     : _log_file{ log_file_path, std::ios::out | std::ios::trunc }
-    , _is_running{ true }
     , _flush_thread{
         [&]() {
-            std::string cout_str, cerr_str;
+            std::string cout_str;
+            std::string cerr_str;
 
             while (_is_running) {
                 flush_locals(cout_str, cerr_str);
