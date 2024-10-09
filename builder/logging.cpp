@@ -2,9 +2,7 @@
 
 #include <chrono>
 #include <fstream>
-#include <functional>
-#include <memory>
-#include <mutex>
+#include <iostream>
 #include <sstream>
 #include <thread>
 
@@ -16,25 +14,21 @@ namespace logging
     class Logger
     {
     public:
-        explicit Logger(const std::filesystem::path& log_file_path) noexcept;
+        Logger() noexcept;
         ~Logger() noexcept;
 
-        void log(std::ostream& stream, const std::string& message) noexcept;
+        void open(const std::filesystem::path& log_file_path) noexcept;
+
+        template <typename T>
+        Logger& operator<<(const T& message) noexcept;
 
     protected:
-        void flush_locals(std::string& cout_str, std::string& cerr_str) noexcept;
+        void flush() noexcept;
 
     private:
-        std::mutex _mutex;
         std::ofstream _log_file;
         bool _is_running{ true };
         std::thread _flush_thread;
-
-        std::ostringstream _cout_local;
-        std::ostringstream _cerr_local;
-
-        std::streambuf* const _cout_buffer;
-        std::streambuf* const _cerr_buffer;
 
     public:
         // prevent copy/move
@@ -44,13 +38,13 @@ namespace logging
         Logger& operator=(Logger&&) = delete;
     };
 
-    Logger& instance(const std::filesystem::path& log_file_path = {}) noexcept;
+    Logger& logger() noexcept;
+    void log(const std::string& type, const std::source_location& location, const std::string& message) noexcept;
 }
 
 void logging::init(const std::filesystem::path& log_file_path) noexcept
 {
-    // create the instance
-    instance(log_file_path);
+    logger().open(log_file_path);
 }
 
 std::string logging::time_local() noexcept
@@ -65,26 +59,17 @@ std::string logging::time_local() noexcept
 
 void logging::raw_log(const std::string& message) noexcept
 {
-    instance().log(std::cout, message);
-}
-
-logging::log<std::string>::log(std::ostream& stream, const std::source_location& location, const std::string& message) noexcept
-{
-    const std::string formated_message{
-        time_local() + " - " + message + " - " + light_function_name(location) +
-        " (" + location.file_name() + " at line " + std::to_string(location.line()) + ")"
-    };
-    instance().log(stream, formated_message);
+    logger() << message << '\n';
 }
 
 logging::info<std::string>::info(const std::string& message, const std::source_location& location) noexcept
 {
-    log<std::string>{ std::cout, location, message };
+    log("MSG", location, message);
 }
 
 logging::error<std::string>::error(const std::string& message, const std::source_location& location) noexcept
 {
-    log<std::string>{ std::cerr, location, message };
+    log("ERR", location, message);
 }
 
 logging::debug<std::string>::debug(const std::string& message, const std::source_location& location) noexcept
@@ -105,26 +90,18 @@ inline std::string logging::light_function_name(const std::source_location& loca
     return std::string{ function_name, start_index, end_index - start_index };
 }
 
-inline logging::Logger::Logger(const std::filesystem::path& log_file_path) noexcept
-    : _log_file{ log_file_path, std::ios::out | std::ios::trunc }
-    , _flush_thread{
+inline logging::Logger::Logger() noexcept
+    : _flush_thread{
         [&]() {
-            std::string cout_str;
-            std::string cerr_str;
-
             while (_is_running) {
-                flush_locals(cout_str, cerr_str);
+                flush();
 
                 using namespace std::chrono_literals;
                 std::this_thread::sleep_for(3s);
             }
         }
-    } // save to restore in destructor
-    , _cout_buffer{ std::cout.rdbuf() }
-    , _cerr_buffer{ std::cerr.rdbuf() }
+    }
 {
-    std::cout.rdbuf(_cout_local.rdbuf());
-    std::cerr.rdbuf(_cerr_local.rdbuf());
 }
 
 inline logging::Logger::~Logger() noexcept
@@ -134,57 +111,39 @@ inline logging::Logger::~Logger() noexcept
         _flush_thread.join();
     }
 
-    std::cout.rdbuf(_cout_buffer);
-    std::cerr.rdbuf(_cerr_buffer);
+    flush(); // flush one more time for precaution
 }
 
-inline void logging::Logger::log(std::ostream& stream, const std::string& message) noexcept
+inline void logging::Logger::open(const std::filesystem::path& log_file_path) noexcept
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
-    stream << message << '\n';
+    _log_file.open(log_file_path);
 }
 
-inline void logging::Logger::flush_locals(std::string& cout_str, std::string& cerr_str) noexcept
+template <typename T>
+inline logging::Logger& logging::Logger::operator<<(const T& message) noexcept
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    _log_file << message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    std::clog << message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    return *this;
+}
 
-    cout_str = _cout_local.str();
-    cerr_str = _cerr_local.str();
-
-    // clear
-    _cout_local.str(std::string{});
-    _cerr_local.str(std::string{});
-
+inline void logging::Logger::flush() noexcept
+{
     if (_log_file.is_open()) {
-        if (!cout_str.empty()) {
-            _log_file << "MSG: " << cout_str;
-        }
-        if (!cerr_str.empty()) {
-            _log_file << "ERR: " << cerr_str;
-        }
         _log_file.flush();
     }
 
-    if (!cout_str.empty()) {
-        std::cout.rdbuf(_cout_buffer);
-        std::cout << cout_str << std::flush;
-        std::cout.rdbuf(_cout_local.rdbuf());
-    }
-    if (!cerr_str.empty()) {
-        std::cerr.rdbuf(_cerr_buffer);
-        std::cerr << cerr_str << std::flush;
-        std::cerr.rdbuf(_cerr_local.rdbuf());
-    }
+    std::clog.flush();
 }
 
-inline logging::Logger& logging::instance(const std::filesystem::path& log_file_path) noexcept
+inline logging::Logger& logging::logger() noexcept
 {
-    static std::once_flag flag;
-    static std::unique_ptr<Logger> instance;
-    std::call_once(flag, [&]() {
-        if (!instance) {
-            instance = std::make_unique<Logger>(log_file_path);
-        }
-    });
-    return *instance;
+    static Logger instance;
+    return instance;
+}
+
+inline void logging::log(const std::string& type, const std::source_location& location, const std::string& message) noexcept
+{
+    logger() << type << " - " << time_local() << " - " << message << " - " << light_function_name(location)
+             << " (" << location.file_name() << " at line " << location.line() << ")" << '\n';
 }

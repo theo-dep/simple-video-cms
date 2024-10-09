@@ -2,7 +2,6 @@
 
 #include <filesystem>
 #include <format>
-#include <iostream>
 #include <source_location>
 #include <string>
 
@@ -12,18 +11,6 @@ namespace logging
 
     std::string time_local() noexcept;
     void raw_log(const std::string& message) noexcept; // for server log
-
-    template <class... Args>
-    struct log
-    {
-        log(std::ostream& stream, const std::source_location& location, std::format_string<Args...> fmt, Args&&... args) noexcept;
-    };
-
-    template <>
-    struct log<std::string>
-    {
-        log(std::ostream& stream, const std::source_location& location, const std::string& message) noexcept;
-    };
 
     // https://www.cppstories.com/2020/09/variadic-pack-first.html/
     // https://cor3ntin.github.io/posts/variadic/
@@ -75,31 +62,28 @@ namespace logging
 }
 
 template <class... Args>
-logging::log<Args...>::log(std::ostream& stream, const std::source_location& location, std::format_string<Args...> fmt, Args&&... args) noexcept
+logging::info<Args...>::info(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location) noexcept
 {
     try {
-        log<std::string>{ stream, location, std::format(fmt, std::forward<Args>(args)...) };
+        info<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
     } catch (const std::exception& e) {
         error<std::string>{ e.what(), location };
     }
 }
 
 template <class... Args>
-logging::info<Args...>::info(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location) noexcept
-{
-    log<Args...>{ std::cout, location, fmt, std::forward<Args>(args)... };
-}
-
-template <class... Args>
 logging::error<Args...>::error(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location) noexcept
 {
-    log<Args...>{ std::cerr, location, fmt, std::forward<Args>(args)... };
+    try {
+        error<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
+    } catch (const std::exception& e) {
+        error<std::string>{ e.what(), location };
+    }
 }
 
 template <class... Args>
 logging::debug<Args...>::debug(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location) noexcept
 {
-    // reuse the macro formatting
     try {
         debug<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
     } catch (const std::exception& e) {
