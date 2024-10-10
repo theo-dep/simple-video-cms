@@ -48,7 +48,7 @@ int server::start() noexcept
 
     httplib::Server server;
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
-        std::cout << sc::log(req, res) << std::endl;
+        logging::raw_log(sc::log(req, res));
     });
 
     server

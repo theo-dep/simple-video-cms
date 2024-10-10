@@ -152,7 +152,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
 inline void server::set_logger(httplib::Server& server) noexcept
 {
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
-        std::cout << sc::log(req, res) << std::endl;
+        logging::raw_log(sc::log(req, res));
     });
 }
 

@@ -8,6 +8,7 @@ IndentCaseLabels: true
 DerivePointerAlignment: false
 PointerAlignment: Left
 BreakBeforeBraces: Custom
+BreakConstructorInitializers: BeforeComma
 BraceWrapping:
   AfterFunction: true
   AfterClass: true
