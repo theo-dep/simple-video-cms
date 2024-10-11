@@ -108,6 +108,7 @@
         "stacktrace": "cpp",
         "syncstream": "cpp",
         "typeindex": "cpp",
-        "stdfloat": "cpp"
+        "stdfloat": "cpp",
+        "cassert": "cpp"
     }
 }

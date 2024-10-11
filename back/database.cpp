@@ -20,7 +20,7 @@ namespace database
 
     std::optional<Admin> admin(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept;
     std::optional<User> user(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept;
-    std::optional<Video> video(const std::unique_ptr<dbng>& conn, const std::string& id) noexcept;
+    std::optional<Video> video(const std::unique_ptr<dbng>& conn, const types::md5_varchar& id) noexcept;
 }
 
 inline std::unique_ptr<database::dbng> database::connection() noexcept
@@ -58,7 +58,7 @@ bool database::create_tables() noexcept
     }
     {
         ormpp_key key{ "id" };
-        ormpp_not_null not_null{ { "id" } };
+        ormpp_not_null not_null{ { "id", "title", "file_path" } };
         if (!conn->create_datatable<Video>(key, not_null)) {
             logging::error{ "Fail to create Video table" };
             return false;
@@ -86,7 +86,7 @@ std::vector<T> database::transform(const std::vector<std::tuple<T>>& query_out) 
     return out;
 }
 
-std::vector<std::string> database::most_viewed() noexcept
+std::vector<types::md5_varchar> database::video_list() noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -94,17 +94,29 @@ std::vector<std::string> database::most_viewed() noexcept
         return {};
     }
 
-    const std::vector tuple_ids{ conn->query_s<std::tuple<std::string>>("SELECT id FROM Video ORDER BY view_count DESC LIMIT 10") };
+    const std::vector tuple_videos{ conn->query_s<std::tuple<types::md5_varchar>>("SELECT id FROM Video") };
+    return transform(tuple_videos);
+}
+
+std::vector<types::md5_varchar> database::most_viewed() noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return {};
+    }
+
+    const std::vector tuple_ids{ conn->query_s<std::tuple<types::md5_varchar>>("SELECT id FROM Video ORDER BY view_count DESC LIMIT 10") };
     return transform(tuple_ids);
 }
 
-inline std::optional<Video> database::video(const std::unique_ptr<dbng>& conn, const std::string& id) noexcept
+inline std::optional<Video> database::video(const std::unique_ptr<dbng>& conn, const types::md5_varchar& id) noexcept
 {
     const std::vector videos{ conn->query_s<Video>("id=?", id) };
     return (videos.empty() ? std::nullopt : std::optional{ videos[0] });
 }
 
-std::string database::video_title(const std::string& video_id) noexcept
+std::string database::video_title(const types::md5_varchar& id) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -112,10 +124,10 @@ std::string database::video_title(const std::string& video_id) noexcept
         return {};
     }
 
-    return video(conn, video_id).value_or(Video{}).title;
+    return video(conn, id).value_or(Video{}).title;
 }
 
-int database::video_views(const std::string& video_id) noexcept
+int database::video_views(const types::md5_varchar& id) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -123,10 +135,10 @@ int database::video_views(const std::string& video_id) noexcept
         return -1;
     }
 
-    return video(conn, video_id).value_or(Video{}).view_count;
+    return video(conn, id).value_or(Video{}).view_count;
 }
 
-std::string database::video_uploader(const std::string& video_id) noexcept
+std::string database::video_file_path(const types::md5_varchar& id) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -134,7 +146,7 @@ std::string database::video_uploader(const std::string& video_id) noexcept
         return {};
     }
 
-    return video(conn, video_id).value_or(Video{}).uploader;
+    return video(conn, id).value_or(Video{}).file_path;
 }
 
 std::optional<Admin> database::admin(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept
@@ -304,4 +316,58 @@ std::vector<std::string> database::user_list() noexcept
 
     const std::vector tuple_usernames{ conn->query_s<std::tuple<std::string>>("SELECT username FROM User") };
     return transform(tuple_usernames);
+}
+
+void database::add_video(const types::md5_varchar& id, const std::string& title, const std::string& file_path) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    try {
+        const Video video{
+            .id = id,
+            .title = title,
+            .file_path = file_path
+        };
+        conn->insert(video);
+    } catch (const std::exception& e) {
+        logging::error{ "Fail to insert video \"{}\" with error: {}", title, e.what() };
+    }
+}
+
+void database::delete_video(const types::md5_varchar& id) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    conn->delete_records_s<Video>("id=?", id);
+}
+
+void database::increment_video_views(const types::md5_varchar& id) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    // get previous user (update with where clause not available)
+    std::optional video_to_update{ video(conn, id) };
+    if (!video_to_update.has_value()) {
+        logging::error{ "Unknown video: {}", id.data() };
+        return;
+    }
+
+    try {
+        video_to_update->view_count += 1;
+        conn->update_some<&Video::view_count>(video_to_update.value());
+    } catch (const std::exception& e) {
+        logging::error{ "Fail to update video \"{}\" with error: {}", id.data(), e.what() };
+    }
 }

@@ -61,3 +61,20 @@ int su::string_to_int(const std::string& str, bool* ok) noexcept
         return 0;
     }
 }
+
+std::string su::md5_varchar_to_string(const types::md5_varchar& array) noexcept
+{
+    std::string str;
+    str.resize(array.size());
+    std::ranges::copy(array, str.begin());
+    return str;
+}
+
+types::md5_varchar su::string_to_md5_varchar(const std::string& str) noexcept
+{
+    types::md5_varchar array{};
+    // potentially truncate the string
+    const std::size_t min_size{ std::min(array.size(), str.size()) };
+    std::copy(str.cbegin(), std::next(str.cbegin(), min_size), array.begin());
+    return array;
+}
