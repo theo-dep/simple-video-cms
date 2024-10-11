@@ -239,6 +239,11 @@ void Client::delete_video(const std::string& id) const noexcept
     _client->Post("/delete-video/" + id);
 }
 
+void Client::increment_video_views(const std::string& id) const noexcept
+{
+    _client->Post("/increment-video-views/" + id);
+}
+
 std::string Client::video(const std::string& id) const noexcept
 {
     std::string video_content;

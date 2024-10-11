@@ -55,6 +55,7 @@ public:
 
     void add_video(const std::string& title, const std::string& content) const noexcept;
     void delete_video(const std::string& id) const noexcept;
+    void increment_video_views(const std::string& id) const noexcept;
     std::string video(const std::string& id) const noexcept;
 
 private:

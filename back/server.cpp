@@ -39,6 +39,7 @@ namespace server
 
     void add_video(const httplib::Request& req, httplib::Response& res) noexcept;
     void delete_video(const httplib::Request& req, httplib::Response& res) noexcept;
+    void increment_video_views(const httplib::Request& req, httplib::Response& res) noexcept;
     void video(const httplib::Request& req, httplib::Response& res) noexcept;
 }
 
@@ -82,6 +83,7 @@ int server::start() noexcept
 
         .Post("/add-video", sc::serve(add_video))
         .Post("/delete-video/:video_id", sc::serve(delete_video))
+        .Post("/increment-video-views/:video_id", sc::serve(increment_video_views))
         .Get("/video/:video_id", sc::serve(video));
 
     constexpr const char* host{ "0.0.0.0" };
@@ -321,10 +323,18 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     }
 }
 
+inline void server::increment_video_views(const httplib::Request& req, httplib::Response& /*res*/) noexcept
+{
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+    database::increment_video_views(video_id);
+}
+
 inline void server::video(const httplib::Request& req, httplib::Response& res) noexcept
 {
-    const std::string video_id{ req.path_params.at("video_id") };
-    const std::filesystem::path video_file_path{ database::video_file_path(su::string_to_md5_varchar(video_id)) };
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+    const std::filesystem::path video_file_path{ database::video_file_path(video_id) };
 
     std::size_t video_length{};
     std::shared_ptr<char[]> video_content;

@@ -586,6 +586,8 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
     const bool is_logged{ session.is_valid_session_from_cookie(cookie) };
 
     const std::string video_id{ req.path_params.at("video_id") };
+    client.increment_video_views(video_id);
+
     const std::string video_title{ client.video_title(video_id) };
     const int video_views{ client.video_views(video_id) };
 

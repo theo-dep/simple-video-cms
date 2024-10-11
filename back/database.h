@@ -33,4 +33,5 @@ namespace database
 
     void add_video(const types::md5_varchar& id, const std::string& title, const std::string& file_path) noexcept;
     void delete_video(const types::md5_varchar& id) noexcept;
+    void increment_video_views(const types::md5_varchar& id) noexcept;
 }
