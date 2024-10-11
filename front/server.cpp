@@ -49,6 +49,8 @@ namespace server
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+    void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 }
 
 int server::start() noexcept
@@ -100,7 +102,9 @@ int server::start() noexcept
 
         .Get("/add-video", sc::serve(add_video_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/add-video", sc::serve(add_video_post, std::ref(env), std::cref(session), std::cref(client)))
-        .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(confirm_handler), std::ref(session), std::cref(client)));
+        .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/watch-video/:video_id", sc::serve(watch_video, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -189,7 +193,7 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
 
 inline inja::json server::video_dict(const std::vector<std::string>& video_ids, const Client& client) noexcept
 {
-    inja::json video_dict;
+    inja::json video_dict = inja::json::array();
     for (const std::string& id : video_ids) {
         const std::string title{ client.video_title(id) };
         const int views{ client.video_views(id) };
@@ -567,4 +571,48 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     };
 
     confirm_action(req, res, session, client, signal_str);
+}
+
+inline void server::watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    // wait for user rights
+    // const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    // if (!session.is_valid_session(session_id)) {
+    //    res.set_redirect("/login");
+    //    return;
+    //}
+
+    const bool is_logged{ session.is_valid_session_from_cookie(cookie) };
+
+    const std::string video_id{ req.path_params.at("video_id") };
+    const std::string video_title{ client.video_title(video_id) };
+    const int video_views{ client.video_views(video_id) };
+
+    const inja::json data{
+        { "is_logged", is_logged },
+        { "id", video_id },
+        { "title", video_title },
+        { "views", video_views }
+    };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.watch_video_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
+{
+    // wait for user rights
+    // const std::string cookie{ req.get_header_value("Cookie") };
+    // const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    // if (!session.is_valid_session(session_id)) {
+    //    res.set_redirect("/login");
+    //    return;
+    //}
+    (void)session;
+
+    const std::string video_id{ req.path_params.at("video_id") };
+    const std::string video_content{ client.video(video_id) };
+    res.set_content(video_content, "video/mp4");
 }

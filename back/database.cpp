@@ -138,6 +138,17 @@ int database::video_views(const types::md5_varchar& id) noexcept
     return video(conn, id).value_or(Video{}).view_count;
 }
 
+std::string database::video_file_path(const types::md5_varchar& id) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return {};
+    }
+
+    return video(conn, id).value_or(Video{}).file_path;
+}
+
 std::optional<Admin> database::admin(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept
 {
     const std::vector admins{ conn->query_s<Admin>("username=?", username) };

@@ -39,6 +39,7 @@ namespace server
 
     void add_video(const httplib::Request& req, httplib::Response& res) noexcept;
     void delete_video(const httplib::Request& req, httplib::Response& res) noexcept;
+    void video(const httplib::Request& req, httplib::Response& res) noexcept;
 }
 
 int server::start() noexcept
@@ -80,7 +81,8 @@ int server::start() noexcept
         .Get("/user-list", sc::serve(user_list))
 
         .Post("/add-video", sc::serve(add_video))
-        .Post("/delete-video/:video_id", sc::serve(delete_video));
+        .Post("/delete-video/:video_id", sc::serve(delete_video))
+        .Get("/video/:video_id", sc::serve(video));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
@@ -299,7 +301,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
     const std::filesystem::path video_file_path{ video_path / su::md5_varchar_to_string(video_id) };
     {
-        std::ofstream video_stream(video_file_path.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
+        std::ofstream video_stream(video_file_path, std::ios::out | std::ios::binary | std::ios::trunc);
         video_stream.write(video_content.data(), video_content.size());
     }
 
@@ -317,4 +319,32 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     if (!server::remove(video_file_path)) {
         res.status = httplib::StatusCode::InternalServerError_500;
     }
+}
+
+inline void server::video(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    const std::string video_id{ req.path_params.at("video_id") };
+    const std::filesystem::path video_file_path{ database::video_file_path(su::string_to_md5_varchar(video_id)) };
+
+    std::size_t video_length{};
+    std::shared_ptr<char[]> video_content;
+    {
+        // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
+        std::ifstream video_stream(video_file_path, std::ios::in | std::ios::binary);
+        video_stream.seekg(0, std::ios::end);
+        video_length = video_stream.tellg();
+        video_content = std::make_shared_for_overwrite<char[]>(video_length);
+        video_stream.seekg(0, std::ios::beg);
+        video_stream.read(&video_content[0], video_length);
+    }
+    logging::debug{ "Video length: {}", video_length };
+
+    res.set_content_provider(
+        video_length, // Content length
+        "video/mp4",  // Content type
+        [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) {
+            sink.write(&video_content[offset], length);
+            return true; // return 'false' if you want to cancel the process.
+        },
+        [video_content](bool /*success*/) { /*release*/ });
 }

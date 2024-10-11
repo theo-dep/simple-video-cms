@@ -114,6 +114,12 @@ std::string Client::add_video_page() const noexcept
     return client::format_page(res);
 }
 
+std::string Client::watch_video_page() const noexcept
+{
+    const httplib::Result res{ _client->Get("/html/watch_video.html") };
+    return client::format_page(res);
+}
+
 std::vector<std::string> Client::video_list() const noexcept
 {
     const httplib::Result res{ _client->Get("/video-list") };
@@ -231,6 +237,31 @@ void Client::add_video(const std::string& title, const std::string& content) con
 void Client::delete_video(const std::string& id) const noexcept
 {
     _client->Post("/delete-video/" + id);
+}
+
+std::string Client::video(const std::string& id) const noexcept
+{
+    std::string video_content;
+    const httplib::Result res{
+        _client->Get("/video/" + id,
+                     [&video_content](const char* data, std::size_t data_length) {
+                         video_content.append(data, data_length);
+                         return true;
+                     })
+    };
+    logging::debug{ "Video length: {}", video_content.size() };
+
+    if (!res) {
+        logging::error{ "Fail to transfer the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        return {};
+    }
+
+    if (res->status != httplib::StatusCode::OK_200) {
+        logging::error{ "Fail to transfer the video with error: {} ({})", httplib::status_message(res->status), res->status };
+        return {};
+    }
+
+    return video_content;
 }
 
 inline std::string client::generic_error(int error, const std::string& message) noexcept
