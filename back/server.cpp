@@ -13,7 +13,7 @@
 
 namespace server
 {
-    void create_admin() noexcept;
+    void create_super_admin() noexcept;
 
     void template_page(const httplib::Request& req, httplib::Response& res) noexcept;
 
@@ -28,6 +28,7 @@ namespace server
     void view_count(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void is_admin(const httplib::Request& req, httplib::Response& res) noexcept;
+    void is_super_admin(const httplib::Request& req, httplib::Response& res) noexcept;
     void is_user(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void add_admin(const httplib::Request& req, httplib::Response& res) noexcept;
@@ -54,7 +55,7 @@ int server::start() noexcept
         return EXIT_FAILURE;
     }
 
-    create_admin();
+    create_super_admin();
 
     httplib::Server server;
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
@@ -75,6 +76,7 @@ int server::start() noexcept
         .Get("/view-count", sc::serve(view_count))
 
         .Get("/is-admin", sc::serve(is_admin))
+        .Get("/is-super-admin", sc::serve(is_super_admin))
         .Get("/is-user", sc::serve(is_user))
 
         .Post("/add-admin", sc::serve(add_admin))
@@ -99,7 +101,7 @@ int server::start() noexcept
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-inline void server::create_admin() noexcept
+inline void server::create_super_admin() noexcept
 {
     const std::string username{ sc::get_env("MYSQL_ADMIN_USERNAME", "admin") };
     if (database::is_admin(username)) {
@@ -108,7 +110,7 @@ inline void server::create_admin() noexcept
     }
 
     const std::string password{ crypto::sha512(sc::get_env("MYSQL_ADMIN_PASSWORD", "admin")) };
-    database::add_admin(username, password);
+    database::add_super_admin(username, password);
 }
 
 inline void server::template_page(const httplib::Request& req, httplib::Response& res) noexcept
@@ -187,6 +189,19 @@ inline void server::is_admin(const httplib::Request& req, httplib::Response& res
     res.set_content(su::bool_to_string(is_admin), "plain/text");
 }
 
+inline void server::is_super_admin(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    if (!req.has_header("username")) {
+        logging::error{ "Missing header data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::string username{ req.get_header_value("username") };
+    const bool is_super_admin{ database::is_super_admin(username) };
+    res.set_content(su::bool_to_string(is_super_admin), "plain/text");
+}
+
 inline void server::is_user(const httplib::Request& req, httplib::Response& res) noexcept
 {
     if (!req.has_header("username")) {
@@ -235,6 +250,12 @@ inline void server::update_admin(const httplib::Request& req, httplib::Response&
     }
 
     const std::string username{ req.get_file_value("username").content };
+    if (database::is_super_admin(username)) {
+        logging::error{ "Trying to update a super admin \"{}\"", username };
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
     const std::string password{ req.get_file_value("password").content };
     database::update_admin(username, password);
 }
@@ -261,6 +282,12 @@ inline void server::delete_admin(const httplib::Request& req, httplib::Response&
     }
 
     const std::string username{ req.get_file_value("username").content };
+    if (database::is_super_admin(username)) {
+        logging::error{ "Trying to delete a super admin \"{}\"", username };
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
     database::delete_admin(username);
 }
 

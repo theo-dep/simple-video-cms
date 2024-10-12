@@ -15,9 +15,10 @@ REFLECTION(User, id, username, password)
 
 struct Admin : User
 {
+    bool super{ false };
 };
 REGISTER_AUTO_KEY(Admin, id);
-REFLECTION(Admin, id, username, password)
+REFLECTION(Admin, id, username, password, super)
 
 struct Video
 {

@@ -40,15 +40,24 @@
         </tr>
       </thead>
       <tbody>
-        {% for username in admin_dict %}
+        {% for admin in admin_dict %}
         <tr>
-          <td style="color:#FFFFFF;" data-title="Username">{{ username }}</td>
+          <td style="color:#FFFFFF;" data-title="Username">{{ admin.username }}</td>
+          {% if not admin.is_super_admin %}
           <td style="color:#FFFFFF;" data-title="Update">
-            <a style="color:#16A085;text-decoration:none;" href="/update-user/{{ username }}?admin=true">Update</a>
+            <a style="color:#16A085;text-decoration:none;" href="/update-user/{{ admin.username }}?admin=true">
+              Update
+            </a>
           </td>
           <td style="color:#FFFFFF;" data-title="Delete">
-            <a style="color:#16A085;text-decoration:none;" href="/delete-user/{{ username }}?admin=true">Delete</a>
+            <a style="color:#16A085;text-decoration:none;" href="/delete-user/{{ admin.username }}?admin=true">
+              Delete
+            </a>
           </td>
+          {% else %}
+          <td></td>
+          <td></td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>

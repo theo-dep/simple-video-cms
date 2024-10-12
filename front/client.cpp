@@ -161,6 +161,15 @@ bool Client::is_admin(const std::string& username) const noexcept
     return su::string_to_bool(client::format_page(res));
 }
 
+bool Client::is_super_admin(const std::string& username) const noexcept
+{
+    const httplib::Headers headers{
+        { "username", username },
+    };
+    const httplib::Result res{ _client->Get("/is-super-admin", headers) };
+    return su::string_to_bool(client::format_page(res));
+}
+
 bool Client::is_user(const std::string& username) const noexcept
 {
     const httplib::Headers headers{

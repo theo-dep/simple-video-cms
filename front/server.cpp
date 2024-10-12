@@ -200,7 +200,7 @@ inline inja::json server::video_dict(const std::vector<std::string>& video_ids, 
     for (const std::string& id : video_ids) {
         const std::string title{ client.video_title(id) };
         const int views{ client.video_views(id) };
-        inja::json video = { { "id", id }, { "title", title }, { "views", views } };
+        const inja::json video = { { "id", id }, { "title", title }, { "views", views } };
         video_dict += video;
     }
     return video_dict;
@@ -303,7 +303,14 @@ inline void server::admin_list(const httplib::Request& req, httplib::Response& r
         return;
 
     const std::vector<std::string> admin_list{ client.admin_list() };
-    const inja::json data{ { "admin_dict", admin_list } };
+    inja::json admin_dict = inja::json::array();
+    for (const std::string& username : admin_list) {
+        const bool is_super_admin{ client.is_super_admin(username) };
+        const inja::json admin = { { "username", username }, { "is_super_admin", is_super_admin } };
+        admin_dict += admin;
+    }
+
+    const inja::json data{ { "admin_dict", admin_dict } };
     logging::debug{ data.dump() };
 
     const std::string body{ env.render(client.admin_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse

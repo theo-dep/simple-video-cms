@@ -17,6 +17,9 @@ namespace database
     int video_views(const types::md5_varchar& id) noexcept;
     std::string video_file_path(const types::md5_varchar& id) noexcept;
 
+    void add_super_admin(const std::string& username, const std::string& password) noexcept;
+    bool is_super_admin(const std::string& username) noexcept;
+
     bool is_admin(const std::string& username) noexcept;
     bool is_user(const std::string& username) noexcept;
     void add_admin(const std::string& username, const std::string& password) noexcept;

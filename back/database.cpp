@@ -161,6 +161,36 @@ std::optional<User> database::user(const std::unique_ptr<dbng>& conn, const std:
     return (users.empty() ? std::nullopt : std::optional{ users[0] });
 }
 
+void database::add_super_admin(const std::string& username, const std::string& password) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    try {
+        Admin admin;
+        admin.username = username;
+        admin.password = password;
+        admin.super = true;
+        conn->insert(admin);
+    } catch (const std::exception& e) {
+        logging::error{ "Fail to insert super admin \"{}\" with error: {}", username, e.what() };
+    }
+}
+
+bool database::is_super_admin(const std::string& username) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return false;
+    }
+
+    return admin(conn, username).value_or(Admin{}).super;
+}
+
 bool database::is_admin(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };

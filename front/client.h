@@ -43,6 +43,7 @@ public:
     int video_views(const std::string& id) const noexcept;
 
     bool is_admin(const std::string& username) const noexcept;
+    bool is_super_admin(const std::string& username) const noexcept;
     bool is_user(const std::string& username) const noexcept;
     void add_admin(const std::string& username, const std::string& password) const noexcept;
     void add_user(const std::string& username, const std::string& password) const noexcept;
