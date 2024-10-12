@@ -21,7 +21,7 @@
     </div>
   </div>
   <div class="form">
-    <form class="login-form" action="/update-user/{{ username }}" method="post">
+    <form class="login-form" action="/update-user/{{ username }}?admin={{ admin }}" method="post">
       {% if login_error %}
       <div class="alert">
         <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>

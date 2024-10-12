@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>User List</title>
+  <title>Admin List</title>
   <link rel="stylesheet" href="/static/css/bootstrap-min-337.css">
   <link rel="stylesheet" href="/static/css/user_list.css">
   <link rel="icon" href="/static/img/favicon.png" type="image/png">
@@ -17,14 +17,14 @@
       </div>
       <ul class="nav navbar-nav navbar-right">
         <li><a style="color: #16A085;" href="/dashboard">Dashboard</a></li>
-        <li><a style="color: #16A085;" href="/admin-list">Admin List</a></li>
+        <li><a style="color: #16A085;" href="/user-list">User List</a></li>
         <li><a style="color: #16A085;" href="/video-list">Video List</a></li>
         <li><a style="color: #16A085;" href="/logout">Logout</a></li>
       </ul>
     </div>
   </nav>
   <br><br><br>
-  <h2 style="color:#16A085; text-align:center;">List of users</h2>
+  <h2 style="color:#16A085; text-align:center;">List of administrators</h2>
   <br><br>
   <div class="table-responsive-vertical shadow-z-1">
     <table id="table" class="table table-hover">
@@ -33,21 +33,21 @@
           <th>Username</th>
           <th></th>
           <th style="text-align: right;">
-            <a href="/add-user?admin=false">
-              <img src="static/img/person-add.svg" alt="add a new user" />
+            <a href="/add-user?admin=true">
+              <img src="static/img/person-add.svg" alt="add a new admin" />
             </a>
           </th>
         </tr>
       </thead>
       <tbody>
-        {% for username in user_dict %}
+        {% for username in admin_dict %}
         <tr>
           <td style="color:#FFFFFF;" data-title="Username">{{ username }}</td>
           <td style="color:#FFFFFF;" data-title="Update">
-            <a style="color:#16A085;text-decoration:none;" href="/update-user/{{ username }}?admin=false">Update</a>
+            <a style="color:#16A085;text-decoration:none;" href="/update-user/{{ username }}?admin=true">Update</a>
           </td>
           <td style="color:#FFFFFF;" data-title="Delete">
-            <a style="color:#16A085;text-decoration:none;" href="/delete-user/{{ username }}?admin=false">Delete</a>
+            <a style="color:#16A085;text-decoration:none;" href="/delete-user/{{ username }}?admin=true">Delete</a>
           </td>
         </tr>
         {% endfor %}

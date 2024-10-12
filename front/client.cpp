@@ -102,6 +102,12 @@ std::string Client::update_user_page() const noexcept
     return client::format_page(res);
 }
 
+std::string Client::admin_list_page() const noexcept
+{
+    const httplib::Result res{ _client->Get("/html/admin_list.html") };
+    return client::format_page(res);
+}
+
 std::string Client::video_list_page() const noexcept
 {
     const httplib::Result res{ _client->Get("/html/video_list.html") };
@@ -155,13 +161,22 @@ bool Client::is_admin(const std::string& username) const noexcept
     return su::string_to_bool(client::format_page(res));
 }
 
-bool Client::is_valid_username(const std::string& username) const noexcept
+bool Client::is_user(const std::string& username) const noexcept
 {
     const httplib::Headers headers{
         { "username", username },
     };
-    const httplib::Result res{ _client->Get("/is-valid-username", headers) };
+    const httplib::Result res{ _client->Get("/is-user", headers) };
     return su::string_to_bool(client::format_page(res));
+}
+
+void Client::add_admin(const std::string& username, const std::string& password) const noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "password", password, "", "" }
+    };
+    _client->Post("/add-admin", items);
 }
 
 void Client::add_user(const std::string& username, const std::string& password) const noexcept
@@ -173,6 +188,15 @@ void Client::add_user(const std::string& username, const std::string& password) 
     _client->Post("/add-user", items);
 }
 
+void Client::update_admin(const std::string& username, const std::string& password) const noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+        { "password", password, "", "" }
+    };
+    _client->Post("/update-admin", items);
+}
+
 void Client::update_user(const std::string& username, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
@@ -180,6 +204,14 @@ void Client::update_user(const std::string& username, const std::string& passwor
         { "password", password, "", "" }
     };
     _client->Post("/update-user", items);
+}
+
+void Client::delete_admin(const std::string& username) const noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "username", username, "", "" },
+    };
+    _client->Post("/delete-admin", items);
 }
 
 void Client::delete_user(const std::string& username) const noexcept
@@ -221,6 +253,13 @@ int Client::view_count() const noexcept
 std::vector<std::string> Client::user_list() const noexcept
 {
     const httplib::Result res{ _client->Get("/user-list") };
+    const std::string str_usernames{ client::format_page(res) };
+    return su::split(str_usernames);
+}
+
+std::vector<std::string> Client::admin_list() const noexcept
+{
+    const httplib::Result res{ _client->Get("/admin-list") };
     const std::string str_usernames{ client::format_page(res) };
     return su::split(str_usernames);
 }

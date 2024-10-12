@@ -4,15 +4,6 @@
 
 #include <ormpp.hpp>
 
-struct Admin
-{
-    int id;
-    std::string username;
-    std::string password;
-};
-REGISTER_AUTO_KEY(Admin, id);
-REFLECTION(Admin, id, username, password)
-
 struct User
 {
     int id;
@@ -21,6 +12,12 @@ struct User
 };
 REGISTER_AUTO_KEY(User, id);
 REFLECTION(User, id, username, password)
+
+struct Admin : User
+{
+};
+REGISTER_AUTO_KEY(Admin, id);
+REFLECTION(Admin, id, username, password)
 
 struct Video
 {

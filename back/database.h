@@ -19,10 +19,12 @@ namespace database
 
     bool is_admin(const std::string& username) noexcept;
     bool is_user(const std::string& username) noexcept;
-    void add_user(const std::string& username, const std::string& password) noexcept;
-    void update_user(const std::string& username, const std::string& password) noexcept;
-    void delete_user(const std::string& username) noexcept;
     void add_admin(const std::string& username, const std::string& password) noexcept;
+    void add_user(const std::string& username, const std::string& password) noexcept;
+    void update_admin(const std::string& username, const std::string& password) noexcept;
+    void update_user(const std::string& username, const std::string& password) noexcept;
+    void delete_admin(const std::string& username) noexcept;
+    void delete_user(const std::string& username) noexcept;
     std::string get_password(const std::string& username) noexcept;
 
     int user_count() noexcept;
@@ -30,6 +32,7 @@ namespace database
     int view_count() noexcept;
 
     std::vector<std::string> user_list() noexcept;
+    std::vector<std::string> admin_list() noexcept;
 
     void add_video(const types::md5_varchar& id, const std::string& title, const std::string& file_path) noexcept;
     void delete_video(const types::md5_varchar& id) noexcept;

@@ -183,6 +183,24 @@ bool database::is_user(const std::string& username) noexcept
     return user(conn, username).has_value();
 }
 
+void database::add_admin(const std::string& username, const std::string& password) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    try {
+        Admin admin;
+        admin.username = username;
+        admin.password = password;
+        conn->insert(admin);
+    } catch (const std::exception& e) {
+        logging::error{ "Fail to insert admin \"{}\" with error: {}", username, e.what() };
+    }
+}
+
 void database::add_user(const std::string& username, const std::string& password) noexcept
 {
     const std::unique_ptr conn{ connection() };
@@ -198,6 +216,29 @@ void database::add_user(const std::string& username, const std::string& password
         conn->insert(user);
     } catch (const std::exception& e) {
         logging::error{ "Fail to insert user \"{}\" with error: {}", username, e.what() };
+    }
+}
+
+void database::update_admin(const std::string& username, const std::string& password) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    // get previous admin (update with where clause not available)
+    std::optional admin_to_update{ admin(conn, username) };
+    if (!admin_to_update.has_value()) {
+        logging::error{ "Unknown admin: {}", username };
+        return;
+    }
+
+    try {
+        admin_to_update->password = password;
+        conn->update_some<&Admin::password>(admin_to_update.value());
+    } catch (const std::exception& e) {
+        logging::error{ "Fail to update admin \"{}\" with error: {}", username, e.what() };
     }
 }
 
@@ -224,6 +265,17 @@ void database::update_user(const std::string& username, const std::string& passw
     }
 }
 
+void database::delete_admin(const std::string& username) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    conn->delete_records_s<Admin>("username=?", username);
+}
+
 void database::delete_user(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };
@@ -233,24 +285,6 @@ void database::delete_user(const std::string& username) noexcept
     }
 
     conn->delete_records_s<User>("username=?", username);
-}
-
-void database::add_admin(const std::string& username, const std::string& password) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    try {
-        Admin admin;
-        admin.username = username;
-        admin.password = password;
-        conn->insert(admin);
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to insert admin \"{}\" with error: {}", username, e.what() };
-    }
 }
 
 std::string database::get_password(const std::string& username) noexcept
@@ -315,6 +349,18 @@ std::vector<std::string> database::user_list() noexcept
     }
 
     const std::vector tuple_usernames{ conn->query_s<std::tuple<std::string>>("SELECT username FROM User") };
+    return transform(tuple_usernames);
+}
+
+std::vector<std::string> database::admin_list() noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return {};
+    }
+
+    const std::vector tuple_usernames{ conn->query_s<std::tuple<std::string>>("SELECT username FROM Admin") };
     return transform(tuple_usernames);
 }
 

@@ -30,6 +30,8 @@ public:
     std::string add_user_page() const noexcept;
     std::string update_user_page() const noexcept;
 
+    std::string admin_list_page() const noexcept;
+
     std::string video_list_page() const noexcept;
     std::string add_video_page() const noexcept;
     std::string watch_video_page() const noexcept;
@@ -41,9 +43,12 @@ public:
     int video_views(const std::string& id) const noexcept;
 
     bool is_admin(const std::string& username) const noexcept;
-    bool is_valid_username(const std::string& username) const noexcept;
+    bool is_user(const std::string& username) const noexcept;
+    void add_admin(const std::string& username, const std::string& password) const noexcept;
     void add_user(const std::string& username, const std::string& password) const noexcept;
+    void update_admin(const std::string& username, const std::string& password) const noexcept;
     void update_user(const std::string& username, const std::string& password) const noexcept;
+    void delete_admin(const std::string& username) const noexcept;
     void delete_user(const std::string& username) const noexcept;
     bool is_valid_user(const std::string& username, const std::string& password) const noexcept;
 
@@ -52,6 +57,7 @@ public:
     int view_count() const noexcept;
 
     std::vector<std::string> user_list() const noexcept;
+    std::vector<std::string> admin_list() const noexcept;
 
     void add_video(const std::string& title, const std::string& content) const noexcept;
     void delete_video(const std::string& id) const noexcept;
