@@ -22,7 +22,7 @@
     </div>
   </div>
   <div class="form">
-    <form class="login-form" action="/add-user" method="post">
+    <form class="login-form" action="/add-user?admin={{ admin }}" method="post">
       {% if create_error %}
       <div class="alert">
         <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
