@@ -377,6 +377,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
     const std::string video_title{ req.get_file_value("title").content };
     const std::string video_content{ req.get_file_value("video").content };
+    const std::vector allowed_usernames{ su::split(req.get_file_value("usernames").content) };
     const types::md5_varchar video_id{ crypto::sha1(video_title) };
 
     const std::filesystem::path video_path{ server::video_path() };
@@ -391,6 +392,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     }
 
     database::add_video(video_id, video_title, video_file_path.string());
+    database::add_video_rights(video_id, allowed_usernames);
 }
 
 inline void server::delete_video(const httplib::Request& req, httplib::Response& res) noexcept

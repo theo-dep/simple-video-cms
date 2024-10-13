@@ -567,7 +567,9 @@ inline void server::set_add_video_content(httplib::Response& res, inja::Environm
                                           const std::string& button_video_text_helper,
                                           const std::string& video_text_helper, const std::string& video_title_placeholder)
 {
+    const std::vector<std::string> user_list{ client.user_list() };
     const inja::json data{
+        { "user_dict", user_list },
         { "button_video_text_helper", button_video_text_helper },
         { "video_text_helper", video_text_helper },
         { "video_title_placeholder", video_title_placeholder }
@@ -602,13 +604,17 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    const httplib::MultipartFormData& item{ req.get_file_value("file") };
+    const httplib::MultipartFormData item{ req.get_file_value("file") };
     if (item.content_type != "video/mp4") {
         set_add_video_content(res, env, client, "choose mp4 file", default_video_text_helper(), default_video_title_placeholder());
         return;
     }
 
-    client.add_video(video_title, item.content);
+    const std::vector username_items{ req.get_file_values("usernames") };
+    std::vector<std::string> allowed_usernames(username_items.size());
+    std::ranges::transform(username_items, allowed_usernames.begin(), std::bind(&httplib::MultipartFormData::content, std::placeholders::_1));
+
+    client.add_video(video_title, item.content, allowed_usernames);
     res.set_redirect("/video-list");
 }
 
@@ -620,7 +626,7 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     const std::string video_id{ req.path_params.at("video_id") };
     logging::debug{ "Delete {}", video_id };
 
-    const std::string& signal_str{
+    const std::string signal_str{
         confirm_handler.create()
             .on_confirm([video_id, &client](httplib::Response& res) {
                 client.delete_video(video_id);

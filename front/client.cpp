@@ -158,7 +158,7 @@ int Client::video_views(const std::string& id) const noexcept
 bool Client::is_admin(const std::string& username) const noexcept
 {
     const httplib::Headers headers{
-        { "username", username },
+        { "username", username }
     };
     const httplib::Result res{ _client->Get("/is-admin", headers) };
     return su::string_to_bool(client::format_page(res));
@@ -167,7 +167,7 @@ bool Client::is_admin(const std::string& username) const noexcept
 bool Client::is_super_admin(const std::string& username) const noexcept
 {
     const httplib::Headers headers{
-        { "username", username },
+        { "username", username }
     };
     const httplib::Result res{ _client->Get("/is-super-admin", headers) };
     return su::string_to_bool(client::format_page(res));
@@ -176,7 +176,7 @@ bool Client::is_super_admin(const std::string& username) const noexcept
 bool Client::is_user(const std::string& username) const noexcept
 {
     const httplib::Headers headers{
-        { "username", username },
+        { "username", username }
     };
     const httplib::Result res{ _client->Get("/is-user", headers) };
     return su::string_to_bool(client::format_page(res));
@@ -221,7 +221,7 @@ void Client::update_user(const std::string& username, const std::string& passwor
 void Client::delete_admin(const std::string& username) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "username", username, "", "" },
+        { "username", username, "", "" }
     };
     _client->Post("/delete-admin", items);
 }
@@ -229,7 +229,7 @@ void Client::delete_admin(const std::string& username) const noexcept
 void Client::delete_user(const std::string& username) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "username", username, "", "" },
+        { "username", username, "", "" }
     };
     _client->Post("/delete-user", items);
 }
@@ -276,11 +276,12 @@ std::vector<std::string> Client::admin_list() const noexcept
     return su::split(str_usernames);
 }
 
-void Client::add_video(const std::string& title, const std::string& content) const noexcept
+void Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_usernames) const noexcept
 {
     const httplib::MultipartFormDataItems items{
         { "title", title, "", "" },
-        { "video", content, "", "" }
+        { "video", content, "", "" },
+        { "usernames", su::join(allowed_usernames), "", "" }
     };
     _client->Post("/add-video", items);
 }

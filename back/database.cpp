@@ -45,22 +45,34 @@ bool database::create_tables() noexcept
     }
 
     {
-        ormpp_auto_key key{ "id" };
-        ormpp_not_null not_null{ { "username", "password" } };
-        if (!conn->create_datatable<Admin>(key, not_null)) {
+        const ormpp_auto_key key{ "id" };
+        const ormpp_not_null not_null{ { "username", "password" } };
+        // const ormpp_unique unique{ { "username" } }; // need varchar
+        if (!conn->create_datatable<Admin>(key, not_null /*, unique*/)) {
             logging::error{ "Fail to create Admin table" };
             return false;
         }
-        if (!conn->create_datatable<User>(key, not_null)) {
+        if (!conn->create_datatable<User>(key, not_null /*, unique*/)) {
             logging::error{ "Fail to create User table" };
             return false;
         }
     }
     {
-        ormpp_key key{ "id" };
-        ormpp_not_null not_null{ { "id", "title", "file_path" } };
+        const ormpp_key key{ "id" };
+        const ormpp_not_null not_null{ { "id", "title", "file_path" } };
         if (!conn->create_datatable<Video>(key, not_null)) {
             logging::error{ "Fail to create Video table" };
+            return false;
+        }
+    }
+    {
+        const ormpp_not_null not_null{ { "video_id", "user_id" } };
+        if (!conn->create_datatable<VideoRight>(not_null)) {
+            logging::error{ "Fail to create VideoRight table" };
+            return false;
+        }
+        if (!conn->execute("ALTER TABLE `VideoRight` ADD UNIQUE KEY (video_id, user_id)")) {
+            logging::error{ "Fail to create VideoRight unique key" };
             return false;
         }
     }
@@ -169,11 +181,12 @@ void database::add_super_admin(const std::string& username, const std::string& p
         return;
     }
 
+    Admin admin;
+    admin.username = username;
+    admin.password = password;
+    admin.super = true;
+
     try {
-        Admin admin;
-        admin.username = username;
-        admin.password = password;
-        admin.super = true;
         conn->insert(admin);
     } catch (const std::exception& e) {
         logging::error{ "Fail to insert super admin \"{}\" with error: {}", username, e.what() };
@@ -221,10 +234,11 @@ void database::add_admin(const std::string& username, const std::string& passwor
         return;
     }
 
+    Admin admin;
+    admin.username = username;
+    admin.password = password;
+
     try {
-        Admin admin;
-        admin.username = username;
-        admin.password = password;
         conn->insert(admin);
     } catch (const std::exception& e) {
         logging::error{ "Fail to insert admin \"{}\" with error: {}", username, e.what() };
@@ -239,10 +253,11 @@ void database::add_user(const std::string& username, const std::string& password
         return;
     }
 
+    User user;
+    user.username = username;
+    user.password = password;
+
     try {
-        User user;
-        user.username = username;
-        user.password = password;
         conn->insert(user);
     } catch (const std::exception& e) {
         logging::error{ "Fail to insert user \"{}\" with error: {}", username, e.what() };
@@ -264,8 +279,9 @@ void database::update_admin(const std::string& username, const std::string& pass
         return;
     }
 
+    admin_to_update->password = password;
+
     try {
-        admin_to_update->password = password;
         conn->update_some<&Admin::password>(admin_to_update.value());
     } catch (const std::exception& e) {
         logging::error{ "Fail to update admin \"{}\" with error: {}", username, e.what() };
@@ -287,8 +303,9 @@ void database::update_user(const std::string& username, const std::string& passw
         return;
     }
 
+    user_to_update->password = password;
+
     try {
-        user_to_update->password = password;
         conn->update_some<&User::password>(user_to_update.value());
     } catch (const std::exception& e) {
         logging::error{ "Fail to update user \"{}\" with error: {}", username, e.what() };
@@ -402,15 +419,40 @@ void database::add_video(const types::md5_varchar& id, const std::string& title,
         return;
     }
 
+    const Video video{
+        .id = id,
+        .title = title,
+        .file_path = file_path
+    };
+
     try {
-        const Video video{
-            .id = id,
-            .title = title,
-            .file_path = file_path
-        };
         conn->insert(video);
     } catch (const std::exception& e) {
-        logging::error{ "Fail to insert video \"{}\" with error: {}", title, e.what() };
+        logging::error{ "Fail to insert video \"{}\", \"{}\" with error: {}", id, title, e.what() };
+    }
+}
+
+void database::add_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    std::vector<VideoRight> video_usernames(usernames.size());
+    std::ranges::transform(usernames, video_usernames.begin(),
+                           [&id, &conn](const std::string& username) -> VideoRight {
+                               return VideoRight{
+                                   .video_id = id,
+                                   .user_id = user(conn, username).value_or(User{}).id
+                               };
+                           });
+
+    try {
+        conn->insert(video_usernames);
+    } catch (const std::exception& e) {
+        logging::error{ "Fail to insert video rights \"{}\" with error: {}", id, e.what() };
     }
 }
 
@@ -440,8 +482,9 @@ void database::increment_video_views(const types::md5_varchar& id) noexcept
         return;
     }
 
+    video_to_update->view_count += 1;
+
     try {
-        video_to_update->view_count += 1;
         conn->update_some<&Video::view_count>(video_to_update.value());
     } catch (const std::exception& e) {
         logging::error{ "Fail to update video \"{}\" with error: {}", id, e.what() };

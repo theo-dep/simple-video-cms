@@ -60,7 +60,7 @@ public:
     std::vector<std::string> user_list() const noexcept;
     std::vector<std::string> admin_list() const noexcept;
 
-    void add_video(const std::string& title, const std::string& content) const noexcept;
+    void add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_usernames) const noexcept;
     void delete_video(const std::string& id) const noexcept;
     void increment_video_views(const std::string& id) const noexcept;
     std::string video(const std::string& id) const noexcept;
