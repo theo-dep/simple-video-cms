@@ -436,7 +436,7 @@ void database::increment_video_views(const types::md5_varchar& id) noexcept
     // get previous user (update with where clause not available)
     std::optional video_to_update{ video(conn, id) };
     if (!video_to_update.has_value()) {
-        logging::error{ "Unknown video: {}", id.data() };
+        logging::error{ "Unknown video: {}", id };
         return;
     }
 
@@ -444,6 +444,6 @@ void database::increment_video_views(const types::md5_varchar& id) noexcept
         video_to_update->view_count += 1;
         conn->update_some<&Video::view_count>(video_to_update.value());
     } catch (const std::exception& e) {
-        logging::error{ "Fail to update video \"{}\" with error: {}", id.data(), e.what() };
+        logging::error{ "Fail to update video \"{}\" with error: {}", id, e.what() };
     }
 }

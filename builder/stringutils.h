@@ -2,6 +2,7 @@
 
 #include "types.h"
 
+#include <format>
 #include <string>
 #include <vector>
 
@@ -21,3 +22,14 @@ namespace su
     std::string md5_varchar_to_string(const types::md5_varchar& array) noexcept;
     types::md5_varchar string_to_md5_varchar(const std::string& str) noexcept;
 }
+
+template <>
+struct std::formatter<types::md5_varchar, char> : std::formatter<std::string, char>
+{
+    template <class FmtContext>
+    FmtContext::iterator format(const types::md5_varchar& array, FmtContext& ctx) const
+    {
+        const std::string str{ su::md5_varchar_to_string(array) };
+        return std::formatter<std::string, char>::format(str, ctx);
+    }
+};
