@@ -211,15 +211,23 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     const bool is_logged{ session.is_valid_session(session_id) };
-    if (is_logged && client.is_admin(session.user_from_session(session_id))) {
+    const std::string connected_user{ session.user_from_session(session_id) };
+    if (is_logged && client.is_admin(connected_user)) {
         res.set_redirect("/dashboard");
         return;
     }
 
-    const std::vector<std::string> most_viewed_video_ids{ client.most_viewed_video_list() };
+    std::vector video_ids{ client.no_right_video_list() };
+    if (is_logged) {
+        const std::vector append_video_ids{ client.video_list(connected_user) };
+        const std::size_t previous_size{ video_ids.size() };
+        video_ids.resize(previous_size + append_video_ids.size());
+        std::ranges::copy(append_video_ids, std::next(video_ids.begin(), previous_size));
+    }
+
     const inja::json data{
         { "is_logged", is_logged },
-        { "video_dict", video_dict(most_viewed_video_ids, client) }
+        { "video_dict", video_dict(video_ids, client) }
     };
     logging::debug{ data.dump() };
 
@@ -641,20 +649,44 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     confirm_action(req, res, session, client, signal_str);
 }
 
-inline void server::watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+namespace server
+{
+    bool has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
+}
+
+inline bool server::has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
 {
     const std::string cookie{ req.get_header_value("Cookie") };
-    // wait for user rights
-    // const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
-    // if (!session.is_valid_session(session_id)) {
-    //    res.set_redirect("/login");
-    //    return;
-    //}
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    const bool is_logged{ session.is_valid_session(session_id) };
 
-    const bool is_logged{ session.is_valid_session_from_cookie(cookie) };
+    const std::string video_id{ req.path_params.at("video_id") };
+
+    if (is_logged) {
+        const std::string connected_username{ session.user_from_session(session_id) };
+        if (!client.has_video_right(video_id, connected_username)) {
+            const std::string body{ client.error_page_403() };
+            res.set_content(body, "text/html");
+            return false;
+        }
+    } else if (!client.has_video_right(video_id)) {
+        res.set_redirect("/login");
+        return false;
+    }
+
+    return true;
+}
+
+inline void server::watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!has_video_right(req, res, session, client))
+        return;
 
     const std::string video_id{ req.path_params.at("video_id") };
     client.increment_video_views(video_id);
+
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const bool is_logged{ session.is_valid_session_from_cookie(cookie) };
 
     const std::string video_title{ client.video_title(video_id) };
     const int video_views{ client.video_views(video_id) };
@@ -673,14 +705,8 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
 
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
 {
-    // wait for user rights
-    // const std::string cookie{ req.get_header_value("Cookie") };
-    // const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
-    // if (!session.is_valid_session(session_id)) {
-    //    res.set_redirect("/login");
-    //    return;
-    //}
-    (void)session;
+    if (!has_video_right(req, res, session, client))
+        return;
 
     const std::string video_id{ req.path_params.at("video_id") };
     const std::string video_content{ client.video(video_id) };

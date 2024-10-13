@@ -37,7 +37,8 @@ public:
     std::string watch_video_page() const noexcept;
 
     std::vector<std::string> video_list() const noexcept;
-    std::vector<std::string> most_viewed_video_list() const noexcept;
+    std::vector<std::string> video_list(const std::string& username) const noexcept;
+    std::vector<std::string> no_right_video_list() const noexcept;
 
     std::string video_title(const std::string& id) const noexcept;
     int video_views(const std::string& id) const noexcept;
@@ -64,6 +65,8 @@ public:
     void delete_video(const std::string& id) const noexcept;
     void increment_video_views(const std::string& id) const noexcept;
     std::string video(const std::string& id) const noexcept;
+    bool has_video_right(const std::string& id) const noexcept;
+    bool has_video_right(const std::string& id, const std::string& username) const noexcept;
 
 private:
     std::unique_ptr<httplib::Client> _client{ nullptr };

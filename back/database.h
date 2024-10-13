@@ -11,7 +11,8 @@ namespace database
     bool is_open() noexcept;
 
     std::vector<types::md5_varchar> video_list() noexcept;
-    std::vector<types::md5_varchar> most_viewed() noexcept;
+    std::vector<types::md5_varchar> video_list(const std::string& username) noexcept;
+    std::vector<types::md5_varchar> no_right_video_list() noexcept;
 
     std::string video_title(const types::md5_varchar& id) noexcept;
     int video_views(const types::md5_varchar& id) noexcept;
@@ -41,4 +42,6 @@ namespace database
     void add_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept;
     void delete_video(const types::md5_varchar& id) noexcept;
     void increment_video_views(const types::md5_varchar& id) noexcept;
+    bool has_video_right(const types::md5_varchar& id) noexcept;
+    bool has_video_right(const types::md5_varchar& id, const std::string& username) noexcept;
 }
