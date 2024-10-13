@@ -431,27 +431,26 @@ inline void server::video(const httplib::Request& req, httplib::Response& res) n
     const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
     const std::filesystem::path video_file_path{ database::video_file_path(video_id) };
 
-    std::size_t video_length{};
-    std::shared_ptr<char[]> video_content;
+    std::string video_content;
     {
         // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
         std::ifstream video_stream(video_file_path, std::ios::in | std::ios::binary);
         video_stream.seekg(0, std::ios::end);
-        video_length = video_stream.tellg();
-        video_content = std::make_shared_for_overwrite<char[]>(video_length);
+        video_content.resize(video_stream.tellg());
         video_stream.seekg(0, std::ios::beg);
-        video_stream.read(&video_content[0], video_length);
+        video_stream.read(&video_content[0], video_content.size());
     }
-    logging::debug{ "Video length: {}", video_length };
+    logging::debug{ "Video length: {}", video_content.size() };
 
+    static constexpr std::size_t DATA_CHUNK_SIZE{ 4 * 1024 };
     res.set_content_provider(
-        video_length, // Content length
-        "video/mp4",  // Content type
+        video_content.size(), // Content length
+        "video/mp4",          // Content type
         [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) {
-            sink.write(&video_content[offset], length);
+            sink.write(&video_content[offset], std::min(length, DATA_CHUNK_SIZE));
             return true; // return 'false' if you want to cancel the process.
         },
-        [video_content](bool /*success*/) { /*release*/ });
+        [](bool /*success*/) { /*release*/ });
 }
 
 inline void server::has_video_right(const httplib::Request& req, httplib::Response& res) noexcept
