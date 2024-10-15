@@ -15,14 +15,18 @@ namespace sc
 
     std::string get_env(const std::string& key, const std::string& default_value) noexcept;
 
-    template <typename Handler, typename... Args>
-    std::function<void(const httplib::Request&, httplib::Response&)> serve(Handler handler, Args... args) noexcept;
+    template <typename... Args>
+    std::function<void(const httplib::Request&, httplib::Response&)> serve(
+        const std::function<void(const httplib::Request&, httplib::Response&, std::decay_t<Args>...)>& handler,
+        Args&&... args) noexcept;
 
     constexpr std::string static_regexp_path() noexcept;
 }
 
-template <typename Handler, typename... Args>
-std::function<void(const httplib::Request&, httplib::Response&)> sc::serve(Handler handler, Args... args) noexcept
+template <typename... Args>
+std::function<void(const httplib::Request&, httplib::Response&)> sc::serve(
+    const std::function<void(const httplib::Request&, httplib::Response&, std::decay_t<Args>...)>& handler,
+    Args&&... args) noexcept
 {
     return std::bind(handler, std::placeholders::_1, std::placeholders::_2, std::forward<Args>(args)...);
 }
