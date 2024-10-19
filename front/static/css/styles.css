@@ -8,6 +8,7 @@
 * BASE
 */
 body {
+    color: #c9c9c9;
     line-height: 1.7em;
     background: rgba(0, 0, 0, 0.9);
 }
@@ -17,8 +18,14 @@ a {
     text-decoration: none;
 }
 
-p {
-    color: white;
+h1,
+h2 {
+    color: #16A085;
+    text-align: center;
+}
+
+hr {
+    border-color: #c9c9c9;
 }
 
 .button {
@@ -51,20 +58,20 @@ p {
     border-radius: 4px;
 }
 
-.pure-menu-list {
+.menu-list,
+.menu-scrollable-list {
     float: right;
+}
+
+/* Compensate Pure horizontal menu scrollable */
+.pure-menu-horizontal.pure-menu-scrollable {
+    padding: 0;
 }
 
 .form-search {
     margin: 0 0.5em;
     padding-top: 0.2em;
     font-size: 85%;
-}
-
-/* Compensate Pure submit button */
-.pure-form button[type=submit] {
-    margin-top: 0em;
-    margin-left: 0.5em;
 }
 
 .button-search {
@@ -81,6 +88,49 @@ p {
 .info {
     width: 100%;
     text-align: center;
+}
+
+/*
+* TABLE
+*/
+.table {
+    width: 100%;
+    border: 0;
+    background-color: #323232;
+    -webkit-box-shadow: 0 1px 3px 0 #464646, 0 1px 2px 0 #464646;
+    -moz-box-shadow: 0 1px 3px 0 #464646, 0 1px 2px 0 #464646;
+    box-shadow: 0 1px 3px 0 #464646, 0 1px 2px 0 #464646;
+}
+
+.table>tbody>tr>td,
+.table>tbody>tr>th {
+    border-bottom: 1px solid #464646;
+}
+
+.table>tbody>tr:hover>td,
+.table>tbody>tr:hover>th {
+    background-color: #464646;
+}
+
+/*
+* SMALL PHONES
+*/
+@media only screen and (max-width: 35.5em) {
+    .menu-scrollable-list {
+        float: unset;
+    }
+}
+
+/*
+* PHONE
+*/
+@media only screen and (max-width: 48em) {
+
+    /* Compensate Pure submit button */
+    .pure-form button[type=submit] {
+        margin-top: 0em;
+        margin-left: 0.5em;
+    }
 }
 
 /*
