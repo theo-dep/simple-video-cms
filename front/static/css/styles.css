@@ -1,0 +1,108 @@
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+/*
+* BASE
+*/
+body {
+    line-height: 1.7em;
+    background: rgba(0, 0, 0, 0.9);
+}
+
+a {
+    color: #16A085;
+    text-decoration: none;
+}
+
+p {
+    color: white;
+}
+
+.button {
+    color: white;
+    background-color: #16A085;
+    border-radius: 4px;
+}
+
+.button:hover {
+    background-color: #0D5B4C;
+}
+
+/*
+* MENU
+*/
+.header {
+    /* Align the menu header to the left, but float the menu items to the right */
+    text-align: left;
+    padding: 0.5em;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.10);
+}
+
+.menu-link {
+    color: #16A085;
+}
+
+.menu-link:hover {
+    color: white;
+    background-color: #0D5B4C;
+    border-radius: 4px;
+}
+
+.pure-menu-list {
+    float: right;
+}
+
+.form-search {
+    margin: 0 0.5em;
+    padding-top: 0.2em;
+    font-size: 85%;
+}
+
+/* Compensate Pure submit button */
+.pure-form button[type=submit] {
+    margin-top: 0em;
+    margin-left: 0.5em;
+}
+
+.button-search {
+    margin-left: 0.5em;
+}
+
+/*
+* CONTENT
+*/
+.content {
+    margin: 5em 1em;
+}
+
+.info {
+    width: 100%;
+    text-align: center;
+}
+
+/*
+* TABLET (AND UP)
+*/
+@media only screen and (min-width: 48em) {
+
+    /* Increase the body font size */
+    body {
+        font-size: 16px;
+    }
+
+    .form-search {
+        font-size: 100%;
+    }
+
+    .content {
+        margin: 5em;
+    }
+
+    .info {
+        margin: 0 auto;
+        width: 50%;
+    }
+}
