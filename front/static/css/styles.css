@@ -19,7 +19,8 @@ a {
 }
 
 h1,
-h2 {
+h2,
+h3 {
     color: #16A085;
     text-align: center;
 }
@@ -54,6 +55,7 @@ hr {
 
 .menu-link:hover {
     color: white;
+    text-shadow: none;
     background-color: #0D5B4C;
     border-radius: 4px;
 }
@@ -61,6 +63,11 @@ hr {
 .menu-list,
 .menu-scrollable-list {
     float: right;
+}
+
+.menu-selected {
+    /* bold weight without width change */
+    text-shadow: 0px 0px 1px #16A085;
 }
 
 /* Compensate Pure horizontal menu scrollable */
@@ -102,6 +109,15 @@ hr {
     box-shadow: 0 1px 3px 0 #464646, 0 1px 2px 0 #464646;
 }
 
+.table>thead>tr>td,
+.table>thead>tr>th {
+    color: #16A085;
+    font-weight: normal;
+    background-color: #323232;
+}
+
+.table>thead>tr>td,
+.table>thead>tr>th,
 .table>tbody>tr>td,
 .table>tbody>tr>th {
     border-bottom: 1px solid #464646;
@@ -110,6 +126,10 @@ hr {
 .table>tbody>tr:hover>td,
 .table>tbody>tr:hover>th {
     background-color: #464646;
+}
+
+.add-user {
+    text-align: right;
 }
 
 /*

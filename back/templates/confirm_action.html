@@ -4,28 +4,27 @@
 <head>
   <meta charset="UTF-8">
   <title>VideoHub</title>
-  <link rel="stylesheet" href="/static/css/reset-min.css">
-  <link rel='stylesheet prefetch' href="/static/css/roboto.css">
-  <link rel='stylesheet prefetch' href="/static/css/monsterrat.css">
-  <link rel='stylesheet prefetch' href="/static/css/font-awesome.css">
-  <link rel="stylesheet" href="/static/css/style.css">
-  <link rel="stylesheet" href="/static/css/alert.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="icon" href="/static/img/favicon.png" type="image/png">
 </head>
 
 <body>
-  <div class="container">
+  <div class="content">
     <div class="info">
-      <h1 style="color:#16A085;">Are you sure?</h1>
+      <h1>Are you sure?</h1>
+      <form class="pure-form pure-form-aligned" action="/confirm?response=false" method="post">
+        <div class="pure-control-group">
+          <button class="pure-input-1 button pure-button" autofocus>No</button>
+        </div>
+      </form>
+      <form class="pure-form pure-form-aligned" action="/confirm?response=true" method="post">
+        <div class="pure-control-group">
+          <button class="pure-input-1 button pure-button">Yes</button>
+        </div>
+      </form>
     </div>
-  </div>
-  <div class="form">
-    <form class="login-form" action="/confirm?response=false" method="post" style="display:inline;">
-      <button autofocus>No</button>
-    </form>
-    <form class="login-form" action="/confirm?response=true" method="post" style="display:inline;">
-      <button>Yes</button>
-    </form>
   </div>
 </body>
 
