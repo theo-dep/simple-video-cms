@@ -555,14 +555,20 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
 
 namespace server
 {
-    constexpr const char* default_video_text_helper() { return "Drag the video here or click in this area."; }
+    constexpr const char* default_button_video_text_helper() { return "choose file"; }
+    constexpr const char* default_video_text_helper() { return "or drag and drop file here"; }
     constexpr const char* default_video_title_placeholder() { return "Enter the video title here"; }
-    void set_add_video_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& video_text_helper, const std::string& video_title_placeholder);
+    void set_add_video_content(httplib::Response& res, inja::Environment& env, const Client& client,
+                               const std::string& button_video_text_helper,
+                               const std::string& video_text_helper, const std::string& video_title_placeholder);
 }
 
-inline void server::set_add_video_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& video_text_helper, const std::string& video_title_placeholder)
+inline void server::set_add_video_content(httplib::Response& res, inja::Environment& env, const Client& client,
+                                          const std::string& button_video_text_helper,
+                                          const std::string& video_text_helper, const std::string& video_title_placeholder)
 {
     const inja::json data{
+        { "button_video_text_helper", button_video_text_helper },
         { "video_text_helper", video_text_helper },
         { "video_title_placeholder", video_title_placeholder }
     };
@@ -577,7 +583,7 @@ inline void server::add_video_get(const httplib::Request& req, httplib::Response
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    set_add_video_content(res, env, client, default_video_text_helper(), default_video_title_placeholder());
+    set_add_video_content(res, env, client, default_button_video_text_helper(), default_video_text_helper(), default_video_title_placeholder());
 }
 
 inline void server::add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
@@ -587,18 +593,18 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
 
     const std::string video_title{ req.get_file_value("title").content };
     if (video_title.empty()) {
-        set_add_video_content(res, env, client, default_video_text_helper(), "Enter a non-empty video title here");
+        set_add_video_content(res, env, client, default_button_video_text_helper(), default_video_text_helper(), "Enter a non-empty video title here");
         return;
     }
 
     if (!req.has_file("file")) {
-        set_add_video_content(res, env, client, default_video_text_helper(), default_video_title_placeholder());
+        set_add_video_content(res, env, client, default_button_video_text_helper(), default_video_text_helper(), default_video_title_placeholder());
         return;
     }
 
     const httplib::MultipartFormData& item{ req.get_file_value("file") };
     if (item.content_type != "video/mp4") {
-        set_add_video_content(res, env, client, "Drag a mp4 video here or click in this area.", default_video_title_placeholder());
+        set_add_video_content(res, env, client, "choose mp4 file", default_video_text_helper(), default_video_title_placeholder());
         return;
     }
 
