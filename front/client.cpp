@@ -14,17 +14,20 @@ namespace client
         R"(<html>
            <head>
                <title>{0}</title>
+               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+               <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+               <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
                <link rel="stylesheet" href="/static/css/404.css" type="text/css">
-               <link rel="stylesheet" href="/static/css/font.css" type="text/css">
                <link rel="icon" href="/static/img/favicon.png" type="image/png">
            </head>
-           <body class="back">
-               <div class="main">
-                   <br><br><br><br><br><br>
-                   <h1>Error {1}</h1>
-                   <h3>{2}</h3>
-                   <h3>cpp-httplib/{3}<h3>
-                   <a href="/" class="back">BACK TO HOME</a>
+           <body>
+               <div class="content">
+                   <div class="info">
+                       <h1>Error {1}</h1>
+                       <h3>{2}</h3>
+                       <h3>cpp-httplib/{3}<h3>
+                       <a href="/" class="back">BACK TO HOME</a>
+                    </div>
                </div>
            </body>
            </html>

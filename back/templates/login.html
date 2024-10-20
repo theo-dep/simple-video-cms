@@ -4,35 +4,40 @@
 <head>
   <meta charset="UTF-8">
   <title>VideoHub</title>
-  <link rel="stylesheet" href="/static/css/reset-min.css">
-  <link rel='stylesheet prefetch' href="/static/css/roboto.css">
-  <link rel='stylesheet prefetch' href="/static/css/monsterrat.css">
-  <link rel='stylesheet prefetch' href="/static/css/font-awesome.css">
-  <link rel="stylesheet" href="/static/css/style.css">
-  <link rel="stylesheet" href="/static/css/alert.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/alert.css" type="text/css">
   <link rel="icon" href="/static/img/favicon.png" type="image/png">
 </head>
 
 <body>
-  <div class="container">
+  <div class="content">
     <div class="info">
-      <a style="text-decoration: none;" href="/">
-        <h1 style="color:#16A085;">VideoHub</h1>
+      <a href="/">
+        <h1>VideoHub</h1>
       </a>
+
+      <form class="pure-form pure-form-aligned" action="/login" method="post">
+        <fieldset>
+          {% if login_error %}
+          <div class="alert pure-control-group">
+            <span class="close-button" onclick="this.parentElement.style.display='none';">&times;</span>
+            <p>Invalid credentials</p>
+          </div>
+          {% endif %}
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
+          </div>
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="password" name="password" placeholder="password" required />
+          </div>
+          <div class="pure-control-group">
+            <button class="pure-input-1 button pure-button">Login</button>
+          </div>
+        </fieldset>
+      </form>
     </div>
-  </div>
-  <div class="form">
-    <form class="login-form" action="/login" method="post">
-      {% if login_error %}
-      <div class="alert">
-        <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>
-        Invalid credentials
-      </div>
-      {% endif %}
-      <input type="text" name="username" placeholder="username" required autofocus />
-      <input type="password" name="password" placeholder="password" required />
-      <button>Login</button>
-    </form>
   </div>
 </body>
 

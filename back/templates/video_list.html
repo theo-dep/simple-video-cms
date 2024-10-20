@@ -4,79 +4,74 @@
 <head>
   <meta charset="utf-8">
   <title>Video List</title>
-  <link rel="stylesheet" href="/static/css/bootstrap-min-337.css">
-  <link rel="stylesheet" href="/static/css/home.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="icon" href="/static/img/favicon.png" type="image/png">
 </head>
 
-<body class="back">
-  <nav class="navbar navbar-inverse navbar-fixed-top">
-    <div class="container-fluid">
-      <div class="navbar-header">
-        <a style="color: #16A085;" class="navbar-brand" href="/">VideoHub</a>
-      </div>
-      <form class="ml navbar-form navbar-left" action="search" method="post">
-        <div class="form-group">
-          <input style="width:500px;" name="search" type="text" class="form-control" placeholder="Search">
-        </div>
-        <button type="submit" class="bt btn btn-default">Submit</button>
-      </form>
-      <ul class="nav navbar-nav navbar-right">
-        <li><a style="color: #16A085;" href="/dashboard">Dashboard</a></li>
-        <li><a style="color: #16A085;" href="/admin-list">Admin List</a></li>
-        <li><a style="color: #16A085;" href="/user-list">User List</a></li>
-        <li><a style="color: #16A085;" href="/logout">Logout</a></li>
+<body>
+  <div class="header pure-g">
+    <div class="pure-u-1 pure-u-sm-1-5 pure-menu pure-menu-horizontal">
+      <a href="/" class="menu-link pure-menu-heading pure-menu-link">VideoHub</a>
+    </div>
+
+    <div class="pure-u-1 pure-u-sm-4-5 menu-scrollable pure-menu pure-menu-horizontal pure-menu-scrollable">
+      <ul class="menu-scrollable-list pure-menu-list">
+        <li class="pure-menu-item">
+          <a href="/admin-list" class="menu-link pure-menu-link">Admin List</a>
+        </li>
+        <li class="pure-menu-item">
+          <a href="/user-list" class="menu-link pure-menu-link">User List</a>
+        </li>
+        <li class="pure-menu-item">
+          <a href="/video-list" class="menu-link menu-selected pure-menu-link pure-menu-selected">Video List</a>
+        </li>
+        <li class="pure-menu-item">
+          <a href="/logout" class="menu-link pure-menu-link">Logout</a>
+        </li>
       </ul>
     </div>
-  </nav>
-  <br><br><br>
-  <div class="container">
+  </div>
+
+  <div class="content">
     {% if not video_dict %}
-    <br><br><br><br><br>
-    <h1 style="color:#16A085; text-align:center;">Nothing uploaded yet</h1>
-    <h3 style="color:#16A085; text-align:center;">
-      <a style="color:#16A085;text-decoration:none;" href="/add-video">Upload a new video</a>
+    <h1>Nothing uploaded yet</h1>
+    <h3>
+      <a href="/add-video">Upload a new video</a>
     </h3>
-    {% endif %}
-    <br>
-    {% if video_dict %}
-    <h1 style="color:#16A085; text-align:center;">Uploaded videos</h1>
-    <h3 style="color:#16A085; text-align:center;">
-      <a style="color:#16A085;text-decoration:none;" href="/add-video">Upload a new video</a>
+    {% else %}
+    <h1>Uploaded videos</h1>
+    <h3>
+      <a href="/add-video">Upload a new video</a>
     </h3>
-    <br><br><br>
-    {% for video in video_dict %}
-    <div class="row">
-      <div class="row">
-        <div class="col-xs-12 col-sm-3 col-md-3">
-          <a href="/watch-video/{{ video.id }}">
-            <img height="152" width="270" src="/image/{{ video.id }}" class="img-responsive">
-          </a>
-        </div>
-        <h4><a style="color:#16A085;text-decoration:none;" href="/watch-video/{{ video.id }}">{{ video.title }}</a></h4>
-        <div class="col-xs-12 col-sm-9 col-md-9">
-          <div class="list-group">
-            <div class="list-group-item">
-              <div class="row-content">
-                <div class="list-group-item-heading">
-                  <p style="color:#FFFFFF;">
-                    {% if video.views == "1" %}
-                    <small>{{ video.views }} view</small>
-                    {% endif %}
-                    {% if video.views != "1" %}
-                    <small>{{ video.views }} views</small>
-                    {% endif %}
-                  </p>
-                </div>
-              </div>
-              <a style="color:#16A085;text-decoration:none;" href="/delete-video/{{ video.id }}">Delete video</a>
-            </div>
-          </div>
-        </div>
-      </div>
-      <hr>
-    </div>
-    {% endfor %}
+    <table id="table" class="table pure-table pure-table-horizontal">
+      <thead>
+        <tr>
+          <th>Video Name</th>
+          <th>Views</th>
+          <th class="add-user">
+            <a href="/add-video">
+              <img src="static/img/cloud-plus.svg" alt="add a new video" />
+            </a>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for video in video_dict %}
+        <tr>
+          <td data-title="video-name">
+            <a href="/watch-video/{{ video.id }}">{{ video.title }}</a>
+          </td>
+          <td>{{ video.views }}</td>
+          <td>
+            <a href="/delete-video/{{ video.id }}">Delete</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
     {% endif %}
   </div>
 </body>

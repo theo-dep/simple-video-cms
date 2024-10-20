@@ -4,43 +4,41 @@
 <head>
   <meta charset="UTF-8">
   <title>VideoHub</title>
-  <link rel="stylesheet" href="/static/css/upload.css">
-  <link rel="stylesheet" href="/static/css/video.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/upload.css" type="text/css">
   <link rel="icon" href="/static/img/favicon.png" type="image/png">
 </head>
 
 <body>
-  <h4 align="center" class="heading2">Upload video</h4>
-  <form action="add-video" method="post" enctype=multipart/form-data>
-    <input type="file" accept="video/mp4" name=file>
-    <p>{{ video_text_helper }}</p>
-    <input type="text" name="title" id="title" placeholder="{{ video_title_placeholder }}" required>
-    <button type="submit">Upload</button>
-  </form>
+  <div class="content">
+    <div class="info">
+      <a href="/">
+        <h1>VideoHub</h1>
+      </a>
+
+      <h3>Upload video</h3>
+      <form class="pure-form pure-form-aligned" action="add-video" method="post" enctype=multipart/form-data>
+        <fieldset>
+          <div class="pure-control-group file-drop-area">
+            <span class="fake-button">{{ button_video_text_helper }}</span>
+            <span class="file-message">{{ video_text_helper }}</span>
+            <input class="pure-input-1 file-input" type="file" accept="video/mp4" name=file>
+          </div>
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="text" name="title" id="title" placeholder="{{ video_title_placeholder }}"
+              required>
+          </div>
+          <div class="pure-control-group">
+            <button class="pure-input-1 button pure-button">Upload</button>
+          </div>
+        </fieldset>
+      </form>
+    </div>
+  </div>
 </body>
 
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const inputs = document.querySelectorAll('form input');
-
-    inputs.forEach(input => {
-      input.addEventListener('change', () => {
-        const fullPath = input.value;
-        let filename = '';  // Initialize filename
-
-        if (fullPath) {
-          const startIndex = fullPath.lastIndexOf('\\') >= 0 ? fullPath.lastIndexOf('\\') : fullPath.lastIndexOf('/');
-          filename = fullPath.substring(startIndex + 1) || '';  // Extract the file name
-        }
-
-        // If filename has an extension, remove it, otherwise keep the filename
-        const res = filename ? filename.slice(0, filename.lastIndexOf('.')) || filename : '';
-
-        document.querySelector('form p').textContent = filename;
-        document.getElementById('title').value = res;
-      });
-    });
-  });
-</script>
+<script type="text/javascript" src="/static/js/upload.js"></script>
 
 </html>
