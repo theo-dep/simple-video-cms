@@ -93,6 +93,7 @@ hr {
 }
 
 .info {
+    margin: 0 auto;
     width: 100%;
     text-align: center;
 }
@@ -143,6 +144,7 @@ video {
 * SMALL PHONES
 */
 @media only screen and (max-width: 35.5em) {
+
     .menu-scrollable-list {
         float: unset;
     }
@@ -151,6 +153,14 @@ video {
 /*
 * PHONE
 */
+@media only screen and (min-width: 35.5em) {
+
+    .info {
+        width: 75%;
+    }
+}
+
+
 @media only screen and (max-width: 48em) {
 
     /* Compensate Pure submit button */
@@ -179,7 +189,16 @@ video {
     }
 
     .info {
-        margin: 0 auto;
         width: 50%;
+    }
+}
+
+/*
+* SMALL SCREEN
+*/
+@media only screen and (min-width: 64em) {
+
+    .info {
+        width: 35%;
     }
 }
