@@ -38,8 +38,8 @@ public:
     static std::string insert_session_id_to_cookie(const std::string& session_id) noexcept;
 
 private:
-    // Generate a unique session ID (for simplicity, using a counter)
-    static std::string generate_session_id() noexcept;
+    // Generate a unique session ID (using a counter, a username and crypto sha512)
+    static std::string generate_session_id(const std::string& username) noexcept;
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>> _sessions; // session_id -> key, value
     mutable std::mutex _mutex;

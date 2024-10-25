@@ -1,5 +1,7 @@
 #include "session.h"
 
+#include "crypto.h"
+
 #include <cstring>
 
 namespace session
@@ -10,7 +12,7 @@ namespace session
 
 const std::string& Session::create_session(const std::string& username) noexcept
 {
-    const std::string session_id{ generate_session_id() };
+    const std::string session_id{ generate_session_id(username) };
     insert_value_from_session(session_id, session::username_key(), username);
 
     const std::lock_guard<std::mutex> lock(_mutex);
@@ -97,8 +99,8 @@ std::string Session::insert_session_id_to_cookie(const std::string& session_id) 
     return (session::cookie_key() + session_id + ";");
 }
 
-std::string Session::generate_session_id() noexcept
+std::string Session::generate_session_id(const std::string& username) noexcept
 {
     static int counter{ 0 };
-    return "sess_" + std::to_string(counter++);
+    return crypto::sha512("sess_" + std::to_string(counter++) + "_" + username + "_ion");
 }
