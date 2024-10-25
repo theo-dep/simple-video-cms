@@ -68,6 +68,8 @@ public:
     bool has_video_right(const std::string& id) const noexcept;
     bool has_video_right(const std::string& id, const std::string& username) const noexcept;
 
+    std::vector<std::string> video_right_list(const std::string& id) const noexcept;
+
 private:
     std::unique_ptr<httplib::Client> _client{ nullptr };
 

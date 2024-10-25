@@ -200,7 +200,8 @@ inline inja::json server::video_dict(const std::vector<std::string>& video_ids, 
     for (const std::string& id : video_ids) {
         const std::string title{ client.video_title(id) };
         const int views{ client.video_views(id) };
-        const inja::json video = { { "id", id }, { "title", title }, { "views", views } };
+        const std::vector rights{ client.video_right_list(id) };
+        const inja::json video = { { "id", id }, { "title", title }, { "views", views }, { "right_list", rights } };
         video_dict += video;
     }
     return video_dict;

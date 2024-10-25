@@ -47,6 +47,8 @@ namespace server
     void increment_video_views(const httplib::Request& req, httplib::Response& res) noexcept;
     void video(const httplib::Request& req, httplib::Response& res) noexcept;
     void has_video_right(const httplib::Request& req, httplib::Response& res) noexcept;
+
+    void video_right_list(const httplib::Request& req, httplib::Response& res) noexcept;
 }
 
 int server::start() noexcept
@@ -95,7 +97,9 @@ int server::start() noexcept
         .Post("/delete-video/:video_id", sc::serve(delete_video))
         .Post("/increment-video-views/:video_id", sc::serve(increment_video_views))
         .Get("/video/:video_id", sc::serve(video))
-        .Get("/has-video-right/:video_id", sc::serve(has_video_right));
+        .Get("/has-video-right/:video_id", sc::serve(has_video_right))
+
+        .Get("/video-right-list/:video_id", sc::serve(video_right_list));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
@@ -467,4 +471,13 @@ inline void server::has_video_right(const httplib::Request& req, httplib::Respon
     }
 
     res.set_content(su::bool_to_string(has_video_right), "plain/text");
+}
+
+inline void server::video_right_list(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+
+    const std::vector<std::string> rights{ database::video_right_list(video_id) };
+    res.set_content(su::join(rights), "plain/text");
 }

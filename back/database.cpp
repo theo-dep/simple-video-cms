@@ -545,3 +545,20 @@ bool database::has_video_right(const types::md5_varchar& id, const std::string& 
     const std::vector video_usernames{ conn->query_s<VideoRight>("video_id=? AND user_id=?", id, user_id) };
     return !video_usernames.empty();
 }
+
+std::vector<std::string> database::video_right_list(const types::md5_varchar& id) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return {};
+    }
+
+    const std::vector tuple_rights{
+        conn->query_s<std::tuple<std::string>>(
+            "SELECT username FROM User "
+            "WHERE id IN (SELECT user_id FROM VideoRight WHERE video_id=?)",
+            id)
+    };
+    return transform(tuple_rights);
+}

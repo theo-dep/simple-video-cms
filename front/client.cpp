@@ -346,6 +346,13 @@ bool Client::has_video_right(const std::string& id, const std::string& username)
     return su::string_to_bool(client::format_page(res));
 }
 
+std::vector<std::string> Client::video_right_list(const std::string& id) const noexcept
+{
+    const httplib::Result res{ _client->Get("/video-right-list/" + id) };
+    const std::string str_rights{ client::format_page(res) };
+    return su::split(str_rights);
+}
+
 inline std::string client::generic_error(int error, const std::string& message) noexcept
 {
     try {

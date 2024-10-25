@@ -44,4 +44,6 @@ namespace database
     void increment_video_views(const types::md5_varchar& id) noexcept;
     bool has_video_right(const types::md5_varchar& id) noexcept;
     bool has_video_right(const types::md5_varchar& id, const std::string& username) noexcept;
+
+    std::vector<std::string> video_right_list(const types::md5_varchar& id) noexcept;
 }
