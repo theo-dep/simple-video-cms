@@ -666,7 +666,7 @@ inline void server::update_video_get(const httplib::Request& req, httplib::Respo
     res.set_content(body, "text/html");
 }
 
-inline void server::update_video_post(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+inline void server::update_video_post(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
 {
     if (!is_logged_and_admin(req, res, session, client))
         return;
