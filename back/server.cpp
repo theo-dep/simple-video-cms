@@ -18,7 +18,7 @@ namespace server
     void template_page(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void video_list(const httplib::Request& req, httplib::Response& res) noexcept;
-    void most_viewed(const httplib::Request& req, httplib::Response& res) noexcept;
+    void no_right_video_list(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void video_title(const httplib::Request& req, httplib::Response& res) noexcept;
     void video_views(const httplib::Request& req, httplib::Response& res) noexcept;
@@ -43,9 +43,13 @@ namespace server
     void admin_list(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void add_video(const httplib::Request& req, httplib::Response& res) noexcept;
+    void update_video(const httplib::Request& req, httplib::Response& res) noexcept;
     void delete_video(const httplib::Request& req, httplib::Response& res) noexcept;
     void increment_video_views(const httplib::Request& req, httplib::Response& res) noexcept;
     void video(const httplib::Request& req, httplib::Response& res) noexcept;
+    void has_video_right(const httplib::Request& req, httplib::Response& res) noexcept;
+
+    void video_right_list(const httplib::Request& req, httplib::Response& res) noexcept;
 }
 
 int server::start() noexcept
@@ -66,7 +70,7 @@ int server::start() noexcept
         .Get("/html/:html", sc::serve(template_page))
 
         .Get("/video-list", sc::serve(video_list))
-        .Get("/most-viewed", sc::serve(most_viewed))
+        .Get("/no-right-video-list", sc::serve(no_right_video_list))
 
         .Get("/title/:video_id", sc::serve(video_title))
         .Get("/views/:video_id", sc::serve(video_views))
@@ -91,9 +95,13 @@ int server::start() noexcept
         .Get("/admin-list", sc::serve(admin_list))
 
         .Post("/add-video", sc::serve(add_video))
+        .Post("/update-video/:video_id", sc::serve(update_video))
         .Post("/delete-video/:video_id", sc::serve(delete_video))
         .Post("/increment-video-views/:video_id", sc::serve(increment_video_views))
-        .Get("/video/:video_id", sc::serve(video));
+        .Get("/video/:video_id", sc::serve(video))
+        .Get("/has-video-right/:video_id", sc::serve(has_video_right))
+
+        .Get("/video-right-list/:video_id", sc::serve(video_right_list));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 5000 };
@@ -132,15 +140,23 @@ inline std::vector<std::string> server::transform(const std::vector<types::md5_v
     return str_list;
 }
 
-inline void server::video_list(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+inline void server::video_list(const httplib::Request& req, httplib::Response& res) noexcept
 {
-    const std::vector<std::string> ids{ transform(database::video_list()) };
+    std::vector<types::md5_varchar> varchar_ids;
+    if (req.has_header("username")) {
+        const std::string username{ req.get_header_value("username") };
+        varchar_ids = database::video_list(username);
+    } else {
+        varchar_ids = database::video_list();
+    }
+
+    const std::vector<std::string> ids{ transform(varchar_ids) };
     res.set_content(su::join(ids), "plain/text");
 }
 
-inline void server::most_viewed(const httplib::Request& /*req*/, httplib::Response& res) noexcept
+inline void server::no_right_video_list(const httplib::Request& /*req*/, httplib::Response& res) noexcept
 {
-    const std::vector<std::string> ids{ transform(database::most_viewed()) };
+    const std::vector<std::string> ids{ transform(database::no_right_video_list()) };
     res.set_content(su::join(ids), "plain/text");
 }
 
@@ -369,7 +385,7 @@ inline std::filesystem::path server::video_path() noexcept
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res) noexcept
 {
-    if (!req.has_file("title") || !req.has_file("video")) {
+    if (!req.has_file("title") || !req.has_file("video") || !req.has_file("usernames")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -377,6 +393,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
     const std::string video_title{ req.get_file_value("title").content };
     const std::string video_content{ req.get_file_value("video").content };
+    const std::vector allowed_usernames{ su::split(req.get_file_value("usernames").content) };
     const types::md5_varchar video_id{ crypto::sha1(video_title) };
 
     const std::filesystem::path video_path{ server::video_path() };
@@ -391,6 +408,22 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     }
 
     database::add_video(video_id, video_title, video_file_path.string());
+    database::add_video_rights(video_id, allowed_usernames);
+}
+
+inline void server::update_video(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    if (!req.has_file("usernames")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+
+    const std::vector allowed_usernames{ su::split(req.get_file_value("usernames").content) };
+    database::update_video_rights(video_id, allowed_usernames);
 }
 
 inline void server::delete_video(const httplib::Request& req, httplib::Response& res) noexcept
@@ -419,25 +452,49 @@ inline void server::video(const httplib::Request& req, httplib::Response& res) n
     const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
     const std::filesystem::path video_file_path{ database::video_file_path(video_id) };
 
-    std::size_t video_length{};
-    std::shared_ptr<char[]> video_content;
+    std::string video_content;
     {
         // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
         std::ifstream video_stream(video_file_path, std::ios::in | std::ios::binary);
         video_stream.seekg(0, std::ios::end);
-        video_length = video_stream.tellg();
-        video_content = std::make_shared_for_overwrite<char[]>(video_length);
+        video_content.resize(video_stream.tellg());
         video_stream.seekg(0, std::ios::beg);
-        video_stream.read(&video_content[0], video_length);
+        video_stream.read(&video_content[0], video_content.size());
     }
-    logging::debug{ "Video length: {}", video_length };
+    logging::debug{ "Video length: {}", video_content.size() };
 
+    static constexpr std::size_t DATA_CHUNK_SIZE{ 4 * 1024 };
     res.set_content_provider(
-        video_length, // Content length
-        "video/mp4",  // Content type
+        video_content.size(), // Content length
+        "video/mp4",          // Content type
         [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) {
-            sink.write(&video_content[offset], length);
+            sink.write(&video_content[offset], std::min(length, DATA_CHUNK_SIZE));
             return true; // return 'false' if you want to cancel the process.
         },
-        [video_content](bool /*success*/) { /*release*/ });
+        [](bool /*success*/) { /*release*/ });
+}
+
+inline void server::has_video_right(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+
+    bool has_video_right{ false };
+    if (req.has_header("username")) {
+        const std::string username{ req.get_header_value("username") };
+        has_video_right = database::has_video_right(video_id, username);
+    } else {
+        has_video_right = database::has_video_right(video_id);
+    }
+
+    res.set_content(su::bool_to_string(has_video_right), "plain/text");
+}
+
+inline void server::video_right_list(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+
+    const std::vector<std::string> rights{ database::video_right_list(video_id) };
+    res.set_content(su::join(rights), "plain/text");
 }

@@ -1,3 +1,7 @@
+p {
+  text-align: left;
+}
+
 .file-drop-area {
   position: relative;
   display: flex;
@@ -44,4 +48,38 @@
   &:focus {
     outline: none;
   }
+}
+
+/* Compensate Pure form checkbox margin */
+.user-check {
+  margin: -0.2em 0.2em;
+}
+
+.button-check {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+input[type=checkbox i] {
+  appearance: unset;
+}
+
+.button-check::before {
+  float: left;
+  width: 35px;
+  padding: 0.1em 0;
+  background-color: rgba(255, 255, 255, 0.04);
+  content: url("/static/img/person-add.svg");
+  text-align: center;
+}
+
+.button-check:hover {
+  border-color: #16A085;
+}
+
+.button-check:has(input[type=checkbox]:checked) {
+  border-color: #16A085;
+  color: #16A085;
 }

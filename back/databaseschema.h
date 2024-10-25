@@ -10,14 +10,14 @@ struct User
     std::string username;
     std::string password;
 };
-REGISTER_AUTO_KEY(User, id);
+REGISTER_AUTO_KEY(User, id)
 REFLECTION(User, id, username, password)
 
 struct Admin : User
 {
     bool super{ false };
 };
-REGISTER_AUTO_KEY(Admin, id);
+REGISTER_AUTO_KEY(Admin, id)
 REFLECTION(Admin, id, username, password, super)
 
 struct Video
@@ -27,5 +27,12 @@ struct Video
     std::string file_path;
     int view_count{ 0 };
 };
-REGISTER_CONFLICT_KEY(Video, id);
+REGISTER_CONFLICT_KEY(Video, id)
 REFLECTION(Video, id, title, file_path, view_count)
+
+struct VideoRight
+{
+    types::md5_varchar video_id;
+    int user_id;
+};
+REFLECTION(VideoRight, video_id, user_id)

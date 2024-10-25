@@ -34,10 +34,12 @@ public:
 
     std::string video_list_page() const noexcept;
     std::string add_video_page() const noexcept;
+    std::string update_video_page() const noexcept;
     std::string watch_video_page() const noexcept;
 
     std::vector<std::string> video_list() const noexcept;
-    std::vector<std::string> most_viewed_video_list() const noexcept;
+    std::vector<std::string> video_list(const std::string& username) const noexcept;
+    std::vector<std::string> no_right_video_list() const noexcept;
 
     std::string video_title(const std::string& id) const noexcept;
     int video_views(const std::string& id) const noexcept;
@@ -60,10 +62,15 @@ public:
     std::vector<std::string> user_list() const noexcept;
     std::vector<std::string> admin_list() const noexcept;
 
-    void add_video(const std::string& title, const std::string& content) const noexcept;
+    void add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_usernames) const noexcept;
+    void update_video(const std::string& id, const std::vector<std::string>& allowed_usernames) const noexcept;
     void delete_video(const std::string& id) const noexcept;
     void increment_video_views(const std::string& id) const noexcept;
     std::string video(const std::string& id) const noexcept;
+    bool has_video_right(const std::string& id) const noexcept;
+    bool has_video_right(const std::string& id, const std::string& username) const noexcept;
+
+    std::vector<std::string> video_right_list(const std::string& id) const noexcept;
 
 private:
     std::unique_ptr<httplib::Client> _client{ nullptr };

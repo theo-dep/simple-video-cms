@@ -123,6 +123,12 @@ std::string Client::add_video_page() const noexcept
     return client::format_page(res);
 }
 
+std::string Client::update_video_page() const noexcept
+{
+    const httplib::Result res{ _client->Get("/html/update_video.html") };
+    return client::format_page(res);
+}
+
 std::string Client::watch_video_page() const noexcept
 {
     const httplib::Result res{ _client->Get("/html/watch_video.html") };
@@ -136,9 +142,19 @@ std::vector<std::string> Client::video_list() const noexcept
     return su::split(str_ids);
 }
 
-std::vector<std::string> Client::most_viewed_video_list() const noexcept
+std::vector<std::string> Client::video_list(const std::string& username) const noexcept
 {
-    const httplib::Result res{ _client->Get("/most-viewed") };
+    const httplib::Headers headers{
+        { "username", username }
+    };
+    const httplib::Result res{ _client->Get("/video-list", headers) };
+    const std::string str_ids{ client::format_page(res) };
+    return su::split(str_ids);
+}
+
+std::vector<std::string> Client::no_right_video_list() const noexcept
+{
+    const httplib::Result res{ _client->Get("/no-right-video-list") };
     const std::string str_ids{ client::format_page(res) };
     return su::split(str_ids);
 }
@@ -158,7 +174,7 @@ int Client::video_views(const std::string& id) const noexcept
 bool Client::is_admin(const std::string& username) const noexcept
 {
     const httplib::Headers headers{
-        { "username", username },
+        { "username", username }
     };
     const httplib::Result res{ _client->Get("/is-admin", headers) };
     return su::string_to_bool(client::format_page(res));
@@ -167,7 +183,7 @@ bool Client::is_admin(const std::string& username) const noexcept
 bool Client::is_super_admin(const std::string& username) const noexcept
 {
     const httplib::Headers headers{
-        { "username", username },
+        { "username", username }
     };
     const httplib::Result res{ _client->Get("/is-super-admin", headers) };
     return su::string_to_bool(client::format_page(res));
@@ -176,7 +192,7 @@ bool Client::is_super_admin(const std::string& username) const noexcept
 bool Client::is_user(const std::string& username) const noexcept
 {
     const httplib::Headers headers{
-        { "username", username },
+        { "username", username }
     };
     const httplib::Result res{ _client->Get("/is-user", headers) };
     return su::string_to_bool(client::format_page(res));
@@ -221,7 +237,7 @@ void Client::update_user(const std::string& username, const std::string& passwor
 void Client::delete_admin(const std::string& username) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "username", username, "", "" },
+        { "username", username, "", "" }
     };
     _client->Post("/delete-admin", items);
 }
@@ -229,7 +245,7 @@ void Client::delete_admin(const std::string& username) const noexcept
 void Client::delete_user(const std::string& username) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "username", username, "", "" },
+        { "username", username, "", "" }
     };
     _client->Post("/delete-user", items);
 }
@@ -276,13 +292,22 @@ std::vector<std::string> Client::admin_list() const noexcept
     return su::split(str_usernames);
 }
 
-void Client::add_video(const std::string& title, const std::string& content) const noexcept
+void Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_usernames) const noexcept
 {
     const httplib::MultipartFormDataItems items{
         { "title", title, "", "" },
-        { "video", content, "", "" }
+        { "video", content, "", "" },
+        { "usernames", su::join(allowed_usernames), "", "" }
     };
     _client->Post("/add-video", items);
+}
+
+void Client::update_video(const std::string& id, const std::vector<std::string>& allowed_usernames) const noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "usernames", su::join(allowed_usernames), "", "" }
+    };
+    _client->Post("/update-video/" + id, items);
 }
 
 void Client::delete_video(const std::string& id) const noexcept
@@ -318,6 +343,28 @@ std::string Client::video(const std::string& id) const noexcept
     }
 
     return video_content;
+}
+
+bool Client::has_video_right(const std::string& id) const noexcept
+{
+    const httplib::Result res{ _client->Get("/has-video-right/" + id) };
+    return su::string_to_bool(client::format_page(res));
+}
+
+bool Client::has_video_right(const std::string& id, const std::string& username) const noexcept
+{
+    const httplib::Headers headers{
+        { "username", username }
+    };
+    const httplib::Result res{ _client->Get("/has-video-right/" + id, headers) };
+    return su::string_to_bool(client::format_page(res));
+}
+
+std::vector<std::string> Client::video_right_list(const std::string& id) const noexcept
+{
+    const httplib::Result res{ _client->Get("/video-right-list/" + id) };
+    const std::string str_rights{ client::format_page(res) };
+    return su::split(str_rights);
 }
 
 inline std::string client::generic_error(int error, const std::string& message) noexcept

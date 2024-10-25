@@ -45,22 +45,34 @@ bool database::create_tables() noexcept
     }
 
     {
-        ormpp_auto_key key{ "id" };
-        ormpp_not_null not_null{ { "username", "password" } };
-        if (!conn->create_datatable<Admin>(key, not_null)) {
+        const ormpp_auto_key key{ "id" };
+        const ormpp_not_null not_null{ { "username", "password" } };
+        // const ormpp_unique unique{ { "username" } }; // need varchar
+        if (!conn->create_datatable<Admin>(key, not_null /*, unique*/)) {
             logging::error{ "Fail to create Admin table" };
             return false;
         }
-        if (!conn->create_datatable<User>(key, not_null)) {
+        if (!conn->create_datatable<User>(key, not_null /*, unique*/)) {
             logging::error{ "Fail to create User table" };
             return false;
         }
     }
     {
-        ormpp_key key{ "id" };
-        ormpp_not_null not_null{ { "id", "title", "file_path" } };
+        const ormpp_key key{ "id" };
+        const ormpp_not_null not_null{ { "id", "title", "file_path" } };
         if (!conn->create_datatable<Video>(key, not_null)) {
             logging::error{ "Fail to create Video table" };
+            return false;
+        }
+    }
+    {
+        const ormpp_not_null not_null{ { "video_id", "user_id" } };
+        if (!conn->create_datatable<VideoRight>(not_null)) {
+            logging::error{ "Fail to create VideoRight table" };
+            return false;
+        }
+        if (!conn->execute("ALTER TABLE `VideoRight` ADD UNIQUE KEY (video_id, user_id)")) {
+            logging::error{ "Fail to create VideoRight unique key" };
             return false;
         }
     }
@@ -98,7 +110,7 @@ std::vector<types::md5_varchar> database::video_list() noexcept
     return transform(tuple_videos);
 }
 
-std::vector<types::md5_varchar> database::most_viewed() noexcept
+std::vector<types::md5_varchar> database::video_list(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -106,8 +118,33 @@ std::vector<types::md5_varchar> database::most_viewed() noexcept
         return {};
     }
 
-    const std::vector tuple_ids{ conn->query_s<std::tuple<types::md5_varchar>>("SELECT id FROM Video ORDER BY view_count DESC LIMIT 10") };
-    return transform(tuple_ids);
+    const int user_id{ user(conn, username).value_or(User{}).id };
+    const std::vector tuple_videos{
+        conn->query_s<std::tuple<types::md5_varchar>>("SELECT id FROM Video "
+                                                      "WHERE id IN ("
+                                                      "SELECT video_id FROM VideoRight "
+                                                      "WHERE user_id=?"
+                                                      ")",
+                                                      user_id)
+    };
+    return transform(tuple_videos);
+}
+
+std::vector<types::md5_varchar> database::no_right_video_list() noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return {};
+    }
+
+    const std::vector tuple_videos{
+        conn->query_s<std::tuple<types::md5_varchar>>("SELECT id FROM Video "
+                                                      "WHERE id NOT IN ("
+                                                      "SELECT video_id FROM VideoRight"
+                                                      ")")
+    };
+    return transform(tuple_videos);
 }
 
 inline std::optional<Video> database::video(const std::unique_ptr<dbng>& conn, const types::md5_varchar& id) noexcept
@@ -169,11 +206,12 @@ void database::add_super_admin(const std::string& username, const std::string& p
         return;
     }
 
+    Admin admin;
+    admin.username = username;
+    admin.password = password;
+    admin.super = true;
+
     try {
-        Admin admin;
-        admin.username = username;
-        admin.password = password;
-        admin.super = true;
         conn->insert(admin);
     } catch (const std::exception& e) {
         logging::error{ "Fail to insert super admin \"{}\" with error: {}", username, e.what() };
@@ -221,10 +259,11 @@ void database::add_admin(const std::string& username, const std::string& passwor
         return;
     }
 
+    Admin admin;
+    admin.username = username;
+    admin.password = password;
+
     try {
-        Admin admin;
-        admin.username = username;
-        admin.password = password;
         conn->insert(admin);
     } catch (const std::exception& e) {
         logging::error{ "Fail to insert admin \"{}\" with error: {}", username, e.what() };
@@ -239,10 +278,11 @@ void database::add_user(const std::string& username, const std::string& password
         return;
     }
 
+    User user;
+    user.username = username;
+    user.password = password;
+
     try {
-        User user;
-        user.username = username;
-        user.password = password;
         conn->insert(user);
     } catch (const std::exception& e) {
         logging::error{ "Fail to insert user \"{}\" with error: {}", username, e.what() };
@@ -264,8 +304,9 @@ void database::update_admin(const std::string& username, const std::string& pass
         return;
     }
 
+    admin_to_update->password = password;
+
     try {
-        admin_to_update->password = password;
         conn->update_some<&Admin::password>(admin_to_update.value());
     } catch (const std::exception& e) {
         logging::error{ "Fail to update admin \"{}\" with error: {}", username, e.what() };
@@ -287,8 +328,9 @@ void database::update_user(const std::string& username, const std::string& passw
         return;
     }
 
+    user_to_update->password = password;
+
     try {
-        user_to_update->password = password;
         conn->update_some<&User::password>(user_to_update.value());
     } catch (const std::exception& e) {
         logging::error{ "Fail to update user \"{}\" with error: {}", username, e.what() };
@@ -402,16 +444,54 @@ void database::add_video(const types::md5_varchar& id, const std::string& title,
         return;
     }
 
+    const Video video{
+        .id = id,
+        .title = title,
+        .file_path = file_path
+    };
+
     try {
-        const Video video{
-            .id = id,
-            .title = title,
-            .file_path = file_path
-        };
         conn->insert(video);
     } catch (const std::exception& e) {
-        logging::error{ "Fail to insert video \"{}\" with error: {}", title, e.what() };
+        logging::error{ "Fail to insert video \"{}\", \"{}\" with error: {}", id, title, e.what() };
     }
+}
+
+void database::add_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    std::vector<VideoRight> video_usernames(usernames.size());
+    std::ranges::transform(usernames, video_usernames.begin(),
+                           [&id, &conn](const std::string& username) -> VideoRight {
+                               return VideoRight{
+                                   .video_id = id,
+                                   .user_id = user(conn, username).value_or(User{}).id
+                               };
+                           });
+
+    try {
+        conn->insert(video_usernames);
+    } catch (const std::exception& e) {
+        logging::error{ "Fail to insert video rights \"{}\" with error: {}", id, e.what() };
+    }
+}
+
+void database::update_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    conn->delete_records_s<VideoRight>("video_id=?", id);
+
+    add_video_rights(id, usernames);
 }
 
 void database::delete_video(const types::md5_varchar& id) noexcept
@@ -436,14 +516,64 @@ void database::increment_video_views(const types::md5_varchar& id) noexcept
     // get previous user (update with where clause not available)
     std::optional video_to_update{ video(conn, id) };
     if (!video_to_update.has_value()) {
-        logging::error{ "Unknown video: {}", id.data() };
+        logging::error{ "Unknown video: {}", id };
         return;
     }
 
+    video_to_update->view_count += 1;
+
     try {
-        video_to_update->view_count += 1;
         conn->update_some<&Video::view_count>(video_to_update.value());
     } catch (const std::exception& e) {
-        logging::error{ "Fail to update video \"{}\" with error: {}", id.data(), e.what() };
+        logging::error{ "Fail to update video \"{}\" with error: {}", id, e.what() };
     }
+}
+
+bool database::has_video_right(const types::md5_varchar& id) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return false;
+    }
+
+    const std::vector videos_rights{ conn->query_s<VideoRight>("video_id=?", id) };
+    return videos_rights.empty();
+}
+
+bool database::has_video_right(const types::md5_varchar& id, const std::string& username) noexcept
+{
+    if (has_video_right(id))
+        return true;
+
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return false;
+    }
+
+    // check if user is admin
+    if (admin(conn, username).has_value())
+        return true;
+
+    const int user_id{ user(conn, username).value_or(User{}).id };
+    const std::vector video_usernames{ conn->query_s<VideoRight>("video_id=? AND user_id=?", id, user_id) };
+    return !video_usernames.empty();
+}
+
+std::vector<std::string> database::video_right_list(const types::md5_varchar& id) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return {};
+    }
+
+    const std::vector tuple_rights{
+        conn->query_s<std::tuple<std::string>>(
+            "SELECT username FROM User "
+            "WHERE id IN (SELECT user_id FROM VideoRight WHERE video_id=?)",
+            id)
+    };
+    return transform(tuple_rights);
 }

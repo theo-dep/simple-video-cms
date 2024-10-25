@@ -191,6 +191,10 @@ video {
     .info {
         width: 50%;
     }
+
+    .info-video {
+        width: 75%;
+    }
 }
 
 /*
@@ -200,5 +204,9 @@ video {
 
     .info {
         width: 35%;
+    }
+
+    .info-video {
+        width: 50%;
     }
 }
