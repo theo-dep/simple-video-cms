@@ -40,6 +40,7 @@ namespace database
 
     void add_video(const types::md5_varchar& id, const std::string& title, const std::string& file_path) noexcept;
     void add_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept;
+    void update_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept;
     void delete_video(const types::md5_varchar& id) noexcept;
     void increment_video_views(const types::md5_varchar& id) noexcept;
     bool has_video_right(const types::md5_varchar& id) noexcept;

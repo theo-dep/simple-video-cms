@@ -50,7 +50,10 @@ namespace server
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void update_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void update_video_post(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
     void delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
+
     void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
 }
@@ -105,7 +108,10 @@ int server::start() noexcept
 
         .Get("/add-video", sc::serve(add_video_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/add-video", sc::serve(add_video_post, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/update-video/:video_id", sc::serve(update_video_get, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-video/:video_id", sc::serve(update_video_post, std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+
         .Get("/watch-video/:video_id", sc::serve(watch_video, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)));
 
@@ -201,7 +207,7 @@ inline inja::json server::video_dict(const std::vector<std::string>& video_ids, 
         const std::string title{ client.video_title(id) };
         const int views{ client.video_views(id) };
         const std::vector rights{ client.video_right_list(id) };
-        const inja::json video = { { "id", id }, { "title", title }, { "views", views }, { "right_list", rights } };
+        const inja::json video{ { "id", id }, { "title", title }, { "views", views }, { "right_list", rights } };
         video_dict += video;
     }
     return video_dict;
@@ -625,6 +631,59 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
 
     client.add_video(video_title, item.content, allowed_usernames);
     res.set_redirect("/video-list");
+}
+
+inline void server::update_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string video_id{ req.path_params.at("video_id") };
+
+    const std::vector<std::string> user_list{ client.user_list() };
+    inja::json user_dict = inja::json::array();
+    for (const std::string& username : user_list) {
+        const bool checked{ !client.has_video_right(video_id) && client.has_video_right(video_id, username) };
+        const inja::json user{ { "name", username }, { "checked", checked } };
+        user_dict += user;
+    }
+
+    const inja::json data{
+        { "video_id", video_id },
+        { "user_dict", user_dict }
+    };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.update_video_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::update_video_post(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string video_id{ req.path_params.at("video_id") };
+
+    const std::size_t username_count{ req.get_param_value_count("usernames") };
+    std::vector<std::string> allowed_usernames(username_count);
+    for (std::size_t i{ 0 }; i < username_count; ++i) {
+        allowed_usernames[i] = req.get_param_value("usernames", i);
+    }
+
+    const std::string signal_str{
+        confirm_handler.create()
+            .on_confirm([video_id, allowed_usernames, &client](httplib::Response& res) {
+                client.update_video(video_id, allowed_usernames);
+                res.set_redirect("/video-list");
+            })
+            .on_deny([](httplib::Response& res) {
+                res.set_redirect("/video-list");
+            })
+            .to_string()
+    };
+
+    confirm_action(req, res, session, client, signal_str);
 }
 
 inline void server::delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept

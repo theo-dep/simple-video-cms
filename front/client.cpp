@@ -123,6 +123,12 @@ std::string Client::add_video_page() const noexcept
     return client::format_page(res);
 }
 
+std::string Client::update_video_page() const noexcept
+{
+    const httplib::Result res{ _client->Get("/html/update_video.html") };
+    return client::format_page(res);
+}
+
 std::string Client::watch_video_page() const noexcept
 {
     const httplib::Result res{ _client->Get("/html/watch_video.html") };
@@ -294,6 +300,14 @@ void Client::add_video(const std::string& title, const std::string& content, con
         { "usernames", su::join(allowed_usernames), "", "" }
     };
     _client->Post("/add-video", items);
+}
+
+void Client::update_video(const std::string& id, const std::vector<std::string>& allowed_usernames) const noexcept
+{
+    const httplib::MultipartFormDataItems items{
+        { "usernames", su::join(allowed_usernames), "", "" }
+    };
+    _client->Post("/update-video/" + id, items);
 }
 
 void Client::delete_video(const std::string& id) const noexcept

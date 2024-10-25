@@ -481,6 +481,19 @@ void database::add_video_rights(const types::md5_varchar& id, const std::vector<
     }
 }
 
+void database::update_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return;
+    }
+
+    conn->delete_records_s<VideoRight>("video_id=?", id);
+
+    add_video_rights(id, usernames);
+}
+
 void database::delete_video(const types::md5_varchar& id) noexcept
 {
     const std::unique_ptr conn{ connection() };
@@ -530,15 +543,13 @@ bool database::has_video_right(const types::md5_varchar& id) noexcept
 
 bool database::has_video_right(const types::md5_varchar& id, const std::string& username) noexcept
 {
+    if (has_video_right(id))
+        return true;
+
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
         logging::error{ "Fail to open database connection" };
         return false;
-    }
-
-    const std::vector videos_rights{ conn->query_s<VideoRight>("video_id=?", id) };
-    if (videos_rights.empty()) {
-        return true;
     }
 
     const int user_id{ user(conn, username).value_or(User{}).id };

@@ -43,6 +43,7 @@ namespace server
     void admin_list(const httplib::Request& req, httplib::Response& res) noexcept;
 
     void add_video(const httplib::Request& req, httplib::Response& res) noexcept;
+    void update_video(const httplib::Request& req, httplib::Response& res) noexcept;
     void delete_video(const httplib::Request& req, httplib::Response& res) noexcept;
     void increment_video_views(const httplib::Request& req, httplib::Response& res) noexcept;
     void video(const httplib::Request& req, httplib::Response& res) noexcept;
@@ -94,6 +95,7 @@ int server::start() noexcept
         .Get("/admin-list", sc::serve(admin_list))
 
         .Post("/add-video", sc::serve(add_video))
+        .Post("/update-video/:video_id", sc::serve(update_video))
         .Post("/delete-video/:video_id", sc::serve(delete_video))
         .Post("/increment-video-views/:video_id", sc::serve(increment_video_views))
         .Get("/video/:video_id", sc::serve(video))
@@ -383,7 +385,7 @@ inline std::filesystem::path server::video_path() noexcept
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res) noexcept
 {
-    if (!req.has_file("title") || !req.has_file("video")) {
+    if (!req.has_file("title") || !req.has_file("video") || !req.has_file("usernames")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -407,6 +409,21 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
     database::add_video(video_id, video_title, video_file_path.string());
     database::add_video_rights(video_id, allowed_usernames);
+}
+
+inline void server::update_video(const httplib::Request& req, httplib::Response& res) noexcept
+{
+    if (!req.has_file("usernames")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+
+    const std::vector allowed_usernames{ su::split(req.get_file_value("usernames").content) };
+    database::update_video_rights(video_id, allowed_usernames);
 }
 
 inline void server::delete_video(const httplib::Request& req, httplib::Response& res) noexcept
