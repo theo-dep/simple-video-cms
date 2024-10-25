@@ -76,8 +76,10 @@ int server::start() noexcept
     set_exception_handler(server);
     set_logger(server);
 
-    server.set_post_routing_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
-        set_no_cache_headers(res);
+    server.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) {
+        if (!req.path.contains("static")) {
+            set_no_cache_headers(res);
+        }
     });
 
     server
