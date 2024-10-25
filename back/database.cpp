@@ -552,6 +552,10 @@ bool database::has_video_right(const types::md5_varchar& id, const std::string& 
         return false;
     }
 
+    // check if user is admin
+    if (admin(conn, username).has_value())
+        return true;
+
     const int user_id{ user(conn, username).value_or(User{}).id };
     const std::vector video_usernames{ conn->query_s<VideoRight>("video_id=? AND user_id=?", id, user_id) };
     return !video_usernames.empty();
