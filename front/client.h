@@ -19,6 +19,8 @@ public:
     std::string error_page_403() const noexcept;
     static std::string generic_error(int error, const std::string& message) noexcept;
 
+    std::pair<std::string, std::string> static_file(const std::string& file) const noexcept;
+
     std::string home_page() const noexcept;
     std::string dashboard_page() const noexcept;
 

@@ -11,8 +11,6 @@
 #include <httplib.h>
 #include <inja.hpp>
 
-#include <filesystem>
-
 namespace server
 {
     void set_no_cache_headers(httplib::Response& res) noexcept;
@@ -26,6 +24,8 @@ namespace server
     inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client) noexcept;
 
     // inja exceptions catched by httplib Server::set_exception_handler
+
+    void static_file(const httplib::Request& req, httplib::Response& res, const Client& client) noexcept;
 
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -76,14 +76,13 @@ int server::start() noexcept
     set_exception_handler(server);
     set_logger(server);
 
-    const std::filesystem::path static_path{ std::filesystem::current_path() / "static" };
-    server.set_mount_point("/static", static_path.string());
-
     server.set_post_routing_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
         set_no_cache_headers(res);
     });
 
     server
+        .Get(sc::static_regexp_path(), sc::serve(static_file, std::cref(client)))
+
         .Get("/", sc::serve(home, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/dashboard", sc::serve(dashboard, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -211,6 +210,13 @@ inline inja::json server::video_dict(const std::vector<std::string>& video_ids, 
         video_dict += video;
     }
     return video_dict;
+}
+
+inline void server::static_file(const httplib::Request& req, httplib::Response& res, const Client& client) noexcept
+{
+    const std::string file{ req.matches[1] };
+    const auto [content, content_type]{ client.static_file(file) };
+    res.set_content(content, content_type);
 }
 
 inline void server::home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
