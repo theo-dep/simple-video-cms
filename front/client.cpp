@@ -63,6 +63,23 @@ std::string Client::generic_error(int error, const std::string& message) noexcep
     return client::generic_error(error, message);
 }
 
+std::pair<std::string, std::string> Client::static_file(const std::string& file) const noexcept
+{
+    const httplib::Result res{ _client->Get("/static/" + file) };
+
+    if (!res) {
+        logging::error{ "Fail to get static file \"{}\" with error: {} ({})", file, httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        return {};
+    }
+
+    if (res->status != httplib::StatusCode::OK_200) {
+        logging::error{ "Fail to get static file \"{}\" with error: {} ({})", file, httplib::status_message(res->status), res->status };
+        return {};
+    }
+
+    return std::make_pair(res->body, res->get_header_value("Content-Type"));
+}
+
 std::string Client::home_page() const noexcept
 {
     const httplib::Result res{ _client->Get("/html/homepage.html") };
