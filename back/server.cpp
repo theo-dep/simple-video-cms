@@ -3,6 +3,7 @@
 #include "crypto.h"
 #include "database.h"
 #include "logging.h"
+#include "search.h"
 #include "servercommon.h"
 #include "stringutils.h"
 
@@ -164,6 +165,7 @@ namespace server
 {
     std::vector<std::string> transform(const std::vector<std::int64_t>& list) noexcept;
     std::vector<std::int64_t> transform(const std::vector<std::string>& list) noexcept;
+    std::vector<std::int64_t> extract(const Database& db, const std::string& search, const std::vector<std::int64_t>& ids) noexcept;
 }
 
 inline std::vector<std::string> server::transform(const std::vector<std::int64_t>& list) noexcept
@@ -180,24 +182,47 @@ inline std::vector<std::int64_t> server::transform(const std::vector<std::string
     return int_list;
 }
 
-inline void server::video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+inline std::vector<std::int64_t> server::extract(const Database& db, const std::string& search, const std::vector<std::int64_t>& ids) noexcept
 {
-    std::vector<std::int64_t> varchar_ids;
-    if (req.has_header("user_id")) {
-        const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
-        varchar_ids = db.video_list(user_id);
-    } else {
-        varchar_ids = db.video_list();
-    }
-
-    const std::vector ids{ transform(varchar_ids) };
-    res.set_content(su::join(ids), "plain/text");
+    std::unordered_map<std::string, std::int64_t> title_ids;
+    title_ids.reserve(ids.size());
+    std::ranges::transform(ids, std::inserter(title_ids, title_ids.begin()),
+                           [&db](const std::int64_t& id) noexcept -> decltype(title_ids)::value_type {
+                               return std::make_pair(db.video_title(id), id);
+                           });
+    return search::extract(search, title_ids);
 }
 
-inline void server::no_right_video_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
+inline void server::video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::vector ids{ transform(db.no_right_video_list()) };
-    res.set_content(su::join(ids), "plain/text");
+    std::vector<std::int64_t> ids;
+    if (req.has_header("user_id")) {
+        const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+        ids = db.video_list(user_id);
+    } else {
+        ids = db.video_list();
+    }
+
+    if (req.has_param("search")) {
+        const std::string search{ req.get_param_value("search") };
+        ids = extract(db, search, ids);
+    }
+
+    const std::vector str_ids{ transform(ids) };
+    res.set_content(su::join(str_ids), "plain/text");
+}
+
+inline void server::no_right_video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+{
+    std::vector ids{ db.no_right_video_list() };
+
+    if (req.has_param("search")) {
+        const std::string search{ req.get_param_value("search") };
+        ids = extract(db, search, ids);
+    }
+
+    const std::vector str_ids{ transform(ids) };
+    res.set_content(su::join(str_ids), "plain/text");
 }
 
 inline void server::video_title(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
