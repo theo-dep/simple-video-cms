@@ -1,7 +1,7 @@
 //  Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 //  SPDX-License-Identifier: MIT
 //  RapidFuzz v1.0.2
-//  Generated: 2024-07-02 16:47:26.932914
+//  Generated: 2024-10-24 15:27:27.715931
 //  ----------------------------------------------------------
 //  This file is an amalgamation of multiple different files.
 //  You probably shouldn't edit it directly.
@@ -1592,6 +1592,15 @@ struct DecomposedSet {
 static inline size_t abs_diff(size_t a, size_t b)
 {
     return a > b ? a - b : b - a;
+}
+
+template <typename TO, typename FROM>
+TO opt_static_cast(const FROM& value)
+{
+    if constexpr (std::is_same_v<TO, FROM>)
+        return value;
+    else
+        return static_cast<TO>(value);
 }
 
 /**
@@ -3572,7 +3581,7 @@ struct MultiSimilarityBase : public MultiNormalizedMetricBase<T, ResType> {
 
     template <typename Sentence2>
     void distance(ResType* scores, size_t score_count, const Sentence2& s2,
-                  ResType score_cutoff = WorstDistance) const
+                  ResType score_cutoff = static_cast<ResType>(WorstDistance)) const
     {
         _distance(scores, score_count, Range(s2), score_cutoff);
     }
@@ -3671,10 +3680,10 @@ size_t damerau_levenshtein_distance_zhao(const Range<InputIt1>& s1, const Range<
 
         auto iter_s2 = s2.begin();
         for (IntType j = 1; j <= len2; j++) {
-            ptrdiff_t diag = R1[j - 1] + static_cast<IntType>(*iter_s1 != *iter_s2);
-            ptrdiff_t left = R[j - 1] + 1;
-            ptrdiff_t up = R1[j] + 1;
-            ptrdiff_t temp = std::min({diag, left, up});
+            int64_t diag = R1[j - 1] + static_cast<IntType>(*iter_s1 != *iter_s2);
+            int64_t left = R[j - 1] + 1;
+            int64_t up = R1[j] + 1;
+            int64_t temp = std::min({diag, left, up});
 
             if (*iter_s1 == *iter_s2) {
                 last_col_id = j;   // last occurence of s1_i
@@ -3682,15 +3691,15 @@ size_t damerau_levenshtein_distance_zhao(const Range<InputIt1>& s1, const Range<
                 T = last_i2l1;     // save H_i-2,l-1
             }
             else {
-                ptrdiff_t k = last_row_id.get(static_cast<uint64_t>(*iter_s2)).val;
-                ptrdiff_t l = last_col_id;
+                int64_t k = last_row_id.get(static_cast<uint64_t>(*iter_s2)).val;
+                int64_t l = last_col_id;
 
                 if ((j - l) == 1) {
-                    ptrdiff_t transpose = FR[j] + (i - k);
+                    int64_t transpose = FR[j] + (i - k);
                     temp = std::min(temp, transpose);
                 }
                 else if ((i - k) == 1) {
-                    ptrdiff_t transpose = T + (j - l);
+                    int64_t transpose = T + (j - l);
                     temp = std::min(temp, transpose);
                 }
             }
@@ -4482,7 +4491,7 @@ void lcs_simd(Range<size_t*> scores, const BlockPatternMatchVector& block, const
         unroll<int, interleaveCount>([&](auto j) {
             auto counts = popcount(~S[j]);
             unroll<int, counts.size()>([&](auto i) {
-                *score_iter = (counts[i] >= score_cutoff) ? counts[i] : 0;
+                *score_iter = (counts[i] >= score_cutoff) ? static_cast<size_t>(counts[i]) : 0;
                 score_iter++;
             });
         });
@@ -4502,7 +4511,7 @@ void lcs_simd(Range<size_t*> scores, const BlockPatternMatchVector& block, const
 
         auto counts = popcount(~S);
         unroll<int, counts.size()>([&](auto i) {
-            *score_iter = (counts[i] >= score_cutoff) ? counts[i] : 0;
+            *score_iter = (counts[i] >= score_cutoff) ? static_cast<size_t>(counts[i]) : 0;
             score_iter++;
         });
     }
@@ -4511,8 +4520,8 @@ void lcs_simd(Range<size_t*> scores, const BlockPatternMatchVector& block, const
 #endif
 
 template <size_t N, bool RecordMatrix, typename PMV, typename InputIt1, typename InputIt2>
-auto lcs_unroll(const PMV& block, const Range<InputIt1>&, const Range<InputIt2>& s2, size_t score_cutoff = 0)
-    -> LCSseqResult<RecordMatrix>
+auto lcs_unroll(const PMV& block, const Range<InputIt1>&, const Range<InputIt2>& s2,
+                size_t score_cutoff = 0) -> LCSseqResult<RecordMatrix>
 {
     uint64_t S[N];
     unroll<size_t, N>([&](size_t i) { S[i] = ~UINT64_C(0); });
@@ -5614,7 +5623,8 @@ static inline size_t count_transpositions_block(const BlockPatternMatchVector& P
 
             uint64_t PatternFlagMask = blsi(P_flag);
 
-            Transpositions += !(PM.get(PatternWord, T_first[countr_zero(T_flag)]) & PatternFlagMask);
+            Transpositions += !(PM.get(PatternWord, T_first[static_cast<ptrdiff_t>(countr_zero(T_flag))]) &
+                                PatternFlagMask);
 
             T_flag = blsr(T_flag);
             P_flag ^= PatternFlagMask;
@@ -5823,7 +5833,7 @@ static inline auto jaro_similarity_prepare_bound_short_s2(const VecType* s1_leng
 
     // todo try to find a simd implementation for sse2
     for (size_t i = 0; i < vec_width; ++i) {
-        size_t Bound = jaro_bounds(s1_lengths[i], s2.size());
+        size_t Bound = jaro_bounds(static_cast<size_t>(s1_lengths[i]), s2.size());
 
         if (Bound > bounds.maxBound) bounds.maxBound = Bound;
 
@@ -5835,7 +5845,7 @@ static inline auto jaro_similarity_prepare_bound_short_s2(const VecType* s1_leng
     bounds.boundMask = native_simd<VecType>(reinterpret_cast<uint64_t*>(boundMask_.data()));
 #    endif
 
-    size_t lastRelevantChar = maxLen + bounds.maxBound;
+    size_t lastRelevantChar = static_cast<size_t>(maxLen) + bounds.maxBound;
     if (s2.size() > lastRelevantChar) s2.remove_suffix(s2.size() - lastRelevantChar);
 
     return bounds;
@@ -5865,7 +5875,7 @@ static inline auto jaro_similarity_prepare_bound_long_s2(const VecType* s1_lengt
     bounds.boundMaskSize = native_simd<VecType>(bit_mask_lsb<VecType>(2 * bounds.maxBound));
     bounds.boundMask = native_simd<VecType>(bit_mask_lsb<VecType>(bounds.maxBound + 1));
 
-    size_t lastRelevantChar = maxLen + bounds.maxBound;
+    size_t lastRelevantChar = static_cast<size_t>(maxLen) + bounds.maxBound;
     if (s2.size() > lastRelevantChar) s2.remove_suffix(s2.size() - lastRelevantChar);
 
     return bounds;
@@ -5966,8 +5976,10 @@ jaro_similarity_simd_long_s2(Range<double*> scores, const detail::BlockPatternMa
             T_flag[i].store(T_flags + i * vec_width);
 
         for (size_t i = 0; i < vec_width; ++i) {
-            VecType CommonChars = counts[i];
-            if (!jaro_common_char_filter(s1_lengths[result_index], s2.size(), CommonChars, score_cutoff)) {
+            size_t CommonChars = static_cast<size_t>(counts[i]);
+            if (!jaro_common_char_filter(static_cast<size_t>(s1_lengths[result_index]), s2.size(),
+                                         CommonChars, score_cutoff))
+            {
                 scores[result_index] = 0.0;
                 result_index++;
                 continue;
@@ -6001,8 +6013,8 @@ jaro_similarity_simd_long_s2(Range<double*> scores, const detail::BlockPatternMa
                 }
             }
 
-            double Sim =
-                jaro_calculate_similarity(s1_lengths[result_index], s2.size(), CommonChars, Transpositions);
+            double Sim = jaro_calculate_similarity(static_cast<size_t>(s1_lengths[result_index]), s2.size(),
+                                                   CommonChars, Transpositions);
 
             scores[result_index] = (Sim >= score_cutoff) ? Sim : 0;
             result_index++;
@@ -6077,8 +6089,10 @@ jaro_similarity_simd_short_s2(Range<double*> scores, const detail::BlockPatternM
         alignas(alignment) std::array<VecType, vec_width> T_flags;
         T_flag.store(T_flags.data());
         for (size_t i = 0; i < vec_width; ++i) {
-            VecType CommonChars = counts[i];
-            if (!jaro_common_char_filter(s1_lengths[result_index], s2.size(), CommonChars, score_cutoff)) {
+            size_t CommonChars = static_cast<size_t>(counts[i]);
+            if (!jaro_common_char_filter(static_cast<size_t>(s1_lengths[result_index]), s2.size(),
+                                         CommonChars, score_cutoff))
+            {
                 scores[result_index] = 0.0;
                 result_index++;
                 continue;
@@ -6101,8 +6115,8 @@ jaro_similarity_simd_short_s2(Range<double*> scores, const detail::BlockPatternM
                 P_flag_cur ^= PatternFlagMask;
             }
 
-            double Sim =
-                jaro_calculate_similarity(s1_lengths[result_index], s2.size(), CommonChars, Transpositions);
+            double Sim = jaro_calculate_similarity(static_cast<size_t>(s1_lengths[result_index]), s2.size(),
+                                                   CommonChars, Transpositions);
 
             scores[result_index] = (Sim >= score_cutoff) ? Sim : 0;
             result_index++;
@@ -6662,12 +6676,12 @@ private:
 };
 
 template <typename Sentence1>
-explicit CachedJaroWinkler(const Sentence1& s1_, double _prefix_weight = 0.1)
-    -> CachedJaroWinkler<char_type<Sentence1>>;
+explicit CachedJaroWinkler(const Sentence1& s1_,
+                           double _prefix_weight = 0.1) -> CachedJaroWinkler<char_type<Sentence1>>;
 
 template <typename InputIt1>
-CachedJaroWinkler(InputIt1 first1, InputIt1 last1, double _prefix_weight = 0.1)
-    -> CachedJaroWinkler<iter_value_t<InputIt1>>;
+CachedJaroWinkler(InputIt1 first1, InputIt1 last1,
+                  double _prefix_weight = 0.1) -> CachedJaroWinkler<iter_value_t<InputIt1>>;
 
 } // namespace rapidfuzz
 
@@ -7027,7 +7041,7 @@ void levenshtein_hyrroe2003_simd(Range<size_t*> scores, const detail::BlockPatte
             }
             /* calculate score under consideration of wraparounds in parallel counter */
             else {
-                if constexpr (!std::is_same_v<VecType, uint64_t>) {
+                if constexpr (std::numeric_limits<VecType>::max() < std::numeric_limits<size_t>::max()) {
                     size_t min_dist = abs_diff(s1_lengths[result_index], s2.size());
                     size_t wraparound_score = static_cast<size_t>(std::numeric_limits<VecType>::max()) + 1;
 
@@ -7135,8 +7149,8 @@ size_t levenshtein_hyrroe2003_small_band(const BlockPatternMatchVector& PM, cons
 }
 
 template <bool RecordMatrix, typename InputIt1, typename InputIt2>
-auto levenshtein_hyrroe2003_small_band(const Range<InputIt1>& s1, const Range<InputIt2>& s2, size_t max)
-    -> LevenshteinResult<RecordMatrix, false>
+auto levenshtein_hyrroe2003_small_band(const Range<InputIt1>& s1, const Range<InputIt2>& s2,
+                                       size_t max) -> LevenshteinResult<RecordMatrix, false>
 {
     assert(max <= s1.size());
     assert(max <= s2.size());
@@ -7391,7 +7405,8 @@ auto levenshtein_hyrroe2003_block(const BlockPatternMatchVector& PM, const Range
                 vecs[last_block].VN = 0;
 
                 size_t chars_in_block = (last_block + 1 == words) ? ((s1.size() - 1) % word_size + 1) : 64;
-                scores[last_block] = scores[last_block - 1] + chars_in_block - HP_carry + HN_carry;
+                scores[last_block] = scores[last_block - 1] + chars_in_block -
+                                     opt_static_cast<size_t>(HP_carry) + opt_static_cast<size_t>(HN_carry);
                 // todo probably wrong types
                 scores[last_block] = static_cast<size_t>(static_cast<ptrdiff_t>(scores[last_block]) +
                                                          advance_block(last_block));
@@ -8358,12 +8373,12 @@ private:
 };
 
 template <typename Sentence1>
-explicit CachedLevenshtein(const Sentence1& s1_, LevenshteinWeightTable aWeights = {1, 1, 1})
-    -> CachedLevenshtein<char_type<Sentence1>>;
+explicit CachedLevenshtein(const Sentence1& s1_, LevenshteinWeightTable aWeights = {
+                                                     1, 1, 1}) -> CachedLevenshtein<char_type<Sentence1>>;
 
 template <typename InputIt1>
-CachedLevenshtein(InputIt1 first1, InputIt1 last1, LevenshteinWeightTable aWeights = {1, 1, 1})
-    -> CachedLevenshtein<iter_value_t<InputIt1>>;
+CachedLevenshtein(InputIt1 first1, InputIt1 last1,
+                  LevenshteinWeightTable aWeights = {1, 1, 1}) -> CachedLevenshtein<iter_value_t<InputIt1>>;
 
 } // namespace rapidfuzz
 
@@ -8512,7 +8527,7 @@ void osa_hyrroe2003_simd(Range<size_t*> scores, const detail::BlockPatternMatchV
             }
             /* calculate score under consideration of wraparounds in parallel counter */
             else {
-                if constexpr (!std::is_same_v<VecType, uint64_t>) {
+                if constexpr (std::numeric_limits<VecType>::max() < std::numeric_limits<size_t>::max()) {
                     size_t min_dist = abs_diff(s1_lengths[result_index], s2.size());
                     size_t wraparound_score = static_cast<size_t>(std::numeric_limits<VecType>::max()) + 1;
 
@@ -9151,14 +9166,15 @@ CachedPrefix(InputIt1 first1, InputIt1 last1) -> CachedPrefix<iter_value_t<Input
 
 namespace rapidfuzz {
 
-template <typename CharT, typename InputIt1, typename InputIt2>
-std::basic_string<CharT> editops_apply(const Editops& ops, InputIt1 first1, InputIt1 last1, InputIt2 first2,
-                                       InputIt2 last2)
+namespace detail {
+template <typename ReturnType, typename InputIt1, typename InputIt2>
+ReturnType editops_apply_impl(const Editops& ops, InputIt1 first1, InputIt1 last1, InputIt2 first2,
+                              InputIt2 last2)
 {
     auto len1 = static_cast<size_t>(std::distance(first1, last1));
     auto len2 = static_cast<size_t>(std::distance(first2, last2));
 
-    std::basic_string<CharT> res_str;
+    ReturnType res_str;
     res_str.resize(len1 + len2);
     size_t src_pos = 0;
     size_t dest_pos = 0;
@@ -9166,7 +9182,8 @@ std::basic_string<CharT> editops_apply(const Editops& ops, InputIt1 first1, Inpu
     for (const auto& op : ops) {
         /* matches between last and current editop */
         while (src_pos < op.src_pos) {
-            res_str[dest_pos] = static_cast<CharT>(first1[static_cast<ptrdiff_t>(src_pos)]);
+            res_str[dest_pos] =
+                static_cast<typename ReturnType::value_type>(first1[static_cast<ptrdiff_t>(src_pos)]);
             src_pos++;
             dest_pos++;
         }
@@ -9174,12 +9191,14 @@ std::basic_string<CharT> editops_apply(const Editops& ops, InputIt1 first1, Inpu
         switch (op.type) {
         case EditType::None:
         case EditType::Replace:
-            res_str[dest_pos] = static_cast<CharT>(first2[static_cast<ptrdiff_t>(op.dest_pos)]);
+            res_str[dest_pos] =
+                static_cast<typename ReturnType::value_type>(first2[static_cast<ptrdiff_t>(op.dest_pos)]);
             src_pos++;
             dest_pos++;
             break;
         case EditType::Insert:
-            res_str[dest_pos] = static_cast<CharT>(first2[static_cast<ptrdiff_t>(op.dest_pos)]);
+            res_str[dest_pos] =
+                static_cast<typename ReturnType::value_type>(first2[static_cast<ptrdiff_t>(op.dest_pos)]);
             dest_pos++;
             break;
         case EditType::Delete: src_pos++; break;
@@ -9188,7 +9207,8 @@ std::basic_string<CharT> editops_apply(const Editops& ops, InputIt1 first1, Inpu
 
     /* matches after the last editop */
     while (src_pos < len1) {
-        res_str[dest_pos] = static_cast<CharT>(first1[static_cast<ptrdiff_t>(src_pos)]);
+        res_str[dest_pos] =
+            static_cast<typename ReturnType::value_type>(first1[static_cast<ptrdiff_t>(src_pos)]);
         src_pos++;
         dest_pos++;
     }
@@ -9197,21 +9217,14 @@ std::basic_string<CharT> editops_apply(const Editops& ops, InputIt1 first1, Inpu
     return res_str;
 }
 
-template <typename CharT, typename Sentence1, typename Sentence2>
-std::basic_string<CharT> editops_apply(const Editops& ops, const Sentence1& s1, const Sentence2& s2)
-{
-    return editops_apply<CharT>(ops, detail::to_begin(s1), detail::to_end(s1), detail::to_begin(s2),
-                                detail::to_end(s2));
-}
-
-template <typename CharT, typename InputIt1, typename InputIt2>
-std::basic_string<CharT> opcodes_apply(const Opcodes& ops, InputIt1 first1, InputIt1 last1, InputIt2 first2,
-                                       InputIt2 last2)
+template <typename ReturnType, typename InputIt1, typename InputIt2>
+ReturnType opcodes_apply_impl(const Opcodes& ops, InputIt1 first1, InputIt1 last1, InputIt2 first2,
+                              InputIt2 last2)
 {
     auto len1 = static_cast<size_t>(std::distance(first1, last1));
     auto len2 = static_cast<size_t>(std::distance(first2, last2));
 
-    std::basic_string<CharT> res_str;
+    ReturnType res_str;
     res_str.resize(len1 + len2);
     size_t dest_pos = 0;
 
@@ -9219,13 +9232,15 @@ std::basic_string<CharT> opcodes_apply(const Opcodes& ops, InputIt1 first1, Inpu
         switch (op.type) {
         case EditType::None:
             for (auto i = op.src_begin; i < op.src_end; ++i) {
-                res_str[dest_pos++] = static_cast<CharT>(first1[static_cast<ptrdiff_t>(i)]);
+                res_str[dest_pos++] =
+                    static_cast<typename ReturnType::value_type>(first1[static_cast<ptrdiff_t>(i)]);
             }
             break;
         case EditType::Replace:
         case EditType::Insert:
             for (auto i = op.dest_begin; i < op.dest_end; ++i) {
-                res_str[dest_pos++] = static_cast<CharT>(first2[static_cast<ptrdiff_t>(i)]);
+                res_str[dest_pos++] =
+                    static_cast<typename ReturnType::value_type>(first2[static_cast<ptrdiff_t>(i)]);
             }
             break;
         case EditType::Delete: break;
@@ -9236,11 +9251,62 @@ std::basic_string<CharT> opcodes_apply(const Opcodes& ops, InputIt1 first1, Inpu
     return res_str;
 }
 
-template <typename CharT, typename Sentence1, typename Sentence2>
-std::basic_string<CharT> opcodes_apply(const Opcodes& ops, const Sentence1& s1, const Sentence2& s2)
+} // namespace detail
+
+template <typename CharT, typename InputIt1, typename InputIt2>
+std::basic_string<CharT> editops_apply_str(const Editops& ops, InputIt1 first1, InputIt1 last1,
+                                           InputIt2 first2, InputIt2 last2)
 {
-    return opcodes_apply<CharT>(ops, detail::to_begin(s1), detail::to_end(s1), detail::to_begin(s2),
-                                detail::to_end(s2));
+    return detail::editops_apply_impl<std::basic_string<CharT>>(ops, first1, last1, first2, last2);
+}
+
+template <typename CharT, typename Sentence1, typename Sentence2>
+std::basic_string<CharT> editops_apply_str(const Editops& ops, const Sentence1& s1, const Sentence2& s2)
+{
+    return detail::editops_apply_impl<std::basic_string<CharT>>(ops, detail::to_begin(s1), detail::to_end(s1),
+                                                                detail::to_begin(s2), detail::to_end(s2));
+}
+
+template <typename CharT, typename InputIt1, typename InputIt2>
+std::basic_string<CharT> opcodes_apply_str(const Opcodes& ops, InputIt1 first1, InputIt1 last1,
+                                           InputIt2 first2, InputIt2 last2)
+{
+    return detail::opcodes_apply_impl<std::basic_string<CharT>>(ops, first1, last1, first2, last2);
+}
+
+template <typename CharT, typename Sentence1, typename Sentence2>
+std::basic_string<CharT> opcodes_apply_str(const Opcodes& ops, const Sentence1& s1, const Sentence2& s2)
+{
+    return detail::opcodes_apply_impl<std::basic_string<CharT>>(ops, detail::to_begin(s1), detail::to_end(s1),
+                                                                detail::to_begin(s2), detail::to_end(s2));
+}
+
+template <typename CharT, typename InputIt1, typename InputIt2>
+std::vector<CharT> editops_apply_vec(const Editops& ops, InputIt1 first1, InputIt1 last1, InputIt2 first2,
+                                     InputIt2 last2)
+{
+    return detail::editops_apply_impl<std::vector<CharT>>(ops, first1, last1, first2, last2);
+}
+
+template <typename CharT, typename Sentence1, typename Sentence2>
+std::vector<CharT> editops_apply_vec(const Editops& ops, const Sentence1& s1, const Sentence2& s2)
+{
+    return detail::editops_apply_impl<std::vector<CharT>>(ops, detail::to_begin(s1), detail::to_end(s1),
+                                                          detail::to_begin(s2), detail::to_end(s2));
+}
+
+template <typename CharT, typename InputIt1, typename InputIt2>
+std::vector<CharT> opcodes_apply_vec(const Opcodes& ops, InputIt1 first1, InputIt1 last1, InputIt2 first2,
+                                     InputIt2 last2)
+{
+    return detail::opcodes_apply_impl<std::vector<CharT>>(ops, first1, last1, first2, last2);
+}
+
+template <typename CharT, typename Sentence1, typename Sentence2>
+std::vector<CharT> opcodes_apply_vec(const Opcodes& ops, const Sentence1& s1, const Sentence2& s2)
+{
+    return detail::opcodes_apply_impl<std::vector<CharT>>(ops, detail::to_begin(s1), detail::to_end(s1),
+                                                          detail::to_begin(s2), detail::to_end(s2));
 }
 
 } // namespace rapidfuzz
@@ -9669,8 +9735,8 @@ explicit CachedPartialTokenSortRatio(const Sentence1& s1)
     -> CachedPartialTokenSortRatio<char_type<Sentence1>>;
 
 template <typename InputIt1>
-CachedPartialTokenSortRatio(InputIt1 first1, InputIt1 last1)
-    -> CachedPartialTokenSortRatio<iter_value_t<InputIt1>>;
+CachedPartialTokenSortRatio(InputIt1 first1,
+                            InputIt1 last1) -> CachedPartialTokenSortRatio<iter_value_t<InputIt1>>;
 
 /**
  * @brief Compares the words in the strings based on unique and common words
@@ -9793,8 +9859,8 @@ template <typename Sentence1>
 explicit CachedPartialTokenSetRatio(const Sentence1& s1) -> CachedPartialTokenSetRatio<char_type<Sentence1>>;
 
 template <typename InputIt1>
-CachedPartialTokenSetRatio(InputIt1 first1, InputIt1 last1)
-    -> CachedPartialTokenSetRatio<iter_value_t<InputIt1>>;
+CachedPartialTokenSetRatio(InputIt1 first1,
+                           InputIt1 last1) -> CachedPartialTokenSetRatio<iter_value_t<InputIt1>>;
 
 /**
  * @brief Helper method that returns the maximum of fuzz::token_set_ratio and

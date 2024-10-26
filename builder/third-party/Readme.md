@@ -31,7 +31,7 @@
 
 ## rapidfuzz-cpp
 
-- v3.0.5
+- v3.1.1
 - taken amalgamated header in "extras" folder
 - https://github.com/rapidfuzz/rapidfuzz-cpp
 - MIT License
