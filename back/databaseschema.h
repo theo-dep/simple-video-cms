@@ -9,16 +9,17 @@ struct User
     int id;
     std::string username;
     std::string password;
+    std::string salt;
 };
 REGISTER_AUTO_KEY(User, id)
-REFLECTION(User, id, username, password)
+REFLECTION(User, id, username, password, salt)
 
 struct Admin : User
 {
     bool super{ false };
 };
 REGISTER_AUTO_KEY(Admin, id)
-REFLECTION(Admin, id, username, password, super)
+REFLECTION(Admin, id, username, password, salt, super)
 
 struct Video
 {

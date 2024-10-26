@@ -18,18 +18,19 @@ namespace database
     int video_views(const types::md5_varchar& id) noexcept;
     std::string video_file_path(const types::md5_varchar& id) noexcept;
 
-    void add_super_admin(const std::string& username, const std::string& password) noexcept;
+    void add_super_admin(const std::string& username, const std::string& password, const std::string& salt) noexcept;
     bool is_super_admin(const std::string& username) noexcept;
 
     bool is_admin(const std::string& username) noexcept;
     bool is_user(const std::string& username) noexcept;
-    void add_admin(const std::string& username, const std::string& password) noexcept;
-    void add_user(const std::string& username, const std::string& password) noexcept;
+    void add_admin(const std::string& username, const std::string& password, const std::string& salt) noexcept;
+    void add_user(const std::string& username, const std::string& password, const std::string& salt) noexcept;
     void update_admin(const std::string& username, const std::string& password) noexcept;
     void update_user(const std::string& username, const std::string& password) noexcept;
     void delete_admin(const std::string& username) noexcept;
     void delete_user(const std::string& username) noexcept;
-    std::string get_password(const std::string& username) noexcept;
+    std::string user_password(const std::string& username) noexcept;
+    std::string user_salt(const std::string& username) noexcept;
 
     int user_count() noexcept;
     int video_count() noexcept;

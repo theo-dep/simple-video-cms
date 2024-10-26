@@ -46,7 +46,7 @@ bool database::create_tables() noexcept
 
     {
         const ormpp_auto_key key{ "id" };
-        const ormpp_not_null not_null{ { "username", "password" } };
+        const ormpp_not_null not_null{ { "username", "password", "salt" } };
         // const ormpp_unique unique{ { "username" } }; // need varchar
         if (!conn->create_datatable<Admin>(key, not_null /*, unique*/)) {
             logging::error{ "Fail to create Admin table" };
@@ -198,7 +198,7 @@ std::optional<User> database::user(const std::unique_ptr<dbng>& conn, const std:
     return (users.empty() ? std::nullopt : std::optional{ users[0] });
 }
 
-void database::add_super_admin(const std::string& username, const std::string& password) noexcept
+void database::add_super_admin(const std::string& username, const std::string& password, const std::string& salt) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -209,6 +209,7 @@ void database::add_super_admin(const std::string& username, const std::string& p
     Admin admin;
     admin.username = username;
     admin.password = password;
+    admin.salt = salt;
     admin.super = true;
 
     try {
@@ -251,7 +252,7 @@ bool database::is_user(const std::string& username) noexcept
     return user(conn, username).has_value();
 }
 
-void database::add_admin(const std::string& username, const std::string& password) noexcept
+void database::add_admin(const std::string& username, const std::string& password, const std::string& salt) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -262,6 +263,7 @@ void database::add_admin(const std::string& username, const std::string& passwor
     Admin admin;
     admin.username = username;
     admin.password = password;
+    admin.salt = salt;
 
     try {
         conn->insert(admin);
@@ -270,7 +272,7 @@ void database::add_admin(const std::string& username, const std::string& passwor
     }
 }
 
-void database::add_user(const std::string& username, const std::string& password) noexcept
+void database::add_user(const std::string& username, const std::string& password, const std::string& salt) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -281,6 +283,7 @@ void database::add_user(const std::string& username, const std::string& password
     User user;
     user.username = username;
     user.password = password;
+    user.salt = salt;
 
     try {
         conn->insert(user);
@@ -359,7 +362,7 @@ void database::delete_user(const std::string& username) noexcept
     conn->delete_records_s<User>("username=?", username);
 }
 
-std::string database::get_password(const std::string& username) noexcept
+std::string database::user_password(const std::string& username) noexcept
 {
     const std::unique_ptr conn{ connection() };
     if (conn == nullptr) {
@@ -373,6 +376,25 @@ std::string database::get_password(const std::string& username) noexcept
 
     if (const std::optional user{ admin(conn, username) }; user.has_value()) {
         return user->password;
+    }
+
+    return {};
+}
+
+std::string database::user_salt(const std::string& username) noexcept
+{
+    const std::unique_ptr conn{ connection() };
+    if (conn == nullptr) {
+        logging::error{ "Fail to open database connection" };
+        return {};
+    }
+
+    if (const std::optional u{ user(conn, username) }; u.has_value()) {
+        return u->salt;
+    }
+
+    if (const std::optional user{ admin(conn, username) }; user.has_value()) {
+        return user->salt;
     }
 
     return {};
