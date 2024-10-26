@@ -120,7 +120,9 @@ inline void server::create_super_admin() noexcept
     }
 
     const std::string password{ crypto::sha512(sc::get_env("MYSQL_ADMIN_PASSWORD", "admin")) };
-    database::add_super_admin(username, password);
+    const std::string salt{ crypto::random_string() };
+    logging::debug{ "Salt: {}", salt };
+    database::add_super_admin(username, crypto::password(password, salt), salt);
 }
 
 inline void server::template_page(const httplib::Request& req, httplib::Response& res) noexcept
@@ -250,8 +252,10 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
     }
 
     const std::string username{ req.get_file_value("username").content };
-    const std::string password{ req.get_file_value("password").content };
-    database::add_admin(username, password);
+    const std::string salt{ crypto::random_string() };
+    logging::debug{ "Salt: {}", salt };
+    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
+    database::add_admin(username, password, salt);
 }
 
 inline void server::add_user(const httplib::Request& req, httplib::Response& res) noexcept
@@ -263,8 +267,10 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     }
 
     const std::string username{ req.get_file_value("username").content };
-    const std::string password{ req.get_file_value("password").content };
-    database::add_user(username, password);
+    const std::string salt{ crypto::random_string() };
+    logging::debug{ "Salt: {}", salt };
+    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
+    database::add_user(username, password, salt);
 }
 
 inline void server::update_admin(const httplib::Request& req, httplib::Response& res) noexcept
@@ -282,7 +288,8 @@ inline void server::update_admin(const httplib::Request& req, httplib::Response&
         return;
     }
 
-    const std::string password{ req.get_file_value("password").content };
+    const std::string salt{ database::user_salt(username) };
+    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
     database::update_admin(username, password);
 }
 
@@ -295,7 +302,8 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     }
 
     const std::string username{ req.get_file_value("username").content };
-    const std::string password{ req.get_file_value("password").content };
+    const std::string salt{ database::user_salt(username) };
+    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
     database::update_user(username, password);
 }
 
@@ -338,9 +346,10 @@ inline void server::is_valid_user(const httplib::Request& req, httplib::Response
     }
 
     const std::string username{ req.get_file_value("username").content };
-    const std::string password{ req.get_file_value("password").content };
+    const std::string salt{ database::user_salt(username) };
+    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
-    const std::string database_password{ database::get_password(username) };
+    const std::string database_password{ database::user_password(username) };
     res.set_content(su::bool_to_string(password == database_password), "plain/text");
 }
 
@@ -404,7 +413,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::string video_title{ req.get_file_value("title").content };
     const std::string video_content{ req.get_file_value("video").content };
     const std::vector allowed_usernames{ su::split(req.get_file_value("usernames").content) };
-    const types::md5_varchar video_id{ crypto::sha1(video_title) };
+    const types::md5_varchar video_id{ crypto::md5(video_title) };
 
     const std::filesystem::path video_path{ server::video_path() };
     if (!server::create_directories(video_path)) {

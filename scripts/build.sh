@@ -24,4 +24,4 @@ make -C ${SOURCE_DIR}/back -j -k server \
     LDFLAGS="${common_objets} -lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
 
 echo Build front...
-make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${common_objets} -lcrypto"
+make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${common_objets}"

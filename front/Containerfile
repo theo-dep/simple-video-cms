@@ -1,11 +1,8 @@
 FROM alpine-builder AS builder
 
-RUN apk add --no-cache \
-    openssl-dev
-
 ADD *.h *.cpp ${SOURCE_DIR}/
 
-RUN make -C ${SOURCE_DIR} -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS} -lcrypto"
+RUN make -C ${SOURCE_DIR} -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"
 
 # --------------------------------------------------------------------------------
 FROM scratch
@@ -14,7 +11,7 @@ COPY --from=builder /sources/server /server
 
 #RUN ldd /server or /sources/server in alpine image
 COPY --from=builder /usr/lib/libstdc++* /usr/lib/libgcc* /usr/lib/
-COPY --from=builder /lib/ld-musl* /lib/libcrypto* /lib/
+COPY --from=builder /lib/ld-musl* /lib/
 
 EXPOSE 80
 
