@@ -404,7 +404,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::string video_title{ req.get_file_value("title").content };
     const std::string video_content{ req.get_file_value("video").content };
     const std::vector allowed_usernames{ su::split(req.get_file_value("usernames").content) };
-    const types::md5_varchar video_id{ crypto::sha1(video_title) };
+    const types::md5_varchar video_id{ crypto::md5(video_title) };
 
     const std::filesystem::path video_path{ server::video_path() };
     if (!server::create_directories(video_path)) {

@@ -29,3 +29,9 @@
 ## KDBindings
 - v1.1.0
 - https://github.com/KDAB/KDBindings
+
+## Hash++
+
+- v2.0.1
+- https://github.com/D7EAD/HashPlusPlus
+- MIT License
