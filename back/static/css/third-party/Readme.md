@@ -4,4 +4,4 @@
 
 - v3.0.0
 - https://github.com/pure-css/pure
-- BSD Yahoo! Inc.
+- BSD Yahoo! Inc. License
