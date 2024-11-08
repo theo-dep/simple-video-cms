@@ -40,22 +40,24 @@ public:
     std::string watch_video_page() const noexcept;
 
     std::vector<std::string> video_list() const noexcept;
-    std::vector<std::string> video_list(const std::string& username) const noexcept;
+    std::vector<std::string> video_list(const std::string& user_id) const noexcept;
     std::vector<std::string> no_right_video_list() const noexcept;
 
-    std::string video_title(const std::string& id) const noexcept;
-    int video_views(const std::string& id) const noexcept;
+    std::string video_title(const std::string& video_id) const noexcept;
+    int video_views(const std::string& video_id) const noexcept;
 
-    bool is_admin(const std::string& username) const noexcept;
-    bool is_super_admin(const std::string& username) const noexcept;
-    bool is_user(const std::string& username) const noexcept;
+    bool is_admin(const std::string& user_id) const noexcept;
+    bool is_super_admin(const std::string& user_id) const noexcept;
+    bool is_user(const std::string& user_id) const noexcept;
+    std::string user_name(const std::string& user_id) const noexcept;
+    std::string user_id(const std::string& username) const noexcept;
     void add_admin(const std::string& username, const std::string& password) const noexcept;
     void add_user(const std::string& username, const std::string& password) const noexcept;
-    void update_admin(const std::string& username, const std::string& password) const noexcept;
-    void update_user(const std::string& username, const std::string& password) const noexcept;
-    void delete_admin(const std::string& username) const noexcept;
-    void delete_user(const std::string& username) const noexcept;
-    bool is_valid_user(const std::string& username, const std::string& password) const noexcept;
+    void update_admin(const std::string& user_id, const std::string& password) const noexcept;
+    void update_user(const std::string& user_id, const std::string& password) const noexcept;
+    void delete_admin(const std::string& user_id) const noexcept;
+    void delete_user(const std::string& user_id) const noexcept;
+    bool is_valid_user(const std::string& user_id, const std::string& password) const noexcept;
 
     int user_count() const noexcept;
     int video_count() const noexcept;
@@ -64,15 +66,15 @@ public:
     std::vector<std::string> user_list() const noexcept;
     std::vector<std::string> admin_list() const noexcept;
 
-    void add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_usernames) const noexcept;
-    void update_video(const std::string& id, const std::vector<std::string>& allowed_usernames) const noexcept;
-    void delete_video(const std::string& id) const noexcept;
-    void increment_video_views(const std::string& id) const noexcept;
-    std::string video(const std::string& id) const noexcept;
-    bool has_video_right(const std::string& id) const noexcept;
-    bool has_video_right(const std::string& id, const std::string& username) const noexcept;
+    void add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const noexcept;
+    void update_video(const std::string& video_id, const std::vector<std::string>& allowed_user_ids) const noexcept;
+    void delete_video(const std::string& video_id) const noexcept;
+    void increment_video_views(const std::string& video_id) const noexcept;
+    std::string video(const std::string& video_id) const noexcept;
+    bool has_video_right(const std::string& video_id) const noexcept;
+    bool has_video_right(const std::string& video_id, const std::string& user_id) const noexcept;
 
-    std::vector<std::string> video_right_list(const std::string& id) const noexcept;
+    std::vector<std::string> video_right_list(const std::string& video_id) const noexcept;
 
 private:
     std::unique_ptr<httplib::Client> _client{ nullptr };

@@ -1,8 +1,7 @@
 #pragma once
 
-#include "types.h"
-
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -18,16 +17,16 @@ public:
     std::vector<std::int64_t> no_right_video_list() const noexcept;
 
     std::string video_title(const std::int64_t& id) const noexcept;
-    int video_views(const std::int64_t& id) const noexcept;
+    std::int64_t video_views(const std::int64_t& id) const noexcept;
     std::string video(const std::int64_t& id) const noexcept;
 
-    bool add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    std::optional<std::int64_t> add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
     bool is_super_admin(const std::int64_t& id) const noexcept;
 
     bool is_admin(const std::int64_t& id) const noexcept;
     bool is_user(const std::int64_t& id) const noexcept;
-    bool add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
-    bool add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    std::optional<std::int64_t> add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    std::optional<std::int64_t> add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
     bool update_admin(const std::int64_t& id, const std::string& password) const noexcept;
     bool update_user(const std::int64_t& id, const std::string& password) const noexcept;
     bool delete_admin(const std::int64_t& id) const noexcept;
@@ -45,7 +44,7 @@ public:
     std::vector<std::int64_t> user_list() const noexcept;
     std::vector<std::int64_t> admin_list() const noexcept;
 
-    bool add_video(const std::string& title, const std::string& video) const noexcept;
+    std::optional<std::int64_t> add_video(const std::string& title, const std::string& video) const noexcept;
     bool add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
     bool update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
     bool delete_video(const std::int64_t& id) const noexcept;

@@ -43,21 +43,21 @@
           <th>Username</th>
           <th></th>
           <th class="add-user">
-            <a href="/add-user?admin=false">
+            <a href="/add-user?is_admin=false">
               <img src="static/img/person-add.svg" alt="add a new user" />
             </a>
           </th>
         </tr>
       </thead>
       <tbody>
-        {% for username in user_dict %}
+        {% for user in user_dict %}
         <tr>
-          <td data-title="Username">{{ username }}</td>
+          <td data-title="Username">{{ user.name }}</td>
           <td data-title="Update">
-            <a href="/update-user/{{ username }}?admin=false">Update</a>
+            <a href="/update-user/{{ user.id }}?is_admin=false">Update</a>
           </td>
           <td data-title="Delete">
-            <a href="/delete-user/{{ username }}?admin=false">Delete</a>
+            <a href="/delete-user/{{ user.id }}?is_admin=false">Delete</a>
           </td>
         </tr>
         {% endfor %}

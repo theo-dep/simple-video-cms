@@ -8,24 +8,13 @@
 #pragma GCC diagnostic pop
 
 #include <algorithm>
-#include <cassert>
+#include <array>
 #include <random>
 
 std::string crypto::sha512(const std::string& str) noexcept
 {
     const hashpp::hash hash{ hashpp::get::getHash(hashpp::ALGORITHMS::SHA2_512_256, str) };
     return hash.getString();
-}
-
-types::md5_varchar crypto::md5(const std::string& str) noexcept
-{
-    const hashpp::hash hash{ hashpp::get::getHash(hashpp::ALGORITHMS::MD5, str) };
-    const std::string& hash_str{ hash.getString() };
-
-    types::md5_varchar res{};
-    assert(hash_str.size() == res.size());
-    std::ranges::copy(hash_str, res.begin());
-    return res;
 }
 
 std::string crypto::random_string(std::string::size_type length) noexcept

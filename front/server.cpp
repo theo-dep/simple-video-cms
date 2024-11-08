@@ -101,9 +101,9 @@ int server::start() noexcept
 
         .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
-        .Get("/update-user/:username", sc::serve(update_user_get, std::ref(env), std::ref(session), std::cref(client)))
-        .Post("/update-user/:username", sc::serve(update_user_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
-        .Get("/delete-user/:username", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/update-user/:user_id", sc::serve(update_user_get, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-user/:user_id", sc::serve(update_user_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/delete-user/:user_id", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -204,11 +204,10 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
 inline inja::json server::video_dict(const std::vector<std::string>& video_ids, const Client& client) noexcept
 {
     inja::json video_dict = inja::json::array();
-    for (const std::string& id : video_ids) {
-        const std::string title{ client.video_title(id) };
-        const int views{ client.video_views(id) };
-        const std::vector rights{ client.video_right_list(id) };
-        const inja::json video{ { "id", id }, { "title", title }, { "views", views }, { "right_list", rights } };
+    for (const std::string& video_id : video_ids) {
+        const std::string title{ client.video_title(video_id) };
+        const int views{ client.video_views(video_id) };
+        const inja::json video{ { "id", video_id }, { "title", title }, { "views", views } };
         video_dict += video;
     }
     return video_dict;
@@ -302,9 +301,10 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     su::trim(username);
     su::lower(username);
 
-    const bool is_valid_user{ client.is_valid_user(username, password) };
+    const std::string user_id{ client.user_id(username) };
+    const bool is_valid_user{ client.is_valid_user(user_id, password) };
     if (is_valid_user) {
-        const std::string session_id{ session.create_session(username) };
+        const std::string session_id{ session.create_session(user_id) };
         res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
         res.set_redirect("/");
     } else {
@@ -327,9 +327,13 @@ inline void server::admin_list(const httplib::Request& req, httplib::Response& r
 
     const std::vector<std::string> admin_list{ client.admin_list() };
     inja::json admin_dict = inja::json::array();
-    for (const std::string& username : admin_list) {
-        const bool is_super_admin{ client.is_super_admin(username) };
-        const inja::json admin = { { "username", username }, { "is_super_admin", is_super_admin } };
+    for (const std::string& user_id : admin_list) {
+        const bool is_super_admin{ client.is_super_admin(user_id) };
+        const inja::json admin = {
+            { "id", user_id },
+            { "name", client.user_name(user_id) },
+            { "is_super_admin", is_super_admin }
+        };
         admin_dict += admin;
     }
 
@@ -346,7 +350,16 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
         return;
 
     const std::vector<std::string> user_list{ client.user_list() };
-    const inja::json data{ { "user_dict", user_list } };
+    inja::json user_dict = inja::json::array();
+    for (const std::string& user_id : user_list) {
+        const inja::json user = {
+            { "id", user_id },
+            { "name", client.user_name(user_id) }
+        };
+        user_dict += user;
+    }
+
+    const inja::json data{ { "user_dict", user_dict } };
     logging::debug{ data.dump() };
 
     const std::string body{ env.render(client.user_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -355,13 +368,13 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
 
 namespace server
 {
-    void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool admin, bool create_error, bool invalid_username);
+    void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, bool create_error, bool invalid_username);
 }
 
-inline void server::set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool admin, bool create_error, bool invalid_username)
+inline void server::set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, bool create_error, bool invalid_username)
 {
     const inja::json data{
-        { "admin", admin },
+        { "is_admin", is_admin },
         { "create_error", create_error },
         { "invalid_username", invalid_username }
     };
@@ -375,8 +388,8 @@ inline void server::add_user_get(const httplib::Request& req, httplib::Response&
     if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const bool admin{ su::string_to_bool(req.get_param_value("admin")) };
-    set_add_user_content(res, env, client, admin, false, false);
+    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
+    set_add_user_content(res, env, client, is_admin, false, false);
 }
 
 inline void server::add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
@@ -384,16 +397,16 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const bool admin{ su::string_to_bool(req.get_param_value("admin")) };
+    const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
-        set_add_user_content(res, env, client, admin, true, false);
+        set_add_user_content(res, env, client, is_admin_req, true, false);
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (confirm_password != password) {
-        set_add_user_content(res, env, client, admin, true, false);
+        set_add_user_content(res, env, client, is_admin_req, true, false);
         return;
     }
 
@@ -401,11 +414,12 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     su::trim(username);
     su::lower(username);
 
-    const bool is_user{ client.is_user(username) };
-    const bool is_admin{ client.is_admin(username) };
-    if ((is_user && !admin) || (is_admin && admin)) {
-        set_add_user_content(res, env, client, admin, false, true);
-    } else if (admin) {
+    const std::string user_id{ client.user_id(username) };
+    const bool is_user{ client.is_user(user_id) };
+    const bool is_admin{ client.is_admin(user_id) };
+    if ((is_user && !is_admin_req) || (is_admin && is_admin_req)) {
+        set_add_user_content(res, env, client, is_admin_req, false, true);
+    } else if (is_admin_req) {
         client.add_admin(username, password);
         res.set_redirect("/admin-list");
     } else {
@@ -449,14 +463,14 @@ inline void server::confirm(const httplib::Request& req, httplib::Response& res,
 
 namespace server
 {
-    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, bool admin, bool login_error, bool update_error);
+    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, bool is_admin, bool login_error, bool update_error);
 }
 
-inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, bool admin, bool login_error, bool update_error)
+inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, bool is_admin, bool login_error, bool update_error)
 {
     const inja::json data{
-        { "username", username },
-        { "admin", admin },
+        { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
+        { "is_admin", is_admin },
         { "login_error", login_error },
         { "update_error", update_error },
     };
@@ -470,9 +484,9 @@ inline void server::update_user_get(const httplib::Request& req, httplib::Respon
     if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const std::string username{ req.path_params.at("username") };
-    const bool admin{ su::string_to_bool(req.get_param_value("admin")) };
-    set_update_user_content(res, env, client, username, admin, false, false);
+    const std::string user_id{ req.path_params.at("user_id") };
+    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
+    set_update_user_content(res, env, client, user_id, is_admin, false, false);
 }
 
 inline void server::update_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
@@ -480,33 +494,33 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const std::string username{ req.path_params.at("username") };
-    const bool admin{ su::string_to_bool(req.get_param_value("admin")) };
+    const std::string user_id{ req.path_params.at("user_id") };
+    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
 
     const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
-    const bool is_valid_user{ client.is_valid_user(username, old_password) };
+    const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
     if (!is_valid_user) {
-        set_update_user_content(res, env, client, username, admin, true, false);
+        set_update_user_content(res, env, client, user_id, is_admin, true, false);
         return;
     }
 
     const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
     if (new_password.empty()) {
-        set_update_user_content(res, env, client, username, admin, false, true);
+        set_update_user_content(res, env, client, user_id, is_admin, false, true);
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (new_password != confirm_password) {
-        set_update_user_content(res, env, client, username, admin, false, true);
+        set_update_user_content(res, env, client, user_id, is_admin, false, true);
         return;
     }
 
     std::string signal_str;
-    if (admin) {
+    if (is_admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([username, new_password, &client](httplib::Response& res) {
-                             client.update_admin(username, new_password);
+                         .on_confirm([user_id, new_password, &client](httplib::Response& res) {
+                             client.update_admin(user_id, new_password);
                              res.set_redirect("/admin-list");
                          })
                          .on_deny([](httplib::Response& res) {
@@ -515,8 +529,8 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([username, new_password, &client](httplib::Response& res) {
-                             client.update_user(username, new_password);
+                         .on_confirm([user_id, new_password, &client](httplib::Response& res) {
+                             client.update_user(user_id, new_password);
                              res.set_redirect("/user-list");
                          })
                          .on_deny([](httplib::Response& res) {
@@ -533,15 +547,15 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    const std::string username{ req.path_params.at("username") };
+    const std::string user_id{ req.path_params.at("user_id") };
     const bool admin{ su::string_to_bool(req.get_param_value("admin")) };
-    logging::debug{ "Delete {}", username };
+    logging::debug{ "Delete {} {}", user_id, client.user_name(user_id) };
 
     std::string signal_str;
     if (admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([username, &client](httplib::Response& res) {
-                             client.delete_admin(username);
+                         .on_confirm([user_id, &client](httplib::Response& res) {
+                             client.delete_admin(user_id);
                              res.set_redirect("/admin-list");
                          })
                          .on_deny([](httplib::Response& res) {
@@ -550,8 +564,8 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([username, &client](httplib::Response& res) {
-                             client.delete_user(username);
+                         .on_confirm([user_id, &client](httplib::Response& res) {
+                             client.delete_user(user_id);
                              res.set_redirect("/user-list");
                          })
                          .on_deny([](httplib::Response& res) {
@@ -569,7 +583,19 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
         return;
 
     const std::vector<std::string> video_list{ client.video_list() };
-    const inja::json data{ { "video_dict", video_dict(video_list, client) } };
+
+    inja::json video_dict{ server::video_dict(video_list, client) };
+    for (inja::json& video : video_dict) {
+        const std::vector rights{ client.video_right_list(video["id"]) };
+        std::vector<std::string> user_rights(rights.size());
+        std::ranges::transform(rights, user_rights.begin(),
+                               [&](const std::string& user_id) -> std::string {
+                                   return client.user_name(user_id);
+                               });
+        video["right_list"] = user_rights;
+    }
+
+    const inja::json data{ { "video_dict", video_dict } };
     logging::debug{ data.dump() };
 
     const std::string body{ env.render(client.video_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -591,8 +617,15 @@ inline void server::set_add_video_content(httplib::Response& res, inja::Environm
                                           const std::string& video_text_helper, const std::string& video_title_placeholder)
 {
     const std::vector<std::string> user_list{ client.user_list() };
+
+    inja::json user_dict = inja::json::array();
+    for (const std::string& user_id : user_list) {
+        const inja::json user{ { "id", user_id }, { "name", client.user_name(user_id) } };
+        user_dict += user;
+    }
+
     const inja::json data{
-        { "user_dict", user_list },
+        { "user_dict", user_dict },
         { "button_video_text_helper", button_video_text_helper },
         { "video_text_helper", video_text_helper },
         { "video_title_placeholder", video_title_placeholder }
@@ -633,11 +666,11 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    const std::vector username_items{ req.get_file_values("usernames") };
-    std::vector<std::string> allowed_usernames(username_items.size());
-    std::ranges::transform(username_items, allowed_usernames.begin(), std::bind(&httplib::MultipartFormData::content, std::placeholders::_1));
+    const std::vector user_id_items{ req.get_file_values("user_ids") };
+    std::vector<std::string> allowed_user_ids(user_id_items.size());
+    std::ranges::transform(user_id_items, allowed_user_ids.begin(), std::bind(&httplib::MultipartFormData::content, std::placeholders::_1));
 
-    client.add_video(video_title, item.content, allowed_usernames);
+    client.add_video(video_title, item.content, allowed_user_ids);
     res.set_redirect("/video-list");
 }
 
@@ -649,10 +682,11 @@ inline void server::update_video_get(const httplib::Request& req, httplib::Respo
     const std::string video_id{ req.path_params.at("video_id") };
 
     const std::vector<std::string> user_list{ client.user_list() };
+
     inja::json user_dict = inja::json::array();
-    for (const std::string& username : user_list) {
-        const bool checked{ !client.has_video_right(video_id) && client.has_video_right(video_id, username) };
-        const inja::json user{ { "name", username }, { "checked", checked } };
+    for (const std::string& user_id : user_list) {
+        const bool checked{ !client.has_video_right(video_id) && client.has_video_right(video_id, user_id) };
+        const inja::json user{ { "id", user_id }, { "name", client.user_name(user_id) }, { "checked", checked } };
         user_dict += user;
     }
 
@@ -673,16 +707,16 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
 
     const std::string video_id{ req.path_params.at("video_id") };
 
-    const std::size_t username_count{ req.get_param_value_count("usernames") };
-    std::vector<std::string> allowed_usernames(username_count);
-    for (std::size_t i{ 0 }; i < username_count; ++i) {
-        allowed_usernames[i] = req.get_param_value("usernames", i);
+    const std::size_t user_id_count{ req.get_param_value_count("user_ids") };
+    std::vector<std::string> allowed_user_ids(user_id_count);
+    for (std::size_t i{ 0 }; i < user_id_count; ++i) {
+        allowed_user_ids[i] = req.get_param_value("user_ids", i);
     }
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, allowed_usernames, &client](httplib::Response& res) {
-                client.update_video(video_id, allowed_usernames);
+            .on_confirm([video_id, allowed_user_ids, &client](httplib::Response& res) {
+                client.update_video(video_id, allowed_user_ids);
                 res.set_redirect("/video-list");
             })
             .on_deny([](httplib::Response& res) {
@@ -700,7 +734,7 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
         return;
 
     const std::string video_id{ req.path_params.at("video_id") };
-    logging::debug{ "Delete {}", video_id };
+    logging::debug{ "Delete {} {}", video_id, client.video_title(video_id) };
 
     const std::string signal_str{
         confirm_handler.create()
@@ -731,8 +765,8 @@ inline bool server::has_video_right(const httplib::Request& req, httplib::Respon
     const std::string video_id{ req.path_params.at("video_id") };
 
     if (is_logged) {
-        const std::string connected_username{ session.user_from_session(session_id) };
-        if (!client.has_video_right(video_id, connected_username)) {
+        const std::string connected_user_id{ session.user_from_session(session_id) };
+        if (!client.has_video_right(video_id, connected_user_id)) {
             const std::string body{ client.error_page_403() };
             res.set_content(body, "text/html");
             return false;
@@ -761,7 +795,7 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
 
     const inja::json data{
         { "is_logged", is_logged },
-        { "id", video_id },
+        { "video_id", video_id },
         { "title", video_title },
         { "views", video_views }
     };

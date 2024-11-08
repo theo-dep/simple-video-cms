@@ -222,7 +222,7 @@ std::string Database::video_title(const std::int64_t& id) const noexcept
     return title->get_string();
 }
 
-int Database::video_views(const std::int64_t& id) const noexcept
+std::int64_t Database::video_views(const std::int64_t& id) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
@@ -266,11 +266,12 @@ std::string Database::video(const std::int64_t& id) const noexcept
     return std::string(reinterpret_cast<const char*>((*video)[0].get_resource()), (*video)[1].get_int());
 }
 
-bool Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+std::optional<std::int64_t> Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $success = db_store('admins', $admin);
+        $admin_id = $admin.__id;
     )"sv };
 
     const std::optional success{
@@ -278,15 +279,15 @@ bool Database::add_super_admin(const std::string& name, const std::string& passw
                           { { "admin"s, up::value::object{
                                             { "name"s, name }, { "password"s, password }, { "salts"s, salt }, { "super"s, true } } } })
             .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "success"))
+            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "success"s, "admin_id"s }))
     };
 
-    if (!success.has_value()) {
+    if (!success.has_value() || success->size() != 2 || !(*success)[0].get_bool()) {
         logging::error{ "Fail to add super admin \"{}\"", name };
-        return false;
+        return {};
     }
 
-    return success->get_bool();
+    return (*success)[1].get_int();
 }
 
 bool Database::is_super_admin(const std::int64_t& id) const noexcept
@@ -353,11 +354,12 @@ bool Database::is_user(const std::int64_t& id) const noexcept
     return !record->is_null();
 }
 
-bool Database::add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+std::optional<std::int64_t> Database::add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $success = db_store('admins', $admin);
+        $admin_id = $admin.__id;
     )"sv };
 
     const std::optional success{
@@ -365,22 +367,23 @@ bool Database::add_admin(const std::string& name, const std::string& password, c
                           { { "admin"s, up::value::object{
                                             { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "super"s, false } } } })
             .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "success"s))
+            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "success"s, "admin_id"s }))
     };
 
-    if (!success.has_value()) {
+    if (!success.has_value() || success->size() != 2 || !(*success)[0].get_bool()) {
         logging::error{ "Fail to add admin \"{}\"", name };
         return false;
     }
 
-    return success->get_bool();
+    return (*success)[1].get_int();
 }
 
-bool Database::add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+std::optional<std::int64_t> Database::add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $success = db_store('users', $user);
+        $user_id = $user.__id;
     )"sv };
 
     const std::optional success{
@@ -388,15 +391,15 @@ bool Database::add_user(const std::string& name, const std::string& password, co
                           { { "user"s, up::value::object{
                                            { "name"s, name }, { "password"s, password }, { "salt"s, salt } } } })
             .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "success"s))
+            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "success"s, "user_id"s }))
     };
 
-    if (!success.has_value()) {
+    if (!success.has_value() || success->size() != 2 || !(*success)[0].get_bool()) {
         logging::error{ "Fail to add user \"{}\"", name };
         return false;
     }
 
-    return success->get_bool();
+    return (*success)[1].get_int();
 }
 
 bool Database::update_admin(const std::int64_t& id, const std::string& password) const noexcept
@@ -723,11 +726,12 @@ std::vector<std::int64_t> Database::admin_list() const noexcept
     return admins.value();
 }
 
-bool Database::add_video(const std::string& title, const std::string& video) const noexcept
+std::optional<std::int64_t> Database::add_video(const std::string& title, const std::string& video) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $success = db_store('videos', $video);
+        $video_id = $video.__id;
     )"sv };
 
     const std::optional success{
@@ -737,15 +741,15 @@ bool Database::add_video(const std::string& title, const std::string& video) con
                                             { "video"s, reinterpret_cast<const void*>(video.data()) },
                                             { "video_size"s, static_cast<std::int64_t>(video.size()) } } } })
             .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "success"s))
+            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "success"s, "video_id"s }))
     };
 
-    if (!success.has_value()) {
+    if (!success.has_value() || success->size() != 2 || !(*success)[0].get_bool()) {
         logging::error{ "Fail to add video \"{}\"", title };
         return false;
     }
 
-    return success->get_bool();
+    return (*success)[1].get_int();
 }
 
 bool Database::add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept

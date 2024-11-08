@@ -11,9 +11,9 @@ public:
     Session() noexcept = default;
 
     // Create a new session for a user
-    const std::string& create_session(const std::string& username) noexcept;
+    const std::string& create_session(const std::string& user_id) noexcept;
 
-    // Get the username associated with a session ID
+    // Get the user_id associated with a session ID
     const std::string& user_from_session(const std::string& session_id) const noexcept;
 
     // Access to key, value map for a session_id
@@ -38,8 +38,8 @@ public:
     static std::string insert_session_id_to_cookie(const std::string& session_id) noexcept;
 
 private:
-    // Generate a unique session ID (using a counter, a username and crypto sha512)
-    static std::string generate_session_id(const std::string& username) noexcept;
+    // Generate a unique session ID (using a counter, a user_id and crypto sha512)
+    static std::string generate_session_id(const std::string& user_id) noexcept;
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>> _sessions; // session_id -> key, value
     mutable std::mutex _mutex;

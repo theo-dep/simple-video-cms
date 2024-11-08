@@ -40,6 +40,9 @@ namespace server
     void delete_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
 
+    void user_name(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
+    void user_id(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
+
     void user_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void admin_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
 
@@ -94,6 +97,9 @@ int server::start() noexcept
         .Get("/is-super-admin", sc::serve(is_super_admin, std::cref(db)))
         .Get("/is-user", sc::serve(is_user, std::cref(db)))
 
+        .Get("/user-name", sc::serve(user_name, std::cref(db)))
+        .Get("/user-id", sc::serve(user_id, std::cref(db)))
+
         .Post("/add-admin", sc::serve(add_admin, std::cref(db)))
         .Post("/add-user", sc::serve(add_user, std::cref(db)))
         .Post("/update-admin", sc::serve(update_admin, std::cref(db)))
@@ -123,7 +129,8 @@ int server::start() noexcept
 inline void server::create_super_admin(const Database& db) noexcept
 {
     const std::string username{ sc::get_env("MYSQL_ADMIN_USERNAME", "admin") };
-    if (db.is_admin(username)) {
+    const std::int64_t user_id{ db.user_id(username) };
+    if (db.is_admin(user_id)) {
         // already created
         return;
     }
@@ -151,95 +158,129 @@ inline void server::static_file(const httplib::Request& req, httplib::Response& 
 
 namespace server
 {
-    std::vector<std::string> transform(const std::vector<types::md5_varchar>& list) noexcept;
+    std::vector<std::string> transform(const std::vector<std::int64_t>& list) noexcept;
+    std::vector<std::int64_t> transform(const std::vector<std::string>& list) noexcept;
 }
 
-inline std::vector<std::string> server::transform(const std::vector<types::md5_varchar>& list) noexcept
+inline std::vector<std::string> server::transform(const std::vector<std::int64_t>& list) noexcept
 {
     std::vector<std::string> str_list(list.size());
-    std::ranges::transform(list, str_list.begin(), su::md5_varchar_to_string);
+    std::ranges::transform(list, str_list.begin(), su::int_to_string);
     return str_list;
+}
+
+inline std::vector<std::int64_t> server::transform(const std::vector<std::string>& list) noexcept
+{
+    std::vector<std::int64_t> int_list(list.size());
+    std::ranges::transform(list, int_list.begin(), su::string_to_int);
+    return int_list;
 }
 
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    std::vector<types::md5_varchar> varchar_ids;
-    if (req.has_header("username")) {
-        const std::string username{ req.get_header_value("username") };
-        varchar_ids = db.video_list(username);
+    std::vector<std::int64_t> varchar_ids;
+    if (req.has_header("user_id")) {
+        const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+        varchar_ids = db.video_list(user_id);
     } else {
         varchar_ids = db.video_list();
     }
 
-    const std::vector<std::string> ids{ transform(varchar_ids) };
+    const std::vector ids{ transform(varchar_ids) };
     res.set_content(su::join(ids), "plain/text");
 }
 
 inline void server::no_right_video_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const std::vector<std::string> ids{ transform(db.no_right_video_list()) };
+    const std::vector ids{ transform(db.no_right_video_list()) };
     res.set_content(su::join(ids), "plain/text");
 }
 
 inline void server::video_title(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const types::md5_varchar video_id{ su::string_to_md5_varchar(req.path_params.at("video_id")) };
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const std::string video_title{ db.video_title(video_id) };
     res.set_content(video_title, "plain/text");
 }
 
 inline void server::video_views(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const types::md5_varchar video_id{ su::string_to_md5_varchar(req.path_params.at("video_id")) };
-    const int video_views{ db.video_views(video_id) };
-    res.set_content(std::to_string(video_views), "plain/text");
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::int64_t video_views{ db.video_views(video_id) };
+    res.set_content(su::int_to_string(video_views), "plain/text");
 }
 
 inline void server::user_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const int count{ db.user_count() };
-    res.set_content(std::to_string(count), "plain/text");
+    const std::int64_t count{ db.user_count() };
+    res.set_content(su::int_to_string(count), "plain/text");
 }
 
 inline void server::video_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const int count{ db.video_count() };
-    res.set_content(std::to_string(count), "plain/text");
+    const std::int64_t count{ db.video_count() };
+    res.set_content(su::int_to_string(count), "plain/text");
 }
 
 inline void server::view_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const int count{ db.view_count() };
-    res.set_content(std::to_string(count), "plain/text");
+    const std::int64_t count{ db.view_count() };
+    res.set_content(su::int_to_string(count), "plain/text");
 }
 
 inline void server::is_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_header("username")) {
+    if (!req.has_header("user_id")) {
         logging::error{ "Missing header data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_header_value("username") };
-    const bool is_admin{ db.is_admin(username) };
+    const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+    const bool is_admin{ db.is_admin(user_id) };
     res.set_content(su::bool_to_string(is_admin), "plain/text");
 }
 
 inline void server::is_super_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_header("username")) {
+    if (!req.has_header("user_id")) {
         logging::error{ "Missing header data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_header_value("username") };
-    const bool is_super_admin{ db.is_super_admin(username) };
+    const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+    const bool is_super_admin{ db.is_super_admin(user_id) };
     res.set_content(su::bool_to_string(is_super_admin), "plain/text");
 }
 
 inline void server::is_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+{
+    if (!req.has_header("user_id")) {
+        logging::error{ "Missing header data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+    const bool is_user{ db.is_user(user_id) };
+    res.set_content(su::bool_to_string(is_user), "plain/text");
+}
+
+inline void server::user_name(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+{
+    if (!req.has_header("user_id")) {
+        logging::error{ "Missing header data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+    const std::string username{ db.user_name(user_id) };
+    res.set_content(username, "plain/text");
+}
+
+inline void server::user_id(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
     if (!req.has_header("username")) {
         logging::error{ "Missing header data" };
@@ -248,8 +289,8 @@ inline void server::is_user(const httplib::Request& req, httplib::Response& res,
     }
 
     const std::string username{ req.get_header_value("username") };
-    const bool is_user{ db.is_user(username) };
-    res.set_content(su::bool_to_string(is_user), "plain/text");
+    const std::int64_t user_id{ db.user_id(username) };
+    res.set_content(su::int_to_string(user_id), "plain/text");
 }
 
 inline void server::add_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -284,136 +325,99 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
 
 inline void server::update_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("password") || !req.has_file("username")) {
+    if (!req.has_file("password") || !req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_file_value("username").content };
-    if (db.is_super_admin(username)) {
-        logging::error{ "Trying to update a super admin \"{}\"", username };
+    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    if (db.is_super_admin(user_id)) {
+        logging::error{ "Trying to update a super admin \"{}\"", user_id };
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
 
-    const std::string salt{ db.user_salt(username) };
+    const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    db.update_admin(username, password);
+    db.update_admin(user_id, password);
 }
 
 inline void server::update_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("password") || !req.has_file("username")) {
+    if (!req.has_file("password") || !req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_file_value("username").content };
-    const std::string salt{ db.user_salt(username) };
+    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    db.update_user(username, password);
+    db.update_user(user_id, password);
 }
 
 inline void server::delete_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("username")) {
+    if (!req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_file_value("username").content };
-    if (db.is_super_admin(username)) {
-        logging::error{ "Trying to delete a super admin \"{}\"", username };
+    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    if (db.is_super_admin(user_id)) {
+        logging::error{ "Trying to delete a super admin \"{}\"", user_id };
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
 
-    db.delete_admin(username);
+    db.delete_admin(user_id);
 }
 
 inline void server::delete_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("username")) {
+    if (!req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_file_value("username").content };
-    db.delete_user(username);
+    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    db.delete_user(user_id);
 }
 
 inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("password") || !req.has_file("username")) {
+    if (!req.has_file("password") || !req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_file_value("username").content };
-    const std::string salt{ db.user_salt(username) };
+    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
-    const std::string database_password{ db.user_password(username) };
+    const std::string database_password{ db.user_password(user_id) };
     res.set_content(su::bool_to_string(password == database_password), "plain/text");
 }
 
 inline void server::user_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const std::vector<std::string> usernames{ db.user_list() };
-    res.set_content(su::join(usernames), "plain/text");
+    const std::vector user_ids{ transform(db.user_list()) };
+    res.set_content(su::join(user_ids), "plain/text");
 }
 
 inline void server::admin_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const std::vector<std::string> usernames{ db.admin_list() };
-    res.set_content(su::join(usernames), "plain/text");
-}
-
-namespace server
-{
-    bool create_directories(const std::filesystem::path& path) noexcept;
-    bool remove(const std::filesystem::path& path) noexcept;
-    std::filesystem::path video_path() noexcept;
-}
-
-inline bool server::create_directories(const std::filesystem::path& path) noexcept
-{
-    if (std::filesystem::exists(path))
-        return true;
-
-    std::error_code create_error;
-    if (!std::filesystem::create_directories(path, create_error) || create_error) {
-        logging::error{ "Fail to create \"{}\" with error {}: \"{}\"", path.string(), create_error.value(), create_error.message() };
-        return false;
-    }
-
-    return true;
-}
-
-inline bool server::remove(const std::filesystem::path& path) noexcept
-{
-    std::error_code create_error;
-    if (!std::filesystem::remove(path, create_error) || create_error) {
-        logging::error{ "Fail to remove \"{}\" with error {}: \"{}\"", path.string(), create_error.value(), create_error.message() };
-        return false;
-    }
-
-    return true;
-}
-
-inline std::filesystem::path server::video_path() noexcept
-{
-    return std::filesystem::current_path() / "data" / "videos";
+    const std::vector user_ids{ transform(db.admin_list()) };
+    res.set_content(su::join(user_ids), "plain/text");
 }
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("title") || !req.has_file("video") || !req.has_file("usernames")) {
+    if (!req.has_file("title") || !req.has_file("video") || !req.has_file("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -421,75 +425,52 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
     const std::string video_title{ req.get_file_value("title").content };
     const std::string video_content{ req.get_file_value("video").content };
-    const std::vector allowed_usernames{ su::split(req.get_file_value("usernames").content) };
-    const types::md5_varchar video_id{ crypto::md5(video_title) };
+    const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
 
-    const std::filesystem::path video_path{ server::video_path() };
-    if (!server::create_directories(video_path)) {
+    const std::optional success{
+        db.add_video(video_title, video_content)
+            .transform([&](const std::int64_t& video_id) -> bool {
+                return db.add_video_rights(video_id, transform(allowed_user_ids));
+            })
+    };
+
+    if (!success.has_value()) {
+        logging::error{ "Fail to add video \"{}\"", video_title };
+        res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
-
-    const std::filesystem::path video_file_path{ video_path / su::md5_varchar_to_string(video_id) };
-    {
-        std::ofstream video_stream(video_file_path, std::ios::out | std::ios::binary | std::ios::trunc);
-        video_stream.write(video_content.data(), video_content.size());
-    }
-
-    db.add_video(video_id, video_title, video_file_path.string());
-    db.add_video_rights(video_id, allowed_usernames);
 }
 
 inline void server::update_video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("usernames")) {
+    if (!req.has_file("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string video_id_str{ req.path_params.at("video_id") };
-    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
-    const std::vector allowed_usernames{ su::split(req.get_file_value("usernames").content) };
-    db.update_video_rights(video_id, allowed_usernames);
+    const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
+    db.update_video_rights(video_id, transform(allowed_user_ids));
 }
 
-inline void server::delete_video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+inline void server::delete_video(const httplib::Request& req, httplib::Response& /*res*/, const Database& db) noexcept
 {
-    const std::string video_id_str{ req.path_params.at("video_id") };
-    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
     db.delete_video(video_id);
-
-    // clean local data
-    const std::filesystem::path video_file_path{ video_path() / video_id_str };
-    if (!server::remove(video_file_path)) {
-        res.status = httplib::StatusCode::InternalServerError_500;
-    }
 }
 
 inline void server::increment_video_views(const httplib::Request& req, httplib::Response& /*res*/, const Database& db) noexcept
 {
-    const std::string video_id_str{ req.path_params.at("video_id") };
-    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
     db.increment_video_views(video_id);
 }
 
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::string video_id_str{ req.path_params.at("video_id") };
-    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
-    const std::filesystem::path video_file_path{ db.video_file_path(video_id) };
-
-    std::string video_content;
-    {
-        // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
-        std::ifstream video_stream(video_file_path, std::ios::in | std::ios::binary);
-        video_stream.seekg(0, std::ios::end);
-        video_content.resize(video_stream.tellg());
-        video_stream.seekg(0, std::ios::beg);
-        video_stream.read(&video_content[0], video_content.size());
-    }
-    logging::debug{ "Video length: {}", video_content.size() };
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_content{ db.video(video_id) };
 
     static constexpr std::size_t DATA_CHUNK_SIZE{ 4 * 1024 };
     res.set_content_provider(
@@ -504,13 +485,12 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
 
 inline void server::has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::string video_id_str{ req.path_params.at("video_id") };
-    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
     bool has_video_right{ false };
-    if (req.has_header("username")) {
-        const std::string username{ req.get_header_value("username") };
-        has_video_right = db.has_video_right(video_id, username);
+    if (req.has_header("user_id")) {
+        const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+        has_video_right = db.has_video_right(video_id, user_id);
     } else {
         has_video_right = db.has_video_right(video_id);
     }
@@ -520,9 +500,8 @@ inline void server::has_video_right(const httplib::Request& req, httplib::Respon
 
 inline void server::video_right_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::string video_id_str{ req.path_params.at("video_id") };
-    const types::md5_varchar video_id{ su::string_to_md5_varchar(video_id_str) };
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
-    const std::vector<std::string> rights{ db.video_right_list(video_id) };
+    const std::vector rights{ transform(db.video_right_list(video_id)) };
     res.set_content(su::join(rights), "plain/text");
 }

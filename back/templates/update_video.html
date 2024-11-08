@@ -30,9 +30,9 @@
             {% for user in user_dict %}
             <div class="pure-u-1 pure-u-sm-1-2 pure-u-lg-1-3">
               <div class="user-check">
-                <label class="button-check pure-checkbox" for="{{ user.name }}">
-                  <input {% if user.checked %} checked {% endif %} name="usernames" id="{{ user.name }}"
-                    value="{{ user.name }}" type="checkbox">
+                <label class="button-check pure-checkbox" for="{{ user.id }}">
+                  <input {% if user.checked %} checked {% endif %} name="user_ids" id="{{ user.id }}"
+                    value="{{ user.id }}" type="checkbox">
                   {{ user.name }}
                 </label>
               </div>
