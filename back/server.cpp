@@ -138,7 +138,10 @@ inline void server::create_super_admin(const Database& db) noexcept
     const std::string password{ crypto::sha512(sc::get_env("MYSQL_ADMIN_PASSWORD", "admin")) };
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
-    db.add_super_admin(username, crypto::password(password, salt), salt);
+    if (!db.add_super_admin(username, crypto::password(password, salt), salt)) {
+        logging::error{ "Fail to add super admin \"{}\"", username };
+        return;
+    }
 }
 
 inline void server::template_page(const httplib::Request& req, httplib::Response& res) noexcept
@@ -305,7 +308,10 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    db.add_admin(username, password, salt);
+    if (!db.add_admin(username, password, salt)) {
+        logging::error{ "Fail to add admin \"{}\"", username };
+        return;
+    }
 }
 
 inline void server::add_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -320,7 +326,10 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    db.add_user(username, password, salt);
+    if (!db.add_user(username, password, salt)) {
+        logging::error{ "Fail to add user \"{}\"", username };
+        return;
+    }
 }
 
 inline void server::update_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -340,7 +349,10 @@ inline void server::update_admin(const httplib::Request& req, httplib::Response&
 
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    db.update_admin(user_id, password);
+    if (!db.update_admin(user_id, password)) {
+        logging::error{ "Fail to update admin \"{}\"", user_id };
+        return;
+    }
 }
 
 inline void server::update_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -354,7 +366,10 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    db.update_user(user_id, password);
+    if (!db.update_user(user_id, password)) {
+        logging::error{ "Fail to update user \"{}\"", user_id };
+        return;
+    }
 }
 
 inline void server::delete_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -372,7 +387,10 @@ inline void server::delete_admin(const httplib::Request& req, httplib::Response&
         return;
     }
 
-    db.delete_admin(user_id);
+    if (!db.delete_admin(user_id)) {
+        logging::error{ "Fail to delete admin \"{}\"", user_id };
+        return;
+    }
 }
 
 inline void server::delete_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -384,7 +402,10 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     }
 
     const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
-    db.delete_user(user_id);
+    if (!db.delete_user(user_id)) {
+        logging::error{ "Fail to delete user \"{}\"", user_id };
+        return;
+    }
 }
 
 inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -434,9 +455,8 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
             })
     };
 
-    if (!success.has_value()) {
+    if (!success.value_or(false)) {
         logging::error{ "Fail to add video \"{}\"", video_title };
-        res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 }
@@ -452,19 +472,28 @@ inline void server::update_video(const httplib::Request& req, httplib::Response&
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
-    db.update_video_rights(video_id, transform(allowed_user_ids));
+    if (!db.update_video_rights(video_id, transform(allowed_user_ids))) {
+        logging::error{ "Fail to update video \"{}\"", video_id };
+        return;
+    }
 }
 
 inline void server::delete_video(const httplib::Request& req, httplib::Response& /*res*/, const Database& db) noexcept
 {
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    db.delete_video(video_id);
+    if (!db.delete_video(video_id)) {
+        logging::error{ "Fail to delete video \"{}\"", video_id };
+        return;
+    }
 }
 
 inline void server::increment_video_views(const httplib::Request& req, httplib::Response& /*res*/, const Database& db) noexcept
 {
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    db.increment_video_views(video_id);
+    if (!db.increment_video_views(video_id)) {
+        logging::error{ "Fail to increment video views \"{}\"", video_id };
+        return;
+    }
 }
 
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept

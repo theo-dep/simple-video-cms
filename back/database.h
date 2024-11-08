@@ -10,7 +10,7 @@ class Database
 public:
     Database(const std::filesystem::path& path, bool& create_ok) noexcept;
 
-    bool create_tables() const noexcept;
+    [[nodiscard]] bool create_tables() const noexcept;
 
     std::vector<std::int64_t> video_list() const noexcept;
     std::vector<std::int64_t> video_list(const std::int64_t& user_id) const noexcept;
@@ -20,17 +20,17 @@ public:
     std::int64_t video_views(const std::int64_t& id) const noexcept;
     std::string video(const std::int64_t& id) const noexcept;
 
-    std::optional<std::int64_t> add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
     bool is_super_admin(const std::int64_t& id) const noexcept;
 
     bool is_admin(const std::int64_t& id) const noexcept;
     bool is_user(const std::int64_t& id) const noexcept;
-    std::optional<std::int64_t> add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
-    std::optional<std::int64_t> add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
-    bool update_admin(const std::int64_t& id, const std::string& password) const noexcept;
-    bool update_user(const std::int64_t& id, const std::string& password) const noexcept;
-    bool delete_admin(const std::int64_t& id) const noexcept;
-    bool delete_user(const std::int64_t& id) const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    [[nodiscard]] bool update_admin(const std::int64_t& id, const std::string& password) const noexcept;
+    [[nodiscard]] bool update_user(const std::int64_t& id, const std::string& password) const noexcept;
+    [[nodiscard]] bool delete_admin(const std::int64_t& id) const noexcept;
+    [[nodiscard]] bool delete_user(const std::int64_t& id) const noexcept;
 
     std::int64_t user_id(const std::string& name) const noexcept;
     std::string user_name(const std::int64_t& id) const noexcept;
@@ -44,11 +44,11 @@ public:
     std::vector<std::int64_t> user_list() const noexcept;
     std::vector<std::int64_t> admin_list() const noexcept;
 
-    std::optional<std::int64_t> add_video(const std::string& title, const std::string& video) const noexcept;
-    bool add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
-    bool update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
-    bool delete_video(const std::int64_t& id) const noexcept;
-    bool increment_video_views(const std::int64_t& id) const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> add_video(const std::string& title, const std::string& video) const noexcept;
+    [[nodiscard]] bool add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
+    [[nodiscard]] bool update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
+    [[nodiscard]] bool delete_video(const std::int64_t& id) const noexcept;
+    [[nodiscard]] bool increment_video_views(const std::int64_t& id) const noexcept;
     bool has_video_right(const std::int64_t& id) const noexcept;
     bool has_video_right(const std::int64_t& id, const std::int64_t& user_id) const noexcept;
 
