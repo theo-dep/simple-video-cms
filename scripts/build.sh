@@ -5,6 +5,7 @@ SOURCE_DIR=${SCRIPT_DIR}/..
 
 COMMON_DIR=${SOURCE_DIR}/builder
 CXXFLAGS="-g -DDEBUG_LOG -I${COMMON_DIR}/third-party -I${COMMON_DIR}"
+LDFLAGS=""
 
 echo Build common...
 declare -a commons=($(find ${COMMON_DIR} -type f -name "*.cpp" -exec basename {} .cpp \;))
@@ -18,10 +19,7 @@ do
 done
 
 echo Build back...
-# from mysql_config
-make -C ${SOURCE_DIR}/back -j -k server \
-    CXXFLAGS="${CXXFLAGS} -DORMPP_ENABLE_LOG -I/usr/include/mysql -I${COMMON_DIR}/third-party/ormpp" \
-    LDFLAGS="${common_objets} -lmysqlclient -lz -lzstd -lssl -lcrypto -lresolv -lm"
+make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS} ${common_objets}"
 
 echo Build front...
-make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${common_objets}"
+make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS} ${common_objets}"

@@ -1059,7 +1059,8 @@ inline std::vector<up::value> database::ids_to_values(const std::vector<std::int
 #pragma GCC diagnostic ignored "-Wunused-but-set-parameter"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized" // gcc-alpine
 extern "C" {
-#include <unqlite.c>
+#include <unqlite-src/unqlite.c>
 }
 #pragma GCC diagnostic pop

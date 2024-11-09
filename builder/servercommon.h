@@ -5,8 +5,8 @@
 
 namespace httplib
 {
-    class Request;
-    class Response;
+    struct Request;
+    struct Response;
 }
 
 namespace sc
