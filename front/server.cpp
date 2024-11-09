@@ -547,7 +547,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
         return;
 
     const std::string user_id{ req.path_params.at("user_id") };
-    const bool admin{ su::string_to_bool(req.get_param_value("admin")) };
+    const bool admin{ su::string_to_bool(req.get_param_value("is_admin")) };
     logging::debug{ "Delete {} {}", user_id, client.user_name(user_id) };
 
     std::string signal_str;
