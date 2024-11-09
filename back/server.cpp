@@ -34,9 +34,7 @@ namespace server
 
     void add_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void add_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
-    void update_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void update_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
-    void delete_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void delete_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
 
@@ -102,9 +100,7 @@ int server::start() noexcept
 
         .Post("/add-admin", sc::serve(add_admin, std::cref(db)))
         .Post("/add-user", sc::serve(add_user, std::cref(db)))
-        .Post("/update-admin", sc::serve(update_admin, std::cref(db)))
         .Post("/update-user", sc::serve(update_user, std::cref(db)))
-        .Post("/delete-admin", sc::serve(delete_admin, std::cref(db)))
         .Post("/delete-user", sc::serve(delete_user, std::cref(db)))
         .Post("/is-valid-user", sc::serve(is_valid_user, std::cref(db)))
 
@@ -332,29 +328,6 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     }
 }
 
-inline void server::update_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
-{
-    if (!req.has_file("password") || !req.has_file("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
-    if (db.is_super_admin(user_id)) {
-        logging::error{ "Trying to update a super admin \"{}\"", user_id };
-        res.status = httplib::StatusCode::Forbidden_403;
-        return;
-    }
-
-    const std::string salt{ db.user_salt(user_id) };
-    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    if (!db.update_admin(user_id, password)) {
-        logging::error{ "Fail to update admin \"{}\"", user_id };
-        return;
-    }
-}
-
 inline void server::update_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
     if (!req.has_file("password") || !req.has_file("user_id")) {
@@ -368,27 +341,6 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
     if (!db.update_user(user_id, password)) {
         logging::error{ "Fail to update user \"{}\"", user_id };
-        return;
-    }
-}
-
-inline void server::delete_admin(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
-{
-    if (!req.has_file("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
-    if (db.is_super_admin(user_id)) {
-        logging::error{ "Trying to delete a super admin \"{}\"", user_id };
-        res.status = httplib::StatusCode::Forbidden_403;
-        return;
-    }
-
-    if (!db.delete_admin(user_id)) {
-        logging::error{ "Fail to delete admin \"{}\"", user_id };
         return;
     }
 }

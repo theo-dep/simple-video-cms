@@ -251,15 +251,6 @@ void Client::add_user(const std::string& username, const std::string& password) 
     _client->Post("/add-user", items);
 }
 
-void Client::update_admin(const std::string& user_id, const std::string& password) const noexcept
-{
-    const httplib::MultipartFormDataItems items{
-        { "user_id", user_id, "", "" },
-        { "password", password, "", "" }
-    };
-    _client->Post("/update-admin", items);
-}
-
 void Client::update_user(const std::string& user_id, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
@@ -267,14 +258,6 @@ void Client::update_user(const std::string& user_id, const std::string& password
         { "password", password, "", "" }
     };
     _client->Post("/update-user", items);
-}
-
-void Client::delete_admin(const std::string& user_id) const noexcept
-{
-    const httplib::MultipartFormDataItems items{
-        { "user_id", user_id, "", "" }
-    };
-    _client->Post("/delete-admin", items);
 }
 
 void Client::delete_user(const std::string& user_id) const noexcept

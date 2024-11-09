@@ -14,22 +14,70 @@ extern "C" {
 #include <unqlitepp.hpp>
 #pragma GCC diagnostic pop
 
-#include <memory>
+#include <fstream>
 #include <ranges>
 
 namespace database
 {
-    std::optional<std::pair<up::db, up::vm>> execute(const std::filesystem::path& path, up::db_mode mode, const std::string_view& jx9_program) noexcept;
-    std::optional<std::pair<up::db, up::vm>> execute(const std::filesystem::path& path, up::db_mode mode, const std::string_view& jx9_program,
-                                                     const std::unordered_map<std::string, up::value>& binding_map) noexcept;
+    enum user_type : std::int64_t
+    {
+        USER,
+        ADMIN,
+        SUPER_ADMIN
+    };
 
-    up::vm pair_to_vm(std::pair<up::db, up::vm> pair) noexcept;
-    std::optional<up::vm_value> extract_variable(up::vm vm, const std::string& record_name) noexcept;
-    std::optional<std::vector<up::vm_value>> extract_variables(up::vm vm, const std::vector<std::string>& record_names) noexcept;
-    std::optional<up::vm_value> find_member(const up::vm_value& value, const std::string& member_name) noexcept;
-    std::optional<std::vector<up::vm_value>> find_members(const up::vm_value& value, const std::vector<std::string>& member_names) noexcept;
-    std::vector<std::int64_t> value_to_ids(const up::vm_value& value) noexcept;
+    struct Data
+    {
+        Data(up::db&& db, up::vm&& vm) noexcept;
+        Data(Data&& data) noexcept;
+        up::db db;
+        up::vm vm;
+    };
+    struct DataValue : Data
+    {
+        DataValue(Data&& data, up::value&& value) noexcept;
+        DataValue(DataValue&& data) noexcept;
+        up::value value;
+    };
+    struct DataValues : Data
+    {
+        DataValues(Data&& data, up::value::object&& values) noexcept;
+        up::value::object values;
+    };
+    struct DataValueMember : DataValue
+    {
+        DataValueMember(DataValue&& data, up::value&& member) noexcept;
+        up::value member;
+    };
+    struct DataValueMembers : DataValue
+    {
+        DataValueMembers(DataValue&& data, up::value::object&& members) noexcept;
+        up::value::object members;
+    };
+
+    template <class F, typename... Args>
+    auto bind(F&& f, Args&&... args) noexcept;
+
+    std::optional<up::db> open(const std::filesystem::path& path, up::db_mode mode) noexcept;
+    std::optional<Data> compile(up::db db, const std::string_view& jx9_program) noexcept;
+
+    std::optional<Data> bind_variables(Data data, const up::value::object& binding_map) noexcept;
+    std::optional<Data> execute(Data data) noexcept;
+
+    std::optional<DataValue> extract_variable(Data data, const std::string& record_name) noexcept;
+    std::optional<DataValues> extract_variables(Data data, const std::vector<std::string>& record_names) noexcept;
+    std::optional<DataValueMember> find_member(DataValue data, const std::string& member_name) noexcept;
+    std::optional<DataValueMembers> find_members(DataValue data, const std::vector<std::string>& member_names) noexcept;
+    std::vector<up::value> values_to_members(DataValue data, const std::string& member_name) noexcept;
+    std::vector<std::int64_t> values_to_id_members(DataValue data) noexcept;
     std::vector<up::value> ids_to_values(const std::vector<std::int64_t>& ids) noexcept;
+    std::vector<std::int64_t> values_to_ids(const std::vector<up::value>& values) noexcept;
+}
+
+template <class F, typename... Args>
+inline auto database::bind(F&& f, Args&&... args) noexcept
+{
+    return std::bind(std::forward<F>(f), std::placeholders::_1, std::forward<Args>(args)...);
 }
 
 Database::Database(const std::filesystem::path& path, bool& create_ok) noexcept
@@ -37,12 +85,9 @@ Database::Database(const std::filesystem::path& path, bool& create_ok) noexcept
 {
     create_ok = true;
     if (!std::filesystem::exists(path_)) {
-        up::db_make_status status;
-        const std::optional db{ up::db::make(path, up::db_mode::OPEN_CREATE, &status) };
-        if (!db.has_value()) {
-            logging::error{ "{}: {}", up::status_to_string_view<up::db_make_status>::value, static_cast<std::size_t>(status) };
-            create_ok = false;
-        }
+        std::ofstream{ path_ }; // create regular file
+        const std::optional db{ database::open(path, up::db_mode::OPEN_CREATE) };
+        create_ok = db.has_value();
     }
 }
 
@@ -60,24 +105,10 @@ bool Database::create_tables() const noexcept
                 $schema =  {
                     name: 'string',
                     password: 'string',
-                    salt: 'string'
+                    salt: 'string',
+                    type: 'integer'
                 };
                 db_set_schema('users', $schema);
-            }
-            if (!db_exists('admins')) {
-                $rc = db_create('admins');
-                if (!$rc) {
-                    print db_errlog();
-                    return;
-                }
-
-                $schema =  {
-                    name: 'string',
-                    password: 'string',
-                    salt: 'string',
-                    super: 'bool'
-                };
-                db_set_schema('admins', $schema);
             }
             if (!db_exists('videos')) {
                 $rc = db_create('videos');
@@ -88,8 +119,7 @@ bool Database::create_tables() const noexcept
 
                 $schema =  {
                     title: 'string',
-                    video: 'resource',
-                    video_size: 'integer',
+                    video: 'string',
                     views: 'integer'
                 };
                 db_set_schema('videos', $schema);
@@ -109,8 +139,12 @@ bool Database::create_tables() const noexcept
             }
         )"sv };
 
-    const std::optional db_vm{ database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog) };
-    return db_vm.has_value();
+    const std::optional data{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+    };
+    return data.has_value();
 }
 
 std::vector<std::int64_t> Database::video_list() const noexcept
@@ -121,10 +155,11 @@ std::vector<std::int64_t> Database::video_list() const noexcept
     )"sv };
 
     const std::optional videos{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog)
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "videos"s))
-            .transform(database::value_to_ids)
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "videos"s))
+            .transform(database::values_to_id_members)
     };
 
     if (!videos.has_value()) {
@@ -140,24 +175,24 @@ std::vector<std::int64_t> Database::video_list(const std::int64_t& user_id) cons
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $callback = function($video) {
-            $video_id = $video.__id;
-
-            $video_right_callback = function($right) {
-                return ($right.video_id == $video_id && $right.user_id == $user_id);
-            };
-            $video_rights = db_fetch_all('video_rights', $video_right_callback);
-
-            return (count($video_rights) != 0);
+            $found = FALSE;
+            db_reset_record_cursor('video_rights');
+            while (($video_right = db_fetch('video_rights')) != NULL && !$found) {
+                $found = ($video_right.video_id == $video.__id && $video_right.user_id == $user_id);
+            }
+            return $found;
         };
 
         $videos = db_fetch_all('videos', $callback);
     )"sv };
 
     const std::optional videos{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "user_id"s, user_id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "videos"s))
-            .transform(database::value_to_ids)
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "user_id"s, user_id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "videos"s))
+            .transform(database::values_to_id_members)
     };
 
     if (!videos.has_value()) {
@@ -172,24 +207,24 @@ std::vector<std::int64_t> Database::no_right_video_list() const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $callback = function($videos) {
-            $videos_id = $videos.__id;
-
-            $video_right_callback = function($right) {
-                return ($right.video_id == $video_id);
-            };
-            $video_rights = db_fetch_all('video_rights', $video_right_callback);
-            return (count($video_rights) == 0);
+        $callback = function($video) {
+            $found = FALSE;
+            db_reset_record_cursor('video_rights');
+            while (($video_right = db_fetch('video_rights')) != NULL && !$found) {
+                $found = ($video_right.video_id == $video.__id);
+            }
+            return !$found;
         };
 
         $videos = db_fetch_all('videos', $callback);
     )"sv };
 
     const std::optional videos{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog)
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "videos"s))
-            .transform(database::value_to_ids)
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "videos"s))
+            .transform(database::values_to_id_members)
     };
 
     if (!videos.has_value()) {
@@ -208,10 +243,12 @@ std::string Database::video_title(const std::int64_t& id) const noexcept
     )"sv };
 
     const std::optional title{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "video"s))
-            .and_then(std::bind(database::find_member, std::placeholders::_1, "title"s))
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "video"s))
+            .and_then(database::bind(database::find_member, "title"s))
     };
 
     if (!title.has_value()) {
@@ -219,7 +256,7 @@ std::string Database::video_title(const std::int64_t& id) const noexcept
         return {};
     }
 
-    return title->get_string();
+    return title->member.get_string();
 }
 
 std::int64_t Database::video_views(const std::int64_t& id) const noexcept
@@ -230,18 +267,20 @@ std::int64_t Database::video_views(const std::int64_t& id) const noexcept
     )"sv };
 
     const std::optional views{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "video"s))
-            .and_then(std::bind(database::find_member, std::placeholders::_1, "views"s))
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "video"s))
+            .and_then(database::bind(database::find_member, "views"s))
     };
 
     if (!views.has_value()) {
         logging::error{ "Fail to fetch video views \"{}\"", id };
-        return {};
+        return 0;
     }
 
-    return views->get_int();
+    return views->member.get_int();
 }
 
 std::string Database::video(const std::int64_t& id) const noexcept
@@ -251,86 +290,99 @@ std::string Database::video(const std::int64_t& id) const noexcept
         $video = db_fetch_by_id('videos', $id);
     )"sv };
 
-    const std::optional video{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "video"s))
-            .and_then(std::bind(database::find_members, std::placeholders::_1, std::vector{ "video"s, "video_size"s }))
+    std::optional video{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "video"s))
+            .and_then(database::bind(database::find_member, "video"s))
     };
 
-    if (!video.has_value() || video->size() != 2) {
+    if (!video.has_value()) {
         logging::error{ "Fail to fetch video \"{}\"", id };
         return {};
     }
 
-    return std::string(reinterpret_cast<const char*>((*video)[0].get_resource()), (*video)[1].get_int());
+    return video->member.get_string();
 }
 
 std::optional<std::int64_t> Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $success = db_store('admins', $admin);
+        $success = db_store('users', $admin);
         $admin_id = $admin.__id;
     )"sv };
 
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog,
-                          { { "admin"s, up::value::object{
-                                            { "name"s, name }, { "password"s, password }, { "salts"s, salt }, { "super"s, true } } } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "success"s, "admin_id"s }))
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
+                                up::value::object{ { "admin"s,
+                                                     up::value::object{
+                                                         { "name"s, name },
+                                                         { "password"s, password },
+                                                         { "salt"s, salt },
+                                                         { "type"s, database::user_type::SUPER_ADMIN } } } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "admin_id"s }))
     };
 
-    if (!success.has_value() || success->size() != 2 || !(*success)[0].get_bool()) {
+    if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
         logging::error{ "Fail to add super admin \"{}\"", name };
-        return {};
+        return std::nullopt;
     }
 
-    return (*success)[1].get_int();
+    return success->values["admin_id"s].get_int();
 }
 
 bool Database::is_super_admin(const std::int64_t& id) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $admin = db_fetch_by_id('admins', $id);
+        $admin = db_fetch_by_id('users', $id);
     )"sv };
 
-    const std::optional super{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "admin"s))
-            .and_then(std::bind(database::find_member, std::placeholders::_1, "super"s))
+    const std::optional user_type{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "admin"s))
+            .and_then(database::bind(database::find_member, "type"s))
     };
 
-    if (!super.has_value()) {
+    if (!user_type.has_value()) {
         logging::error{ "Fail to get super admin \"{}\"", id };
         return false;
     }
 
-    return super->get_bool();
+    return (user_type->member.get_int() == database::user_type::SUPER_ADMIN);
 }
 
 bool Database::is_admin(const std::int64_t& id) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $admin = db_fetch_by_id('admins', $id);
+        $admin = db_fetch_by_id('users', $id);
     )"sv };
 
-    const std::optional record{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "admin"s))
+    const std::optional user_type{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "admin"s))
+            .and_then(database::bind(database::find_member, "type"s))
     };
 
-    if (!record.has_value()) {
+    if (!user_type.has_value()) {
         logging::error{ "Fail to get admin \"{}\"", id };
         return false;
     }
 
-    return !record->is_null();
+    return (user_type->member.get_int() == database::user_type::ADMIN || user_type->member.get_int() == database::user_type::SUPER_ADMIN);
 }
 
 bool Database::is_user(const std::int64_t& id) const noexcept
@@ -340,42 +392,51 @@ bool Database::is_user(const std::int64_t& id) const noexcept
         $user = db_fetch_by_id('users', $id);
     )"sv };
 
-    const std::optional record{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "user"s))
+    const std::optional user_type{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "user"s))
+            .and_then(database::bind(database::find_member, "type"s))
     };
 
-    if (!record.has_value()) {
+    if (!user_type.has_value()) {
         logging::error{ "Fail to get user \"{}\"", id };
         return false;
     }
 
-    return !record->is_null();
+    return (user_type->member.get_int() == database::user_type::USER);
 }
 
 std::optional<std::int64_t> Database::add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $success = db_store('admins', $admin);
+        $success = db_store('users', $admin);
         $admin_id = $admin.__id;
     )"sv };
 
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog,
-                          { { "admin"s, up::value::object{
-                                            { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "super"s, false } } } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "success"s, "admin_id"s }))
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
+                                up::value::object{ { "admin"s,
+                                                     up::value::object{
+                                                         { "name"s, name },
+                                                         { "password"s, password },
+                                                         { "salt"s, salt },
+                                                         { "type"s, database::user_type::ADMIN } } } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "admin_id"s }))
     };
 
-    if (!success.has_value() || success->size() != 2 || !(*success)[0].get_bool()) {
+    if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
         logging::error{ "Fail to add admin \"{}\"", name };
-        return false;
+        return std::nullopt;
     }
 
-    return (*success)[1].get_int();
+    return success->values["admin_id"s].get_int();
 }
 
 std::optional<std::int64_t> Database::add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept
@@ -386,46 +447,25 @@ std::optional<std::int64_t> Database::add_user(const std::string& name, const st
         $user_id = $user.__id;
     )"sv };
 
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog,
-                          { { "user"s, up::value::object{
-                                           { "name"s, name }, { "password"s, password }, { "salt"s, salt } } } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "success"s, "user_id"s }))
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
+                                up::value::object{ { "user"s, up::value::object{
+                                                                  { "name"s, name },
+                                                                  { "password"s, password },
+                                                                  { "salt"s, salt },
+                                                                  { "type"s, database::user_type::USER } } } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "user_id"s }))
     };
 
-    if (!success.has_value() || success->size() != 2 || !(*success)[0].get_bool()) {
+    if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
         logging::error{ "Fail to add user \"{}\"", name };
-        return false;
+        return std::nullopt;
     }
 
-    return (*success)[1].get_int();
-}
-
-bool Database::update_admin(const std::int64_t& id, const std::string& password) const noexcept
-{
-    using namespace std::literals;
-    constexpr std::string_view jx9_prog{ R"(
-        $admin = db_fetch_by_id('admins', $id);
-        $drop_success = db_drop_record('admins', $id);
-        if ($drop_success) {
-            $admin.password = $password;
-            $store_success = db_store('admin', $admin);
-        }
-    )"sv };
-
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog, { { "id"s, id }, { "password"s, password } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "drop_success"s, "store_success"s }))
-    };
-
-    if (!success.has_value() || success->size() != 2) {
-        logging::error{ "Fail to update admin \"{}\"", id };
-        return false;
-    }
-
-    return ((*success)[0].get_bool() && (*success)[1].get_bool());
+    return success->values["user_id"s].get_int();
 }
 
 bool Database::update_user(const std::int64_t& id, const std::string& password) const noexcept
@@ -433,46 +473,24 @@ bool Database::update_user(const std::int64_t& id, const std::string& password) 
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $user = db_fetch_by_id('users', $id);
-        $drop_success = db_drop_record('users', $id);
-        if ($drop_success) {
-            $user.password = $password;
-            $store_success = db_store('users', $user);
-        }
+        $user.password = $password;
+        $success = db_update_record('users', $id, $user);
     )"sv };
 
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog, { { "id"s, id }, { "password"s, password } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "drop_success"s, "store_success"s }))
-    };
-
-    if (!success.has_value() || success->size() != 2) {
-        logging::error{ "Fail to update user \"{}\"", id };
-        return false;
-    }
-
-    return ((*success)[0].get_bool() && (*success)[1].get_bool());
-}
-
-bool Database::delete_admin(const std::int64_t& id) const noexcept
-{
-    using namespace std::literals;
-    constexpr std::string_view jx9_prog{ R"(
-        $success = db_drop_record('admins', $id);
-    )"sv };
-
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "success"s))
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id }, { "password"s, password } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
     };
 
     if (!success.has_value()) {
-        logging::error{ "Fail to delete admin \"{}\"", id };
+        logging::error{ "Fail to update admin \"{}\"", id };
         return false;
     }
 
-    return success->get_bool();
+    return success->value.get_bool();
 }
 
 bool Database::delete_user(const std::int64_t& id) const noexcept
@@ -483,9 +501,11 @@ bool Database::delete_user(const std::int64_t& id) const noexcept
     )"sv };
 
     const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "success"s))
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
     };
 
     if (!success.has_value()) {
@@ -493,7 +513,7 @@ bool Database::delete_user(const std::int64_t& id) const noexcept
         return false;
     }
 
-    return success->get_bool();
+    return success->value.get_bool();
 }
 
 std::int64_t Database::user_id(const std::string& name) const noexcept
@@ -503,26 +523,21 @@ std::int64_t Database::user_id(const std::string& name) const noexcept
         $callback = function($user) {
             return ($user.name == $username);
         };
-        $users = db_fetch_all($collection, $callback);
+        $users = db_fetch_all('users', $callback);
     )"sv };
 
-    const auto fetch_id_function{
-        [&](const std::string& collection) -> std::optional<std::vector<std::int64_t>> {
-            return database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "username"s, name }, { "collection"s, collection } })
-                .transform(database::pair_to_vm)
-                .and_then(std::bind(database::extract_variable, std::placeholders::_1, "users"s))
-                .transform(database::value_to_ids);
-        }
+    const std::optional ids{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "username"s, name } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "users"s))
+            .transform(database::values_to_id_members)
     };
 
-    std::optional ids{ fetch_id_function("users") };
     if (!ids.has_value() || ids->empty()) {
-        ids = fetch_id_function("admins");
-    }
-
-    if (!ids.has_value() || ids->empty()) {
-        logging::error{ "Fail to fetch user \"{}\"", name };
-        return 0;
+        logging::debug{ "Fail to fetch user \"{}\"", name }; // debug not error because user may not exist
+        return -1;
     }
 
     return (*ids)[0];
@@ -532,90 +547,75 @@ std::string Database::user_name(const std::int64_t& id) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $user = db_fetch_by_id($collection, $id);
+        $user = db_fetch_by_id('users', $id);
     )"sv };
 
-    const auto fetch_name_function{
-        [&](const std::string& collection) -> std::optional<up::vm_value> {
-            return database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id }, { "collection"s, collection } })
-                .transform(database::pair_to_vm)
-                .and_then(std::bind(database::extract_variable, std::placeholders::_1, "user"s))
-                .and_then(std::bind(database::find_member, std::placeholders::_1, "name"s));
-        }
+    const std::optional name{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "user"s))
+            .and_then(database::bind(database::find_member, "name"s))
     };
-
-    std::optional name{ fetch_name_function("users") };
-    if (!name.has_value()) {
-        name = fetch_name_function("admins");
-    }
 
     if (!name.has_value()) {
         logging::error{ "Fail to fetch user name \"{}\"", id };
         return {};
     }
 
-    return name->get_string();
+    return name->member.get_string();
 }
 
 std::string Database::user_password(const std::int64_t& id) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $user = db_fetch_by_id($collection, $id);
+        $user = db_fetch_by_id('users', $id);
     )"sv };
 
-    const auto fetch_password_function{
-        [&](const std::string& collection) -> std::optional<up::vm_value> {
-            return database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id }, { "collection"s, collection } })
-                .transform(database::pair_to_vm)
-                .and_then(std::bind(database::extract_variable, std::placeholders::_1, "user"s))
-                .and_then(std::bind(database::find_member, std::placeholders::_1, "password"s));
-        }
+    const std::optional password{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "user"s))
+            .and_then(database::bind(database::find_member, "password"s))
     };
-
-    std::optional password{ fetch_password_function("users") };
-    if (!password.has_value()) {
-        password = fetch_password_function("admins");
-    }
 
     if (!password.has_value()) {
         logging::error{ "Fail to fetch user password \"{}\"", id };
         return {};
     }
 
-    return password->get_string();
+    return password->member.get_string();
 }
 
 std::string Database::user_salt(const std::int64_t& id) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $user = db_fetch_by_id($collection, $id);
+        $user = db_fetch_by_id('users', $id);
     )"sv };
 
-    const auto fetch_salt_function{
-        [&](const std::string& collection) -> std::optional<up::vm_value> {
-            return database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id }, { "collection"s, collection } })
-                .transform(database::pair_to_vm)
-                .and_then(std::bind(database::extract_variable, std::placeholders::_1, "user"s))
-                .and_then(std::bind(database::find_member, std::placeholders::_1, "salt"s));
-        }
+    const std::optional salt{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "user"s))
+            .and_then(database::bind(database::find_member, "salt"s))
     };
-
-    std::optional salt{ fetch_salt_function("users") };
-    if (!salt.has_value()) {
-        salt = fetch_salt_function("admins");
-    }
 
     if (!salt.has_value()) {
         logging::error{ "Fail to fetch user salt \"{}\"", id };
         return {};
     }
 
-    return salt->get_string();
+    return salt->member.get_string();
 }
 
-std::uint32_t Database::user_count() const noexcept
+std::int64_t Database::user_count() const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
@@ -623,9 +623,10 @@ std::uint32_t Database::user_count() const noexcept
     )"sv };
 
     const std::optional count{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog)
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "count"s))
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "count"s))
     };
 
     if (!count.has_value()) {
@@ -633,10 +634,10 @@ std::uint32_t Database::user_count() const noexcept
         return 0;
     }
 
-    return static_cast<std::uint32_t>(count->get_int());
+    return count->value.get_int();
 }
 
-std::uint32_t Database::video_count() const noexcept
+std::int64_t Database::video_count() const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
@@ -644,9 +645,10 @@ std::uint32_t Database::video_count() const noexcept
     )"sv };
 
     const std::optional count{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog)
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "count"s))
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "count"s))
     };
 
     if (!count.has_value()) {
@@ -654,10 +656,10 @@ std::uint32_t Database::video_count() const noexcept
         return 0;
     }
 
-    return static_cast<std::uint32_t>(count->get_int());
+    return count->value.get_int();
 }
 
-std::uint32_t Database::view_count() const noexcept
+std::int64_t Database::view_count() const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
@@ -669,9 +671,10 @@ std::uint32_t Database::view_count() const noexcept
     )"sv };
 
     const std::optional count{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog)
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "count"s))
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "count"s))
     };
 
     if (!count.has_value()) {
@@ -679,21 +682,26 @@ std::uint32_t Database::view_count() const noexcept
         return 0;
     }
 
-    return static_cast<std::uint32_t>(count->get_int());
+    return count->value.get_int();
 }
 
 std::vector<std::int64_t> Database::user_list() const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $users = db_fetch_all('users');
+        $callback = function($user) {
+            return ($user.type == $user_type);
+        };
+        $users = db_fetch_all('users', $callback);
     )"sv };
 
     const std::optional users{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog)
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "users"s))
-            .transform(database::value_to_ids)
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "user_type"s, database::user_type::USER } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "users"s))
+            .transform(database::values_to_id_members)
     };
 
     if (!users.has_value()) {
@@ -708,14 +716,21 @@ std::vector<std::int64_t> Database::admin_list() const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $admins = db_fetch_all('admins');
+        $callback = function($user) {
+            return ($user.type == $admin_type || $user.type == $super_admin_type);
+        };
+        $admins = db_fetch_all('users', $callback);
     )"sv };
 
     const std::optional admins{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog)
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "admins"s))
-            .transform(database::value_to_ids)
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
+                                up::value::object{
+                                    { "admin_type"s, database::user_type::ADMIN }, { "super_admin_type"s, database::user_type::SUPER_ADMIN } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "admins"s))
+            .transform(database::values_to_id_members)
     };
 
     if (!admins.has_value()) {
@@ -734,22 +749,25 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
         $video_id = $video.__id;
     )"sv };
 
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog,
-                          { { "video"s, up::value::object{
-                                            { "title"s, title },
-                                            { "video"s, reinterpret_cast<const void*>(video.data()) },
-                                            { "video_size"s, static_cast<std::int64_t>(video.size()) } } } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "success"s, "video_id"s }))
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
+                                up::value::object{ { "video"s,
+                                                     up::value::object{
+                                                         { "title"s, title },
+                                                         { "views"s, std::int64_t{ 0 } },
+                                                         { "video"s, video } } } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "video_id"s }))
     };
 
-    if (!success.has_value() || success->size() != 2 || !(*success)[0].get_bool()) {
+    if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
         logging::error{ "Fail to add video \"{}\"", title };
-        return false;
+        return std::nullopt;
     }
 
-    return (*success)[1].get_int();
+    return success->values["video_id"s].get_int();
 }
 
 bool Database::add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept
@@ -757,17 +775,19 @@ bool Database::add_video_rights(const std::int64_t& id, const std::vector<std::i
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $make_video_right_callback = function($user_id) {
-            return { 'video_id': $id, 'user_id': $user_id };
+            return { video_id: $id, user_id: $user_id };
         };
         $video_rights = array_map($make_video_right_callback, $user_ids);
         $success = db_store('video_rights', $video_rights);
     )"sv };
 
     const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog,
-                          { { "id"s, id }, { "user_ids"s, database::ids_to_values(user_ids) } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "success"s))
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
+                                up::value::object{ { "id"s, id }, { "user_ids"s, database::ids_to_values(user_ids) } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
     };
 
     if (!success.has_value()) {
@@ -775,36 +795,46 @@ bool Database::add_video_rights(const std::int64_t& id, const std::vector<std::i
         return false;
     }
 
-    return success->get_bool();
+    return success->value.get_bool();
 }
 
-bool Database::update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept
+namespace database
+{
+    bool delete_video_rights(const std::filesystem::path& path, const std::int64_t& id) noexcept;
+}
+
+bool database::delete_video_rights(const std::filesystem::path& path, const std::int64_t& id) noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
-        $video_records_callback = function($video) {
-            return ($video.video_id = $id);
-        };
-        $video_rights = db_fetch_all('video_rights', $video_records_callback);
-
-        $drop_success = TRUE;
-        foreach($video_rights as $video_right) {
-            $drop_success = $drop_success && db_drop_record('video_rights', $video_right.__id);
+        $success = TRUE;
+        db_reset_record_cursor('video_rights');
+        while (($video_right = db_fetch('video_rights')) != NULL) {
+            if ($video_right.video_id == $id) {
+                $success = $success && db_drop_record('video_rights', $video_right.__id);
+            }
         }
     )"sv };
 
-    const std::optional drop_success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "drop_success"s))
+    const std::optional success{
+        database::open(path, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
     };
 
-    if (!drop_success.has_value()) {
+    if (!success.has_value()) {
         logging::error{ "Fail to delete video rights \"{}\"", id };
         return false;
     }
 
-    if (!drop_success->get_bool()) {
+    return success->value.get_bool();
+}
+
+bool Database::update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept
+{
+    if (!database::delete_video_rights(path_, id)) {
         logging::error{ "Fail to delete video rights \"{}\"", id };
         return false;
     }
@@ -814,15 +844,22 @@ bool Database::update_video_rights(const std::int64_t& id, const std::vector<std
 
 bool Database::delete_video(const std::int64_t& id) const noexcept
 {
+    if (!database::delete_video_rights(path_, id)) {
+        logging::error{ "Fail to delete video rights \"{}\"", id };
+        return false;
+    }
+
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $success = db_drop_record('videos', $id);
     )"sv };
 
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "success"s))
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
     };
 
     if (!success.has_value()) {
@@ -830,7 +867,7 @@ bool Database::delete_video(const std::int64_t& id) const noexcept
         return false;
     }
 
-    return success->get_bool();
+    return success->value.get_bool();
 }
 
 bool Database::increment_video_views(const std::int64_t& id) const noexcept
@@ -838,25 +875,24 @@ bool Database::increment_video_views(const std::int64_t& id) const noexcept
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
         $video = db_fetch_by_id('videos', $id);
-        $drop_success = db_drop_record('videos', $id);
-        if ($drop_success) {
-            $video.views = $videos.views + 1;
-            $store_success = db_store('videos', $video);
-        }
+        $video.views += 1;
+        $success = db_update_record('videos', $id, $video);
     )"sv };
 
-    const std::optional success{
-        database::execute(path_, up::db_mode::OPEN_READWRITE, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variables, std::placeholders::_1, std::vector{ "drop_success"s, "store_success"s }))
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
     };
 
-    if (!success.has_value() || success->size() != 2) {
+    if (!success.has_value()) {
         logging::error{ "Fail to increment video views \"{}\"", id };
         return false;
     }
 
-    return ((*success)[0].get_bool() && (*success)[1].get_bool());
+    return success->value.get_bool();
 }
 
 bool Database::has_video_right(const std::int64_t& id) const noexcept
@@ -867,13 +903,15 @@ bool Database::has_video_right(const std::int64_t& id) const noexcept
             return ($right.video_id == $id);
         };
         $video_rights = db_fetch_all('video_rights', $video_right_callback);
-        $has_video_right = (count($video_rights == 0);
+        $has_video_right = (count($video_rights) == 0);
     )"sv };
 
     const std::optional has_video_right{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "has_video_right"s))
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "has_video_right"s))
     };
 
     if (!has_video_right.has_value()) {
@@ -881,7 +919,7 @@ bool Database::has_video_right(const std::int64_t& id) const noexcept
         return {};
     }
 
-    return has_video_right->get_bool();
+    return has_video_right->value.get_bool();
 }
 
 bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_id) const noexcept
@@ -892,13 +930,15 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
             return ($right.video_id == $id && $right.user_id = $user_id);
         };
         $video_rights = db_fetch_all('video_rights', $video_right_callback);
-        $has_video_right = (count($video_rights != 0);
+        $has_video_right = (count($video_rights) != 0);
     )"sv };
 
     const std::optional has_video_right{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id }, { "user_id", user_id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "has_video_right"s))
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id }, { "user_id", user_id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "has_video_right"s))
     };
 
     if (!has_video_right.has_value()) {
@@ -906,7 +946,7 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
         return {};
     }
 
-    return has_video_right->get_bool();
+    return has_video_right->value.get_bool();
 }
 
 std::vector<std::int64_t> Database::video_right_list(const std::int64_t& id) const noexcept
@@ -920,10 +960,13 @@ std::vector<std::int64_t> Database::video_right_list(const std::int64_t& id) con
     )"sv };
 
     const std::optional video_rights{
-        database::execute(path_, up::db_mode::OPEN_READONLY, jx9_prog, { { "id"s, id } })
-            .transform(database::pair_to_vm)
-            .and_then(std::bind(database::extract_variable, std::placeholders::_1, "video_rights"s))
-            .transform(database::value_to_ids)
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "video_rights"s))
+            .transform(database::bind(database::values_to_members, "user_id"s))
+            .transform(database::values_to_ids)
     };
 
     if (!video_rights.has_value()) {
@@ -934,13 +977,49 @@ std::vector<std::int64_t> Database::video_right_list(const std::int64_t& id) con
     return video_rights.value();
 }
 
-inline std::optional<std::pair<up::db, up::vm>> database::execute(const std::filesystem::path& path, up::db_mode mode, const std::string_view& jx9_program) noexcept
+inline database::Data::Data(up::db&& db, up::vm&& vm) noexcept
+    : db{ std::move(db) }
+    , vm{ std::move(vm) }
 {
-    return execute(path, mode, jx9_program, {});
 }
 
-inline std::optional<std::pair<up::db, up::vm>> database::execute(const std::filesystem::path& path, up::db_mode mode, const std::string_view& jx9_program,
-                                                                  const std::unordered_map<std::string, up::value>& binding_map) noexcept
+inline database::Data::Data(Data&& data) noexcept
+    : db{ std::move(data.db) }
+    , vm{ std::move(data.vm) }
+{
+}
+
+inline database::DataValue::DataValue(Data&& data, up::value&& value) noexcept
+    : Data(std::move(data))
+    , value{ std::move(value) }
+{
+}
+
+inline database::DataValue::DataValue(DataValue&& data) noexcept
+    : Data(std::move(data))
+    , value{ std::move(data.value) }
+{
+}
+
+inline database::DataValues::DataValues(Data&& data, up::value::object&& values) noexcept
+    : Data(std::move(data))
+    , values{ std::move(values) }
+{
+}
+
+inline database::DataValueMember::DataValueMember(DataValue&& data, up::value&& member) noexcept
+    : DataValue(std::move(data))
+    , member{ std::move(member) }
+{
+}
+
+inline database::DataValueMembers::DataValueMembers(DataValue&& data, up::value::object&& members) noexcept
+    : DataValue(std::move(data))
+    , members{ std::move(members) }
+{
+}
+
+inline std::optional<up::db> database::open(const std::filesystem::path& path, up::db_mode mode) noexcept
 {
     up::db_make_status make_status;
     std::optional db{ up::db::make(path, mode, &make_status) };
@@ -948,98 +1027,148 @@ inline std::optional<std::pair<up::db, up::vm>> database::execute(const std::fil
         logging::error{ "{}: {}", up::status_to_string_view<up::db_make_status>::value, static_cast<std::size_t>(make_status) };
         return std::nullopt;
     }
+    return db;
+}
 
+inline std::optional<database::Data> database::compile(up::db db, const std::string_view& jx9_program) noexcept
+{
     up::db_compilation_status compile_status;
     std::string_view compile_error;
-    std::optional vm{ db->compile(jx9_program, &compile_status, &compile_error) };
+    std::optional vm{ db.compile(jx9_program, &compile_status, &compile_error) };
     if (!vm.has_value()) {
         logging::error{ "{}: {}. {}",
                         up::status_to_string_view<up::db_compilation_status>::value, static_cast<std::size_t>(compile_status), compile_error };
         return std::nullopt;
     }
+    return Data{ std::move(db), std::move(vm.value()) };
+}
 
+inline std::optional<database::Data> database::bind_variables(Data data, const up::value::object& binding_map) noexcept
+{
     for (const auto& [key, value] : binding_map) {
-        if (!vm->bind(key, value)) {
+        if (!data.vm.bind(key, value)) {
             logging::error{ "Fail to bind key: {}", key };
             return std::nullopt;
         }
     }
+    return data;
+}
 
+inline std::optional<database::Data> database::execute(Data data) noexcept
+{
     up::vm_execute_status exe_status;
-    if (!vm->exec(&exe_status)) {
+    if (!data.vm.exec(&exe_status)) {
         logging::error{ "{}: {}", up::status_to_string_view<up::vm_execute_status>::value, static_cast<std::size_t>(exe_status) };
         return std::nullopt;
     }
-
-    return std::make_pair<up::db, up::vm>(std::move(db.value()), std::move(vm.value()));
+    return data;
 }
 
-inline up::vm database::pair_to_vm(std::pair<up::db, up::vm> pair) noexcept
+inline std::optional<database::DataValue> database::extract_variable(Data data, const std::string& record_name) noexcept
 {
-    return std::move(pair.second);
+    std::optional value{ data.vm.extract(record_name) };
+    if (!value.has_value())
+        return std::nullopt;
+
+    return DataValue{ std::move(data), std::move(value->make_value()) };
 }
 
-inline std::optional<up::vm_value> database::extract_variable(up::vm vm, const std::string& record_name) noexcept
+inline std::optional<database::DataValues> database::extract_variables(Data data, const std::vector<std::string>& record_names) noexcept
 {
-    return vm.extract(record_name);
-}
-
-inline std::optional<std::vector<up::vm_value>> database::extract_variables(up::vm vm, const std::vector<std::string>& record_names) noexcept
-{
-    std::vector<up::vm_value> values;
-    values.reserve(record_names.size());
+    up::value::object values;
     for (const std::string& record_name : record_names) {
-        std::optional value{ vm.extract(record_name) };
+        std::optional value{ data.vm.extract(record_name) };
         if (value.has_value()) {
-            values.emplace_back(std::move(value.value()));
+            values.emplace(record_name, std::move(value->make_value()));
         }
     }
 
     if (values.size() != record_names.size())
         return std::nullopt;
 
-    return values;
+    return DataValues{ std::move(data), std::move(values) };
 }
 
-inline std::optional<up::vm_value> database::find_member(const up::vm_value& value, const std::string& member_name) noexcept
+inline std::optional<database::DataValueMember> database::find_member(DataValue data, const std::string& member_name) noexcept
 {
-    return value.find(member_name);
-}
+    if (!data.value.is_object())
+        return std::nullopt;
 
-inline std::optional<std::vector<up::vm_value>> database::find_members(const up::vm_value& value, const std::vector<std::string>& member_names) noexcept
-{
-    std::vector<up::vm_value> members;
-    members.reserve(member_names.size());
-    for (const std::string& member_name : member_names) {
-        std::optional member{ value.find(member_name) };
-        if (member.has_value()) {
-            members.emplace_back(std::move(member.value()));
+    // up::value* const member{ data.value.find(member_name) }; // FIXME: infinite recursion
+    up::value member;
+    // FIXME: always return false, to not test
+    data.value.foreach_object([&member_name, &member](const std::string& key, const up::value& value) -> bool {
+        if (key == member_name) {
+            member = value;
         }
-    }
+        return true; // false will abort
+    });
+
+    if (member.is_null())
+        return std::nullopt;
+
+    return DataValueMember{ std::move(data), std::move(member) };
+}
+
+inline std::optional<database::DataValueMembers> database::find_members(DataValue data, const std::vector<std::string>& member_names) noexcept
+{
+    if (!data.value.is_object())
+        return std::nullopt;
+
+    up::value::object members;
+    // FIXME: always return false, to not test
+    data.value.foreach_object([&member_names, &members](const std::string& key, const up::value& value) -> bool {
+        if (std::ranges::find(member_names, key) != member_names.cend()) {
+            members.emplace(key, value);
+        }
+        return true; // false will abort
+    });
+
+    // FIXME: infinite recursion
+    // for (const std::string& member_name : member_names) {
+    //    up::value* const member{ data.value.find(member_name) };
+    //    if (member != nullptr) {
+    //        members.emplace(member_name, std::move(*member));
+    //    }
+    //}
 
     if (members.size() != member_names.size())
         return std::nullopt;
 
-    return members;
+    return DataValueMembers{ std::move(data), std::move(members) };
 }
 
-inline std::vector<std::int64_t> database::value_to_ids(const up::vm_value& value) noexcept
+inline std::vector<up::value> database::values_to_members(DataValue data, const std::string& member_name) noexcept
 {
-    std::vector<std::int64_t> ids;
+    std::vector<up::value> ids;
     const std::function id_callback{
-        [&ids](const std::string& key, const up::vm_value& value) -> bool {
-            if (key == "__id") {
-                ids.push_back(value.get_int());
-                return true;
+        [&ids, &member_name](std::size_t /*index*/, const up::value& value) -> bool {
+            const up::value* const id{ value.find(member_name) };
+            if (id != nullptr) {
+                ids.emplace_back(std::move(*id));
             }
-            return false;
+            return true; // false will abort
         }
     };
 
-    if (!value.foreach_object(id_callback)) {
-        return {};
-    }
+    data.value.foreach_array(id_callback); // FIXME: always return false, to not test
+    return ids;
+}
 
+inline std::vector<std::int64_t> database::values_to_id_members(DataValue data) noexcept
+{
+    std::vector<std::int64_t> ids;
+    const std::function id_callback{
+        [&ids](std::size_t /*index*/, const up::value& value) -> bool {
+            const up::value* const id{ value.find("__id") };
+            if (id != nullptr) {
+                ids.emplace_back(id->get_int());
+            }
+            return true; // false will abort
+        }
+    };
+
+    data.value.foreach_array(id_callback); // FIXME: always return false, to not test
     return ids;
 }
 
@@ -1048,6 +1177,13 @@ inline std::vector<up::value> database::ids_to_values(const std::vector<std::int
     std::vector<up::value> values(ids.size());
     std::ranges::copy(ids, values.begin());
     return values;
+}
+
+inline std::vector<std::int64_t> database::values_to_ids(const std::vector<up::value>& values) noexcept
+{
+    std::vector<std::int64_t> ids(values.size());
+    std::ranges::transform(values, ids.begin(), std::bind(&up::value::get_int, std::placeholders::_1));
+    return ids;
 }
 
 #pragma GCC diagnostic push

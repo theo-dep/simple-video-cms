@@ -203,12 +203,11 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
 
 inline inja::json server::video_dict(const std::vector<std::string>& video_ids, const Client& client) noexcept
 {
-    inja::json video_dict = inja::json::array();
+    inja::json video_dict;
     for (const std::string& video_id : video_ids) {
         const std::string title{ client.video_title(video_id) };
         const int views{ client.video_views(video_id) };
-        const inja::json video{ { "id", video_id }, { "title", title }, { "views", views } };
-        video_dict += video;
+        video_dict.emplace_back(inja::json::object({ { "id", video_id }, { "title", title }, { "views", views } }));
     }
     return video_dict;
 }
@@ -520,7 +519,7 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     if (is_admin) {
         signal_str = confirm_handler.create()
                          .on_confirm([user_id, new_password, &client](httplib::Response& res) {
-                             client.update_admin(user_id, new_password);
+                             client.update_user(user_id, new_password);
                              res.set_redirect("/admin-list");
                          })
                          .on_deny([](httplib::Response& res) {
@@ -555,7 +554,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     if (admin) {
         signal_str = confirm_handler.create()
                          .on_confirm([user_id, &client](httplib::Response& res) {
-                             client.delete_admin(user_id);
+                             client.delete_user(user_id);
                              res.set_redirect("/admin-list");
                          })
                          .on_deny([](httplib::Response& res) {
@@ -584,7 +583,7 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
 
     const std::vector<std::string> video_list{ client.video_list() };
 
-    inja::json video_dict{ server::video_dict(video_list, client) };
+    inja::json video_dict = server::video_dict(video_list, client);
     for (inja::json& video : video_dict) {
         const std::vector rights{ client.video_right_list(video["id"]) };
         std::vector<std::string> user_rights(rights.size());
@@ -592,7 +591,7 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
                                [&](const std::string& user_id) -> std::string {
                                    return client.user_name(user_id);
                                });
-        video["right_list"] = user_rights;
+        video += { "right_list", user_rights };
     }
 
     const inja::json data{ { "video_dict", video_dict } };
@@ -682,10 +681,11 @@ inline void server::update_video_get(const httplib::Request& req, httplib::Respo
     const std::string video_id{ req.path_params.at("video_id") };
 
     const std::vector<std::string> user_list{ client.user_list() };
+    const std::vector<std::string> user_right_list{ client.video_right_list(video_id) };
 
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {
-        const bool checked{ !client.has_video_right(video_id) && client.has_video_right(video_id, user_id) };
+        const bool checked{ std::ranges::find(user_right_list, user_id) != user_right_list.cend() };
         const inja::json user{ { "id", user_id }, { "name", client.user_name(user_id) }, { "checked", checked } };
         user_dict += user;
     }

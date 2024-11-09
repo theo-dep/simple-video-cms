@@ -53,9 +53,7 @@ public:
     std::string user_id(const std::string& username) const noexcept;
     void add_admin(const std::string& username, const std::string& password) const noexcept;
     void add_user(const std::string& username, const std::string& password) const noexcept;
-    void update_admin(const std::string& user_id, const std::string& password) const noexcept;
     void update_user(const std::string& user_id, const std::string& password) const noexcept;
-    void delete_admin(const std::string& user_id) const noexcept;
     void delete_user(const std::string& user_id) const noexcept;
     bool is_valid_user(const std::string& user_id, const std::string& password) const noexcept;
 
