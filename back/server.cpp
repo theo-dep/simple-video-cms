@@ -13,7 +13,7 @@
 
 namespace server
 {
-    void create_super_admin(const Database& db) noexcept;
+    bool create_super_admin(const Database& db) noexcept;
 
     void template_page(const httplib::Request& req, httplib::Response& res) noexcept;
     void static_file(const httplib::Request& req, httplib::Response& res) noexcept;
@@ -59,7 +59,7 @@ int server::start() noexcept
     const std::filesystem::path database_file{ std::filesystem::current_path() / "data" / "video.db" };
 
     bool is_database_ok{ false };
-    Database db(database_file, is_database_ok);
+    const Database db(database_file, is_database_ok);
     if (!is_database_ok) {
         logging::error{ "Fail to create the database" };
         return EXIT_FAILURE;
@@ -70,7 +70,10 @@ int server::start() noexcept
         return EXIT_FAILURE;
     }
 
-    create_super_admin(db);
+    if (!create_super_admin(db)) {
+        logging::error{ "Fail to add super admin" };
+        return EXIT_FAILURE;
+    }
 
     httplib::Server server;
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
@@ -122,22 +125,24 @@ int server::start() noexcept
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-inline void server::create_super_admin(const Database& db) noexcept
+inline bool server::create_super_admin(const Database& db) noexcept
 {
-    const std::string username{ sc::get_env("MYSQL_ADMIN_USERNAME", "admin") };
+    const std::string username{ sc::get_env("SUPER_ADMIN_USERNAME", "admin") };
     const std::int64_t user_id{ db.user_id(username) };
     if (db.is_admin(user_id)) {
         // already created
-        return;
+        return true;
     }
 
-    const std::string password{ crypto::sha512(sc::get_env("MYSQL_ADMIN_PASSWORD", "admin")) };
+    const std::string password{ crypto::sha512(sc::get_env("SUPER_ADMIN_PASSWORD", "admin")) };
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
     if (!db.add_super_admin(username, crypto::password(password, salt), salt)) {
         logging::error{ "Fail to add super admin \"{}\"", username };
-        return;
+        return false;
     }
+
+    return true;
 }
 
 inline void server::template_page(const httplib::Request& req, httplib::Response& res) noexcept
