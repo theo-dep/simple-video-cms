@@ -11,6 +11,7 @@
 extern "C" {
 #include <unqlite.h>
 }
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized" // gcc-alpine
 #include <unqlitepp.hpp>
 #pragma GCC diagnostic pop
 
@@ -286,7 +287,7 @@ std::int64_t Database::video_views(const std::int64_t& id) const noexcept
 
 std::string Database::video(const std::int64_t& id) const noexcept
 {
-    up::db_kv_read_status status;
+    up::db_kv_read_status status{ up::db_kv_read_status::OK };
     const std::optional video{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then([&id, &status](up::db db) -> std::optional<std::string> {

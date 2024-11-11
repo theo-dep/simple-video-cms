@@ -13,8 +13,6 @@ services:
       dockerfile: Containerfile
     environment:
       SERVER_URL: back:5000
-    volumes:
-      - ./front/static:/static
     ports:
       - 8080:8080
     depends_on:
@@ -25,17 +23,9 @@ services:
     build:
       context: ./back
       dockerfile: Containerfile
-    environment:
-      MYSQL_ROOT_PASSWORD: "6y51^HsXrNcx"
-      MYSQL_DB_URL: db
     volumes:
+      - ./back/data:/data
+      - ./back/static:/static
       - ./back/templates:/templates
     depends_on:
-      - db
       - builder
-
-  db:
-    image: mysql:9.0.1
-    environment:
-      MYSQL_DATABASE: video
-      MYSQL_ROOT_PASSWORD: "6y51^HsXrNcx"
