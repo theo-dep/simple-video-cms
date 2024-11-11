@@ -675,7 +675,7 @@ std::int64_t Database::view_count() const noexcept
         $views_callback = function($video) {
             return $video.views;
         };
-        $count = array_sum(array_walk($views_callback, $videos));
+        $count = array_sum(array_map($views_callback, $videos));
     )"sv };
 
     const std::optional count{
