@@ -390,7 +390,7 @@ bool Database::is_admin(const std::int64_t& id) const noexcept
         return false;
     }
 
-    return (user_type->member.get_int() == database::user_type::ADMIN || user_type->member.get_int() == database::user_type::SUPER_ADMIN);
+    return (user_type->member.get_int() != database::user_type::USER);
 }
 
 bool Database::is_user(const std::int64_t& id) const noexcept
@@ -954,6 +954,9 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
+        $user = db_fetch_by_id('users', $user_id);
+        $user_type = $user.type;
+
         $video_right_callback = function($right) {
             return ($right.video_id == $id && $right.user_id = $user_id);
         };
@@ -961,12 +964,12 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
         $has_video_right = (count($video_rights) != 0);
     )"sv };
 
-    const std::optional has_video_right{
+    std::optional has_video_right{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
             .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id }, { "user_id", user_id } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variable, "has_video_right"s))
+            .and_then(database::bind(database::extract_variables, std::vector{ "user_type"s, "has_video_right"s }))
     };
 
     if (!has_video_right.has_value()) {
@@ -974,7 +977,11 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
         return {};
     }
 
-    return has_video_right->value.get_bool();
+    // check if user is admin
+    if (has_video_right->values["user_type"].get_int() != database::user_type::USER)
+        return true;
+
+    return has_video_right->values["has_video_right"].get_bool();
 }
 
 std::vector<std::int64_t> Database::video_right_list(const std::int64_t& id) const noexcept
