@@ -58,6 +58,8 @@ namespace database
     template <class F, typename... Args>
     auto bind(F&& f, Args&&... args) noexcept;
 
+    std::string video_key(const std::int64_t& id) noexcept;
+
     std::optional<up::db> open(const std::filesystem::path& path, up::db_mode mode) noexcept;
     std::optional<Data> compile(up::db db, const std::string_view& jx9_program) noexcept;
 
@@ -119,7 +121,6 @@ bool Database::create_tables() const noexcept
 
                 $schema =  {
                     title: 'string',
-                    video: 'string',
                     views: 'integer'
                 };
                 db_set_schema('videos', $schema);
@@ -285,26 +286,33 @@ std::int64_t Database::video_views(const std::int64_t& id) const noexcept
 
 std::string Database::video(const std::int64_t& id) const noexcept
 {
-    using namespace std::literals;
-    constexpr std::string_view jx9_prog{ R"(
-        $video = db_fetch_by_id('videos', $id);
-    )"sv };
-
-    std::optional video{
+    up::db_kv_read_status status;
+    const std::optional video{
         database::open(path_, up::db_mode::OPEN_READONLY)
-            .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
-            .and_then(database::execute)
-            .and_then(database::bind(database::extract_variable, "video"s))
-            .and_then(database::bind(database::find_member, "video"s))
+            .and_then([&id, &status](up::db db) -> std::optional<std::string> {
+                std::string res;
+                if (db.fetch_callback(
+                        database::video_key(id),
+                        [&res](const void* data, std::size_t size) {
+                            res.append(static_cast<const char*>(data), size);
+                            return true;
+                        },
+                        &status)) {
+                    return res;
+                } else {
+                    return std::nullopt;
+                }
+            })
     };
 
     if (!video.has_value()) {
         logging::error{ "Fail to fetch video \"{}\"", id };
+        if (status != up::db_kv_read_status::OK)
+            logging::error{ "{}: {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status) };
         return {};
     }
 
-    return video->member.get_string();
+    return video.value();
 }
 
 std::optional<std::int64_t> Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
@@ -756,8 +764,7 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
                                 up::value::object{ { "video"s,
                                                      up::value::object{
                                                          { "title"s, title },
-                                                         { "views"s, std::int64_t{ 0 } },
-                                                         { "video"s, video } } } }))
+                                                         { "views"s, std::int64_t{ 0 } } } } }))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "video_id"s }))
     };
@@ -767,7 +774,19 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
         return std::nullopt;
     }
 
-    return success->values["video_id"s].get_int();
+    const std::int64_t video_id{ success->values["video_id"s].get_int() };
+
+    // store video in kv space to speed fetching of "videos" table
+    up::db_kv_write_status status;
+    std::string_view error_text;
+    if (!success->db.store(database::video_key(video_id), video, &status, &error_text)) {
+        logging::error{ "Fail to add video \"{}\"", video_id };
+        logging::error{ "{}: {}. {}",
+                        up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
+        return std::nullopt;
+    }
+
+    return video_id;
 }
 
 bool Database::add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept
@@ -864,6 +883,15 @@ bool Database::delete_video(const std::int64_t& id) const noexcept
 
     if (!success.has_value()) {
         logging::error{ "Fail to delete video \"{}\"", id };
+        return false;
+    }
+
+    up::db_kv_write_status status;
+    std::string_view error_text;
+    if (!success->db.remove(database::video_key(id), &status, &error_text)) {
+        logging::error{ "Fail to delete video \"{}\"", id };
+        logging::error{ "{}: {}. {}",
+                        up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
         return false;
     }
 
@@ -1017,6 +1045,11 @@ inline database::DataValueMembers::DataValueMembers(DataValue&& data, up::value:
     : DataValue(std::move(data))
     , members{ std::move(members) }
 {
+}
+
+inline std::string database::video_key(const std::int64_t& id) noexcept
+{
+    return "video_" + su::int_to_string(id);
 }
 
 inline std::optional<up::db> database::open(const std::filesystem::path& path, up::db_mode mode) noexcept
