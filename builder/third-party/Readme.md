@@ -18,11 +18,16 @@
 - https://github.com/nlohmann/json
 - MIT License
 
-## ormpp
+## unqlite
 
-- v0.1.3
-- https://github.com/qicosmos/ormpp
-- Apache 2.0 License
+- v1.1.9
+- https://github.com/symisc/unqlite
+- 2-Clause BSD License
+
+### C++ wrapper
+
+- https://github.com/WookeyBiscotti/unqlite_cpp
+- MIT License
 
 ## rapidfuzz-cpp
 

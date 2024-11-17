@@ -6,7 +6,7 @@
 
 namespace httplib
 {
-    class Response;
+    struct Response;
 }
 
 class ConfirmHandler

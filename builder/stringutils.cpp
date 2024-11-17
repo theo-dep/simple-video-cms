@@ -1,6 +1,7 @@
 #include "stringutils.h"
 
 #include <algorithm>
+#include <charconv>
 #include <ranges>
 
 std::string su::join(const std::vector<std::string>& list, char delim) noexcept
@@ -21,7 +22,7 @@ std::vector<std::string> su::split(const std::string& str, char delim) noexcept
 
 void su::trim(std::string& str) noexcept
 {
-    static const auto ischar{ [](const std::string::value_type& c) -> bool { return (std::isspace(c) == 0); } };
+    static const auto ischar{ [](const std::string::value_type& c) noexcept -> bool { return (std::isspace(c) == 0); } };
     // trim left
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), ischar));
     // trim right
@@ -31,7 +32,7 @@ void su::trim(std::string& str) noexcept
 void su::lower(std::string& str) noexcept
 {
     static const auto tolower{
-        [](const std::string::value_type& c) -> std::string::value_type {
+        [](const std::string::value_type& c) noexcept -> std::string::value_type {
             return static_cast<std::string::value_type>(std::tolower(c));
         }
     };
@@ -48,33 +49,16 @@ bool su::string_to_bool(const std::string& str) noexcept
     return (str == "true");
 }
 
-int su::string_to_int(const std::string& str, bool* ok) noexcept
+std::int64_t su::string_to_int(const std::string& str) noexcept
 {
-    if (ok != nullptr)
-        *ok = true;
-
-    try {
-        return std::stoi(str);
-    } catch (...) {
-        if (ok != nullptr)
-            *ok = false;
-        return 0;
-    }
+    std::int64_t value{ 0 };
+    const std::from_chars_result ret{ std::from_chars(str.data(), str.data() + str.size(), value) };
+    if (ret.ec == std::errc{})
+        return value;
+    return 0;
 }
 
-std::string su::md5_varchar_to_string(const types::md5_varchar& array) noexcept
+std::string su::int_to_string(const std::int64_t& val) noexcept
 {
-    std::string str;
-    str.resize(array.size());
-    std::ranges::copy(array, str.begin());
-    return str;
-}
-
-types::md5_varchar su::string_to_md5_varchar(const std::string& str) noexcept
-{
-    types::md5_varchar array{};
-    // potentially truncate the string
-    const std::size_t min_size{ std::min(array.size(), str.size()) };
-    std::copy(str.cbegin(), std::next(str.cbegin(), min_size), array.begin());
-    return array;
+    return std::to_string(val);
 }

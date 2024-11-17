@@ -1,6 +1,6 @@
 CXX = g++
 override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -DCPPHTTPLIB_USE_POLL
-override LDFLAGS +=
+override LDFLAGS += -static
 
 ANALYZER = clang-tidy
 

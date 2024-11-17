@@ -1,601 +1,1203 @@
 #include "database.h"
 
-#include "databaseschema.h"
 #include "logging.h"
 #include "servercommon.h"
 #include "stringutils.h"
 
-#include <ormpp.hpp>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wchanges-meaning"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+extern "C" {
+#include <unqlite.h>
+}
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized" // gcc-alpine
+#include <unqlitepp.hpp>
+#pragma GCC diagnostic pop
 
-#include <memory>
+#include <cstdarg>
+#include <fstream>
 #include <ranges>
 
 namespace database
 {
-    using dbng = ormpp::dbng<ormpp::mysql>;
-    std::unique_ptr<dbng> connection() noexcept;
-
-    template <typename T>
-    std::vector<T> transform(const std::vector<std::tuple<T>>& query_out) noexcept;
-
-    std::optional<Admin> admin(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept;
-    std::optional<User> user(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept;
-    std::optional<Video> video(const std::unique_ptr<dbng>& conn, const types::md5_varchar& id) noexcept;
-}
-
-inline std::unique_ptr<database::dbng> database::connection() noexcept
-{
-    std::unique_ptr conn{ std::make_unique<dbng>() };
-    return (conn->connect(sc::get_env("MYSQL_DB_URL", "localhost").c_str(),
-                          sc::get_env("MYSQL_ROOT_USER", "root").c_str(),
-                          sc::get_env("MYSQL_ROOT_PASSWORD", "1234").c_str(),
-                          sc::get_env("MYSQL_DB_NAME", "video").c_str(),
-                          /*timeout*/ 0,
-                          su::string_to_int(sc::get_env("MYSQL_DB_PORT", "3306")))
-                ? std::move(conn)
-                : nullptr);
-}
-
-bool database::create_tables() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return false;
-    }
-
+    enum user_type : std::int64_t
     {
-        const ormpp_auto_key key{ "id" };
-        const ormpp_not_null not_null{ { "username", "password", "salt" } };
-        // const ormpp_unique unique{ { "username" } }; // need varchar
-        if (!conn->create_datatable<Admin>(key, not_null /*, unique*/)) {
-            logging::error{ "Fail to create Admin table" };
-            return false;
-        }
-        if (!conn->create_datatable<User>(key, not_null /*, unique*/)) {
-            logging::error{ "Fail to create User table" };
-            return false;
-        }
-    }
+        USER,
+        ADMIN,
+        SUPER_ADMIN
+    };
+
+    struct Data
     {
-        const ormpp_key key{ "id" };
-        const ormpp_not_null not_null{ { "id", "title", "file_path" } };
-        if (!conn->create_datatable<Video>(key, not_null)) {
-            logging::error{ "Fail to create Video table" };
-            return false;
-        }
-    }
+        Data(up::db&& db, up::vm&& vm) noexcept;
+        Data(Data&& data) noexcept;
+        up::db db;
+        up::vm vm;
+    };
+    struct DataValue : Data
     {
-        const ormpp_not_null not_null{ { "video_id", "user_id" } };
-        if (!conn->create_datatable<VideoRight>(not_null)) {
-            logging::error{ "Fail to create VideoRight table" };
-            return false;
+        DataValue(Data&& data, up::value&& value) noexcept;
+        DataValue(DataValue&& data) noexcept;
+        up::value value;
+    };
+    struct DataValues : Data
+    {
+        DataValues(Data&& data, up::value::object&& values) noexcept;
+        up::value::object values;
+    };
+    struct DataValueMember : DataValue
+    {
+        DataValueMember(DataValue&& data, up::value&& member) noexcept;
+        up::value member;
+    };
+    struct DataValueMembers : DataValue
+    {
+        DataValueMembers(DataValue&& data, up::value::object&& members) noexcept;
+        up::value::object members;
+    };
+
+    template <class F, typename... Args>
+    auto bind(F&& f, Args&&... args) noexcept;
+
+    std::string video_key(const std::int64_t& id) noexcept;
+
+    std::optional<up::db> open(const std::filesystem::path& path, up::db_mode mode) noexcept;
+    std::optional<Data> compile(up::db db, const std::string_view& jx9_program) noexcept;
+
+    std::optional<Data> bind_variable(Data data, const std::string& key, const up::value& value) noexcept;
+    std::optional<Data> execute(Data data) noexcept;
+
+    std::optional<DataValue> extract_variable(Data data, const std::string& record_name) noexcept;
+    std::optional<DataValues> extract_variables(Data data, std::size_t count...) noexcept;
+    std::optional<DataValueMember> find_member(DataValue data, const std::string& member_name) noexcept;
+    std::vector<up::value> values_to_members(DataValue data, const std::string& member_name) noexcept;
+    std::vector<std::int64_t> values_to_id_members(DataValue data) noexcept;
+    std::vector<up::value> ids_to_values(const std::vector<std::int64_t>& ids) noexcept;
+    std::vector<std::int64_t> values_to_ids(const std::vector<up::value>& values) noexcept;
+}
+
+template <class F, typename... Args>
+inline auto database::bind(F&& f, Args&&... args) noexcept
+{
+    return std::bind(std::forward<F>(f), std::placeholders::_1, std::forward<Args>(args)...);
+}
+
+Database::Database(const std::filesystem::path& path, bool& create_ok) noexcept
+    : path_{ path }
+{
+    create_ok = true;
+    if (!std::filesystem::exists(path_)) {
+        std::ofstream{ path_ }; // create regular file
+        const std::optional db{ database::open(path, up::db_mode::OPEN_CREATE) };
+        create_ok = db.has_value();
+    }
+}
+
+bool Database::create_tables() const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+            if (!db_exists('users')) {
+                $rc = db_create('users');
+                if (!$rc) {
+                    print db_errlog();
+                    return;
+                }
+
+                $schema =  {
+                    name: 'string',
+                    password: 'string',
+                    salt: 'string',
+                    type: 'integer'
+                };
+                db_set_schema('users', $schema);
+            }
+            if (!db_exists('videos')) {
+                $rc = db_create('videos');
+                if (!$rc) {
+                    print db_errlog();
+                    return;
+                }
+
+                $schema =  {
+                    title: 'string',
+                    views: 'integer'
+                };
+                db_set_schema('videos', $schema);
+            }
+            if (!db_exists('video_rights')) {
+                $rc = db_create('video_rights');
+                if (!$rc) {
+                    print db_errlog();
+                    return;
+                }
+
+                $schema =  {
+                    video_id: 'integer',
+                    user_id: 'integer'
+                };
+                db_set_schema('video_rights', $schema);
+            }
+        )"sv };
+
+    const std::optional data{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+    };
+    return data.has_value();
+}
+
+std::vector<std::int64_t> Database::video_list() const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $videos = db_fetch_all('videos');
+    )"sv };
+
+    const std::optional videos{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "videos"s))
+            .transform(database::values_to_id_members)
+    };
+
+    if (!videos.has_value()) {
+        logging::error{ "Fail to fetch all videos" };
+        return {};
+    }
+
+    return videos.value();
+}
+
+std::vector<std::int64_t> Database::video_list(const std::int64_t& user_id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $callback = function($video) {
+            $found = FALSE;
+            db_reset_record_cursor('video_rights');
+            while (($video_right = db_fetch('video_rights')) != NULL && !$found) {
+                $found = ($video_right.video_id == $video.__id && $video_right.user_id == $user_id);
+            }
+            return $found;
+        };
+
+        $videos = db_fetch_all('videos', $callback);
+    )"sv };
+
+    const std::optional videos{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "user_id"s, user_id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "videos"s))
+            .transform(database::values_to_id_members)
+    };
+
+    if (!videos.has_value()) {
+        logging::error{ "Fail to fetch all videos for user \"{}\"", user_id };
+        return {};
+    }
+
+    return videos.value();
+}
+
+std::vector<std::int64_t> Database::no_right_video_list() const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $callback = function($video) {
+            $found = FALSE;
+            db_reset_record_cursor('video_rights');
+            while (($video_right = db_fetch('video_rights')) != NULL && !$found) {
+                $found = ($video_right.video_id == $video.__id);
+            }
+            return !$found;
+        };
+
+        $videos = db_fetch_all('videos', $callback);
+    )"sv };
+
+    const std::optional videos{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "videos"s))
+            .transform(database::values_to_id_members)
+    };
+
+    if (!videos.has_value()) {
+        logging::error{ "Fail to fetch all no right videos" };
+        return {};
+    }
+
+    return videos.value();
+}
+
+std::string Database::video_title(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $video = db_fetch_by_id('videos', $id);
+    )"sv };
+
+    const std::optional title{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "video"s))
+            .and_then(database::bind(database::find_member, "title"s))
+    };
+
+    if (!title.has_value()) {
+        logging::error{ "Fail to fetch video title \"{}\"", id };
+        return {};
+    }
+
+    return title->member.get_string();
+}
+
+std::int64_t Database::video_views(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $video = db_fetch_by_id('videos', $id);
+    )"sv };
+
+    const std::optional views{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "video"s))
+            .and_then(database::bind(database::find_member, "views"s))
+    };
+
+    if (!views.has_value()) {
+        logging::error{ "Fail to fetch video views \"{}\"", id };
+        return 0;
+    }
+
+    return views->member.get_int();
+}
+
+std::string Database::video(const std::int64_t& id) const noexcept
+{
+    up::db_kv_read_status status{ up::db_kv_read_status::OK };
+    const std::optional video{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then([&id, &status](up::db db) noexcept -> std::optional<std::string> {
+                std::string res;
+                if (db.fetch_callback(
+                        database::video_key(id),
+                        [&res](const void* data, std::size_t size) noexcept -> bool {
+                            res.append(static_cast<const char*>(data), size);
+                            return true;
+                        },
+                        &status)) {
+                    return res;
+                } else {
+                    return std::nullopt;
+                }
+            })
+    };
+
+    if (!video.has_value()) {
+        logging::error{ "Fail to fetch video \"{}\"", id };
+        if (status != up::db_kv_read_status::OK)
+            logging::error{ "{}: {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status) };
+        return {};
+    }
+
+    return video.value();
+}
+
+std::optional<std::int64_t> Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $success = db_store('users', $admin);
+        $admin_id = $admin.__id;
+    )"sv };
+
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "admin"s,
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::SUPER_ADMIN } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, 2, "success"s, "admin_id"s))
+    };
+
+    if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
+        logging::error{ "Fail to add super admin \"{}\"", name };
+        return std::nullopt;
+    }
+
+    return success->values["admin_id"s].get_int();
+}
+
+bool Database::is_super_admin(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $admin = db_fetch_by_id('users', $id);
+    )"sv };
+
+    const std::optional user_type{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "admin"s))
+            .and_then(database::bind(database::find_member, "type"s))
+    };
+
+    if (!user_type.has_value()) {
+        logging::error{ "Fail to get super admin \"{}\"", id };
+        return false;
+    }
+
+    return (user_type->member.get_int() == database::user_type::SUPER_ADMIN);
+}
+
+bool Database::is_admin(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $admin = db_fetch_by_id('users', $id);
+    )"sv };
+
+    const std::optional user_type{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "admin"s))
+            .and_then(database::bind(database::find_member, "type"s))
+    };
+
+    if (!user_type.has_value()) {
+        logging::error{ "Fail to get admin \"{}\"", id };
+        return false;
+    }
+
+    return (user_type->member.get_int() != database::user_type::USER);
+}
+
+bool Database::is_user(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $user = db_fetch_by_id('users', $id);
+    )"sv };
+
+    const std::optional user_type{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "user"s))
+            .and_then(database::bind(database::find_member, "type"s))
+    };
+
+    if (!user_type.has_value()) {
+        logging::error{ "Fail to get user \"{}\"", id };
+        return false;
+    }
+
+    return (user_type->member.get_int() == database::user_type::USER);
+}
+
+std::optional<std::int64_t> Database::add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $success = db_store('users', $admin);
+        $admin_id = $admin.__id;
+    )"sv };
+
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "admin"s,
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::ADMIN } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, 2, "success"s, "admin_id"s))
+    };
+
+    if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
+        logging::error{ "Fail to add admin \"{}\"", name };
+        return std::nullopt;
+    }
+
+    return success->values["admin_id"s].get_int();
+}
+
+std::optional<std::int64_t> Database::add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $success = db_store('users', $user);
+        $user_id = $user.__id;
+    )"sv };
+
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "user"s,
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::USER } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, 2, "success"s, "user_id"s))
+    };
+
+    if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
+        logging::error{ "Fail to add user \"{}\"", name };
+        return std::nullopt;
+    }
+
+    return success->values["user_id"s].get_int();
+}
+
+bool Database::update_user(const std::int64_t& id, const std::string& password) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $user = db_fetch_by_id('users', $id);
+        $user.password = $password;
+        $success = db_update_record('users', $id, $user);
+    )"sv };
+
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::bind(database::bind_variable, "password"s, password))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
+    };
+
+    if (!success.has_value()) {
+        logging::error{ "Fail to update admin \"{}\"", id };
+        return false;
+    }
+
+    return success->value.get_bool();
+}
+
+bool Database::delete_user(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $success = db_drop_record('users', $id);
+    )"sv };
+
+    const std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
+    };
+
+    if (!success.has_value()) {
+        logging::error{ "Fail to delete user \"{}\"", id };
+        return false;
+    }
+
+    return success->value.get_bool();
+}
+
+std::int64_t Database::user_id(const std::string& name) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $callback = function($user) {
+            return ($user.name == $username);
+        };
+        $users = db_fetch_all('users', $callback);
+    )"sv };
+
+    const std::optional ids{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "username"s, name))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "users"s))
+            .transform(database::values_to_id_members)
+    };
+
+    if (!ids.has_value() || ids->empty()) {
+        logging::debug{ "Fail to fetch user \"{}\"", name }; // debug not error because user may not exist
+        return -1;
+    }
+
+    return (*ids)[0];
+}
+
+std::string Database::user_name(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $user = db_fetch_by_id('users', $id);
+    )"sv };
+
+    const std::optional name{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "user"s))
+            .and_then(database::bind(database::find_member, "name"s))
+    };
+
+    if (!name.has_value()) {
+        logging::error{ "Fail to fetch user name \"{}\"", id };
+        return {};
+    }
+
+    return name->member.get_string();
+}
+
+std::string Database::user_password(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $user = db_fetch_by_id('users', $id);
+    )"sv };
+
+    const std::optional password{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "user"s))
+            .and_then(database::bind(database::find_member, "password"s))
+    };
+
+    if (!password.has_value()) {
+        logging::error{ "Fail to fetch user password \"{}\"", id };
+        return {};
+    }
+
+    return password->member.get_string();
+}
+
+std::string Database::user_salt(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $user = db_fetch_by_id('users', $id);
+    )"sv };
+
+    const std::optional salt{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "user"s))
+            .and_then(database::bind(database::find_member, "salt"s))
+    };
+
+    if (!salt.has_value()) {
+        logging::error{ "Fail to fetch user salt \"{}\"", id };
+        return {};
+    }
+
+    return salt->member.get_string();
+}
+
+std::int64_t Database::user_count() const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $count = db_total_records('users');
+    )"sv };
+
+    const std::optional count{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "count"s))
+    };
+
+    if (!count.has_value()) {
+        logging::error{ "Fail to get user count" };
+        return 0;
+    }
+
+    return count->value.get_int();
+}
+
+std::int64_t Database::video_count() const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $count = db_total_records('videos');
+    )"sv };
+
+    const std::optional count{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "count"s))
+    };
+
+    if (!count.has_value()) {
+        logging::error{ "Fail to get video count" };
+        return 0;
+    }
+
+    return count->value.get_int();
+}
+
+std::int64_t Database::view_count() const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $videos = db_fetch_all('videos');
+        $views_callback = function($video) {
+            return $video.views;
+        };
+        $count = array_sum(array_map($views_callback, $videos));
+    )"sv };
+
+    const std::optional count{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "count"s))
+    };
+
+    if (!count.has_value()) {
+        logging::error{ "Fail to get view count" };
+        return 0;
+    }
+
+    return count->value.get_int();
+}
+
+std::vector<std::int64_t> Database::user_list() const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $callback = function($user) {
+            return ($user.type == $user_type);
+        };
+        $users = db_fetch_all('users', $callback);
+    )"sv };
+
+    const std::optional users{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "user_type"s, database::user_type::USER))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "users"s))
+            .transform(database::values_to_id_members)
+    };
+
+    if (!users.has_value()) {
+        logging::error{ "Fail to fetch all users" };
+        return {};
+    }
+
+    return users.value();
+}
+
+std::vector<std::int64_t> Database::admin_list() const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $callback = function($user) {
+            return ($user.type == $admin_type || $user.type == $super_admin_type);
+        };
+        $admins = db_fetch_all('users', $callback);
+    )"sv };
+
+    const std::optional admins{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "admin_type"s, database::user_type::ADMIN))
+            .and_then(database::bind(database::bind_variable, "super_admin_type"s, database::user_type::SUPER_ADMIN))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "admins"s))
+            .transform(database::values_to_id_members)
+    };
+
+    if (!admins.has_value()) {
+        logging::error{ "Fail to fetch all admins" };
+        return {};
+    }
+
+    return admins.value();
+}
+
+std::optional<std::int64_t> Database::add_video(const std::string& title, const std::string& video) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $success = db_store('videos', $video);
+        $video_id = $video.__id;
+    )"sv };
+
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "video"s,
+                                     up::value::object{ { "title"s, title }, { "views"s, std::int64_t{ 0 } } }))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, 2, "success"s, "video_id"s))
+    };
+
+    if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
+        logging::error{ "Fail to add video \"{}\"", title };
+        return std::nullopt;
+    }
+
+    const std::int64_t video_id{ success->values["video_id"s].get_int() };
+
+    // store video in kv space to speed fetching of "videos" table
+    up::db_kv_write_status status;
+    std::string_view error_text;
+    if (!success->db.store(database::video_key(video_id), video, &status, &error_text)) {
+        logging::error{ "Fail to add video \"{}\"", video_id };
+        logging::error{ "{}: {}. {}",
+                        up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
+        return std::nullopt;
+    }
+
+    return video_id;
+}
+
+bool Database::add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $make_video_right_callback = function($user_id) {
+            return { video_id: $id, user_id: $user_id };
+        };
+        $video_rights = array_map($make_video_right_callback, $user_ids);
+        $success = db_store('video_rights', $video_rights);
+    )"sv };
+
+    const std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::bind(database::bind_variable, "user_ids"s, database::ids_to_values(user_ids)))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
+    };
+
+    if (!success.has_value()) {
+        logging::error{ "Fail to add video rights \"{}\"", id };
+        return false;
+    }
+
+    return success->value.get_bool();
+}
+
+namespace database
+{
+    bool delete_video_rights(const std::filesystem::path& path, const std::int64_t& id) noexcept;
+}
+
+bool database::delete_video_rights(const std::filesystem::path& path, const std::int64_t& id) noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $success = TRUE;
+        db_reset_record_cursor('video_rights');
+        while (($video_right = db_fetch('video_rights')) != NULL) {
+            if ($video_right.video_id == $id) {
+                $success = $success && db_drop_record('video_rights', $video_right.__id);
+            }
         }
-        if (!conn->execute("ALTER TABLE `VideoRight` ADD UNIQUE KEY (video_id, user_id)")) {
-            logging::error{ "Fail to create VideoRight unique key" };
-            return false;
-        }
-    }
+    )"sv };
 
-    return true;
-}
-
-bool database::is_open() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    return (conn != nullptr);
-}
-
-template <typename T>
-std::vector<T> database::transform(const std::vector<std::tuple<T>>& query_out) noexcept
-{
-    constexpr auto transform_func{
-        []<typename U>(const std::tuple<U>& v) constexpr -> U { return std::get<0>(v); }
+    const std::optional success{
+        database::open(path, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
     };
 
-    std::vector<T> out(query_out.size());
-    std::ranges::copy(std::views::transform(query_out, transform_func), out.begin());
-    return out;
-}
-
-std::vector<types::md5_varchar> database::video_list() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    const std::vector tuple_videos{ conn->query_s<std::tuple<types::md5_varchar>>("SELECT id FROM Video") };
-    return transform(tuple_videos);
-}
-
-std::vector<types::md5_varchar> database::video_list(const std::string& username) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    const int user_id{ user(conn, username).value_or(User{}).id };
-    const std::vector tuple_videos{
-        conn->query_s<std::tuple<types::md5_varchar>>("SELECT id FROM Video "
-                                                      "WHERE id IN ("
-                                                      "SELECT video_id FROM VideoRight "
-                                                      "WHERE user_id=?"
-                                                      ")",
-                                                      user_id)
-    };
-    return transform(tuple_videos);
-}
-
-std::vector<types::md5_varchar> database::no_right_video_list() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    const std::vector tuple_videos{
-        conn->query_s<std::tuple<types::md5_varchar>>("SELECT id FROM Video "
-                                                      "WHERE id NOT IN ("
-                                                      "SELECT video_id FROM VideoRight"
-                                                      ")")
-    };
-    return transform(tuple_videos);
-}
-
-inline std::optional<Video> database::video(const std::unique_ptr<dbng>& conn, const types::md5_varchar& id) noexcept
-{
-    const std::vector videos{ conn->query_s<Video>("id=?", id) };
-    return (videos.empty() ? std::nullopt : std::optional{ videos[0] });
-}
-
-std::string database::video_title(const types::md5_varchar& id) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    return video(conn, id).value_or(Video{}).title;
-}
-
-int database::video_views(const types::md5_varchar& id) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return -1;
-    }
-
-    return video(conn, id).value_or(Video{}).view_count;
-}
-
-std::string database::video_file_path(const types::md5_varchar& id) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    return video(conn, id).value_or(Video{}).file_path;
-}
-
-std::optional<Admin> database::admin(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept
-{
-    const std::vector admins{ conn->query_s<Admin>("username=?", username) };
-    return (admins.empty() ? std::nullopt : std::optional{ admins[0] });
-}
-
-std::optional<User> database::user(const std::unique_ptr<dbng>& conn, const std::string& username) noexcept
-{
-    const std::vector users{ conn->query_s<User>("username=?", username) };
-    return (users.empty() ? std::nullopt : std::optional{ users[0] });
-}
-
-void database::add_super_admin(const std::string& username, const std::string& password, const std::string& salt) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    Admin admin;
-    admin.username = username;
-    admin.password = password;
-    admin.salt = salt;
-    admin.super = true;
-
-    try {
-        conn->insert(admin);
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to insert super admin \"{}\" with error: {}", username, e.what() };
-    }
-}
-
-bool database::is_super_admin(const std::string& username) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
+    if (!success.has_value()) {
+        logging::error{ "Fail to delete video rights \"{}\"", id };
         return false;
     }
 
-    return admin(conn, username).value_or(Admin{}).super;
+    return success->value.get_bool();
 }
 
-bool database::is_admin(const std::string& username) noexcept
+bool Database::update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept
 {
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
+    if (!database::delete_video_rights(path_, id)) {
+        logging::error{ "Fail to delete video rights \"{}\"", id };
         return false;
     }
 
-    return admin(conn, username).has_value();
+    return add_video_rights(id, user_ids);
 }
 
-bool database::is_user(const std::string& username) noexcept
+bool Database::delete_video(const std::int64_t& id) const noexcept
 {
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
+    if (!database::delete_video_rights(path_, id)) {
+        logging::error{ "Fail to delete video rights \"{}\"", id };
         return false;
     }
 
-    return user(conn, username).has_value();
-}
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $success = db_drop_record('videos', $id);
+    )"sv };
 
-void database::add_admin(const std::string& username, const std::string& password, const std::string& salt) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    Admin admin;
-    admin.username = username;
-    admin.password = password;
-    admin.salt = salt;
-
-    try {
-        conn->insert(admin);
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to insert admin \"{}\" with error: {}", username, e.what() };
-    }
-}
-
-void database::add_user(const std::string& username, const std::string& password, const std::string& salt) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    User user;
-    user.username = username;
-    user.password = password;
-    user.salt = salt;
-
-    try {
-        conn->insert(user);
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to insert user \"{}\" with error: {}", username, e.what() };
-    }
-}
-
-void database::update_admin(const std::string& username, const std::string& password) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    // get previous admin (update with where clause not available)
-    std::optional admin_to_update{ admin(conn, username) };
-    if (!admin_to_update.has_value()) {
-        logging::error{ "Unknown admin: {}", username };
-        return;
-    }
-
-    admin_to_update->password = password;
-
-    try {
-        conn->update_some<&Admin::password>(admin_to_update.value());
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to update admin \"{}\" with error: {}", username, e.what() };
-    }
-}
-
-void database::update_user(const std::string& username, const std::string& password) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    // get previous user (update with where clause not available)
-    std::optional user_to_update{ user(conn, username) };
-    if (!user_to_update.has_value()) {
-        logging::error{ "Unknown user: {}", username };
-        return;
-    }
-
-    user_to_update->password = password;
-
-    try {
-        conn->update_some<&User::password>(user_to_update.value());
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to update user \"{}\" with error: {}", username, e.what() };
-    }
-}
-
-void database::delete_admin(const std::string& username) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    conn->delete_records_s<Admin>("username=?", username);
-}
-
-void database::delete_user(const std::string& username) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    conn->delete_records_s<User>("username=?", username);
-}
-
-std::string database::user_password(const std::string& username) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    if (const std::optional u{ user(conn, username) }; u.has_value()) {
-        return u->password;
-    }
-
-    if (const std::optional user{ admin(conn, username) }; user.has_value()) {
-        return user->password;
-    }
-
-    return {};
-}
-
-std::string database::user_salt(const std::string& username) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    if (const std::optional u{ user(conn, username) }; u.has_value()) {
-        return u->salt;
-    }
-
-    if (const std::optional user{ admin(conn, username) }; user.has_value()) {
-        return user->salt;
-    }
-
-    return {};
-}
-
-int database::user_count() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return -1;
-    }
-
-    return static_cast<int>(conn->query_s<User>().size());
-}
-
-int database::video_count() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return -1;
-    }
-
-    return static_cast<int>(conn->query_s<Video>().size());
-}
-
-int database::view_count() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return -1;
-    }
-
-    const std::vector view_counts{ conn->query_s<std::tuple<int>>("SELECT SUM(view_count) FROM Video") };
-    return (view_counts.empty() ? -1 : std::get<0>(view_counts[0]));
-}
-
-std::vector<std::string> database::user_list() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    const std::vector tuple_usernames{ conn->query_s<std::tuple<std::string>>("SELECT username FROM User") };
-    return transform(tuple_usernames);
-}
-
-std::vector<std::string> database::admin_list() noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return {};
-    }
-
-    const std::vector tuple_usernames{ conn->query_s<std::tuple<std::string>>("SELECT username FROM Admin") };
-    return transform(tuple_usernames);
-}
-
-void database::add_video(const types::md5_varchar& id, const std::string& title, const std::string& file_path) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    const Video video{
-        .id = id,
-        .title = title,
-        .file_path = file_path
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
     };
 
-    try {
-        conn->insert(video);
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to insert video \"{}\", \"{}\" with error: {}", id, title, e.what() };
-    }
-}
-
-void database::add_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    std::vector<VideoRight> video_usernames(usernames.size());
-    std::ranges::transform(usernames, video_usernames.begin(),
-                           [&id, &conn](const std::string& username) -> VideoRight {
-                               return VideoRight{
-                                   .video_id = id,
-                                   .user_id = user(conn, username).value_or(User{}).id
-                               };
-                           });
-
-    try {
-        conn->insert(video_usernames);
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to insert video rights \"{}\" with error: {}", id, e.what() };
-    }
-}
-
-void database::update_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    conn->delete_records_s<VideoRight>("video_id=?", id);
-
-    add_video_rights(id, usernames);
-}
-
-void database::delete_video(const types::md5_varchar& id) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    conn->delete_records_s<Video>("id=?", id);
-}
-
-void database::increment_video_views(const types::md5_varchar& id) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
-        return;
-    }
-
-    // get previous user (update with where clause not available)
-    std::optional video_to_update{ video(conn, id) };
-    if (!video_to_update.has_value()) {
-        logging::error{ "Unknown video: {}", id };
-        return;
-    }
-
-    video_to_update->view_count += 1;
-
-    try {
-        conn->update_some<&Video::view_count>(video_to_update.value());
-    } catch (const std::exception& e) {
-        logging::error{ "Fail to update video \"{}\" with error: {}", id, e.what() };
-    }
-}
-
-bool database::has_video_right(const types::md5_varchar& id) noexcept
-{
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
+    if (!success.has_value()) {
+        logging::error{ "Fail to delete video \"{}\"", id };
         return false;
     }
 
-    const std::vector videos_rights{ conn->query_s<VideoRight>("video_id=?", id) };
-    return videos_rights.empty();
+    up::db_kv_write_status status;
+    std::string_view error_text;
+    if (!success->db.remove(database::video_key(id), &status, &error_text)) {
+        logging::error{ "Fail to delete video \"{}\"", id };
+        logging::error{ "{}: {}. {}",
+                        up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
+        return false;
+    }
+
+    return success->value.get_bool();
 }
 
-bool database::has_video_right(const types::md5_varchar& id, const std::string& username) noexcept
+bool Database::increment_video_views(const std::int64_t& id) const noexcept
 {
-    if (has_video_right(id))
-        return true;
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $video = db_fetch_by_id('videos', $id);
+        $video.views += 1;
+        $success = db_update_record('videos', $id, $video);
+    )"sv };
 
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
+    };
+
+    if (!success.has_value()) {
+        logging::error{ "Fail to increment video views \"{}\"", id };
         return false;
+    }
+
+    return success->value.get_bool();
+}
+
+bool Database::has_video_right(const std::int64_t& id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $video_right_callback = function($right) {
+            return ($right.video_id == $id);
+        };
+        $video_rights = db_fetch_all('video_rights', $video_right_callback);
+        $has_video_right = (count($video_rights) == 0);
+    )"sv };
+
+    const std::optional has_video_right{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "has_video_right"s))
+    };
+
+    if (!has_video_right.has_value()) {
+        logging::error{ "Fail to get has video right \"{}\"", id };
+        return {};
+    }
+
+    return has_video_right->value.get_bool();
+}
+
+bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_id) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $user = db_fetch_by_id('users', $user_id);
+        $user_type = $user.type;
+
+        $video_right_callback = function($right) {
+            return ($right.video_id == $id && $right.user_id = $user_id);
+        };
+        $video_rights = db_fetch_all('video_rights', $video_right_callback);
+        $has_video_right = (count($video_rights) != 0);
+    )"sv };
+
+    std::optional has_video_right{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::bind(database::bind_variable, "user_id", user_id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variables, 2, "user_type"s, "has_video_right"s))
+    };
+
+    if (!has_video_right.has_value()) {
+        logging::error{ "Fail to get has video right \"{}\"", id };
+        return {};
     }
 
     // check if user is admin
-    if (admin(conn, username).has_value())
+    if (has_video_right->values["user_type"].get_int() != database::user_type::USER)
         return true;
 
-    const int user_id{ user(conn, username).value_or(User{}).id };
-    const std::vector video_usernames{ conn->query_s<VideoRight>("video_id=? AND user_id=?", id, user_id) };
-    return !video_usernames.empty();
+    return has_video_right->values["has_video_right"].get_bool();
 }
 
-std::vector<std::string> database::video_right_list(const types::md5_varchar& id) noexcept
+std::vector<std::int64_t> Database::video_right_list(const std::int64_t& id) const noexcept
 {
-    const std::unique_ptr conn{ connection() };
-    if (conn == nullptr) {
-        logging::error{ "Fail to open database connection" };
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $video_right_callback = function($right) {
+            return ($right.video_id == $id);
+        };
+        $video_rights = db_fetch_all('video_rights', $video_right_callback);
+    )"sv };
+
+    const std::optional video_rights{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "video_rights"s))
+            .transform(database::bind(database::values_to_members, "user_id"s))
+            .transform(database::values_to_ids)
+    };
+
+    if (!video_rights.has_value()) {
+        logging::error{ "Fail to get video rights \"{}\"", id };
         return {};
     }
 
-    const std::vector tuple_rights{
-        conn->query_s<std::tuple<std::string>>(
-            "SELECT username FROM User "
-            "WHERE id IN (SELECT user_id FROM VideoRight WHERE video_id=?)",
-            id)
-    };
-    return transform(tuple_rights);
+    return video_rights.value();
 }
+
+inline database::Data::Data(up::db&& db, up::vm&& vm) noexcept
+    : db{ std::move(db) }
+    , vm{ std::move(vm) }
+{
+}
+
+inline database::Data::Data(Data&& data) noexcept
+    : db{ std::move(data.db) }
+    , vm{ std::move(data.vm) }
+{
+}
+
+inline database::DataValue::DataValue(Data&& data, up::value&& value) noexcept
+    : Data(std::move(data))
+    , value{ std::move(value) }
+{
+}
+
+inline database::DataValue::DataValue(DataValue&& data) noexcept
+    : Data(std::move(data))
+    , value{ std::move(data.value) }
+{
+}
+
+inline database::DataValues::DataValues(Data&& data, up::value::object&& values) noexcept
+    : Data(std::move(data))
+    , values{ std::move(values) }
+{
+}
+
+inline database::DataValueMember::DataValueMember(DataValue&& data, up::value&& member) noexcept
+    : DataValue(std::move(data))
+    , member{ std::move(member) }
+{
+}
+
+inline database::DataValueMembers::DataValueMembers(DataValue&& data, up::value::object&& members) noexcept
+    : DataValue(std::move(data))
+    , members{ std::move(members) }
+{
+}
+
+inline std::string database::video_key(const std::int64_t& id) noexcept
+{
+    return "video_" + su::int_to_string(id);
+}
+
+inline std::optional<up::db> database::open(const std::filesystem::path& path, up::db_mode mode) noexcept
+{
+    up::db_make_status make_status;
+    std::optional db{ up::db::make(path, mode, &make_status) };
+    if (!db.has_value()) {
+        logging::error{ "{}: {}", up::status_to_string_view<up::db_make_status>::value, static_cast<std::size_t>(make_status) };
+        return std::nullopt;
+    }
+    return db;
+}
+
+inline std::optional<database::Data> database::compile(up::db db, const std::string_view& jx9_program) noexcept
+{
+    up::db_compilation_status compile_status;
+    std::string_view compile_error;
+    std::optional vm{ db.compile(jx9_program, &compile_status, &compile_error) };
+    if (!vm.has_value()) {
+        logging::error{ "{}: {}. {}",
+                        up::status_to_string_view<up::db_compilation_status>::value, static_cast<std::size_t>(compile_status), compile_error };
+        return std::nullopt;
+    }
+    return Data{ std::move(db), std::move(vm.value()) };
+}
+
+inline std::optional<database::Data> database::bind_variable(Data data, const std::string& key, const up::value& value) noexcept
+{
+    if (!data.vm.bind(key, value)) {
+        logging::error{ "Fail to bind key: {}", key };
+        return std::nullopt;
+    }
+    return data;
+}
+
+inline std::optional<database::Data> database::execute(Data data) noexcept
+{
+    up::vm_execute_status exe_status;
+    if (!data.vm.exec(&exe_status)) {
+        logging::error{ "{}: {}", up::status_to_string_view<up::vm_execute_status>::value, static_cast<std::size_t>(exe_status) };
+        return std::nullopt;
+    }
+    return data;
+}
+
+inline std::optional<database::DataValue> database::extract_variable(Data data, const std::string& record_name) noexcept
+{
+    std::optional value{ data.vm.extract(record_name) };
+    if (!value.has_value())
+        return std::nullopt;
+
+    return DataValue{ std::move(data), std::move(value->make_value()) };
+}
+
+inline std::optional<database::DataValues> database::extract_variables(Data data, std::size_t count...) noexcept
+{
+    std::va_list record_names;
+    va_start(record_names, count);
+
+    up::value::object values;
+    for (std::size_t i{ 0 }; i < count; ++i) {
+        const std::string record_name{ va_arg(record_names, std::string) };
+        std::optional value{ data.vm.extract(record_name) };
+        if (value.has_value()) {
+            values.emplace(record_name, std::move(value->make_value()));
+        }
+    }
+
+    va_end(record_names);
+
+    if (values.size() != count)
+        return std::nullopt;
+
+    return DataValues{ std::move(data), std::move(values) };
+}
+
+inline std::optional<database::DataValueMember> database::find_member(DataValue data, const std::string& member_name) noexcept
+{
+    if (!data.value.is_object())
+        return std::nullopt;
+
+    // up::value* const member{ data.value.find(member_name) }; // FIXME: infinite recursion
+    up::value member;
+    // FIXME: always return false, to not test
+    data.value.foreach_object([&member_name, &member](const std::string& key, const up::value& value) noexcept -> bool {
+        if (key == member_name) {
+            member = value;
+        }
+        return true; // false will abort
+    });
+
+    if (member.is_null())
+        return std::nullopt;
+
+    return DataValueMember{ std::move(data), std::move(member) };
+}
+
+inline std::vector<up::value> database::values_to_members(DataValue data, const std::string& member_name) noexcept
+{
+    std::vector<up::value> ids;
+    const std::function id_callback{
+        [&ids, &member_name](std::size_t /*index*/, const up::value& value) noexcept -> bool {
+            const up::value* const id{ value.find(member_name) };
+            if (id != nullptr) {
+                ids.emplace_back(std::move(*id));
+            }
+            return true; // false will abort
+        }
+    };
+
+    data.value.foreach_array(id_callback); // FIXME: always return false, to not test
+    return ids;
+}
+
+inline std::vector<std::int64_t> database::values_to_id_members(DataValue data) noexcept
+{
+    std::vector<std::int64_t> ids;
+    const std::function id_callback{
+        [&ids](std::size_t /*index*/, const up::value& value) noexcept -> bool {
+            const up::value* const id{ value.find("__id") };
+            if (id != nullptr) {
+                ids.emplace_back(id->get_int());
+            }
+            return true; // false will abort
+        }
+    };
+
+    data.value.foreach_array(id_callback); // FIXME: always return false, to not test
+    return ids;
+}
+
+inline std::vector<up::value> database::ids_to_values(const std::vector<std::int64_t>& ids) noexcept
+{
+    std::vector<up::value> values(ids.size());
+    std::ranges::copy(ids, values.begin());
+    return values;
+}
+
+inline std::vector<std::int64_t> database::values_to_ids(const std::vector<up::value>& values) noexcept
+{
+    std::vector<std::int64_t> ids(values.size());
+    std::ranges::transform(values, ids.begin(), bind(&up::value::get_int));
+    return ids;
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wchanges-meaning"
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+#pragma GCC diagnostic ignored "-Wregister"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-but-set-parameter"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized" // gcc-alpine
+extern "C" {
+#include <unqlite-src/unqlite.c>
+}
+#pragma GCC diagnostic pop

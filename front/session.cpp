@@ -7,13 +7,13 @@
 namespace session
 {
     constexpr const char* cookie_key() { return "Session-ID="; }
-    constexpr const char* username_key() { return "username"; }
+    constexpr const char* user_id_key() { return "user_id"; }
 }
 
-const std::string& Session::create_session(const std::string& username) noexcept
+const std::string& Session::create_session(const std::string& user_id) noexcept
 {
-    const std::string session_id{ generate_session_id(username) };
-    insert_value_from_session(session_id, session::username_key(), username);
+    const std::string session_id{ generate_session_id(user_id) };
+    insert_value_from_session(session_id, session::user_id_key(), user_id);
 
     const std::lock_guard<std::mutex> lock(_mutex);
     return _sessions.find(session_id)->first;
@@ -21,7 +21,7 @@ const std::string& Session::create_session(const std::string& username) noexcept
 
 const std::string& Session::user_from_session(const std::string& session_id) const noexcept
 {
-    return value_from_session(session_id, session::username_key());
+    return value_from_session(session_id, session::user_id_key());
 }
 
 const std::string& Session::operator()(const std::string& session_id, const std::string& key) const noexcept
@@ -99,8 +99,8 @@ std::string Session::insert_session_id_to_cookie(const std::string& session_id) 
     return (session::cookie_key() + session_id + ";");
 }
 
-std::string Session::generate_session_id(const std::string& username) noexcept
+std::string Session::generate_session_id(const std::string& user_id) noexcept
 {
     static int counter{ 0 };
-    return crypto::sha512("sess_" + std::to_string(counter++) + "_" + username + "_ion");
+    return crypto::sha512("sess_" + std::to_string(counter++) + "_" + user_id + "_ion");
 }

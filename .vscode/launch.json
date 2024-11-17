@@ -20,14 +20,6 @@
                 {
                     "name": "SERVER_URL",
                     "value": "localhost:5000"
-                },
-                {
-                    "name": "MYSQL_ROOT_PASSWORD",
-                    "value": "6y51^HsXrNcx"
-                },
-                {
-                    "name": "MYSQL_DB_URL",
-                    "value": "127.0.0.1"
                 }
             ],
             "setupCommands": [

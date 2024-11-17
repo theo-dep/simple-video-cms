@@ -1,51 +1,57 @@
 #pragma once
 
-#include "types.h"
-
+#include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
-namespace database
+class Database
 {
-    bool create_tables() noexcept;
-    bool is_open() noexcept;
+public:
+    Database(const std::filesystem::path& path, bool& create_ok) noexcept;
 
-    std::vector<types::md5_varchar> video_list() noexcept;
-    std::vector<types::md5_varchar> video_list(const std::string& username) noexcept;
-    std::vector<types::md5_varchar> no_right_video_list() noexcept;
+    [[nodiscard]] bool create_tables() const noexcept;
 
-    std::string video_title(const types::md5_varchar& id) noexcept;
-    int video_views(const types::md5_varchar& id) noexcept;
-    std::string video_file_path(const types::md5_varchar& id) noexcept;
+    std::vector<std::int64_t> video_list() const noexcept;
+    std::vector<std::int64_t> video_list(const std::int64_t& user_id) const noexcept;
+    std::vector<std::int64_t> no_right_video_list() const noexcept;
 
-    void add_super_admin(const std::string& username, const std::string& password, const std::string& salt) noexcept;
-    bool is_super_admin(const std::string& username) noexcept;
+    std::string video_title(const std::int64_t& id) const noexcept;
+    std::int64_t video_views(const std::int64_t& id) const noexcept;
+    std::string video(const std::int64_t& id) const noexcept;
 
-    bool is_admin(const std::string& username) noexcept;
-    bool is_user(const std::string& username) noexcept;
-    void add_admin(const std::string& username, const std::string& password, const std::string& salt) noexcept;
-    void add_user(const std::string& username, const std::string& password, const std::string& salt) noexcept;
-    void update_admin(const std::string& username, const std::string& password) noexcept;
-    void update_user(const std::string& username, const std::string& password) noexcept;
-    void delete_admin(const std::string& username) noexcept;
-    void delete_user(const std::string& username) noexcept;
-    std::string user_password(const std::string& username) noexcept;
-    std::string user_salt(const std::string& username) noexcept;
+    [[nodiscard]] std::optional<std::int64_t> add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    bool is_super_admin(const std::int64_t& id) const noexcept;
 
-    int user_count() noexcept;
-    int video_count() noexcept;
-    int view_count() noexcept;
+    bool is_admin(const std::int64_t& id) const noexcept;
+    bool is_user(const std::int64_t& id) const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
+    [[nodiscard]] bool update_user(const std::int64_t& id, const std::string& password) const noexcept;
+    [[nodiscard]] bool delete_user(const std::int64_t& id) const noexcept;
 
-    std::vector<std::string> user_list() noexcept;
-    std::vector<std::string> admin_list() noexcept;
+    std::int64_t user_id(const std::string& name) const noexcept;
+    std::string user_name(const std::int64_t& id) const noexcept;
+    std::string user_password(const std::int64_t& id) const noexcept;
+    std::string user_salt(const std::int64_t& id) const noexcept;
 
-    void add_video(const types::md5_varchar& id, const std::string& title, const std::string& file_path) noexcept;
-    void add_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept;
-    void update_video_rights(const types::md5_varchar& id, const std::vector<std::string>& usernames) noexcept;
-    void delete_video(const types::md5_varchar& id) noexcept;
-    void increment_video_views(const types::md5_varchar& id) noexcept;
-    bool has_video_right(const types::md5_varchar& id) noexcept;
-    bool has_video_right(const types::md5_varchar& id, const std::string& username) noexcept;
+    std::int64_t user_count() const noexcept;
+    std::int64_t video_count() const noexcept;
+    std::int64_t view_count() const noexcept;
 
-    std::vector<std::string> video_right_list(const types::md5_varchar& id) noexcept;
-}
+    std::vector<std::int64_t> user_list() const noexcept;
+    std::vector<std::int64_t> admin_list() const noexcept;
+
+    [[nodiscard]] std::optional<std::int64_t> add_video(const std::string& title, const std::string& video) const noexcept;
+    [[nodiscard]] bool add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
+    [[nodiscard]] bool update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
+    [[nodiscard]] bool delete_video(const std::int64_t& id) const noexcept;
+    [[nodiscard]] bool increment_video_views(const std::int64_t& id) const noexcept;
+    bool has_video_right(const std::int64_t& id) const noexcept;
+    bool has_video_right(const std::int64_t& id, const std::int64_t& user_id) const noexcept;
+
+    std::vector<std::int64_t> video_right_list(const std::int64_t& id) const noexcept;
+
+private:
+    const std::filesystem::path path_;
+};

@@ -92,7 +92,7 @@ inline std::string logging::light_function_name(const std::source_location& loca
 
 inline logging::Logger::Logger() noexcept
     : _flush_thread{
-        [&]() {
+        [&]() noexcept {
             while (_is_running) {
                 flush();
 

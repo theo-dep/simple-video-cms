@@ -1,8 +1,6 @@
 #pragma once
 
-#include "types.h"
-
-#include <format>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -17,19 +15,6 @@ namespace su
     std::string bool_to_string(bool b) noexcept;
     bool string_to_bool(const std::string& str) noexcept;
 
-    int string_to_int(const std::string& str, bool* ok = nullptr) noexcept;
-
-    std::string md5_varchar_to_string(const types::md5_varchar& array) noexcept;
-    types::md5_varchar string_to_md5_varchar(const std::string& str) noexcept;
+    std::int64_t string_to_int(const std::string& str) noexcept;
+    std::string int_to_string(const std::int64_t& val) noexcept;
 }
-
-template <>
-struct std::formatter<types::md5_varchar, char> : std::formatter<std::string, char>
-{
-    template <class FmtContext>
-    FmtContext::iterator format(const types::md5_varchar& array, FmtContext& ctx) const
-    {
-        const std::string str{ su::md5_varchar_to_string(array) };
-        return std::formatter<std::string, char>::format(str, ctx);
-    }
-};

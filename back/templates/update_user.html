@@ -18,10 +18,11 @@
         <h1>VideoHub</h1>
       </a>
 
-      <h2>Update &laquo; {{ username }} &raquo;</h2>
+      <h2>Update &laquo; {{ user.name }} &raquo;</h2>
       <h3>Re-enter old password and new password</h3>
 
-      <form class="pure-form pure-form-aligned" action="/update-user/{{ username }}?admin={{ admin }}" method="post">
+      <form class="pure-form pure-form-aligned" action="/update-user/{{ user.id }}?is_admin={{ is_admin }}"
+        method="post">
         <fieldset>
           {% if login_error %}
           <div class="alert pure-control-group">

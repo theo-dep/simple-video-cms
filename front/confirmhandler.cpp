@@ -57,7 +57,7 @@ ConfirmHandler::Signal::Signal(const ConfirmHandler& handler) noexcept
 const ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::function<void(httplib::Response&)>& handle) const noexcept
 {
     const KDBindings::ConnectionHandle confirm_handle{ _handler._impl->signal.connect(
-        [handle, this](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) {
+        [handle, this](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) noexcept {
             if (confirm_signal_str == this && confirm && handle)
                 handle(res);
         }) };
@@ -68,7 +68,7 @@ const ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::func
 const ConfirmHandler::Signal& ConfirmHandler::Signal::on_deny(const std::function<void(httplib::Response&)>& handle) const noexcept
 {
     const KDBindings::ConnectionHandle deny_handle{ _handler._impl->signal.connect(
-        [handle, this](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) {
+        [handle, this](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) noexcept {
             if (confirm_signal_str == this && !confirm && handle)
                 handle(res);
         }) };

@@ -43,7 +43,7 @@
           <th>Username</th>
           <th></th>
           <th class="add-user">
-            <a href="/add-user?admin=true">
+            <a href="/add-user?is_admin=true">
               <img src="/static/img/person-add.svg" alt="add a new admin" />
             </a>
           </th>
@@ -52,15 +52,15 @@
       <tbody>
         {% for admin in admin_dict %}
         <tr>
-          <td data-title="Username">{{ admin.username }}</td>
+          <td data-title="Username">{{ admin.name }}</td>
           {% if not admin.is_super_admin %}
           <td data-title="Update">
-            <a href="/update-user/{{ admin.username }}?admin=true">
+            <a href="/update-user/{{ admin.id }}?is_admin=true">
               Update
             </a>
           </td>
           <td data-title="Delete">
-            <a href="/delete-user/{{ admin.username }}?admin=true">
+            <a href="/delete-user/{{ admin.id }}?is_admin=true">
               Delete
             </a>
           </td>

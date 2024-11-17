@@ -3,9 +3,6 @@
 SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
 SOURCE_DIR=${SCRIPT_DIR}/..
 
-docker stop videohub-mysql
-docker rm videohub-mysql
-
 make -C ${SOURCE_DIR}/back clean
 make -C ${SOURCE_DIR}/front clean
 
