@@ -290,11 +290,11 @@ std::string Database::video(const std::int64_t& id) const noexcept
     up::db_kv_read_status status{ up::db_kv_read_status::OK };
     const std::optional video{
         database::open(path_, up::db_mode::OPEN_READONLY)
-            .and_then([&id, &status](up::db db) -> std::optional<std::string> {
+            .and_then([&id, &status](up::db db) noexcept -> std::optional<std::string> {
                 std::string res;
                 if (db.fetch_callback(
                         database::video_key(id),
-                        [&res](const void* data, std::size_t size) {
+                        [&res](const void* data, std::size_t size) noexcept -> bool {
                             res.append(static_cast<const char*>(data), size);
                             return true;
                         },
@@ -1126,7 +1126,7 @@ inline std::optional<database::DataValueMember> database::find_member(DataValue 
     // up::value* const member{ data.value.find(member_name) }; // FIXME: infinite recursion
     up::value member;
     // FIXME: always return false, to not test
-    data.value.foreach_object([&member_name, &member](const std::string& key, const up::value& value) -> bool {
+    data.value.foreach_object([&member_name, &member](const std::string& key, const up::value& value) noexcept -> bool {
         if (key == member_name) {
             member = value;
         }
@@ -1143,7 +1143,7 @@ inline std::vector<up::value> database::values_to_members(DataValue data, const 
 {
     std::vector<up::value> ids;
     const std::function id_callback{
-        [&ids, &member_name](std::size_t /*index*/, const up::value& value) -> bool {
+        [&ids, &member_name](std::size_t /*index*/, const up::value& value) noexcept -> bool {
             const up::value* const id{ value.find(member_name) };
             if (id != nullptr) {
                 ids.emplace_back(std::move(*id));
@@ -1160,7 +1160,7 @@ inline std::vector<std::int64_t> database::values_to_id_members(DataValue data) 
 {
     std::vector<std::int64_t> ids;
     const std::function id_callback{
-        [&ids](std::size_t /*index*/, const up::value& value) -> bool {
+        [&ids](std::size_t /*index*/, const up::value& value) noexcept -> bool {
             const up::value* const id{ value.find("__id") };
             if (id != nullptr) {
                 ids.emplace_back(id->get_int());

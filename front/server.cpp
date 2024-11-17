@@ -76,7 +76,7 @@ int server::start() noexcept
     set_exception_handler(server);
     set_logger(server);
 
-    server.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) {
+    server.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) noexcept {
         if (!req.path.contains("static")) {
             set_no_cache_headers(res);
         }
@@ -132,7 +132,7 @@ inline void server::set_no_cache_headers(httplib::Response& res) noexcept
 
 inline void server::set_error_handler(httplib::Server& server, const Client& client) noexcept
 {
-    server.set_error_handler([&client](const httplib::Request& /*req*/, httplib::Response& res) {
+    server.set_error_handler([&client](const httplib::Request& /*req*/, httplib::Response& res) noexcept {
         std::string body;
 
         switch (res.status) {
@@ -155,7 +155,7 @@ inline void server::set_error_handler(httplib::Server& server, const Client& cli
 
 inline void server::set_exception_handler(httplib::Server& server) noexcept
 {
-    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
+    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) noexcept {
         constexpr int error_code{ httplib::StatusCode::InternalServerError_500 };
         std::string message;
         try {
@@ -178,7 +178,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
 
 inline void server::set_logger(httplib::Server& server) noexcept
 {
-    server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
+    server.set_logger([](const httplib::Request& req, const httplib::Response& res) noexcept {
         logging::raw_log(sc::log(req, res));
     });
 }
@@ -518,21 +518,21 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     std::string signal_str;
     if (is_admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, &client](httplib::Response& res) {
+                         .on_confirm([user_id, new_password, &client](httplib::Response& res) noexcept {
                              client.update_user(user_id, new_password);
                              res.set_redirect("/admin-list");
                          })
-                         .on_deny([](httplib::Response& res) {
+                         .on_deny([](httplib::Response& res) noexcept {
                              res.set_redirect("/admin-list");
                          })
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, &client](httplib::Response& res) {
+                         .on_confirm([user_id, new_password, &client](httplib::Response& res) noexcept {
                              client.update_user(user_id, new_password);
                              res.set_redirect("/user-list");
                          })
-                         .on_deny([](httplib::Response& res) {
+                         .on_deny([](httplib::Response& res) noexcept {
                              res.set_redirect("/user-list");
                          })
                          .to_string();
@@ -553,21 +553,21 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     std::string signal_str;
     if (admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, &client](httplib::Response& res) {
+                         .on_confirm([user_id, &client](httplib::Response& res) noexcept {
                              client.delete_user(user_id);
                              res.set_redirect("/admin-list");
                          })
-                         .on_deny([](httplib::Response& res) {
+                         .on_deny([](httplib::Response& res) noexcept {
                              res.set_redirect("/admin-list");
                          })
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, &client](httplib::Response& res) {
+                         .on_confirm([user_id, &client](httplib::Response& res) noexcept {
                              client.delete_user(user_id);
                              res.set_redirect("/user-list");
                          })
-                         .on_deny([](httplib::Response& res) {
+                         .on_deny([](httplib::Response& res) noexcept {
                              res.set_redirect("/user-list");
                          })
                          .to_string();
@@ -588,7 +588,7 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
         const std::vector rights{ client.video_right_list(video["id"]) };
         std::vector<std::string> user_rights(rights.size());
         std::ranges::transform(rights, user_rights.begin(),
-                               [&](const std::string& user_id) -> std::string {
+                               [&](const std::string& user_id) noexcept -> std::string {
                                    return client.user_name(user_id);
                                });
         video += { "right_list", user_rights };
@@ -715,11 +715,11 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, allowed_user_ids, &client](httplib::Response& res) {
+            .on_confirm([video_id, allowed_user_ids, &client](httplib::Response& res) noexcept {
                 client.update_video(video_id, allowed_user_ids);
                 res.set_redirect("/video-list");
             })
-            .on_deny([](httplib::Response& res) {
+            .on_deny([](httplib::Response& res) noexcept {
                 res.set_redirect("/video-list");
             })
             .to_string()
@@ -738,11 +738,11 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, &client](httplib::Response& res) {
+            .on_confirm([video_id, &client](httplib::Response& res) noexcept {
                 client.delete_video(video_id);
                 res.set_redirect("/video-list");
             })
-            .on_deny([](httplib::Response& res) {
+            .on_deny([](httplib::Response& res) noexcept {
                 res.set_redirect("/video-list");
             })
             .to_string()

@@ -30,7 +30,7 @@ std::string crypto::random_string(std::string::size_type length) noexcept
     thread_local static std::uniform_int_distribution<std::string::size_type> pick(0, charset.size() - 1);
 
     std::string str(length, 0);
-    std::generate_n(str.begin(), length, []() -> char { return charset[pick(rg)]; });
+    std::generate_n(str.begin(), length, []() noexcept -> char { return charset[pick(rg)]; });
     return str;
 }
 

@@ -343,7 +343,7 @@ std::string Client::video(const std::string& video_id) const noexcept
     std::string video_content;
     const httplib::Result res{
         _client->Get("/video/" + video_id,
-                     [&video_content](const char* data, std::size_t data_length) {
+                     [&video_content](const char* data, std::size_t data_length) noexcept -> bool {
                          video_content.append(data, data_length);
                          return true;
                      })

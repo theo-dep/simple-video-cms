@@ -76,7 +76,7 @@ int server::start() noexcept
     }
 
     httplib::Server server;
-    server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
+    server.set_logger([](const httplib::Request& req, const httplib::Response& res) noexcept {
         logging::raw_log(sc::log(req, res));
     });
 
@@ -407,7 +407,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
     const std::optional success{
         db.add_video(video_title, video_content)
-            .transform([&](const std::int64_t& video_id) -> bool {
+            .transform([&](const std::int64_t& video_id) noexcept -> bool {
                 return db.add_video_rights(video_id, transform(allowed_user_ids));
             })
     };
@@ -462,11 +462,11 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     res.set_content_provider(
         video_content.size(), // Content length
         "video/mp4",          // Content type
-        [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) {
+        [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
             sink.write(&video_content[offset], std::min(length, DATA_CHUNK_SIZE));
             return true; // return 'false' if you want to cancel the process.
         },
-        [](bool /*success*/) { /*release*/ });
+        [](bool /*success*/) noexcept { /*release*/ });
 }
 
 inline void server::has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept

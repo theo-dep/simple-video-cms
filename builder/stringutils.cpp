@@ -22,7 +22,7 @@ std::vector<std::string> su::split(const std::string& str, char delim) noexcept
 
 void su::trim(std::string& str) noexcept
 {
-    static const auto ischar{ [](const std::string::value_type& c) -> bool { return (std::isspace(c) == 0); } };
+    static const auto ischar{ [](const std::string::value_type& c) noexcept -> bool { return (std::isspace(c) == 0); } };
     // trim left
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), ischar));
     // trim right
@@ -32,7 +32,7 @@ void su::trim(std::string& str) noexcept
 void su::lower(std::string& str) noexcept
 {
     static const auto tolower{
-        [](const std::string::value_type& c) -> std::string::value_type {
+        [](const std::string::value_type& c) noexcept -> std::string::value_type {
             return static_cast<std::string::value_type>(std::tolower(c));
         }
     };
