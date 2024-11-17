@@ -230,13 +230,25 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
         return;
     }
 
-    std::vector video_ids{ client.no_right_video_list() };
-    if (is_logged) {
-        const std::vector append_video_ids{ client.video_list(connected_user) };
-        const std::size_t previous_size{ video_ids.size() };
-        video_ids.resize(previous_size + append_video_ids.size());
-        std::ranges::copy(append_video_ids, std::next(video_ids.begin(), previous_size));
+    std::vector<std::string> video_ids, logged_video_ids;
+    if (req.has_param("search")) {
+        const std::string search{ req.get_param_value("search") };
+        video_ids = client.no_right_video_list(search);
+        if (is_logged) {
+            logged_video_ids = client.video_list(connected_user, search);
+        }
+    } else {
+        video_ids = client.no_right_video_list();
+        if (is_logged) {
+            logged_video_ids = client.video_list(connected_user);
+        }
     }
+
+#ifdef __cpp_lib_containers_ranges
+    video_ids.append_range(logged_video_ids);
+#else
+    video_ids.insert(video_ids.end(), logged_video_ids.cbegin(), logged_video_ids.cend());
+#endif
 
     const inja::json data{
         { "is_logged", is_logged },
