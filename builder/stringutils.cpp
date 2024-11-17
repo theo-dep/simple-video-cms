@@ -52,6 +52,7 @@ bool su::string_to_bool(const std::string& str) noexcept
 std::int64_t su::string_to_int(const std::string& str) noexcept
 {
     std::int64_t value{ 0 };
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): wait for c++26
     const std::from_chars_result ret{ std::from_chars(str.data(), str.data() + str.size(), value) };
     if (ret.ec == std::errc{})
         return value;

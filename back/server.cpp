@@ -483,12 +483,12 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const std::string video_content{ db.video(video_id) };
 
-    static constexpr std::size_t DATA_CHUNK_SIZE{ 4 * 1024 };
+    static constexpr std::size_t data_chunk_size{ static_cast<std::size_t>(4LL * 1024LL) };
     res.set_content_provider(
         video_content.size(), // Content length
         "video/mp4",          // Content type
         [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
-            sink.write(&video_content[offset], std::min(length, DATA_CHUNK_SIZE));
+            sink.write(&video_content[offset], std::min(length, data_chunk_size));
             return true; // return 'false' if you want to cancel the process.
         },
         [](bool /*success*/) noexcept { /*release*/ });

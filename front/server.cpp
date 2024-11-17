@@ -21,9 +21,9 @@ namespace server
 
     bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
 
-    inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client) noexcept;
-
     // inja exceptions catched by httplib Server::set_exception_handler
+
+    inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client);
 
     void static_file(const httplib::Request& req, httplib::Response& res, const Client& client) noexcept;
 
@@ -201,12 +201,12 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
     return true;
 }
 
-inline inja::json server::video_dict(const std::vector<std::string>& video_ids, const Client& client) noexcept
+inline inja::json server::video_dict(const std::vector<std::string>& video_ids, const Client& client)
 {
     inja::json video_dict;
     for (const std::string& video_id : video_ids) {
         const std::string title{ client.video_title(video_id) };
-        const int views{ client.video_views(video_id) };
+        const std::int64_t views{ client.video_views(video_id) };
         video_dict.emplace_back(inja::json::object({ { "id", video_id }, { "title", title }, { "views", views } }));
     }
     return video_dict;
@@ -224,13 +224,14 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     const bool is_logged{ session.is_valid_session(session_id) };
-    const std::string connected_user{ session.user_from_session(session_id) };
+    const std::string& connected_user{ session.user_from_session(session_id) };
     if (is_logged && client.is_admin(connected_user)) {
         res.set_redirect("/dashboard");
         return;
     }
 
-    std::vector<std::string> video_ids, logged_video_ids;
+    std::vector<std::string> video_ids;
+    std::vector<std::string> logged_video_ids;
     if (req.has_param("search")) {
         const std::string search{ req.get_param_value("search") };
         video_ids = client.no_right_video_list(search);
@@ -679,7 +680,8 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
 
     const std::vector user_id_items{ req.get_file_values("user_ids") };
     std::vector<std::string> allowed_user_ids(user_id_items.size());
-    std::ranges::transform(user_id_items, allowed_user_ids.begin(), std::bind(&httplib::MultipartFormData::content, std::placeholders::_1));
+    std::ranges::transform(user_id_items, allowed_user_ids.begin(),
+                           [](const httplib::MultipartFormData& item) noexcept -> std::string { return item.content; });
 
     client.add_video(video_title, item.content, allowed_user_ids);
     res.set_redirect("/video-list");
@@ -777,7 +779,7 @@ inline bool server::has_video_right(const httplib::Request& req, httplib::Respon
     const std::string video_id{ req.path_params.at("video_id") };
 
     if (is_logged) {
-        const std::string connected_user_id{ session.user_from_session(session_id) };
+        const std::string& connected_user_id{ session.user_from_session(session_id) };
         if (!client.has_video_right(video_id, connected_user_id)) {
             const std::string body{ client.error_page_403() };
             res.set_content(body, "text/html");
@@ -793,7 +795,7 @@ inline bool server::has_video_right(const httplib::Request& req, httplib::Respon
 
 inline void server::watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
-    if (!has_video_right(req, res, session, client))
+    if (!has_video_right(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
     const std::string video_id{ req.path_params.at("video_id") };
@@ -803,7 +805,7 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
     const bool is_logged{ session.is_valid_session_from_cookie(cookie) };
 
     const std::string video_title{ client.video_title(video_id) };
-    const int video_views{ client.video_views(video_id) };
+    const std::int64_t video_views{ client.video_views(video_id) };
 
     const inja::json data{
         { "is_logged", is_logged },

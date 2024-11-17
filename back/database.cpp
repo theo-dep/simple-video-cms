@@ -19,9 +19,18 @@ extern "C" {
 #include <fstream>
 #include <ranges>
 
+// NOLINTBEGIN(cppcoreguidelines-macro-usage, bugprone-macro-parentheses): cannot be constexpr
+#define DATA_COPY_MOVE(Class)             \
+    Class(Class&& c) noexcept;            \
+    virtual ~Class() noexcept = default;  \
+    Class& operator=(Class&& c) = delete; \
+    Class(const Class& c) = delete;       \
+    Class& operator=(const Class& c) = delete
+// NOLINTEND(cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
+
 namespace database
 {
-    enum user_type : std::int64_t
+    enum UserType : std::int64_t // NOLINT(performance-enum-size): auto-cast to up::value
     {
         USER,
         ADMIN,
@@ -31,14 +40,14 @@ namespace database
     struct Data
     {
         Data(up::db&& db, up::vm&& vm) noexcept;
-        Data(Data&& data) noexcept;
+        DATA_COPY_MOVE(Data);
         up::db db;
         up::vm vm;
     };
     struct DataValue : Data
     {
         DataValue(Data&& data, up::value&& value) noexcept;
-        DataValue(DataValue&& data) noexcept;
+        DATA_COPY_MOVE(DataValue);
         up::value value;
     };
     struct DataValues : Data
@@ -80,6 +89,7 @@ namespace database
 template <class F, typename... Args>
 inline auto database::bind(F&& f, Args&&... args) noexcept
 {
+    // NOLINTNEXTLINE(modernize-avoid-bind): can use auto deducing type
     return std::bind(std::forward<F>(f), std::placeholders::_1, std::forward<Args>(args)...);
 }
 
@@ -88,7 +98,7 @@ Database::Database(const std::filesystem::path& path, bool& create_ok) noexcept
 {
     create_ok = true;
     if (!std::filesystem::exists(path_)) {
-        std::ofstream{ path_ }; // create regular file
+        std::ofstream db_file{ path_ }; // create regular file
         const std::optional db{ database::open(path, up::db_mode::OPEN_CREATE) };
         create_ok = db.has_value();
     }
@@ -300,9 +310,8 @@ std::string Database::video(const std::int64_t& id) const noexcept
                         },
                         &status)) {
                     return res;
-                } else {
-                    return std::nullopt;
                 }
+                return std::nullopt;
             })
     };
 
@@ -328,7 +337,7 @@ std::optional<std::int64_t> Database::add_super_admin(const std::string& name, c
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
             .and_then(database::bind(database::bind_variable, "admin"s,
-                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::SUPER_ADMIN } }))
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::UserType::SUPER_ADMIN } }))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variables, 2, "success"s, "admin_id"s))
     };
@@ -362,7 +371,7 @@ bool Database::is_super_admin(const std::int64_t& id) const noexcept
         return false;
     }
 
-    return (user_type->member.get_int() == database::user_type::SUPER_ADMIN);
+    return (user_type->member.get_int() == database::UserType::SUPER_ADMIN);
 }
 
 bool Database::is_admin(const std::int64_t& id) const noexcept
@@ -386,7 +395,7 @@ bool Database::is_admin(const std::int64_t& id) const noexcept
         return false;
     }
 
-    return (user_type->member.get_int() != database::user_type::USER);
+    return (user_type->member.get_int() != database::UserType::USER);
 }
 
 bool Database::is_user(const std::int64_t& id) const noexcept
@@ -410,7 +419,7 @@ bool Database::is_user(const std::int64_t& id) const noexcept
         return false;
     }
 
-    return (user_type->member.get_int() == database::user_type::USER);
+    return (user_type->member.get_int() == database::UserType::USER);
 }
 
 std::optional<std::int64_t> Database::add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
@@ -425,7 +434,7 @@ std::optional<std::int64_t> Database::add_admin(const std::string& name, const s
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
             .and_then(database::bind(database::bind_variable, "admin"s,
-                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::ADMIN } }))
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::UserType::ADMIN } }))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variables, 2, "success"s, "admin_id"s))
     };
@@ -450,7 +459,7 @@ std::optional<std::int64_t> Database::add_user(const std::string& name, const st
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
             .and_then(database::bind(database::bind_variable, "user"s,
-                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::USER } }))
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::UserType::USER } }))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variables, 2, "success"s, "user_id"s))
     };
@@ -694,7 +703,7 @@ std::vector<std::int64_t> Database::user_list() const noexcept
     const std::optional users{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variable, "user_type"s, database::user_type::USER))
+            .and_then(database::bind(database::bind_variable, "user_type"s, database::UserType::USER))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "users"s))
             .transform(database::values_to_id_members)
@@ -721,8 +730,8 @@ std::vector<std::int64_t> Database::admin_list() const noexcept
     const std::optional admins{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variable, "admin_type"s, database::user_type::ADMIN))
-            .and_then(database::bind(database::bind_variable, "super_admin_type"s, database::user_type::SUPER_ADMIN))
+            .and_then(database::bind(database::bind_variable, "admin_type"s, database::UserType::ADMIN))
+            .and_then(database::bind(database::bind_variable, "super_admin_type"s, database::UserType::SUPER_ADMIN))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "admins"s))
             .transform(database::values_to_id_members)
@@ -761,7 +770,7 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
     const std::int64_t video_id{ success->values["video_id"s].get_int() };
 
     // store video in kv space to speed fetching of "videos" table
-    up::db_kv_write_status status;
+    up::db_kv_write_status status{};
     std::string_view error_text;
     if (!success->db.store(database::video_key(video_id), video, &status, &error_text)) {
         logging::error{ "Fail to add video \"{}\"", video_id };
@@ -870,7 +879,7 @@ bool Database::delete_video(const std::int64_t& id) const noexcept
         return false;
     }
 
-    up::db_kv_write_status status;
+    up::db_kv_write_status status{};
     std::string_view error_text;
     if (!success->db.remove(database::video_key(id), &status, &error_text)) {
         logging::error{ "Fail to delete video \"{}\"", id };
@@ -963,7 +972,7 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
     }
 
     // check if user is admin
-    if (has_video_right->values["user_type"].get_int() != database::user_type::USER)
+    if (has_video_right->values["user_type"].get_int() != database::UserType::USER)
         return true;
 
     return has_video_right->values["has_video_right"].get_bool();
@@ -1016,7 +1025,7 @@ inline database::DataValue::DataValue(Data&& data, up::value&& value) noexcept
 }
 
 inline database::DataValue::DataValue(DataValue&& data) noexcept
-    : Data(std::move(data))
+    : Data(std::move(data.db), std::move(data.vm))
     , value{ std::move(data.value) }
 {
 }
@@ -1046,7 +1055,7 @@ inline std::string database::video_key(const std::int64_t& id) noexcept
 
 inline std::optional<up::db> database::open(const std::filesystem::path& path, up::db_mode mode) noexcept
 {
-    up::db_make_status make_status;
+    up::db_make_status make_status{};
     std::optional db{ up::db::make(path, mode, &make_status) };
     if (!db.has_value()) {
         logging::error{ "{}: {}", up::status_to_string_view<up::db_make_status>::value, static_cast<std::size_t>(make_status) };
@@ -1057,7 +1066,7 @@ inline std::optional<up::db> database::open(const std::filesystem::path& path, u
 
 inline std::optional<database::Data> database::compile(up::db db, const std::string_view& jx9_program) noexcept
 {
-    up::db_compilation_status compile_status;
+    up::db_compilation_status compile_status{};
     std::string_view compile_error;
     std::optional vm{ db.compile(jx9_program, &compile_status, &compile_error) };
     if (!vm.has_value()) {
@@ -1070,7 +1079,7 @@ inline std::optional<database::Data> database::compile(up::db db, const std::str
 
 inline std::optional<database::Data> database::bind_variable(Data data, const std::string& key, const up::value& value) noexcept
 {
-    if (!data.vm.bind(key, value)) {
+    if (!data.vm.bind(key, value)) { // NOLINT(clang-analyzer-optin.cplusplus.UninitializedObject): in unqulitepp.hpp
         logging::error{ "Fail to bind key: {}", key };
         return std::nullopt;
     }
@@ -1079,7 +1088,7 @@ inline std::optional<database::Data> database::bind_variable(Data data, const st
 
 inline std::optional<database::Data> database::execute(Data data) noexcept
 {
-    up::vm_execute_status exe_status;
+    up::vm_execute_status exe_status{};
     if (!data.vm.exec(&exe_status)) {
         logging::error{ "{}: {}", up::status_to_string_view<up::vm_execute_status>::value, static_cast<std::size_t>(exe_status) };
         return std::nullopt;
@@ -1089,7 +1098,7 @@ inline std::optional<database::Data> database::execute(Data data) noexcept
 
 inline std::optional<database::DataValue> database::extract_variable(Data data, const std::string& record_name) noexcept
 {
-    std::optional value{ data.vm.extract(record_name) };
+    std::optional value{ data.vm.extract(record_name) }; // NOLINT(clang-analyzer-optin.cplusplus.UninitializedObject, clang-analyzer-core.uninitialized.Assign): in unqulitepp.hpp
     if (!value.has_value())
         return std::nullopt;
 
@@ -1098,12 +1107,14 @@ inline std::optional<database::DataValue> database::extract_variable(Data data, 
 
 inline std::optional<database::DataValues> database::extract_variables(Data data, std::size_t count...) noexcept
 {
+    // variadic template does not deduce type in std::bind
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     std::va_list record_names;
     va_start(record_names, count);
 
     up::value::object values;
     for (std::size_t i{ 0 }; i < count; ++i) {
-        const std::string record_name{ va_arg(record_names, std::string) };
+        const std::string record_name{ va_arg(record_names, const char*) };
         std::optional value{ data.vm.extract(record_name) };
         if (value.has_value()) {
             values.emplace(record_name, std::move(value->make_value()));
@@ -1111,6 +1122,7 @@ inline std::optional<database::DataValues> database::extract_variables(Data data
     }
 
     va_end(record_names);
+    // NOLINTEND(cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
 
     if (values.size() != count)
         return std::nullopt;
@@ -1146,7 +1158,7 @@ inline std::vector<up::value> database::values_to_members(DataValue data, const 
         [&ids, &member_name](std::size_t /*index*/, const up::value& value) noexcept -> bool {
             const up::value* const id{ value.find(member_name) };
             if (id != nullptr) {
-                ids.emplace_back(std::move(*id));
+                ids.emplace_back(*id);
             }
             return true; // false will abort
         }
@@ -1198,6 +1210,6 @@ inline std::vector<std::int64_t> database::values_to_ids(const std::vector<up::v
 #pragma GCC diagnostic ignored "-Wwrite-strings"
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized" // gcc-alpine
 extern "C" {
-#include <unqlite-src/unqlite.c>
+#include <unqlite-src/unqlite.c> // NOLINT(bugprone-suspicious-include)
 }
 #pragma GCC diagnostic pop
