@@ -68,6 +68,8 @@ namespace database
 
     template <class F, typename... Args>
     auto bind(F&& f, Args&&... args) noexcept;
+    template <class F, typename T>
+    auto bind(F&& f, std::initializer_list<T>&& args) noexcept;
 
     std::string video_key(const std::int64_t& id) noexcept;
 
@@ -78,7 +80,7 @@ namespace database
     std::optional<Data> execute(Data data) noexcept;
 
     std::optional<DataValue> extract_variable(Data data, const std::string& record_name) noexcept;
-    std::optional<DataValues> extract_variables(Data data, std::size_t count...) noexcept;
+    std::optional<DataValues> extract_variables(Data data, const std::initializer_list<std::string>& record_names) noexcept;
     std::optional<DataValueMember> find_member(DataValue data, const std::string& member_name) noexcept;
     std::vector<up::value> values_to_members(DataValue data, const std::string& member_name) noexcept;
     std::vector<std::int64_t> values_to_id_members(DataValue data) noexcept;
@@ -91,6 +93,13 @@ inline auto database::bind(F&& f, Args&&... args) noexcept
 {
     // NOLINTNEXTLINE(modernize-avoid-bind): can use auto deducing type
     return std::bind(std::forward<F>(f), std::placeholders::_1, std::forward<Args>(args)...);
+}
+
+template <class F, typename T>
+inline auto database::bind(F&& f, std::initializer_list<T>&& args) noexcept
+{
+    // NOLINTNEXTLINE(modernize-avoid-bind): can use auto deducing type
+    return std::bind(std::forward<F>(f), std::placeholders::_1, std::forward<std::initializer_list<T>>(args));
 }
 
 Database::Database(const std::filesystem::path& path, bool& create_ok) noexcept
@@ -339,7 +348,7 @@ std::optional<std::int64_t> Database::add_super_admin(const std::string& name, c
             .and_then(database::bind(database::bind_variable, "admin"s,
                                      up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::UserType::SUPER_ADMIN } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, 2, "success"s, "admin_id"s))
+            .and_then(database::bind(database::extract_variables, { "success"s, "admin_id"s }))
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
@@ -436,7 +445,7 @@ std::optional<std::int64_t> Database::add_admin(const std::string& name, const s
             .and_then(database::bind(database::bind_variable, "admin"s,
                                      up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::UserType::ADMIN } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, 2, "success"s, "admin_id"s))
+            .and_then(database::bind(database::extract_variables, { "success"s, "admin_id"s }))
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
@@ -461,7 +470,7 @@ std::optional<std::int64_t> Database::add_user(const std::string& name, const st
             .and_then(database::bind(database::bind_variable, "user"s,
                                      up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::UserType::USER } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, 2, "success"s, "user_id"s))
+            .and_then(database::bind(database::extract_variables, { "success"s, "user_id"s }))
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
@@ -759,7 +768,7 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
             .and_then(database::bind(database::bind_variable, "video"s,
                                      up::value::object{ { "title"s, title }, { "views"s, std::int64_t{ 0 } } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, 2, "success"s, "video_id"s))
+            .and_then(database::bind(database::extract_variables, { "success"s, "video_id"s }))
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
@@ -963,7 +972,7 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
             .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::bind(database::bind_variable, "user_id", user_id))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, 2, "user_type"s, "has_video_right"s))
+            .and_then(database::bind(database::extract_variables, { "user_type"s, "has_video_right"s }))
     };
 
     if (!has_video_right.has_value()) {
@@ -1105,26 +1114,17 @@ inline std::optional<database::DataValue> database::extract_variable(Data data, 
     return DataValue{ std::move(data), std::move(value->make_value()) };
 }
 
-inline std::optional<database::DataValues> database::extract_variables(Data data, std::size_t count...) noexcept
+inline std::optional<database::DataValues> database::extract_variables(Data data, const std::initializer_list<std::string>& record_names) noexcept
 {
-    // variadic template does not deduce type in std::bind
-    // NOLINTBEGIN(cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-    std::va_list record_names;
-    va_start(record_names, count);
-
     up::value::object values;
-    for (std::size_t i{ 0 }; i < count; ++i) {
-        const std::string record_name{ va_arg(record_names, const char*) };
+    for (const std::string& record_name : record_names) {
         std::optional value{ data.vm.extract(record_name) };
         if (value.has_value()) {
             values.emplace(record_name, std::move(value->make_value()));
         }
     }
 
-    va_end(record_names);
-    // NOLINTEND(cppcoreguidelines-pro-type-vararg, cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-
-    if (values.size() != count)
+    if (values.size() != record_names.size())
         return std::nullopt;
 
     return DataValues{ std::move(data), std::move(values) };
