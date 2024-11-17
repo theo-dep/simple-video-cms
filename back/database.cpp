@@ -15,6 +15,7 @@ extern "C" {
 #include <unqlitepp.hpp>
 #pragma GCC diagnostic pop
 
+#include <cstdarg>
 #include <fstream>
 #include <ranges>
 
@@ -64,13 +65,12 @@ namespace database
     std::optional<up::db> open(const std::filesystem::path& path, up::db_mode mode) noexcept;
     std::optional<Data> compile(up::db db, const std::string_view& jx9_program) noexcept;
 
-    std::optional<Data> bind_variables(Data data, const up::value::object& binding_map) noexcept;
+    std::optional<Data> bind_variable(Data data, const std::string& key, const up::value& value) noexcept;
     std::optional<Data> execute(Data data) noexcept;
 
     std::optional<DataValue> extract_variable(Data data, const std::string& record_name) noexcept;
-    std::optional<DataValues> extract_variables(Data data, const std::vector<std::string>& record_names) noexcept;
+    std::optional<DataValues> extract_variables(Data data, std::size_t count...) noexcept;
     std::optional<DataValueMember> find_member(DataValue data, const std::string& member_name) noexcept;
-    std::optional<DataValueMembers> find_members(DataValue data, const std::vector<std::string>& member_names) noexcept;
     std::vector<up::value> values_to_members(DataValue data, const std::string& member_name) noexcept;
     std::vector<std::int64_t> values_to_id_members(DataValue data) noexcept;
     std::vector<up::value> ids_to_values(const std::vector<std::int64_t>& ids) noexcept;
@@ -191,7 +191,7 @@ std::vector<std::int64_t> Database::video_list(const std::int64_t& user_id) cons
     const std::optional videos{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "user_id"s, user_id } }))
+            .and_then(database::bind(database::bind_variable, "user_id"s, user_id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "videos"s))
             .transform(database::values_to_id_members)
@@ -247,7 +247,7 @@ std::string Database::video_title(const std::int64_t& id) const noexcept
     const std::optional title{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "video"s))
             .and_then(database::bind(database::find_member, "title"s))
@@ -271,7 +271,7 @@ std::int64_t Database::video_views(const std::int64_t& id) const noexcept
     const std::optional views{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "video"s))
             .and_then(database::bind(database::find_member, "views"s))
@@ -327,15 +327,10 @@ std::optional<std::int64_t> Database::add_super_admin(const std::string& name, c
     std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
-                                up::value::object{ { "admin"s,
-                                                     up::value::object{
-                                                         { "name"s, name },
-                                                         { "password"s, password },
-                                                         { "salt"s, salt },
-                                                         { "type"s, database::user_type::SUPER_ADMIN } } } }))
+            .and_then(database::bind(database::bind_variable, "admin"s,
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::SUPER_ADMIN } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "admin_id"s }))
+            .and_then(database::bind(database::extract_variables, 2, "success"s, "admin_id"s))
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
@@ -356,7 +351,7 @@ bool Database::is_super_admin(const std::int64_t& id) const noexcept
     const std::optional user_type{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "admin"s))
             .and_then(database::bind(database::find_member, "type"s))
@@ -380,7 +375,7 @@ bool Database::is_admin(const std::int64_t& id) const noexcept
     const std::optional user_type{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "admin"s))
             .and_then(database::bind(database::find_member, "type"s))
@@ -404,7 +399,7 @@ bool Database::is_user(const std::int64_t& id) const noexcept
     const std::optional user_type{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "user"s))
             .and_then(database::bind(database::find_member, "type"s))
@@ -429,15 +424,10 @@ std::optional<std::int64_t> Database::add_admin(const std::string& name, const s
     std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
-                                up::value::object{ { "admin"s,
-                                                     up::value::object{
-                                                         { "name"s, name },
-                                                         { "password"s, password },
-                                                         { "salt"s, salt },
-                                                         { "type"s, database::user_type::ADMIN } } } }))
+            .and_then(database::bind(database::bind_variable, "admin"s,
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::ADMIN } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "admin_id"s }))
+            .and_then(database::bind(database::extract_variables, 2, "success"s, "admin_id"s))
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
@@ -459,14 +449,10 @@ std::optional<std::int64_t> Database::add_user(const std::string& name, const st
     std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
-                                up::value::object{ { "user"s, up::value::object{
-                                                                  { "name"s, name },
-                                                                  { "password"s, password },
-                                                                  { "salt"s, salt },
-                                                                  { "type"s, database::user_type::USER } } } }))
+            .and_then(database::bind(database::bind_variable, "user"s,
+                                     up::value::object{ { "name"s, name }, { "password"s, password }, { "salt"s, salt }, { "type"s, database::user_type::USER } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "user_id"s }))
+            .and_then(database::bind(database::extract_variables, 2, "success"s, "user_id"s))
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
@@ -489,7 +475,8 @@ bool Database::update_user(const std::int64_t& id, const std::string& password) 
     std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id }, { "password"s, password } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::bind(database::bind_variable, "password"s, password))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "success"s))
     };
@@ -512,7 +499,7 @@ bool Database::delete_user(const std::int64_t& id) const noexcept
     const std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "success"s))
     };
@@ -538,7 +525,7 @@ std::int64_t Database::user_id(const std::string& name) const noexcept
     const std::optional ids{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "username"s, name } }))
+            .and_then(database::bind(database::bind_variable, "username"s, name))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "users"s))
             .transform(database::values_to_id_members)
@@ -562,7 +549,7 @@ std::string Database::user_name(const std::int64_t& id) const noexcept
     const std::optional name{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "user"s))
             .and_then(database::bind(database::find_member, "name"s))
@@ -586,7 +573,7 @@ std::string Database::user_password(const std::int64_t& id) const noexcept
     const std::optional password{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "user"s))
             .and_then(database::bind(database::find_member, "password"s))
@@ -610,7 +597,7 @@ std::string Database::user_salt(const std::int64_t& id) const noexcept
     const std::optional salt{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "user"s))
             .and_then(database::bind(database::find_member, "salt"s))
@@ -707,7 +694,7 @@ std::vector<std::int64_t> Database::user_list() const noexcept
     const std::optional users{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "user_type"s, database::user_type::USER } }))
+            .and_then(database::bind(database::bind_variable, "user_type"s, database::user_type::USER))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "users"s))
             .transform(database::values_to_id_members)
@@ -734,9 +721,8 @@ std::vector<std::int64_t> Database::admin_list() const noexcept
     const std::optional admins{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
-                                up::value::object{
-                                    { "admin_type"s, database::user_type::ADMIN }, { "super_admin_type"s, database::user_type::SUPER_ADMIN } }))
+            .and_then(database::bind(database::bind_variable, "admin_type"s, database::user_type::ADMIN))
+            .and_then(database::bind(database::bind_variable, "super_admin_type"s, database::user_type::SUPER_ADMIN))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "admins"s))
             .transform(database::values_to_id_members)
@@ -761,13 +747,10 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
     std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
-                                up::value::object{ { "video"s,
-                                                     up::value::object{
-                                                         { "title"s, title },
-                                                         { "views"s, std::int64_t{ 0 } } } } }))
+            .and_then(database::bind(database::bind_variable, "video"s,
+                                     up::value::object{ { "title"s, title }, { "views"s, std::int64_t{ 0 } } }))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, std::vector{ "success"s, "video_id"s }))
+            .and_then(database::bind(database::extract_variables, 2, "success"s, "video_id"s))
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
@@ -804,8 +787,8 @@ bool Database::add_video_rights(const std::int64_t& id, const std::vector<std::i
     const std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(std::bind(database::bind_variables, std::placeholders::_1,
-                                up::value::object{ { "id"s, id }, { "user_ids"s, database::ids_to_values(user_ids) } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::bind(database::bind_variable, "user_ids"s, database::ids_to_values(user_ids)))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "success"s))
     };
@@ -839,7 +822,7 @@ bool database::delete_video_rights(const std::filesystem::path& path, const std:
     const std::optional success{
         database::open(path, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "success"s))
     };
@@ -877,7 +860,7 @@ bool Database::delete_video(const std::int64_t& id) const noexcept
     std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "success"s))
     };
@@ -911,7 +894,7 @@ bool Database::increment_video_views(const std::int64_t& id) const noexcept
     std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "success"s))
     };
@@ -938,7 +921,7 @@ bool Database::has_video_right(const std::int64_t& id) const noexcept
     const std::optional has_video_right{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "has_video_right"s))
     };
@@ -968,9 +951,10 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
     std::optional has_video_right{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id }, { "user_id", user_id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::bind(database::bind_variable, "user_id", user_id))
             .and_then(database::execute)
-            .and_then(database::bind(database::extract_variables, std::vector{ "user_type"s, "has_video_right"s }))
+            .and_then(database::bind(database::extract_variables, 2, "user_type"s, "has_video_right"s))
     };
 
     if (!has_video_right.has_value()) {
@@ -998,7 +982,7 @@ std::vector<std::int64_t> Database::video_right_list(const std::int64_t& id) con
     const std::optional video_rights{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .and_then(database::bind(database::compile, jx9_prog))
-            .and_then(database::bind(database::bind_variables, up::value::object{ { "id"s, id } }))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
             .and_then(database::execute)
             .and_then(database::bind(database::extract_variable, "video_rights"s))
             .transform(database::bind(database::values_to_members, "user_id"s))
@@ -1084,13 +1068,11 @@ inline std::optional<database::Data> database::compile(up::db db, const std::str
     return Data{ std::move(db), std::move(vm.value()) };
 }
 
-inline std::optional<database::Data> database::bind_variables(Data data, const up::value::object& binding_map) noexcept
+inline std::optional<database::Data> database::bind_variable(Data data, const std::string& key, const up::value& value) noexcept
 {
-    for (const auto& [key, value] : binding_map) {
-        if (!data.vm.bind(key, value)) {
-            logging::error{ "Fail to bind key: {}", key };
-            return std::nullopt;
-        }
+    if (!data.vm.bind(key, value)) {
+        logging::error{ "Fail to bind key: {}", key };
+        return std::nullopt;
     }
     return data;
 }
@@ -1114,17 +1096,23 @@ inline std::optional<database::DataValue> database::extract_variable(Data data, 
     return DataValue{ std::move(data), std::move(value->make_value()) };
 }
 
-inline std::optional<database::DataValues> database::extract_variables(Data data, const std::vector<std::string>& record_names) noexcept
+inline std::optional<database::DataValues> database::extract_variables(Data data, std::size_t count...) noexcept
 {
+    std::va_list record_names;
+    va_start(record_names, count);
+
     up::value::object values;
-    for (const std::string& record_name : record_names) {
+    for (std::size_t i{ 0 }; i < count; ++i) {
+        const std::string record_name{ va_arg(record_names, std::string) };
         std::optional value{ data.vm.extract(record_name) };
         if (value.has_value()) {
             values.emplace(record_name, std::move(value->make_value()));
         }
     }
 
-    if (values.size() != record_names.size())
+    va_end(record_names);
+
+    if (values.size() != count)
         return std::nullopt;
 
     return DataValues{ std::move(data), std::move(values) };
@@ -1149,34 +1137,6 @@ inline std::optional<database::DataValueMember> database::find_member(DataValue 
         return std::nullopt;
 
     return DataValueMember{ std::move(data), std::move(member) };
-}
-
-inline std::optional<database::DataValueMembers> database::find_members(DataValue data, const std::vector<std::string>& member_names) noexcept
-{
-    if (!data.value.is_object())
-        return std::nullopt;
-
-    up::value::object members;
-    // FIXME: always return false, to not test
-    data.value.foreach_object([&member_names, &members](const std::string& key, const up::value& value) -> bool {
-        if (std::ranges::find(member_names, key) != member_names.cend()) {
-            members.emplace(key, value);
-        }
-        return true; // false will abort
-    });
-
-    // FIXME: infinite recursion
-    // for (const std::string& member_name : member_names) {
-    //    up::value* const member{ data.value.find(member_name) };
-    //    if (member != nullptr) {
-    //        members.emplace(member_name, std::move(*member));
-    //    }
-    //}
-
-    if (members.size() != member_names.size())
-        return std::nullopt;
-
-    return DataValueMembers{ std::move(data), std::move(members) };
 }
 
 inline std::vector<up::value> database::values_to_members(DataValue data, const std::string& member_name) noexcept
@@ -1223,7 +1183,7 @@ inline std::vector<up::value> database::ids_to_values(const std::vector<std::int
 inline std::vector<std::int64_t> database::values_to_ids(const std::vector<up::value>& values) noexcept
 {
     std::vector<std::int64_t> ids(values.size());
-    std::ranges::transform(values, ids.begin(), std::bind(&up::value::get_int, std::placeholders::_1));
+    std::ranges::transform(values, ids.begin(), bind(&up::value::get_int));
     return ids;
 }
 

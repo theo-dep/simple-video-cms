@@ -53,5 +53,5 @@ public:
     std::vector<std::int64_t> video_right_list(const std::int64_t& id) const noexcept;
 
 private:
-    std::filesystem::path path_;
+    const std::filesystem::path path_;
 };
