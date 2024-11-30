@@ -12,7 +12,7 @@ pushd ${FFMPEG_DIR}
     --disable-everything \
     --enable-decoder=h264 \
     --enable-parser=h264 \
-    --enable-demuxer=mp4 \
+    --enable-demuxer=mov,mp4,m4a,3gp,3g2,mj2 \
     --enable-swscale \
     --enable-avformat \
     --enable-avcodec \
