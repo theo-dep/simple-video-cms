@@ -38,4 +38,5 @@ WarningsAsErrors: "*"
 
 FormatStyle: "file"
 
-HeaderFilterRegex: "^(builder/third-party/.*)$"
+# not <>, only ""
+HeaderFilterRegex: "^\"[:lower:]*\\.h\"$"

@@ -20,7 +20,7 @@ std::vector<std::int64_t> search::extract(const std::string& search,
     const rapidfuzz::fuzz::CachedPartialTokenSetRatio scorer_set(processed_search);
     const rapidfuzz::fuzz::CachedPartialTokenSortRatio scorer_sort(processed_search);
 
-    std::multimap<double, std::string, std::greater<double>> scored_result_map;
+    std::multimap<double, std::string, std::greater<>> scored_result_map;
 
     using choice_type = std::remove_cvref_t<decltype(choices)>::value_type;
     using score_type = decltype(scored_result_map)::value_type;
