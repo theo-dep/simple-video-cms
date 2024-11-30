@@ -56,6 +56,7 @@ namespace server
 
     void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
+    void thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
 }
 
 int server::start() noexcept
@@ -114,7 +115,8 @@ int server::start() noexcept
         .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/watch-video/:video_id", sc::serve(watch_video, std::ref(env), std::cref(session), std::cref(client)))
-        .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)));
+        .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)))
+        .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(session), std::cref(client)));
 
     constexpr const char* host{ "0.0.0.0" };
     constexpr int port{ 8080 };
@@ -827,4 +829,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const std::string video_id{ req.path_params.at("video_id") };
     const std::string video_content{ client.video(video_id) };
     res.set_content(video_content, "video/mp4");
+}
+
+inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
+{
+    if (!has_video_right(req, res, session, client))
+        return;
+
+    const std::string video_id{ req.path_params.at("video_id") };
+    const std::string thumbnail_content{ client.thumbnail(video_id) };
+    res.set_content(thumbnail_content, "image/png");
 }

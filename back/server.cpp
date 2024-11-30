@@ -6,6 +6,7 @@
 #include "search.h"
 #include "servercommon.h"
 #include "stringutils.h"
+#include "video.h"
 
 #include <httplib.h>
 
@@ -50,6 +51,7 @@ namespace server
     void delete_video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void increment_video_views(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
+    void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
 
     void video_right_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
@@ -116,6 +118,7 @@ int server::start() noexcept
         .Post("/delete-video/:video_id", sc::serve(delete_video, std::cref(db)))
         .Post("/increment-video-views/:video_id", sc::serve(increment_video_views, std::cref(db)))
         .Get("/video/:video_id", sc::serve(video, std::cref(db)))
+        .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
         .Get("/has-video-right/:video_id", sc::serve(has_video_right, std::cref(db)))
 
         .Get("/video-right-list/:video_id", sc::serve(video_right_list, std::cref(db)));
@@ -429,9 +432,13 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::string video_title{ req.get_file_value("title").content };
     const std::string video_content{ req.get_file_value("video").content };
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
+    const std::string thumbnail_content{ video::extract_first_frame(video_content) };
 
     const std::optional success{
         db.add_video(video_title, video_content)
+            .and_then([&](const std::int64_t& video_id) noexcept -> std::optional<std::int64_t> {
+                return db.add_video_thumbnail(video_id, thumbnail_content);
+            })
             .transform([&](const std::int64_t& video_id) noexcept -> bool {
                 return db.add_video_rights(video_id, transform(allowed_user_ids));
             })
@@ -489,6 +496,22 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
         "video/mp4",          // Content type
         [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
             sink.write(&video_content[offset], std::min(length, data_chunk_size));
+            return true; // return 'false' if you want to cancel the process.
+        },
+        [](bool /*success*/) noexcept { /*release*/ });
+}
+
+inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+{
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string thumbnail_content{ db.thumbnail(video_id) };
+
+    static constexpr std::size_t data_chunk_size{ static_cast<std::size_t>(4LL * 1024LL) };
+    res.set_content_provider(
+        thumbnail_content.size(), // Content length
+        "image/png",              // Content type
+        [thumbnail_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+            sink.write(&thumbnail_content[offset], std::min(length, data_chunk_size));
             return true; // return 'false' if you want to cancel the process.
         },
         [](bool /*success*/) noexcept { /*release*/ });

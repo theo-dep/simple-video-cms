@@ -19,7 +19,17 @@ do
 done
 
 echo Build back...
-make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS} ${common_objets}"
+FFMPEG_DIR=${COMMON_DIR}/third-party/ffmpeg
+FFMPEG_LIBS=" \
+    -L${FFMPEG_DIR}/libavformat -lavformat \
+    -L${FFMPEG_DIR}/libavcodec -lavcodec \
+    -L${FFMPEG_DIR}/libavdevice -lavdevice \
+    -L${FFMPEG_DIR}/libavfilter -lavfilter \
+    -L${FFMPEG_DIR}/libavutil -lavutil \
+    -L${FFMPEG_DIR}/libswresample -lswresample \
+    -L${FFMPEG_DIR}/libswscale -lswscale \
+"
+make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS} -I${FFMPEG_DIR}" LDFLAGS="${LDFLAGS} ${common_objets} ${FFMPEG_LIBS}"
 
 echo Build front...
 make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS} ${common_objets}"

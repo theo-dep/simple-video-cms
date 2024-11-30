@@ -1,3 +1,9 @@
 [submodule "builder/third-party/ffmpeg"]
 	path = builder/third-party/ffmpeg
 	url = https://git.ffmpeg.org/ffmpeg.git
+[submodule "builder/third-party/libpng"]
+	path = builder/third-party/libpng
+	url = https://github.com/pnggroup/libpng.git
+[submodule "builder/third-party/zlib"]
+	path = builder/third-party/zlib
+	url = https://github.com/madler/zlib.git
