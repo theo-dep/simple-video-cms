@@ -47,3 +47,9 @@
 - v2.0.1
 - https://github.com/D7EAD/HashPlusPlus
 - MIT License
+
+## FFmpeg
+
+- v7.1.0
+- https://git.ffmpeg.org/gitweb/ffmpeg.git
+- GNU LGPL v2 and GPL v2 for parts upgraded to v3
