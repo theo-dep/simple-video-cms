@@ -8,13 +8,15 @@ extern "C" {
 #include <libavutil/imgutils.h>
 #include <libavutil/mem.h>
 #include <libswscale/swscale.h>
+
+#include <png.h>
 }
 
 #include <algorithm>
 #include <cstring>
 #include <memory>
 #include <span>
-#include <string>
+#include <vector>
 
 namespace video
 {
@@ -50,7 +52,8 @@ namespace video
     using BufferData = std::span<char const>;
     int read_packet(void* opaque, std::uint8_t* buf, int buf_size) noexcept;
 
-    std::string encode_ppm(const std::uint8_t* rgb_data, int width, int height) noexcept;
+    std::string frame_to_png(const AVFrame* frame, int width, int height) noexcept;
+    void write_data(png_structp png_ptr, png_bytep data, png_size_t length) noexcept;
 }
 
 std::string video::extract_first_frame(const std::string& video_content, const std::string& format, std::int64_t timestamp) noexcept
@@ -212,7 +215,7 @@ std::string video::extract_first_frame(const std::string& video_content, const s
             return {};
         }
 
-        image = encode_ppm(buffer.get(), codec_ctx->width, codec_ctx->height);
+        image = frame_to_png(frame_rgb.get(), codec_ctx->width, codec_ctx->height);
     }
 
     return image;
@@ -239,10 +242,48 @@ inline int video::read_packet(void* opaque, std::uint8_t* buf, int buf_size) noe
     return buf_size;
 }
 
-inline std::string video::encode_ppm(const std::uint8_t* rgb_data, int width, int height) noexcept
+inline std::string video::frame_to_png(const AVFrame* frame, int width, int height) noexcept
 {
-    std::string ppm;
-    ppm += "P6\n" + std::to_string(width) + " " + std::to_string(height) + "\n255\n";
-    ppm.append(reinterpret_cast<const char*>(rgb_data), width * height * 3);
-    return ppm;
+    png_structp png_ptr{ png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
+    if (!png_ptr) {
+        logging::error{ "Could not create PNG writer" };
+        return {};
+    }
+
+    png_infop info_ptr{ png_create_info_struct(png_ptr) };
+    if (!info_ptr) {
+        png_destroy_write_struct(&png_ptr, nullptr);
+        logging::error{ "Could not create PNG info" };
+        return {};
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr))) {
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        logging::error{ "Could not create PNG image" };
+        return {};
+    }
+
+    std::ostringstream png_stream;
+    png_set_write_fn(png_ptr, &png_stream, write_data, nullptr);
+
+    png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGB,
+                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+    std::vector<png_bytep> row_pointers(height);
+    for (std::size_t y{ 0 }; y < static_cast<std::size_t>(height); ++y) {
+        row_pointers[y] = frame->data[0] + y * frame->linesize[0];
+    }
+
+    png_set_rows(png_ptr, info_ptr, row_pointers.data());
+    png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
+
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+
+    return png_stream.str();
+}
+
+inline void video::write_data(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
+{
+    std::ostringstream* out_stream{ reinterpret_cast<std::ostringstream*>(png_get_io_ptr(png_ptr)) };
+    out_stream->write(reinterpret_cast<const char*>(data), length);
 }

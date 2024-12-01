@@ -8,7 +8,7 @@ CXXFLAGS="-g -DDEBUG_LOG -I${COMMON_DIR}/third-party -I${COMMON_DIR}"
 LDFLAGS=""
 
 echo Build common...
-declare -a commons=($(find ${COMMON_DIR} -type f -name "*.cpp" -exec basename {} .cpp \;))
+declare -a commons=($(find ${COMMON_DIR} -maxdepth 1 -type f -name "*.cpp" -exec basename {} .cpp \;))
 declare -a common_objets
 for common in "${commons[@]}"
 do
@@ -19,6 +19,8 @@ do
 done
 
 echo Build back...
+ZLIB_DIR=${COMMON_DIR}/third-party/zlib
+LIBPNG_DIR=${COMMON_DIR}/third-party/libpng
 FFMPEG_DIR=${COMMON_DIR}/third-party/ffmpeg
 FFMPEG_LIBS=" \
     -L${FFMPEG_DIR}/libavformat -lavformat \
@@ -28,8 +30,10 @@ FFMPEG_LIBS=" \
     -L${FFMPEG_DIR}/libavutil -lavutil \
     -L${FFMPEG_DIR}/libswresample -lswresample \
     -L${FFMPEG_DIR}/libswscale -lswscale \
+    -L${LIBPNG_DIR}/.libs -lpng \
+    -L${ZLIB_DIR} -lz \
 "
-make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS} -I${FFMPEG_DIR}" LDFLAGS="${LDFLAGS} ${common_objets} ${FFMPEG_LIBS}"
+make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS} -I${FFMPEG_DIR} -I${LIBPNG_DIR}" LDFLAGS="${LDFLAGS} ${common_objets} ${FFMPEG_LIBS}"
 
 echo Build front...
 make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS} ${common_objets}"

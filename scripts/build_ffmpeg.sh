@@ -3,6 +3,27 @@
 SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
 SOURCE_DIR=${SCRIPT_DIR}/..
 
+ZLIB_DIR=${SOURCE_DIR}/builder/third-party/zlib
+
+echo Configure zlib
+pushd ${ZLIB_DIR}
+./configure --static
+popd
+
+echo Build zlib
+make -C ${ZLIB_DIR} -j -k
+
+LIBPNG_DIR=${SOURCE_DIR}/builder/third-party/libpng
+
+echo Configure libpng
+pushd ${LIBPNG_DIR}
+export LDFLAGS=-L${ZLIB_DIR}
+./configure --disable-shared --enable-static
+popd
+
+echo Build libpng
+make -C ${LIBPNG_DIR} -j -k
+
 FFMPEG_DIR=${SOURCE_DIR}/builder/third-party/ffmpeg
 
 echo Configure FFmpeg
