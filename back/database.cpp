@@ -936,21 +936,24 @@ bool Database::delete_video(const std::int64_t& id) const noexcept
             .and_then(database::bind(database::extract_variable, "success"s))
     };
 
-    if (!success.has_value()) {
+    if (!success.has_value() || !success->value.get_bool()) {
         logging::error{ "Fail to delete video \"{}\"", id };
         return false;
     }
 
-    up::db_kv_write_status status{};
-    std::string_view error_text;
-    if (!success->db.remove(database::video_key(id), &status, &error_text)) {
-        logging::error{ "Fail to delete video \"{}\"", id };
-        logging::error{ "{}: {}. {}",
-                        up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
-        return false;
+    bool key_deleted{ true };
+    for (const std::string& key : { database::video_key(id), database::thumbnail_key(id) }) {
+        up::db_kv_write_status status{};
+        std::string_view error_text;
+        if (!success->db.remove(key, &status, &error_text)) {
+            logging::error{ "Fail to delete video key \"{}\" of id \"{}\"", key, id };
+            logging::error{ "{}: {}. {}",
+                            up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
+            key_deleted = false;
+        }
     }
 
-    return success->value.get_bool();
+    return key_deleted;
 }
 
 bool Database::increment_video_views(const std::int64_t& id) const noexcept
