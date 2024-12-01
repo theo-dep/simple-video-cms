@@ -30,15 +30,14 @@ echo Configure FFmpeg
 pushd ${FFMPEG_DIR}
 ./configure \
     --enable-version3 \
-    --disable-everything \
-    --enable-decoder=h264 \
-    --enable-parser=h264 \
-    --enable-demuxer=mov,mp4,m4a,3gp,3g2,mj2 \
     --enable-swscale \
     --enable-avformat \
     --enable-avcodec \
     --enable-avutil \
+    --disable-protocols \
     --disable-zlib \
+    --disable-bzlib \
+    --disable-lzma \
     --disable-libdrm \
     --disable-programs \
     --disable-doc \

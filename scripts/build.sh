@@ -27,9 +27,9 @@ FFMPEG_LIBS=" \
     -L${FFMPEG_DIR}/libavcodec -lavcodec \
     -L${FFMPEG_DIR}/libavdevice -lavdevice \
     -L${FFMPEG_DIR}/libavfilter -lavfilter \
-    -L${FFMPEG_DIR}/libavutil -lavutil \
     -L${FFMPEG_DIR}/libswresample -lswresample \
     -L${FFMPEG_DIR}/libswscale -lswscale \
+    -L${FFMPEG_DIR}/libavutil -lavutil \
     -L${LIBPNG_DIR}/.libs -lpng \
     -L${ZLIB_DIR} -lz \
 "
