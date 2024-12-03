@@ -59,12 +59,13 @@ namespace video
     int read_packet(void* opaque, std::uint8_t* buffer, int buffer_size) noexcept;
     std::int64_t seek(void* opaque, std::int64_t offset, int whence) noexcept;
 
-    std::string decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame) noexcept;
+    std::string decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame, std::size_t width, std::size_t height) noexcept;
     std::string frame_to_png(const AVFrame* frame) noexcept;
     void write_data(png_structp png_ptr, png_bytep data, png_size_t length) noexcept;
 }
 
-std::string video::extract_first_frame(const std::string& video_content, const std::string& format, std::int64_t timestamp) noexcept
+std::string video::extract_first_frame(const std::string& video_content, const std::string& format, std::int64_t timestamp,
+                                       std::size_t width, std::size_t height) noexcept
 {
 #ifndef NDEBUG
     av_log_set_level(AV_LOG_DEBUG);
@@ -192,7 +193,7 @@ std::string video::extract_first_frame(const std::string& video_content, const s
     std::string image;
     while (av_read_frame(format_context.get(), input_packet.get()) >= 0 && image.empty()) {
         if (input_packet->stream_index == video_stream_index) {
-            image = decode_packet(input_packet.get(), codec_context.get(), input_frame.get());
+            image = decode_packet(input_packet.get(), codec_context.get(), input_frame.get(), width, height);
         }
     }
 
@@ -241,7 +242,7 @@ inline std::int64_t video::seek(void* opaque, std::int64_t offset, int whence) n
     return pos;
 }
 
-inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame) noexcept
+inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame, std::size_t width, std::size_t height) noexcept
 {
     if (const int ret{ avcodec_send_packet(codec_context, packet) }; ret < 0) {
         logging::error{ "Could not send frame packet: {}", err2str(ret) };
@@ -274,7 +275,26 @@ inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* 
                 logging::info{ "Warning: the generated file may not be a grayscale image, but could e.g. be just the R component if the video format is RGB" };
             }
 
-            SwsContextPtr color_context(sws_getContext(codec_context->width, codec_context->height, codec_context->pix_fmt, codec_context->width, codec_context->height, AV_PIX_FMT_RGB24, SWS_BILINEAR, nullptr, nullptr, nullptr));
+            // Calculate aspect ratio of the source frame
+            const double src_aspect_ratio{ static_cast<double>(frame->width) / frame->height };
+            const double target_aspect_ratio{ static_cast<double>(width) / height };
+
+            std::size_t scaled_width{ 0 }, scaled_height{ 0 };
+            std::size_t x_offset{ 0 }, y_offset{ 0 };
+
+            if (src_aspect_ratio > target_aspect_ratio) {
+                // Fit width, add padding to height
+                scaled_width = width;
+                scaled_height = static_cast<std::size_t>(width / src_aspect_ratio);
+                y_offset = (height - scaled_height) / 2;
+            } else {
+                // Fit height, add padding to width
+                scaled_width = static_cast<std::size_t>(height * src_aspect_ratio);
+                scaled_height = height;
+                x_offset = (width - scaled_width) / 2;
+            }
+
+            SwsContextPtr color_context(sws_getContext(codec_context->width, codec_context->height, codec_context->pix_fmt, scaled_width, scaled_height, AV_PIX_FMT_RGB24, SWS_BICUBIC, nullptr, nullptr, nullptr));
             if (color_context == nullptr) {
                 logging::error{ "Could not allocate color conversion context" };
                 return {};
@@ -288,8 +308,8 @@ inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* 
 
             // Set the properties of the output AVFrame
             rgb_frame->format = AV_PIX_FMT_RGB24;
-            rgb_frame->width = frame->width;
-            rgb_frame->height = frame->height;
+            rgb_frame->width = scaled_width;
+            rgb_frame->height = scaled_height;
 
             if (const int ret{ av_frame_get_buffer(rgb_frame.get(), 0) }; ret < 0) {
                 logging::error{ "Could not prepare RGB frame: {}", err2str(ret) };
@@ -301,7 +321,29 @@ inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* 
                 return {};
             }
 
-            return frame_to_png(rgb_frame.get());
+            AVFramePtr final_rgb_frame(av_frame_alloc());
+            if (final_rgb_frame == nullptr) {
+                logging::error{ "Could not allocate final RGB frame" };
+                return {};
+            }
+
+            // Copy scaled content into padded frame
+            final_rgb_frame->format = AV_PIX_FMT_RGB24;
+            final_rgb_frame->width = width;
+            final_rgb_frame->height = height;
+
+            if (const int ret{ av_image_alloc(final_rgb_frame->data, final_rgb_frame->linesize, width, height, AV_PIX_FMT_RGB24, 32) }; ret < 0) {
+                logging::error{ "Could not allocate final image data RGB frame: {}", err2str(ret) };
+                return {};
+            }
+
+            for (std::size_t y{ 0 }; y < scaled_height; ++y) {
+                std::memcpy(final_rgb_frame->data[0] + (y + y_offset) * final_rgb_frame->linesize[0] + x_offset * 3, // For RGB24
+                            rgb_frame->data[0] + y * rgb_frame->linesize[0],
+                            scaled_width * 3);
+            }
+
+            return frame_to_png(final_rgb_frame.get());
         }
     }
 
