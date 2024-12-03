@@ -17,7 +17,11 @@ LIBPNG_DIR=${SOURCE_DIR}/builder/third-party/libpng
 
 echo Configure libpng
 pushd ${LIBPNG_DIR}
-export LDFLAGS=-L${ZLIB_DIR}
+export ZLIBLIB="${ZLIB_DIR}"
+export ZLIBINC="${ZLIB_DIR}"
+export CPPFLAGS="-I${ZLIB_DIR}"
+export LDFLAGS="-L${ZLIB_DIR}"
+export  LD_LIBRARY_PATH="${ZLIB_DIR}:$LD_LIBRARY_PATH"
 ./configure --disable-shared --enable-static
 popd
 

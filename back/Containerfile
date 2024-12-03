@@ -2,8 +2,8 @@ FROM alpine-builder AS builder
 
 ADD *.h *.cpp ${SOURCE_DIR}/
 
-#RUN mariadb_config
-RUN make -C ${SOURCE_DIR} -j -k server CXXFLAGS="${CXXFLAGS}" && strip ${SOURCE_DIR}/server
+RUN make -C ${SOURCE_DIR} -j -k server LDFLAGS="-lavformat -lavcodec -lavdevice -lavfilter -lswresample -lswscale -lavutil -lpng -lz" \
+    && strip ${SOURCE_DIR}/server
 
 # --------------------------------------------------------------------------------
 FROM scratch

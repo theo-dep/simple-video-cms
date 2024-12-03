@@ -2,9 +2,40 @@ FROM alpine:3.20.2
 
 RUN apk add --no-cache \
     make \
+    gcc \
+    yasm \
     g++
 
 ENV SOURCE_DIR=/sources
 ENV CXXFLAGS="-O3 -I${SOURCE_DIR} -DNDEBUG"
 
 ADD *.h *.cpp Makefile third-party/ ${SOURCE_DIR}/
+
+# Build zlib
+RUN cd "${SOURCE_DIR}/zlib"  \
+    && ./configure --static \
+    && make -j -k \
+    && make install
+# Build libpng
+RUN cd "${SOURCE_DIR}/libpng" \
+    && ./configure --disable-shared --enable-static \
+    && make -j -k \
+    && make install
+# Build FFmpeg
+RUN cd "${SOURCE_DIR}/ffmpeg" \
+    && ./configure \
+    --enable-version3 \
+    --enable-swscale \
+    --enable-avformat \
+    --enable-avcodec \
+    --enable-avutil \
+    --disable-protocols \
+    --disable-zlib \
+    --disable-bzlib \
+    --disable-lzma \
+    --disable-libdrm \
+    --disable-programs \
+    --disable-doc \
+    --disable-network  \
+    && make -j -k \
+    && make install

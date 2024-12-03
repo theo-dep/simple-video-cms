@@ -3,6 +3,10 @@
 SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
 SOURCE_DIR=${SCRIPT_DIR}/..
 
+make -C ${SOURCE_DIR}/builder/third-party/ffmpeg distclean -i
+make -C ${SOURCE_DIR}/builder/third-party/libpng distclean -i
+make -C ${SOURCE_DIR}/builder/third-party/zlib distclean -i
+
 make -C ${SOURCE_DIR}/back clean
 make -C ${SOURCE_DIR}/front clean
 
