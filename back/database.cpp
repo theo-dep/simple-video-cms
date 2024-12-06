@@ -100,7 +100,7 @@ template <class F, typename T>
 inline auto database::bind(F&& f, std::initializer_list<T>&& args) noexcept
 {
     // NOLINTNEXTLINE(modernize-avoid-bind): can use auto deducing type
-    return std::bind(std::forward<F>(f), std::placeholders::_1, std::forward<std::initializer_list<T>>(args));
+    return std::bind(std::forward<F>(f), std::placeholders::_1, std::move(args));
 }
 
 Database::Database(const std::filesystem::path& path, bool& create_ok) noexcept
@@ -218,7 +218,7 @@ std::vector<std::int64_t> Database::video_list(const std::int64_t& user_id) cons
     };
 
     if (!videos.has_value()) {
-        logging::error{ "Fail to fetch all videos for user \"{}\"", user_id };
+        logging::error{ R"(Fail to fetch all videos for user "{}")", user_id };
         return {};
     }
 
@@ -274,7 +274,7 @@ std::string Database::video_title(const std::int64_t& id) const noexcept
     };
 
     if (!title.has_value()) {
-        logging::error{ "Fail to fetch video title \"{}\"", id };
+        logging::error{ R"(Fail to fetch video title "{}")", id };
         return {};
     }
 
@@ -298,7 +298,7 @@ std::int64_t Database::video_views(const std::int64_t& id) const noexcept
     };
 
     if (!views.has_value()) {
-        logging::error{ "Fail to fetch video views \"{}\"", id };
+        logging::error{ R"(Fail to fetch video views "{}")", id };
         return 0;
     }
 
@@ -326,7 +326,7 @@ std::string Database::video(const std::int64_t& id) const noexcept
     };
 
     if (!video.has_value()) {
-        logging::error{ "Fail to fetch video \"{}\"", id };
+        logging::error{ R"(Fail to fetch video "{}")", id };
         if (status != up::db_kv_read_status::OK)
             logging::error{ "{}: {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status) };
         return {};
@@ -356,7 +356,7 @@ std::string Database::thumbnail(const std::int64_t& id) const noexcept
     };
 
     if (!thumbnail.has_value()) {
-        logging::error{ "Fail to fetch thumbnail \"{}\"", id };
+        logging::error{ R"(Fail to fetch thumbnail "{}")", id };
         if (status != up::db_kv_read_status::OK)
             logging::error{ "{}: {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status) };
         return {};
@@ -383,7 +383,7 @@ std::optional<std::int64_t> Database::add_super_admin(const std::string& name, c
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
-        logging::error{ "Fail to add super admin \"{}\"", name };
+        logging::error{ R"(Fail to add super admin "{}")", name };
         return std::nullopt;
     }
 
@@ -407,7 +407,7 @@ bool Database::is_super_admin(const std::int64_t& id) const noexcept
     };
 
     if (!user_type.has_value()) {
-        logging::error{ "Fail to get super admin \"{}\"", id };
+        logging::error{ R"(Fail to get super admin "{}")", id };
         return false;
     }
 
@@ -431,7 +431,7 @@ bool Database::is_admin(const std::int64_t& id) const noexcept
     };
 
     if (!user_type.has_value()) {
-        logging::error{ "Fail to get admin \"{}\"", id };
+        logging::error{ R"(Fail to get admin "{}")", id };
         return false;
     }
 
@@ -455,7 +455,7 @@ bool Database::is_user(const std::int64_t& id) const noexcept
     };
 
     if (!user_type.has_value()) {
-        logging::error{ "Fail to get user \"{}\"", id };
+        logging::error{ R"(Fail to get user "{}")", id };
         return false;
     }
 
@@ -480,7 +480,7 @@ std::optional<std::int64_t> Database::add_admin(const std::string& name, const s
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
-        logging::error{ "Fail to add admin \"{}\"", name };
+        logging::error{ R"(Fail to add admin "{}")", name };
         return std::nullopt;
     }
 
@@ -505,7 +505,7 @@ std::optional<std::int64_t> Database::add_user(const std::string& name, const st
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
-        logging::error{ "Fail to add user \"{}\"", name };
+        logging::error{ R"(Fail to add user "{}")", name };
         return std::nullopt;
     }
 
@@ -531,7 +531,7 @@ bool Database::update_user(const std::int64_t& id, const std::string& password) 
     };
 
     if (!success.has_value()) {
-        logging::error{ "Fail to update admin \"{}\"", id };
+        logging::error{ R"(Fail to update admin "{}")", id };
         return false;
     }
 
@@ -554,7 +554,7 @@ bool Database::delete_user(const std::int64_t& id) const noexcept
     };
 
     if (!success.has_value()) {
-        logging::error{ "Fail to delete user \"{}\"", id };
+        logging::error{ R"(Fail to delete user "{}")", id };
         return false;
     }
 
@@ -581,7 +581,7 @@ std::int64_t Database::user_id(const std::string& name) const noexcept
     };
 
     if (!ids.has_value() || ids->empty()) {
-        logging::debug{ "Fail to fetch user \"{}\"", name }; // debug not error because user may not exist
+        logging::debug{ R"(Fail to fetch user "{}")", name }; // debug not error because user may not exist
         return -1;
     }
 
@@ -605,7 +605,7 @@ std::string Database::user_name(const std::int64_t& id) const noexcept
     };
 
     if (!name.has_value()) {
-        logging::error{ "Fail to fetch user name \"{}\"", id };
+        logging::error{ R"(Fail to fetch user name "{}")", id };
         return {};
     }
 
@@ -629,7 +629,7 @@ std::string Database::user_password(const std::int64_t& id) const noexcept
     };
 
     if (!password.has_value()) {
-        logging::error{ "Fail to fetch user password \"{}\"", id };
+        logging::error{ R"(Fail to fetch user password "{}")", id };
         return {};
     }
 
@@ -653,7 +653,7 @@ std::string Database::user_salt(const std::int64_t& id) const noexcept
     };
 
     if (!salt.has_value()) {
-        logging::error{ "Fail to fetch user salt \"{}\"", id };
+        logging::error{ R"(Fail to fetch user salt "{}")", id };
         return {};
     }
 
@@ -803,7 +803,7 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
     };
 
     if (!success.has_value() || success->values.size() != 2 || !success->values["success"s].get_bool()) {
-        logging::error{ "Fail to add video \"{}\"", title };
+        logging::error{ R"(Fail to add video "{}")", title };
         return std::nullopt;
     }
 
@@ -813,7 +813,7 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
     up::db_kv_write_status status{};
     std::string_view error_text;
     if (!success->db.store(database::video_key(video_id), video, &status, &error_text)) {
-        logging::error{ "Fail to add video \"{}\"", video_id };
+        logging::error{ R"(Fail to add video "{}")", video_id };
         logging::error{ "{}: {}. {}",
                         up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
         return std::nullopt;
@@ -835,7 +835,7 @@ std::optional<std::int64_t> Database::add_video_thumbnail(const std::int64_t& id
     };
 
     if (!success.value_or(false)) {
-        logging::error{ "Fail to add thumbnail \"{}\"", id };
+        logging::error{ R"(Fail to add thumbnail "{}")", id };
         logging::error{ "{}: {}. {}",
                         up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
         return std::nullopt;
@@ -865,7 +865,7 @@ bool Database::add_video_rights(const std::int64_t& id, const std::vector<std::i
     };
 
     if (!success.has_value()) {
-        logging::error{ "Fail to add video rights \"{}\"", id };
+        logging::error{ R"(Fail to add video rights "{}")", id };
         return false;
     }
 
@@ -899,7 +899,7 @@ bool database::delete_video_rights(const std::filesystem::path& path, const std:
     };
 
     if (!success.has_value()) {
-        logging::error{ "Fail to delete video rights \"{}\"", id };
+        logging::error{ R"(Fail to delete video rights "{}")", id };
         return false;
     }
 
@@ -909,7 +909,7 @@ bool database::delete_video_rights(const std::filesystem::path& path, const std:
 bool Database::update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept
 {
     if (!database::delete_video_rights(path_, id)) {
-        logging::error{ "Fail to delete video rights \"{}\"", id };
+        logging::error{ R"(Fail to delete video rights "{}")", id };
         return false;
     }
 
@@ -919,7 +919,7 @@ bool Database::update_video_rights(const std::int64_t& id, const std::vector<std
 bool Database::delete_video(const std::int64_t& id) const noexcept
 {
     if (!database::delete_video_rights(path_, id)) {
-        logging::error{ "Fail to delete video rights \"{}\"", id };
+        logging::error{ R"(Fail to delete video rights "{}")", id };
         return false;
     }
 
@@ -937,7 +937,7 @@ bool Database::delete_video(const std::int64_t& id) const noexcept
     };
 
     if (!success.has_value() || !success->value.get_bool()) {
-        logging::error{ "Fail to delete video \"{}\"", id };
+        logging::error{ R"(Fail to delete video "{}")", id };
         return false;
     }
 
@@ -946,7 +946,7 @@ bool Database::delete_video(const std::int64_t& id) const noexcept
         up::db_kv_write_status status{};
         std::string_view error_text;
         if (!success->db.remove(key, &status, &error_text)) {
-            logging::error{ "Fail to delete video key \"{}\" of id \"{}\"", key, id };
+            logging::error{ R"(Fail to delete video key "{}" of id "{}")", key, id };
             logging::error{ "{}: {}. {}",
                             up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
             key_deleted = false;
@@ -974,7 +974,7 @@ bool Database::increment_video_views(const std::int64_t& id) const noexcept
     };
 
     if (!success.has_value()) {
-        logging::error{ "Fail to increment video views \"{}\"", id };
+        logging::error{ R"(Fail to increment video views "{}")", id };
         return false;
     }
 
@@ -1001,7 +1001,7 @@ bool Database::has_video_right(const std::int64_t& id) const noexcept
     };
 
     if (!has_video_right.has_value()) {
-        logging::error{ "Fail to get has video right \"{}\"", id };
+        logging::error{ R"(Fail to get has video right "{}")", id };
         return {};
     }
 
@@ -1032,7 +1032,7 @@ bool Database::has_video_right(const std::int64_t& id, const std::int64_t& user_
     };
 
     if (!has_video_right.has_value()) {
-        logging::error{ "Fail to get has video right \"{}\"", id };
+        logging::error{ R"(Fail to get has video right "{}")", id };
         return {};
     }
 
@@ -1064,7 +1064,7 @@ std::vector<std::int64_t> Database::video_right_list(const std::int64_t& id) con
     };
 
     if (!video_rights.has_value()) {
-        logging::error{ "Fail to get video rights \"{}\"", id };
+        logging::error{ R"(Fail to get video rights "{}")", id };
         return {};
     }
 
