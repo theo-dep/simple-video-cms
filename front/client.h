@@ -72,6 +72,7 @@ public:
     void delete_video(const std::string& video_id) const noexcept;
     void increment_video_views(const std::string& video_id) const noexcept;
     std::string video(const std::string& video_id) const noexcept;
+    std::string thumbnail(const std::string& video_id) const noexcept;
     bool has_video_right(const std::string& video_id) const noexcept;
     bool has_video_right(const std::string& video_id, const std::string& user_id) const noexcept;
 

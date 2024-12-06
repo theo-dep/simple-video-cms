@@ -399,6 +399,31 @@ std::string Client::video(const std::string& video_id) const noexcept
     return video_content;
 }
 
+std::string Client::thumbnail(const std::string& video_id) const noexcept
+{
+    std::string thumbnail_content;
+    const httplib::Result res{
+        _client->Get("/thumbnail/" + video_id,
+                     [&thumbnail_content](const char* data, std::size_t data_length) noexcept -> bool {
+                         thumbnail_content.append(data, data_length);
+                         return true;
+                     })
+    };
+    logging::debug{ "Thumbnail length: {}", thumbnail_content.size() };
+
+    if (!res) {
+        logging::error{ "Fail to transfer the thumbnail with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        return {};
+    }
+
+    if (res->status != httplib::StatusCode::OK_200) {
+        logging::error{ "Fail to transfer the thumbnail with error: {} ({})", httplib::status_message(res->status), res->status };
+        return {};
+    }
+
+    return thumbnail_content;
+}
+
 bool Client::has_video_right(const std::string& video_id) const noexcept
 {
     const httplib::Result res{ _client->Get("/has-video-right/" + video_id) };

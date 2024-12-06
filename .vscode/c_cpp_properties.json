@@ -6,7 +6,9 @@
                 "/usr/include/mysql",
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/builder",
-                "${workspaceFolder}/builder/third-party"
+                "${workspaceFolder}/builder/third-party",
+                "${workspaceFolder}/builder/third-party/ffmpeg",
+                "${workspaceFolder}/builder/third-party/libpng"
             ],
             "defines": [
                 "CPPHTTPLIB_USE_POLL"

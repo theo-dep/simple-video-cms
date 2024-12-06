@@ -1,3 +1,7 @@
 Containerfile
 *.md
 *.o
+*.d
+*.a
+**/config.log
+**/config.status

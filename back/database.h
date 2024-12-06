@@ -19,6 +19,7 @@ public:
     std::string video_title(const std::int64_t& id) const noexcept;
     std::int64_t video_views(const std::int64_t& id) const noexcept;
     std::string video(const std::int64_t& id) const noexcept;
+    std::string thumbnail(const std::int64_t& id) const noexcept;
 
     [[nodiscard]] std::optional<std::int64_t> add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
     bool is_super_admin(const std::int64_t& id) const noexcept;
@@ -43,6 +44,7 @@ public:
     std::vector<std::int64_t> admin_list() const noexcept;
 
     [[nodiscard]] std::optional<std::int64_t> add_video(const std::string& title, const std::string& video) const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> add_video_thumbnail(const std::int64_t& id, const std::string& thumbnail) const noexcept;
     [[nodiscard]] bool add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
     [[nodiscard]] bool update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
     [[nodiscard]] bool delete_video(const std::int64_t& id) const noexcept;
