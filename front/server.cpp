@@ -839,7 +839,7 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
 
     const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
-    std::shared_ptr chunk_worker{ std::make_shared<ChunkWorker>() };
+    ChunkWorker* const chunk_worker{ new ChunkWorker() };
     chunk_worker->set_buffer_size(video_size);
     chunk_worker->set_fetch_async_callback([chunk_worker, video_id, &req, &client]() noexcept -> bool {
         return client.video(video_id, req.get_header_value("Range"), chunk_worker->append_chunk_callback(true));
@@ -857,7 +857,8 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
             const std::string chunk{ chunk_worker->chunk() };
             sink.write(&chunk[0], chunk.size());
             return chunk_worker->fetch_result(); // return 'false' will cancel the process.
-        });
+        },
+        [chunk_worker](bool) noexcept { delete chunk_worker; });
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept

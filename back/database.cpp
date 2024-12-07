@@ -313,23 +313,25 @@ bool Database::video(const std::int64_t& id, const std::function<bool(const char
     const std::optional success{
         database::open(path_, up::db_mode::OPEN_READONLY)
             .transform([&id, &status, &fetch_error, &callback](up::db db) noexcept -> bool {
-                if (db.fetch_callback(
-                        database::video_key(id),
-                        [&callback](const void* data, std::size_t size) noexcept -> bool {
-                            return callback(static_cast<const char*>(data), size);
-                        },
-                        &status, &fetch_error)) {
-                    return true;
-                }
-                return false;
+                return db.fetch_callback(
+                    database::video_key(id),
+                    [&callback](const void* data, std::size_t size) noexcept -> bool {
+                        return callback(static_cast<const char*>(data), size);
+                    },
+                    &status, &fetch_error);
             })
     };
 
     if (!success.value_or(false)) {
-        logging::error{ R"(Fail to fetch video "{}")", id };
-        if (status != up::db_kv_read_status::OK)
-            logging::error{ "{}: {}. {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status), fetch_error };
-        return {};
+        // The fetch can be aborted by the ChunkWorker or the user
+        if (status == up::db_kv_read_status::ABORT) {
+            logging::info{ "Video fetch aborted: {} ({})", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status) };
+        } else {
+            logging::error{ R"(Fail to fetch video "{}")", id };
+            if (status != up::db_kv_read_status::OK)
+                logging::error{ "{}: {}. {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status), fetch_error };
+        }
+        return false;
     }
 
     return true;

@@ -383,7 +383,12 @@ bool Client::video(const std::string& video_id, const std::string& range_header,
     // logging::debug{ "Video length: {}", video_content.size() };
 
     if (!res) {
-        logging::error{ "Fail to get the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        if (res.error() == httplib::Error::Canceled) {
+            // The stream can be cancelled by the ChunkWorker or the user
+            logging::info{ "Video stream cancelled: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        } else {
+            logging::error{ "Fail to get the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        }
         return false;
     }
 

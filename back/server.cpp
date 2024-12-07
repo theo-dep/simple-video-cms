@@ -495,7 +495,7 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const std::int64_t video_size{ db.video_size(video_id) };
 
-    std::shared_ptr chunk_worker{ std::make_shared<ChunkWorker>() };
+    ChunkWorker* const chunk_worker{ new ChunkWorker() };
     chunk_worker->set_buffer_size(video_size);
     chunk_worker->set_fetch_async_callback([chunk_worker, video_id, &db]() noexcept -> bool {
         return db.video(video_id, chunk_worker->append_chunk_callback(false));
@@ -513,7 +513,8 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
             const std::string chunk{ chunk_worker->chunk() };
             sink.write(&chunk[0], chunk.size());
             return chunk_worker->fetch_result(); // return 'false' will cancel the process.
-        });
+        },
+        [chunk_worker](bool) noexcept { delete chunk_worker; });
 }
 
 inline void server::video_size(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -526,16 +527,17 @@ inline void server::video_size(const httplib::Request& req, httplib::Response& r
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string thumbnail_content{ db.thumbnail(video_id) };
+    const std::string* const thumbnail_content{ new std::string(db.thumbnail(video_id)) };
 
     static constexpr std::size_t data_chunk_size{ static_cast<std::size_t>(4LL * 1024LL) };
     res.set_content_provider(
-        thumbnail_content.size(), // Content length
-        "image/png",              // Content type
+        thumbnail_content->size(), // Content length
+        "image/png",               // Content type
         [thumbnail_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
-            sink.write(&thumbnail_content[offset], std::min(length, data_chunk_size));
+            sink.write(&(*thumbnail_content)[offset], std::min(length, data_chunk_size));
             return true; // return 'false' if you want to cancel the process.
-        });
+        },
+        [thumbnail_content](bool) noexcept { delete thumbnail_content; });
 }
 
 inline void server::has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
