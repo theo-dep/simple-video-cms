@@ -827,6 +827,15 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
         return;
 
     const std::string video_id{ req.path_params.at("video_id") };
+
+    // block video if not in watch-video page
+    const std::string& referer{ req.get_header_value("Referer") };
+    if (!referer.ends_with("/watch-video/" + video_id)) {
+        const std::string body{ client.error_page_403() };
+        res.set_content(body, "text/html");
+        return;
+    }
+
     const std::string video_content{ client.video(video_id) };
     res.set_content(video_content, "video/mp4");
 }
