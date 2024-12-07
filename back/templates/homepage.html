@@ -36,7 +36,7 @@
           <input type="text" class="pure-input-rounded pure-input-1" name="search" placeholder="Search" />
         </div>
         <div class="pure-u-1-3">
-          <button type="submit" class="button button-search pure-button pure-input-1">Search</button>
+          <button id="search-button" type="submit" class="button button-search pure-button pure-input-1">Search</button>
         </div>
       </form>
     </div>
@@ -47,7 +47,7 @@
     {% for video in video_dict %}
     <div class="pure-u-1 pure-u-md-1-3">
       <a href="/watch-video/{{ video.id }}">
-        <img src="/thumbnail/{{ video.id }}" class="pure-img">
+        <img src="/thumbnail/{{ video.id }}" class="thumbnail pure-img">
       </a>
     </div>
     <div class="pure-u-1 pure-u-md-2-3">
@@ -68,5 +68,7 @@
     {% endif %}
   </div>
 </body>
+
+<script type="text/javascript" src="/static/js/button.js"></script>
 
 </html>
