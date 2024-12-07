@@ -16,16 +16,18 @@
       <h1>Are you sure?</h1>
       <form class="pure-form pure-form-aligned" action="/confirm?response=false" method="post">
         <div class="pure-control-group">
-          <button class="pure-input-1 button pure-button" autofocus>No</button>
+          <button id="no-button" type="submit" class="pure-input-1 button pure-button" autofocus>No</button>
         </div>
       </form>
       <form class="pure-form pure-form-aligned" action="/confirm?response=true" method="post">
         <div class="pure-control-group">
-          <button class="pure-input-1 button pure-button">Yes</button>
+          <button id="yes-button" type="submit" class="pure-input-1 button pure-button">Yes</button>
         </div>
       </form>
     </div>
   </div>
 </body>
+
+<script type="text/javascript" src="/static/js/button.js"></script>
 
 </html>
