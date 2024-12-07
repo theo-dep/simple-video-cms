@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -71,7 +72,8 @@ public:
     void update_video(const std::string& video_id, const std::vector<std::string>& allowed_user_ids) const noexcept;
     void delete_video(const std::string& video_id) const noexcept;
     void increment_video_views(const std::string& video_id) const noexcept;
-    std::string video(const std::string& video_id) const noexcept;
+    bool video(const std::string& video_id, const std::string& range_header, const std::function<bool(const char*, std::size_t)>& callback) const noexcept;
+    std::int64_t video_size(const std::string& video_id) const noexcept;
     std::string thumbnail(const std::string& video_id) const noexcept;
     bool has_video_right(const std::string& video_id) const noexcept;
     bool has_video_right(const std::string& video_id, const std::string& user_id) const noexcept;

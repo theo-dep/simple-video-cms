@@ -1,5 +1,6 @@
 #include "server.h"
 
+#include "chunkworker.h"
 #include "crypto.h"
 #include "database.h"
 #include "logging.h"
@@ -11,7 +12,6 @@
 #include <httplib.h>
 
 #include <filesystem>
-#include <fstream>
 
 namespace server
 {
@@ -51,6 +51,7 @@ namespace server
     void delete_video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void increment_video_views(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
+    void video_size(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
 
@@ -118,6 +119,7 @@ int server::start() noexcept
         .Post("/delete-video/:video_id", sc::serve(delete_video, std::cref(db)))
         .Post("/increment-video-views/:video_id", sc::serve(increment_video_views, std::cref(db)))
         .Get("/video/:video_id", sc::serve(video, std::cref(db)))
+        .Get("/video-size/:video_id", sc::serve(video_size, std::cref(db)))
         .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
         .Get("/has-video-right/:video_id", sc::serve(has_video_right, std::cref(db)))
 
@@ -142,7 +144,7 @@ inline bool server::create_super_admin(const Database& db) noexcept
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
     if (!db.add_super_admin(username, crypto::password(password, salt), salt)) {
-        logging::error{ "Fail to add super admin \"{}\"", username };
+        logging::error{ R"(Fail to add super admin "{}")", username };
         return false;
     }
 
@@ -338,7 +340,7 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
     logging::debug{ "Salt: {}", salt };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
     if (!db.add_admin(username, password, salt)) {
-        logging::error{ "Fail to add admin \"{}\"", username };
+        logging::error{ R"(Fail to add admin "{}")", username };
         return;
     }
 }
@@ -356,7 +358,7 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     logging::debug{ "Salt: {}", salt };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
     if (!db.add_user(username, password, salt)) {
-        logging::error{ "Fail to add user \"{}\"", username };
+        logging::error{ R"(Fail to add user "{}")", username };
         return;
     }
 }
@@ -373,7 +375,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
     if (!db.update_user(user_id, password)) {
-        logging::error{ "Fail to update user \"{}\"", user_id };
+        logging::error{ R"(Fail to update user "{}")", user_id };
         return;
     }
 }
@@ -388,7 +390,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 
     const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
     if (!db.delete_user(user_id)) {
-        logging::error{ "Fail to delete user \"{}\"", user_id };
+        logging::error{ R"(Fail to delete user "{}")", user_id };
         return;
     }
 }
@@ -437,6 +439,9 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::optional success{
         db.add_video(video_title, video_content)
             .and_then([&](const std::int64_t& video_id) noexcept -> std::optional<std::int64_t> {
+                return db.add_video_size(video_id, video_content.size());
+            })
+            .and_then([&](const std::int64_t& video_id) noexcept -> std::optional<std::int64_t> {
                 return db.add_video_thumbnail(video_id, thumbnail_content);
             })
             .transform([&](const std::int64_t& video_id) noexcept -> bool {
@@ -445,7 +450,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     };
 
     if (!success.value_or(false)) {
-        logging::error{ "Fail to add video \"{}\"", video_title };
+        logging::error{ R"(Fail to add video "{}")", video_title };
         return;
     }
 }
@@ -462,7 +467,7 @@ inline void server::update_video(const httplib::Request& req, httplib::Response&
 
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
     if (!db.update_video_rights(video_id, transform(allowed_user_ids))) {
-        logging::error{ "Fail to update video \"{}\"", video_id };
+        logging::error{ R"(Fail to update video "{}")", video_id };
         return;
     }
 }
@@ -471,7 +476,7 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
 {
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
     if (!db.delete_video(video_id)) {
-        logging::error{ "Fail to delete video \"{}\"", video_id };
+        logging::error{ R"(Fail to delete video "{}")", video_id };
         return;
     }
 }
@@ -480,7 +485,7 @@ inline void server::increment_video_views(const httplib::Request& req, httplib::
 {
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
     if (!db.increment_video_views(video_id)) {
-        logging::error{ "Fail to increment video views \"{}\"", video_id };
+        logging::error{ R"(Fail to increment video views "{}")", video_id };
         return;
     }
 }
@@ -488,17 +493,34 @@ inline void server::increment_video_views(const httplib::Request& req, httplib::
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string video_content{ db.video(video_id) };
+    const std::int64_t video_size{ db.video_size(video_id) };
 
-    static constexpr std::size_t data_chunk_size{ static_cast<std::size_t>(4LL * 1024LL) };
+    std::shared_ptr chunk_worker{ std::make_shared<ChunkWorker>() };
+    chunk_worker->set_buffer_size(video_size);
+    chunk_worker->set_fetch_async_callback([chunk_worker, video_id, &db]() noexcept -> bool {
+        return db.video(video_id, chunk_worker->append_chunk_callback(false));
+    });
+
+    chunk_worker->start_chunk_at(req.get_header_value("Range"));
+    chunk_worker->start_fetch_async();
+
+    chunk_worker->wait_for_chunk();
+
     res.set_content_provider(
-        video_content.size(), // Content length
-        "video/mp4",          // Content type
-        [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
-            sink.write(&video_content[offset], std::min(length, data_chunk_size));
-            return true; // return 'false' if you want to cancel the process.
-        },
-        [](bool /*success*/) noexcept { /*release*/ });
+        video_size,  // Content length
+        "video/mp4", // Content type
+        [chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
+            const std::string chunk{ chunk_worker->chunk() };
+            sink.write(&chunk[0], chunk.size());
+            return chunk_worker->fetch_result(); // return 'false' will cancel the process.
+        });
+}
+
+inline void server::video_size(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+{
+    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::int64_t video_size{ db.video_size(video_id) };
+    res.set_content(su::int_to_string(video_size), "plain/text");
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -513,8 +535,7 @@ inline void server::thumbnail(const httplib::Request& req, httplib::Response& re
         [thumbnail_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
             sink.write(&thumbnail_content[offset], std::min(length, data_chunk_size));
             return true; // return 'false' if you want to cancel the process.
-        },
-        [](bool /*success*/) noexcept { /*release*/ });
+        });
 }
 
 inline void server::has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept

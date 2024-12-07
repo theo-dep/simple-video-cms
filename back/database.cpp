@@ -72,6 +72,7 @@ namespace database
     auto bind(F&& f, std::initializer_list<T>&& args) noexcept;
 
     std::string video_key(const std::int64_t& id) noexcept;
+    std::string video_size_key(const std::int64_t& id) noexcept;
     std::string thumbnail_key(const std::int64_t& id) noexcept;
 
     std::optional<up::db> open(const std::filesystem::path& path, up::db_mode mode) noexcept;
@@ -305,42 +306,63 @@ std::int64_t Database::video_views(const std::int64_t& id) const noexcept
     return views->member.get_int();
 }
 
-std::string Database::video(const std::int64_t& id) const noexcept
+bool Database::video(const std::int64_t& id, const std::function<bool(const char*, std::size_t)>& callback) const noexcept
 {
     up::db_kv_read_status status{ up::db_kv_read_status::OK };
-    const std::optional video{
+    std::string_view fetch_error;
+    const std::optional success{
         database::open(path_, up::db_mode::OPEN_READONLY)
-            .and_then([&id, &status](up::db db) noexcept -> std::optional<std::string> {
-                std::string res;
+            .transform([&id, &status, &fetch_error, &callback](up::db db) noexcept -> bool {
                 if (db.fetch_callback(
                         database::video_key(id),
-                        [&res](const void* data, std::size_t size) noexcept -> bool {
-                            res.append(static_cast<const char*>(data), size);
-                            return true;
+                        [&callback](const void* data, std::size_t size) noexcept -> bool {
+                            return callback(static_cast<const char*>(data), size);
                         },
-                        &status)) {
-                    return res;
+                        &status, &fetch_error)) {
+                    return true;
                 }
-                return std::nullopt;
+                return false;
             })
     };
 
-    if (!video.has_value()) {
+    if (!success.value_or(false)) {
         logging::error{ R"(Fail to fetch video "{}")", id };
         if (status != up::db_kv_read_status::OK)
-            logging::error{ "{}: {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status) };
+            logging::error{ "{}: {}. {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status), fetch_error };
         return {};
     }
 
-    return video.value();
+    return true;
+}
+
+std::int64_t Database::video_size(const std::int64_t& id) const noexcept
+{
+    up::db_kv_read_status status{ up::db_kv_read_status::OK };
+    std::string_view fetch_error;
+    const std::optional video_size{
+        database::open(path_, up::db_mode::OPEN_READONLY)
+            .and_then([&id, &status, &fetch_error](up::db db) noexcept -> std::optional<std::string> {
+                return db.fetch_string(database::video_size_key(id), &status, &fetch_error);
+            })
+    };
+
+    if (!video_size.has_value()) {
+        logging::error{ R"(Fail to fetch video size "{}")", id };
+        if (status != up::db_kv_read_status::OK)
+            logging::error{ "{}: {}. {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status), fetch_error };
+        return {};
+    }
+
+    return su::string_to_int(video_size.value());
 }
 
 std::string Database::thumbnail(const std::int64_t& id) const noexcept
 {
     up::db_kv_read_status status{ up::db_kv_read_status::OK };
+    std::string_view fetch_error;
     const std::optional thumbnail{
         database::open(path_, up::db_mode::OPEN_READONLY)
-            .and_then([&id, &status](up::db db) noexcept -> std::optional<std::string> {
+            .and_then([&id, &status, &fetch_error](up::db db) noexcept -> std::optional<std::string> {
                 std::string res;
                 if (db.fetch_callback(
                         database::thumbnail_key(id),
@@ -348,7 +370,7 @@ std::string Database::thumbnail(const std::int64_t& id) const noexcept
                             res.append(static_cast<const char*>(data), size);
                             return true;
                         },
-                        &status)) {
+                        &status, &fetch_error)) {
                     return res;
                 }
                 return std::nullopt;
@@ -358,7 +380,7 @@ std::string Database::thumbnail(const std::int64_t& id) const noexcept
     if (!thumbnail.has_value()) {
         logging::error{ R"(Fail to fetch thumbnail "{}")", id };
         if (status != up::db_kv_read_status::OK)
-            logging::error{ "{}: {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status) };
+            logging::error{ "{}: {}. {}", up::status_to_string_view<up::db_kv_read_status>::value, static_cast<std::size_t>(status), fetch_error };
         return {};
     }
 
@@ -822,6 +844,27 @@ std::optional<std::int64_t> Database::add_video(const std::string& title, const 
     return video_id;
 }
 
+std::optional<std::int64_t> Database::add_video_size(const std::int64_t& id, const std::int64_t& size) const noexcept
+{
+    up::db_kv_write_status status{};
+    std::string_view error_text;
+    const std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .transform([&](up::db db) noexcept -> bool {
+                return db.store(database::video_size_key(id), su::int_to_string(size), &status, &error_text);
+            })
+    };
+
+    if (!success.value_or(false)) {
+        logging::error{ R"(Fail to add video size "{}")", id };
+        logging::error{ "{}: {}. {}",
+                        up::status_to_string_view<up::db_kv_write_status>::value, static_cast<std::size_t>(status), error_text };
+        return std::nullopt;
+    }
+
+    return id;
+}
+
 std::optional<std::int64_t> Database::add_video_thumbnail(const std::int64_t& id, const std::string& thumbnail) const noexcept
 {
     up::db_kv_write_status status{};
@@ -829,7 +872,6 @@ std::optional<std::int64_t> Database::add_video_thumbnail(const std::int64_t& id
     const std::optional success{
         database::open(path_, up::db_mode::OPEN_READWRITE)
             .transform([&](up::db db) noexcept -> bool {
-                // store video in kv space to speed fetching of "videos" table
                 return db.store(database::thumbnail_key(id), thumbnail, &status, &error_text);
             })
     };
@@ -942,7 +984,7 @@ bool Database::delete_video(const std::int64_t& id) const noexcept
     }
 
     bool key_deleted{ true };
-    for (const std::string& key : { database::video_key(id), database::thumbnail_key(id) }) {
+    for (const std::string& key : { database::video_key(id), database::video_size_key(id), database::thumbnail_key(id) }) {
         up::db_kv_write_status status{};
         std::string_view error_text;
         if (!success->db.remove(key, &status, &error_text)) {
@@ -1116,6 +1158,11 @@ inline database::DataValueMembers::DataValueMembers(DataValue&& data, up::value:
 inline std::string database::video_key(const std::int64_t& id) noexcept
 {
     return "video_" + su::int_to_string(id);
+}
+
+inline std::string database::video_size_key(const std::int64_t& id) noexcept
+{
+    return "video_size_" + su::int_to_string(id);
 }
 
 inline std::string database::thumbnail_key(const std::int64_t& id) noexcept
