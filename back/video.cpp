@@ -72,7 +72,7 @@ std::string video::extract_first_frame(const std::string& video_content, const s
     };
 
     constexpr std::size_t avio_context_buffer_size{ 4096 };
-    std::uint8_t* const avio_context_buffer{ reinterpret_cast<std::uint8_t*>(av_malloc(avio_context_buffer_size)) };
+    std::uint8_t* const avio_context_buffer{ static_cast<std::uint8_t*>(av_malloc(avio_context_buffer_size)) };
     if (avio_context_buffer == nullptr) {
         logging::error{ "Could not allocate avio context buffer" };
         return {};
@@ -237,7 +237,7 @@ inline const char* video::err2str(int error_numero) noexcept
 
 inline int video::read_packet(void* opaque, std::uint8_t* buffer, int buffer_size) noexcept
 {
-    BufferData* const buffer_data{ reinterpret_cast<BufferData*>(opaque) }; // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    BufferData* const buffer_data{ static_cast<BufferData*>(opaque) };
     buffer_size = FFMIN(static_cast<std::size_t>(buffer_size), buffer_data->pointer.size());
 
     if (buffer_size <= 0)
@@ -254,7 +254,7 @@ inline int video::read_packet(void* opaque, std::uint8_t* buffer, int buffer_siz
 
 inline std::int64_t video::seek(void* opaque, std::int64_t offset, int whence) noexcept
 {
-    BufferData* const buffer_data{ reinterpret_cast<BufferData*>(opaque) }; // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    BufferData* const buffer_data{ static_cast<BufferData*>(opaque) };
     std::int64_t pos{ -1 };
 
     switch (whence) {
@@ -424,6 +424,6 @@ inline std::string video::frame_to_png(const AVFrame* frame) noexcept
 
 inline void video::write_data(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
 {
-    std::ostringstream* out_stream{ reinterpret_cast<std::ostringstream*>(png_get_io_ptr(png_ptr)) }; // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
-    out_stream->write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(length));     // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    std::ostringstream* out_stream{ static_cast<std::ostringstream*>(png_get_io_ptr(png_ptr)) };
+    out_stream->write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(length)); // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 }

@@ -6,6 +6,7 @@
   <title>VideoHub</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/third-party/video-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="icon" href="/static/img/favicon.png" type="image/png">
 </head>
@@ -30,9 +31,13 @@
   <div class="content">
     <div class="info info-video">
       <h1>{{ title }}</h1>
-      <video controls controlsList="nodownload" autoplay>
-        <source src="/video/{{ video_id }}" type="video/mp4">
-        Your browser doesn't support this format.
+      <video oncontextmenu="return false;" id="video-player" class="video-js vjs-default-skin" controls
+        data-setup='{"fluid": true}' preload="auto" poster="/thumbnail/{{ video_id }}">
+        <source src="/video/{{ video_id }}" type="video/mp4" />
+        <p class="vjs-no-js">
+          To view this video please enable JavaScript, and consider upgrading to a web browser that
+          <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+        </p>
       </video>
       {% if views == "1" %}
       <p>{{ views }} view</p>
@@ -43,5 +48,7 @@
     </div>
   </div>
 </body>
+
+<script type="text/javascript" src="/static/js/third-party/video-min.js"></script>
 
 </html>

@@ -68,12 +68,12 @@ std::pair<std::string, std::string> Client::static_file(const std::string& file)
     const httplib::Result res{ _client->Get("/static/" + file) };
 
     if (!res) {
-        logging::error{ "Fail to get static file \"{}\" with error: {} ({})", file, httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        logging::error{ R"(Fail to get static file "{}" with error: {} ({}))", file, httplib::to_string(res.error()), static_cast<int>(res.error()) };
         return {};
     }
 
     if (res->status != httplib::StatusCode::OK_200) {
-        logging::error{ "Fail to get static file \"{}\" with error: {} ({})", file, httplib::status_message(res->status), res->status };
+        logging::error{ R"(Fail to get static file "{}" with error: {} ({}))", file, httplib::status_message(res->status), res->status };
         return {};
     }
 
@@ -374,29 +374,38 @@ void Client::increment_video_views(const std::string& video_id) const noexcept
     _client->Post("/increment-video-views/" + video_id);
 }
 
-std::string Client::video(const std::string& video_id) const noexcept
+bool Client::video(const std::string& video_id, const std::string& range_header, const std::function<bool(const char*, std::size_t)>& callback) const noexcept
 {
-    std::string video_content;
-    const httplib::Result res{
-        _client->Get("/video/" + video_id,
-                     [&video_content](const char* data, std::size_t data_length) noexcept -> bool {
-                         video_content.append(data, data_length);
-                         return true;
-                     })
+    const httplib::Headers headers{
+        { "Range", range_header.empty() ? "bytes=0-" : range_header }
     };
-    logging::debug{ "Video length: {}", video_content.size() };
+    const httplib::Result res{ _client->Get("/video/" + video_id, headers, callback) };
+    // logging::debug{ "Video length: {}", video_content.size() };
 
     if (!res) {
-        logging::error{ "Fail to transfer the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
-        return {};
+        if (res.error() == httplib::Error::Canceled) {
+            // The stream can be cancelled by the ChunkWorker or the user
+            logging::info{ "Video stream cancelled: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        } else {
+            logging::error{ "Fail to get the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        }
+        return false;
     }
 
-    if (res->status != httplib::StatusCode::OK_200) {
-        logging::error{ "Fail to transfer the video with error: {} ({})", httplib::status_message(res->status), res->status };
-        return {};
+    if (res->status != httplib::StatusCode::OK_200 && res->status != httplib::StatusCode::PartialContent_206) {
+        logging::error{ "Fail to get the video with error: {} ({})", httplib::status_message(res->status), res->status };
+        return false;
     }
 
-    return video_content;
+    return true;
+}
+
+std::int64_t Client::video_size(const std::string& video_id) const noexcept
+{
+    const httplib::Result res{ _client->Get("/video-size/" + video_id) };
+    const std::int64_t video_size{ su::string_to_int(client::format_page(res)) };
+    logging::debug{ "Video length: {}", video_size };
+    return video_size;
 }
 
 std::string Client::thumbnail(const std::string& video_id) const noexcept
@@ -412,12 +421,12 @@ std::string Client::thumbnail(const std::string& video_id) const noexcept
     logging::debug{ "Thumbnail length: {}", thumbnail_content.size() };
 
     if (!res) {
-        logging::error{ "Fail to transfer the thumbnail with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        logging::error{ "Fail to get the thumbnail with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
         return {};
     }
 
-    if (res->status != httplib::StatusCode::OK_200) {
-        logging::error{ "Fail to transfer the thumbnail with error: {} ({})", httplib::status_message(res->status), res->status };
+    if (res->status != httplib::StatusCode::OK_200 && res->status != httplib::StatusCode::PartialContent_206) {
+        logging::error{ "Fail to get the thumbnail with error: {} ({})", httplib::status_message(res->status), res->status };
         return {};
     }
 
