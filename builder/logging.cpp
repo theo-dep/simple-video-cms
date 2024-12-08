@@ -1,5 +1,7 @@
 #include "logging.h"
 
+#include "stringutils.h"
+
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -10,6 +12,12 @@ namespace logging
 {
     // only the name, without return type and parameters
     std::string light_function_name(const std::source_location& location) noexcept;
+
+    // two times a day, test if the file is more than 500 Mo
+    constexpr std::int64_t hour_to_check{ 12 };
+    constexpr std::uintmax_t bytes_to_check{ 500 * 1024 * 1024 };
+    // then, open another log file in the limit of 5
+    constexpr std::size_t max_log_file_id{ 5 };
 
     class Logger
     {
@@ -23,9 +31,15 @@ namespace logging
         Logger& operator<<(const T& message) noexcept;
 
     protected:
+        std::filesystem::path log_id_file_path() const noexcept;
         void flush() noexcept;
+        bool is_max_log_reached() noexcept;
 
     private:
+        std::filesystem::path _log_file_path;
+        std::size_t _log_file_id{ 0 };
+        std::filesystem::file_time_type _latest_time_check;
+
         std::ofstream _log_file;
         bool _is_running{ true };
         std::thread _flush_thread;
@@ -96,6 +110,11 @@ inline logging::Logger::Logger() noexcept
             while (_is_running) {
                 flush();
 
+                if (is_max_log_reached()) {
+                    _log_file.close();
+                    open(_log_file_path);
+                }
+
                 using namespace std::chrono_literals;
                 std::this_thread::sleep_for(3s);
             }
@@ -116,7 +135,23 @@ inline logging::Logger::~Logger() noexcept
 
 inline void logging::Logger::open(const std::filesystem::path& log_file_path) noexcept
 {
-    _log_file.open(log_file_path);
+    std::error_code error_code;
+    const std::filesystem::path log_file_dir{ log_file_path.parent_path() };
+    if (!std::filesystem::exists(log_file_dir) && (!std::filesystem::create_directories(log_file_dir, error_code) || error_code)) {
+        logging::error{ R"(Fail to create "{}" directories: {} ({}))", log_file_dir.string(), error_code.message(), error_code.value() };
+        return;
+    }
+
+    _log_file_path = log_file_path;
+    ++_log_file_id;
+
+    if (_log_file_id > max_log_file_id)
+        _log_file_id = 1;
+
+    _log_file.open(log_id_file_path());
+    _latest_time_check = std::filesystem::file_time_type::clock::now();
+
+    logging::info{ R"(Log open at "{}")", log_id_file_path().c_str() };
 }
 
 template <typename T>
@@ -127,6 +162,11 @@ inline logging::Logger& logging::Logger::operator<<(const T& message) noexcept
     return *this;
 }
 
+inline std::filesystem::path logging::Logger::log_id_file_path() const noexcept
+{
+    return _log_file_path.string() + '.' + su::int_to_string(_log_file_id);
+}
+
 inline void logging::Logger::flush() noexcept
 {
     if (_log_file.is_open()) {
@@ -134,6 +174,35 @@ inline void logging::Logger::flush() noexcept
     }
 
     std::clog.flush();
+}
+
+inline bool logging::Logger::is_max_log_reached() noexcept
+{
+    if (!_log_file.is_open())
+        return false;
+
+    std::error_code error_code;
+    const std::filesystem::file_time_type last_log_written{ std::filesystem::last_write_time(log_id_file_path(), error_code) };
+    if (error_code) {
+        logging::error{ R"(Fail to get the log last write time of "{}": {})", log_id_file_path().string(), error_code.message() };
+        return false;
+    }
+
+    const std::chrono::duration elapsed{ last_log_written - _latest_time_check };
+    if (std::chrono::duration_cast<std::chrono::hours>(elapsed).count() >= hour_to_check) {
+        _latest_time_check = last_log_written;
+
+        std::error_code error_code;
+        const std::uintmax_t log_bytes_size{ std::filesystem::file_size(log_id_file_path(), error_code) };
+        if (error_code) {
+            logging::error{ R"(Fail to get the log size of "{}": {} ({}))", log_id_file_path().string(), error_code.message(), error_code.value() };
+            return false;
+        }
+
+        return (log_bytes_size >= bytes_to_check);
+    }
+
+    return false;
 }
 
 inline logging::Logger& logging::logger() noexcept
