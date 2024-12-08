@@ -1,3 +1,6 @@
+volumes:
+  data:
+
 services:
 
   builder:
@@ -15,6 +18,8 @@ services:
       SERVER_URL: back:5000
     ports:
       - 8080:8080
+    volumes:
+      - data:/data
     depends_on:
       - builder
       - back
@@ -24,7 +29,7 @@ services:
       context: ./back
       dockerfile: Containerfile
     volumes:
-      - ./back/data:/data
+      - data:/data
       - ./back/static:/static
       - ./back/templates:/templates
     depends_on:

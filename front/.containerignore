@@ -1,5 +1,5 @@
 Containerfile
-static/
+data/
 Makefile
 *.o
 server

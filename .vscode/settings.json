@@ -10,6 +10,8 @@
         "*docker*.yml": "dockercompose",
         "*compose*.yaml": "dockercompose",
         "*compose*.yml": "dockercompose",
+        "*.containerignore": "ignore",
+        "*.dockerignore": "ignore",
         "*.yml": "azure-pipelines",
         "*.yaml": "azure-pipelines",
         "*.pri": "makefile",

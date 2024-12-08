@@ -9,7 +9,7 @@ RUN apk add --no-cache \
 ENV SOURCE_DIR=/sources
 ENV CXXFLAGS="-O3 -I${SOURCE_DIR} -DNDEBUG"
 
-ADD *.h *.cpp Makefile third-party/ ${SOURCE_DIR}/
+ADD third-party/ ${SOURCE_DIR}/
 
 # Build zlib
 RUN cd "${SOURCE_DIR}/zlib"  \
@@ -39,3 +39,6 @@ RUN cd "${SOURCE_DIR}/ffmpeg" \
     --disable-network  \
     && make -j -k \
     && make install
+
+# add local file after building FFmpeg for performance
+ADD *.h *.cpp Makefile ${SOURCE_DIR}/

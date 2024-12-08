@@ -1,5 +1,5 @@
 Containerfile
-templates/
+data/
 Makefile
 *.o
 server
