@@ -21,6 +21,7 @@ namespace server
     void set_logger(httplib::Server& server) noexcept;
 
     bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
+    std::string connected_user_id(const httplib::Request& req, const Session& session) noexcept;
 
     // inja exceptions catched by httplib Server::set_exception_handler
 
@@ -204,6 +205,13 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
     return true;
 }
 
+std::string server::connected_user_id(const httplib::Request& req, const Session& session) noexcept
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    return session.user_from_session(session_id);
+}
+
 inline inja::json server::video_dict(const std::vector<std::string>& video_ids, const Client& client)
 {
     inja::json video_dict;
@@ -227,8 +235,8 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     const bool is_logged{ session.is_valid_session(session_id) };
-    const std::string& connected_user{ session.user_from_session(session_id) };
-    if (is_logged && client.is_admin(connected_user)) {
+    const std::string& user_id{ session.user_from_session(session_id) };
+    if (is_logged && client.is_admin(user_id)) {
         res.set_redirect("/dashboard");
         return;
     }
@@ -239,12 +247,12 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
         const std::string search{ req.get_param_value("search") };
         video_ids = client.no_right_video_list(search);
         if (is_logged) {
-            logged_video_ids = client.video_list(connected_user, search);
+            logged_video_ids = client.video_list(user_id, search);
         }
     } else {
         video_ids = client.no_right_video_list();
         if (is_logged) {
-            logged_video_ids = client.video_list(connected_user);
+            logged_video_ids = client.video_list(user_id);
         }
     }
 
@@ -429,17 +437,21 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     su::trim(username);
     su::lower(username);
 
-    const std::string user_id{ client.user_id(username) };
+    const std::string creator_user_id{ connected_user_id(req, session) };
+
+    std::string user_id{ client.user_id(username) };
     const bool is_user{ client.is_user(user_id) };
     const bool is_admin{ client.is_admin(user_id) };
     if ((is_user && !is_admin_req) || (is_admin && is_admin_req)) {
         set_add_user_content(res, env, client, is_admin_req, false, true);
     } else if (is_admin_req) {
-        client.add_admin(username, password);
+        user_id = client.add_admin(username, password);
         res.set_redirect("/admin-list");
+        logging::info{ "Admin {} created by {}", user_id, creator_user_id };
     } else {
-        client.add_user(username, password);
+        user_id = client.add_user(username, password);
         res.set_redirect("/user-list");
+        logging::info{ "User {} created by {}", user_id, creator_user_id };
     }
 }
 
@@ -531,12 +543,15 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
         return;
     }
 
+    const std::string updater_user_id{ connected_user_id(req, session) };
+
     std::string signal_str;
     if (is_admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, &client](httplib::Response& res) noexcept {
+                         .on_confirm([user_id, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
                              client.update_user(user_id, new_password);
                              res.set_redirect("/admin-list");
+                             logging::info{ "Admin {} updated by {}", user_id, updater_user_id };
                          })
                          .on_deny([](httplib::Response& res) noexcept {
                              res.set_redirect("/admin-list");
@@ -544,9 +559,10 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, &client](httplib::Response& res) noexcept {
+                         .on_confirm([user_id, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
                              client.update_user(user_id, new_password);
                              res.set_redirect("/user-list");
+                             logging::info{ "User {} updated by {}", user_id, updater_user_id };
                          })
                          .on_deny([](httplib::Response& res) noexcept {
                              res.set_redirect("/user-list");
@@ -566,12 +582,15 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     const bool admin{ su::string_to_bool(req.get_param_value("is_admin")) };
     logging::debug{ "Delete {} {}", user_id, client.user_name(user_id) };
 
+    const std::string suppressor_user_id{ connected_user_id(req, session) };
+
     std::string signal_str;
     if (admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, &client](httplib::Response& res) noexcept {
+                         .on_confirm([user_id, suppressor_user_id, &client](httplib::Response& res) noexcept {
                              client.delete_user(user_id);
                              res.set_redirect("/admin-list");
+                             logging::info{ "Admin {} deleted by {}", user_id, suppressor_user_id };
                          })
                          .on_deny([](httplib::Response& res) noexcept {
                              res.set_redirect("/admin-list");
@@ -579,9 +598,10 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, &client](httplib::Response& res) noexcept {
+                         .on_confirm([user_id, suppressor_user_id, &client](httplib::Response& res) noexcept {
                              client.delete_user(user_id);
                              res.set_redirect("/user-list");
+                             logging::info{ "User {} deleted by {}", user_id, suppressor_user_id };
                          })
                          .on_deny([](httplib::Response& res) noexcept {
                              res.set_redirect("/user-list");
@@ -686,8 +706,11 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
     std::ranges::transform(user_id_items, allowed_user_ids.begin(),
                            [](const httplib::MultipartFormData& item) noexcept -> std::string { return item.content; });
 
-    client.add_video(video_title, item.content, allowed_user_ids);
+    const std::string video_id{ client.add_video(video_title, item.content, allowed_user_ids) };
     res.set_redirect("/video-list");
+
+    const std::string creator_user_id{ connected_user_id(req, session) };
+    logging::info{ "Video {} added by {}", video_id, creator_user_id };
 }
 
 inline void server::update_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
@@ -730,11 +753,14 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
         allowed_user_ids[i] = req.get_param_value("user_ids", i);
     }
 
+    const std::string updater_user_id{ connected_user_id(req, session) };
+
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, allowed_user_ids, &client](httplib::Response& res) noexcept {
+            .on_confirm([video_id, allowed_user_ids, updater_user_id, &client](httplib::Response& res) noexcept {
                 client.update_video(video_id, allowed_user_ids);
                 res.set_redirect("/video-list");
+                logging::info{ "Video {} updated by {}", video_id, updater_user_id };
             })
             .on_deny([](httplib::Response& res) noexcept {
                 res.set_redirect("/video-list");
@@ -753,11 +779,14 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     const std::string video_id{ req.path_params.at("video_id") };
     logging::debug{ "Delete {} {}", video_id, client.video_title(video_id) };
 
+    const std::string suppressor_user_id{ connected_user_id(req, session) };
+
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, &client](httplib::Response& res) noexcept {
+            .on_confirm([video_id, suppressor_user_id, &client](httplib::Response& res) noexcept {
                 client.delete_video(video_id);
                 res.set_redirect("/video-list");
+                logging::info{ "Video {} deleted by {}", video_id, suppressor_user_id };
             })
             .on_deny([](httplib::Response& res) noexcept {
                 res.set_redirect("/video-list");
