@@ -339,10 +339,14 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    if (!db.add_admin(username, password, salt)) {
+    const std::optional admin_id{ db.add_admin(username, password, salt) };
+    if (!admin_id.has_value()) {
         logging::error{ R"(Fail to add admin "{}")", username };
+        res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
+
+    res.set_content(su::int_to_string(admin_id.value()), "plan/text");
 }
 
 inline void server::add_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -357,10 +361,14 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    if (!db.add_user(username, password, salt)) {
+    const std::optional user_id{ db.add_user(username, password, salt) };
+    if (!user_id.has_value()) {
         logging::error{ R"(Fail to add user "{}")", username };
+        res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
+
+    res.set_content(su::int_to_string(user_id.value()), "plan/text");
 }
 
 inline void server::update_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -436,8 +444,9 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
     const std::string thumbnail_content{ video::extract_first_frame(video_content) };
 
+    const std::optional video_id{ db.add_video(video_title, video_content) };
     const std::optional success{
-        db.add_video(video_title, video_content)
+        video_id
             .and_then([&](const std::int64_t& video_id) noexcept -> std::optional<std::int64_t> {
                 return db.add_video_size(video_id, video_content.size());
             })
@@ -451,8 +460,11 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
     if (!success.value_or(false)) {
         logging::error{ R"(Fail to add video "{}")", video_title };
+        res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
+
+    res.set_content(su::int_to_string(video_id.value()), "plain/text");
 }
 
 inline void server::update_video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept

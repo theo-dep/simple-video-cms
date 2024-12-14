@@ -269,22 +269,24 @@ std::string Client::user_id(const std::string& username) const noexcept
     return client::format_page(res);
 }
 
-void Client::add_admin(const std::string& username, const std::string& password) const noexcept
+std::string Client::add_admin(const std::string& username, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
         { "username", username, "", "" },
         { "password", password, "", "" }
     };
-    _client->Post("/add-admin", items);
+    const httplib::Result res{ _client->Post("/add-admin", items) };
+    return client::format_page(res);
 }
 
-void Client::add_user(const std::string& username, const std::string& password) const noexcept
+std::string Client::add_user(const std::string& username, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
         { "username", username, "", "" },
         { "password", password, "", "" }
     };
-    _client->Post("/add-user", items);
+    const httplib::Result res{ _client->Post("/add-user", items) };
+    return client::format_page(res);
 }
 
 void Client::update_user(const std::string& user_id, const std::string& password) const noexcept
@@ -346,14 +348,15 @@ std::vector<std::string> Client::admin_list() const noexcept
     return su::split(str_user_ids);
 }
 
-void Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const noexcept
+std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const noexcept
 {
     const httplib::MultipartFormDataItems items{
         { "title", title, "", "" },
         { "video", content, "", "" },
         { "user_ids", su::join(allowed_user_ids), "", "" }
     };
-    _client->Post("/add-video", items);
+    const httplib::Result res{ _client->Post("/add-video", items) };
+    return client::format_page(res);
 }
 
 void Client::update_video(const std::string& video_id, const std::vector<std::string>& allowed_user_ids) const noexcept

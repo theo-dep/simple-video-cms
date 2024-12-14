@@ -4,6 +4,6 @@
 
 int main()
 {
-    logging::init(std::filesystem::current_path() / "back.log");
+    logging::init(std::filesystem::current_path() / "data" / "logs" / "back.log");
     return server::start();
 }
