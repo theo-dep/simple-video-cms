@@ -373,16 +373,25 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
 
 inline void server::update_user(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("password") || !req.has_file("user_id")) {
+    if (!req.has_file("password") || !req.has_file("username") || !req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
     const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const std::string username{ req.get_file_value("username").content };
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    if (!db.update_user(user_id, password)) {
+
+    const std::optional success_user_id{
+        db.update_user_name(user_id, username)
+            .and_then([&](const std::int64_t& user_id) noexcept -> std::optional<std::int64_t> {
+                return db.update_user_password(user_id, password);
+            })
+    };
+
+    if (!success_user_id.has_value()) {
         logging::error{ R"(Fail to update user "{}")", user_id };
         return;
     }

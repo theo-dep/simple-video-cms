@@ -490,16 +490,19 @@ inline void server::confirm(const httplib::Request& req, httplib::Response& res,
 
 namespace server
 {
-    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, bool is_admin, bool login_error, bool update_error);
+    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id,
+                                 bool is_admin, bool login_error, bool update_error, bool invalid_username);
 }
 
-inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, bool is_admin, bool login_error, bool update_error)
+inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id,
+                                            bool is_admin, bool login_error, bool update_error, bool invalid_username)
 {
     const inja::json data{
         { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
         { "is_admin", is_admin },
         { "login_error", login_error },
         { "update_error", update_error },
+        { "invalid_username", invalid_username }
     };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -513,7 +516,7 @@ inline void server::update_user_get(const httplib::Request& req, httplib::Respon
 
     const std::string user_id{ req.path_params.at("user_id") };
     const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
-    set_update_user_content(res, env, client, user_id, is_admin, false, false);
+    set_update_user_content(res, env, client, user_id, is_admin, false, false, false);
 }
 
 inline void server::update_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
@@ -522,24 +525,36 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
         return;
 
     const std::string user_id{ req.path_params.at("user_id") };
-    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
+    const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
 
     const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
     if (!is_valid_user) {
-        set_update_user_content(res, env, client, user_id, is_admin, true, false);
+        set_update_user_content(res, env, client, user_id, is_admin_req, true, false, false);
         return;
     }
 
     const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
     if (new_password.empty()) {
-        set_update_user_content(res, env, client, user_id, is_admin, false, true);
+        set_update_user_content(res, env, client, user_id, is_admin_req, false, true, false);
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (new_password != confirm_password) {
-        set_update_user_content(res, env, client, user_id, is_admin, false, true);
+        set_update_user_content(res, env, client, user_id, is_admin_req, false, true, false);
+        return;
+    }
+
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    const std::string tested_user_id{ client.user_id(username) };
+    const bool is_user{ client.is_user(tested_user_id) };
+    const bool is_admin{ client.is_admin(tested_user_id) };
+    if ((is_user && !is_admin_req) || (is_admin && is_admin_req)) {
+        set_update_user_content(res, env, client, user_id, is_admin_req, false, false, true);
         return;
     }
 
@@ -548,8 +563,8 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     std::string signal_str;
     if (is_admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
-                             client.update_user(user_id, new_password);
+                         .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
+                             client.update_user(user_id, username, new_password);
                              res.set_redirect("/admin-list");
                              logging::info{ "Admin {} updated by {}", user_id, updater_user_id };
                          })
@@ -559,8 +574,8 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
-                             client.update_user(user_id, new_password);
+                         .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
+                             client.update_user(user_id, username, new_password);
                              res.set_redirect("/user-list");
                              logging::info{ "User {} updated by {}", user_id, updater_user_id };
                          })

@@ -289,10 +289,11 @@ std::string Client::add_user(const std::string& username, const std::string& pas
     return client::format_page(res);
 }
 
-void Client::update_user(const std::string& user_id, const std::string& password) const noexcept
+void Client::update_user(const std::string& user_id, const std::string& username, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
         { "user_id", user_id, "", "" },
+        { "username", username, "", "" },
         { "password", password, "", "" }
     };
     _client->Post("/update-user", items);

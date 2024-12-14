@@ -536,7 +536,33 @@ std::optional<std::int64_t> Database::add_user(const std::string& name, const st
     return success->values["user_id"s].get_int();
 }
 
-bool Database::update_user(const std::int64_t& id, const std::string& password) const noexcept
+std::optional<std::int64_t> Database::update_user_name(const std::int64_t& id, const std::string& name) const noexcept
+{
+    using namespace std::literals;
+    constexpr std::string_view jx9_prog{ R"(
+        $user = db_fetch_by_id('users', $id);
+        $user.name = $name;
+        $success = db_update_record('users', $id, $user);
+    )"sv };
+
+    std::optional success{
+        database::open(path_, up::db_mode::OPEN_READWRITE)
+            .and_then(database::bind(database::compile, jx9_prog))
+            .and_then(database::bind(database::bind_variable, "id"s, id))
+            .and_then(database::bind(database::bind_variable, "name"s, name))
+            .and_then(database::execute)
+            .and_then(database::bind(database::extract_variable, "success"s))
+    };
+
+    if (!success.has_value() || !success->value.get_bool()) {
+        logging::error{ R"(Fail to update admin "{}")", id };
+        return std::nullopt;
+    }
+
+    return id;
+}
+
+std::optional<std::int64_t> Database::update_user_password(const std::int64_t& id, const std::string& password) const noexcept
 {
     using namespace std::literals;
     constexpr std::string_view jx9_prog{ R"(
@@ -554,12 +580,12 @@ bool Database::update_user(const std::int64_t& id, const std::string& password) 
             .and_then(database::bind(database::extract_variable, "success"s))
     };
 
-    if (!success.has_value()) {
+    if (!success.has_value() || !success->value.get_bool()) {
         logging::error{ R"(Fail to update admin "{}")", id };
-        return false;
+        return std::nullopt;
     }
 
-    return success->value.get_bool();
+    return id;
 }
 
 bool Database::delete_user(const std::int64_t& id) const noexcept
