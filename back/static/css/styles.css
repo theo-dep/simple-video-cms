@@ -38,10 +38,16 @@ hr {
     color: white;
     background-color: #16A085;
     border-radius: 4px;
+    height: 100%;
 }
 
 .button:hover {
     background-color: #0D5B4C;
+}
+
+.button-spinner {
+    padding-top: 0.3em;
+    padding-bottom: 0.1em;
 }
 
 /*
