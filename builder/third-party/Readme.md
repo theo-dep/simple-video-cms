@@ -18,15 +18,16 @@
 - https://github.com/nlohmann/json
 - MIT License
 
-## unqlite
+## sqlite3
 
-- v1.1.9
-- https://github.com/symisc/unqlite
-- 2-Clause BSD License
+- v3.47.2
+- https://github.com/sqlite/sqlite
+- Public Domain
 
-### C++ wrapper
+## sqlite_orm
 
-- https://github.com/WookeyBiscotti/unqlite_cpp
+- v1.9
+- https://github.com/fnc12/sqlite_orm
 - MIT License
 
 ## rapidfuzz-cpp
