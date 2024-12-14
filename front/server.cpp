@@ -56,6 +56,8 @@ namespace server
     void update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
     void delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
 
+    void download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
+
     void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
@@ -115,6 +117,8 @@ int server::start() noexcept
         .Get("/update-video/:video_id", sc::serve(update_video_get, std::ref(env), std::ref(session), std::cref(client)))
         .Post("/update-video/:video_id", sc::serve(update_video_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+
+        .Get("/download-video/:video_id", sc::serve(download_video, std::cref(session), std::cref(client)))
 
         .Get("/watch-video/:video_id", sc::serve(watch_video, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)))
@@ -832,6 +836,44 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     };
 
     confirm_action(req, res, session, client, signal_str);
+}
+
+inline void server::download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string video_id{ req.path_params.at("video_id") };
+
+    std::string* video_content{ new std::string };
+    const bool success{
+        client.video(video_id, "", [video_content](const char* data, std::size_t size) noexcept -> bool {
+            video_content->append(data, size);
+            return true;
+        })
+    };
+
+    if (!success) {
+        delete video_content;
+        logging::error{ "Fail to download video {}", video_id };
+        res.set_redirect("/video-list");
+        return;
+    }
+
+    const std::string downloader_user_id{ connected_user_id(req, session) };
+
+    res.set_content_provider(
+        video_content->size(), // Content length
+        "video/mp4",           // Content type
+        [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+            constexpr std::size_t chunk_size{ 4096 };
+            sink.write(&(*video_content)[offset], std::min(chunk_size, length));
+            return true; // return 'false' if you want to cancel the process.
+        },
+        [video_id, downloader_user_id, video_content](bool success) noexcept {
+            delete video_content;
+            logging::info{ "Video {} downloaded by {}: {}", video_id, downloader_user_id, success };
+        });
 }
 
 namespace server

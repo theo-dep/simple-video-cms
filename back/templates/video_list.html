@@ -49,6 +49,7 @@
     <table id="table" class="table pure-table pure-table-horizontal">
       <thead>
         <tr>
+          <th></th>
           <th>Video Name</th>
           <th>Views</th>
           <th>User Rights</th>
@@ -62,6 +63,11 @@
       <tbody>
         {% for video in video_dict %}
         <tr>
+          <td>
+            <a href="/download-video/{{ video.id }}" download="{{ video.title }}.mp4">
+              <img src="static/img/cloud-arrow-down.svg" alt="download video" />
+            </a>
+          </td>
           <td data-title="video-name">
             <a href="/watch-video/{{ video.id }}">{{ video.title }}</a>
           </td>
