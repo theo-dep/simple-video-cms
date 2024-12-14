@@ -469,16 +469,24 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
 inline void server::update_video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    if (!req.has_file("user_ids")) {
+    if (!req.has_file("title") || !req.has_file("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
     const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
-
+    const std::string video_title{ req.get_file_value("title").content };
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
-    if (!db.update_video_rights(video_id, transform(allowed_user_ids))) {
+
+    const std::optional success{
+        db.update_video_title(video_id, video_title)
+            .transform([&](const std::int64_t& video_id) noexcept -> bool {
+                return db.update_video_rights(video_id, transform(allowed_user_ids));
+            })
+    };
+
+    if (!success.value_or(false)) {
         logging::error{ R"(Fail to update video "{}")", video_id };
         return;
     }

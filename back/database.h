@@ -49,6 +49,7 @@ public:
     [[nodiscard]] std::optional<std::int64_t> add_video_size(const std::int64_t& id, const std::int64_t& size) const noexcept;
     [[nodiscard]] std::optional<std::int64_t> add_video_thumbnail(const std::int64_t& id, const std::string& thumbnail) const noexcept;
     [[nodiscard]] bool add_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
+    [[nodiscard]] std::optional<std::int64_t> update_video_title(const std::int64_t& id, const std::string& title) const noexcept;
     [[nodiscard]] bool update_video_rights(const std::int64_t& id, const std::vector<std::int64_t>& user_ids) const noexcept;
     [[nodiscard]] bool delete_video(const std::int64_t& id) const noexcept;
     [[nodiscard]] bool increment_video_views(const std::int64_t& id) const noexcept;
