@@ -221,7 +221,7 @@ inline inja::json server::video_dict(const std::vector<std::string>& video_ids, 
     inja::json video_dict;
     for (const std::string& video_id : video_ids) {
         const std::string title{ client.video_title(video_id) };
-        const std::int64_t views{ client.video_views(video_id) };
+        const int views{ client.video_views(video_id) };
         video_dict.emplace_back(inja::json::object({ { "id", video_id }, { "title", title }, { "views", views } }));
     }
     return video_dict;
@@ -916,7 +916,7 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
     const bool is_logged{ session.is_valid_session_from_cookie(cookie) };
 
     const std::string video_title{ client.video_title(video_id) };
-    const std::int64_t video_views{ client.video_views(video_id) };
+    const int video_views{ client.video_views(video_id) };
 
     const inja::json data{
         { "is_logged", is_logged },

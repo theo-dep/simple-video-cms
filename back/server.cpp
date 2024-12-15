@@ -62,13 +62,7 @@ int server::start() noexcept
 {
     const std::filesystem::path database_file{ std::filesystem::current_path() / "data" / "video.db" };
 
-    bool is_database_ok{ false };
-    const Database db(database_file, is_database_ok);
-    if (!is_database_ok) {
-        logging::error{ "Fail to create the database" };
-        return EXIT_FAILURE;
-    }
-
+    const Database db(database_file);
     if (!db.create_tables()) {
         logging::error{ "Fail to create database tables" };
         return EXIT_FAILURE;
@@ -134,7 +128,7 @@ int server::start() noexcept
 inline bool server::create_super_admin(const Database& db) noexcept
 {
     const std::string username{ sc::get_env("SUPER_ADMIN_USERNAME", "admin") };
-    const std::int64_t user_id{ db.user_id(username) };
+    const int user_id{ db.user_id(username) };
     if (db.is_admin(user_id)) {
         // already created
         return true;
@@ -168,31 +162,31 @@ inline void server::static_file(const httplib::Request& req, httplib::Response& 
 
 namespace server
 {
-    std::vector<std::string> transform(const std::vector<std::int64_t>& list) noexcept;
-    std::vector<std::int64_t> transform(const std::vector<std::string>& list) noexcept;
-    std::vector<std::int64_t> extract(const Database& db, const std::string& search, const std::vector<std::int64_t>& ids) noexcept;
+    std::vector<std::string> transform(const std::vector<int>& list) noexcept;
+    std::vector<int> transform(const std::vector<std::string>& list) noexcept;
+    std::vector<int> extract(const Database& db, const std::string& search, const std::vector<int>& ids) noexcept;
 }
 
-inline std::vector<std::string> server::transform(const std::vector<std::int64_t>& list) noexcept
+inline std::vector<std::string> server::transform(const std::vector<int>& list) noexcept
 {
     std::vector<std::string> str_list(list.size());
     std::ranges::transform(list, str_list.begin(), su::int_to_string);
     return str_list;
 }
 
-inline std::vector<std::int64_t> server::transform(const std::vector<std::string>& list) noexcept
+inline std::vector<int> server::transform(const std::vector<std::string>& list) noexcept
 {
-    std::vector<std::int64_t> int_list(list.size());
+    std::vector<int> int_list(list.size());
     std::ranges::transform(list, int_list.begin(), su::string_to_int);
     return int_list;
 }
 
-inline std::vector<std::int64_t> server::extract(const Database& db, const std::string& search, const std::vector<std::int64_t>& ids) noexcept
+inline std::vector<int> server::extract(const Database& db, const std::string& search, const std::vector<int>& ids) noexcept
 {
-    std::unordered_map<std::string, std::int64_t> title_ids;
+    std::unordered_map<std::string, int> title_ids;
     title_ids.reserve(ids.size());
     std::ranges::transform(ids, std::inserter(title_ids, title_ids.begin()),
-                           [&db](const std::int64_t& id) noexcept -> decltype(title_ids)::value_type {
+                           [&db](const int& id) noexcept -> decltype(title_ids)::value_type {
                                return std::make_pair(db.video_title(id), id);
                            });
     return search::extract(search, title_ids);
@@ -200,9 +194,9 @@ inline std::vector<std::int64_t> server::extract(const Database& db, const std::
 
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    std::vector<std::int64_t> ids;
+    std::vector<int> ids;
     if (req.has_header("user_id")) {
-        const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+        const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
         ids = db.video_list(user_id);
     } else {
         ids = db.video_list();
@@ -232,33 +226,33 @@ inline void server::no_right_video_list(const httplib::Request& req, httplib::Re
 
 inline void server::video_title(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const std::string video_title{ db.video_title(video_id) };
     res.set_content(video_title, "plain/text");
 }
 
 inline void server::video_views(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::int64_t video_views{ db.video_views(video_id) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_views{ db.video_views(video_id) };
     res.set_content(su::int_to_string(video_views), "plain/text");
 }
 
 inline void server::user_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t count{ db.user_count() };
+    const int count{ db.user_count() };
     res.set_content(su::int_to_string(count), "plain/text");
 }
 
 inline void server::video_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t count{ db.video_count() };
+    const int count{ db.video_count() };
     res.set_content(su::int_to_string(count), "plain/text");
 }
 
 inline void server::view_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t count{ db.view_count() };
+    const int count{ db.view_count() };
     res.set_content(su::int_to_string(count), "plain/text");
 }
 
@@ -270,7 +264,7 @@ inline void server::is_admin(const httplib::Request& req, httplib::Response& res
         return;
     }
 
-    const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+    const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
     const bool is_admin{ db.is_admin(user_id) };
     res.set_content(su::bool_to_string(is_admin), "plain/text");
 }
@@ -283,7 +277,7 @@ inline void server::is_super_admin(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+    const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
     const bool is_super_admin{ db.is_super_admin(user_id) };
     res.set_content(su::bool_to_string(is_super_admin), "plain/text");
 }
@@ -296,7 +290,7 @@ inline void server::is_user(const httplib::Request& req, httplib::Response& res,
         return;
     }
 
-    const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+    const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
     const bool is_user{ db.is_user(user_id) };
     res.set_content(su::bool_to_string(is_user), "plain/text");
 }
@@ -309,7 +303,7 @@ inline void server::user_name(const httplib::Request& req, httplib::Response& re
         return;
     }
 
-    const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+    const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
     const std::string username{ db.user_name(user_id) };
     res.set_content(username, "plain/text");
 }
@@ -323,7 +317,7 @@ inline void server::user_id(const httplib::Request& req, httplib::Response& res,
     }
 
     const std::string username{ req.get_header_value("username") };
-    const std::int64_t user_id{ db.user_id(username) };
+    const int user_id{ db.user_id(username) };
     res.set_content(su::int_to_string(user_id), "plain/text");
 }
 
@@ -379,14 +373,14 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
         return;
     }
 
-    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
     const std::string username{ req.get_file_value("username").content };
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
     const std::optional success_user_id{
         db.update_user_name(user_id, username)
-            .and_then([&](const std::int64_t& user_id) noexcept -> std::optional<std::int64_t> {
+            .and_then([&](int user_id) noexcept -> std::optional<int> {
                 return db.update_user_password(user_id, password);
             })
     };
@@ -405,7 +399,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
         return;
     }
 
-    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
     if (!db.delete_user(user_id)) {
         logging::error{ R"(Fail to delete user "{}")", user_id };
         return;
@@ -420,7 +414,7 @@ inline void server::is_valid_user(const httplib::Request& req, httplib::Response
         return;
     }
 
-    const std::int64_t user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
@@ -456,13 +450,10 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::optional video_id{ db.add_video(video_title, video_content) };
     const std::optional success{
         video_id
-            .and_then([&](const std::int64_t& video_id) noexcept -> std::optional<std::int64_t> {
-                return db.add_video_size(video_id, video_content.size());
-            })
-            .and_then([&](const std::int64_t& video_id) noexcept -> std::optional<std::int64_t> {
+            .and_then([&](const int& video_id) noexcept -> std::optional<int> {
                 return db.add_video_thumbnail(video_id, thumbnail_content);
             })
-            .transform([&](const std::int64_t& video_id) noexcept -> bool {
+            .transform([&](const int& video_id) noexcept -> bool {
                 return db.add_video_rights(video_id, transform(allowed_user_ids));
             })
     };
@@ -484,13 +475,13 @@ inline void server::update_video(const httplib::Request& req, httplib::Response&
         return;
     }
 
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const std::string video_title{ req.get_file_value("title").content };
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
 
     const std::optional success{
         db.update_video_title(video_id, video_title)
-            .transform([&](const std::int64_t& video_id) noexcept -> bool {
+            .transform([&](int video_id) noexcept -> bool {
                 return db.update_video_rights(video_id, transform(allowed_user_ids));
             })
     };
@@ -503,7 +494,7 @@ inline void server::update_video(const httplib::Request& req, httplib::Response&
 
 inline void server::delete_video(const httplib::Request& req, httplib::Response& /*res*/, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     if (!db.delete_video(video_id)) {
         logging::error{ R"(Fail to delete video "{}")", video_id };
         return;
@@ -512,7 +503,7 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
 
 inline void server::increment_video_views(const httplib::Request& req, httplib::Response& /*res*/, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     if (!db.increment_video_views(video_id)) {
         logging::error{ R"(Fail to increment video views "{}")", video_id };
         return;
@@ -521,8 +512,8 @@ inline void server::increment_video_views(const httplib::Request& req, httplib::
 
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::int64_t video_size{ db.video_size(video_id) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_size{ db.video_size(video_id) };
 
     ChunkWorker* const chunk_worker{ new ChunkWorker() };
     chunk_worker->set_buffer_size(video_size);
@@ -548,14 +539,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
 
 inline void server::video_size(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::int64_t video_size{ db.video_size(video_id) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_size{ db.video_size(video_id) };
     res.set_content(su::int_to_string(video_size), "plain/text");
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const std::string* const thumbnail_content{ new std::string(db.thumbnail(video_id)) };
 
     static constexpr std::size_t data_chunk_size{ static_cast<std::size_t>(4LL * 1024LL) };
@@ -571,11 +562,11 @@ inline void server::thumbnail(const httplib::Request& req, httplib::Response& re
 
 inline void server::has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
     bool has_video_right{ false };
     if (req.has_header("user_id")) {
-        const std::int64_t user_id{ su::string_to_int(req.get_header_value("user_id")) };
+        const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
         has_video_right = db.has_video_right(video_id, user_id);
     } else {
         has_video_right = db.has_video_right(video_id);
@@ -586,7 +577,7 @@ inline void server::has_video_right(const httplib::Request& req, httplib::Respon
 
 inline void server::video_right_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    const std::int64_t video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
     const std::vector rights{ transform(db.video_right_list(video_id)) };
     res.set_content(su::join(rights), "plain/text");

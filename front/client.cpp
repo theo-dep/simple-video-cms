@@ -218,7 +218,7 @@ std::string Client::video_title(const std::string& video_id) const noexcept
     return client::format_page(res);
 }
 
-std::int64_t Client::video_views(const std::string& video_id) const noexcept
+int Client::video_views(const std::string& video_id) const noexcept
 {
     const httplib::Result res{ _client->Get("/views/" + video_id) };
     return su::string_to_int(client::format_page(res));
@@ -317,19 +317,19 @@ bool Client::is_valid_user(const std::string& user_id, const std::string& passwo
     return su::string_to_bool(client::format_page(res));
 }
 
-std::int64_t Client::user_count() const noexcept
+int Client::user_count() const noexcept
 {
     const httplib::Result res{ _client->Get("/user-count") };
     return su::string_to_int(client::format_page(res));
 }
 
-std::int64_t Client::video_count() const noexcept
+int Client::video_count() const noexcept
 {
     const httplib::Result res{ _client->Get("/video-count") };
     return su::string_to_int(client::format_page(res));
 }
 
-std::int64_t Client::view_count() const noexcept
+int Client::view_count() const noexcept
 {
     const httplib::Result res{ _client->Get("/view-count") };
     return su::string_to_int(client::format_page(res));
@@ -405,10 +405,10 @@ bool Client::video(const std::string& video_id, const std::string& range_header,
     return true;
 }
 
-std::int64_t Client::video_size(const std::string& video_id) const noexcept
+int Client::video_size(const std::string& video_id) const noexcept
 {
     const httplib::Result res{ _client->Get("/video-size/" + video_id) };
-    const std::int64_t video_size{ su::string_to_int(client::format_page(res)) };
+    const int video_size{ su::string_to_int(client::format_page(res)) };
     logging::debug{ "Video length: {}", video_size };
     return video_size;
 }

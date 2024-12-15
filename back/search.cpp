@@ -9,9 +9,9 @@
 #include <map>
 
 // github.com/rapidfuzz/rapidfuzz-cpp/tree/main?tab=readme-ov-file#multithreading
-std::vector<std::int64_t> search::extract(const std::string& search,
-                                          const std::unordered_map<std::string, std::int64_t>& choices,
-                                          double score_cutoff) noexcept
+std::vector<int> search::extract(const std::string& search,
+                                 const std::unordered_map<std::string, int>& choices,
+                                 double score_cutoff) noexcept
 {
     std::string processed_search{ search };
     su::lower(processed_search);
@@ -45,9 +45,9 @@ std::vector<std::int64_t> search::extract(const std::string& search,
                       }
                   });
 
-    std::vector<std::int64_t> results(scored_result_map.size());
+    std::vector<int> results(scored_result_map.size());
     std::ranges::transform(scored_result_map, results.begin(),
-                           [&choices](const score_type& pair) noexcept -> std::int64_t {
+                           [&choices](const score_type& pair) noexcept -> int {
                                return choices.at(pair.second);
                            });
     return results;
