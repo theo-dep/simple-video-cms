@@ -1,6 +1,7 @@
 #include "database.h"
 #include "databaseschema.h"
 
+#include "filesystem.h"
 #include "logging.h"
 #include "stringutils.h"
 
@@ -378,10 +379,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
     auto storage = database::storage(path_);
 
     const std::filesystem::path video_path{ path_.parent_path() / "videos" };
-
-    std::error_code error_code;
-    if (!std::filesystem::exists(video_path) && (!std::filesystem::create_directories(video_path, error_code) || error_code)) {
-        logging::error{ R"(Fail to create "{}" directories: {} ({}))", video_path.string(), error_code.message(), error_code.value() };
+    if (!filesystem::create(video_path)) {
         return std::nullopt;
     }
 
@@ -403,10 +401,7 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
     auto storage = database::storage(path_);
 
     const std::filesystem::path thumbnail_path{ path_.parent_path() / "thumbnails" };
-
-    std::error_code error_code;
-    if (!std::filesystem::exists(thumbnail_path) && (!std::filesystem::create_directories(thumbnail_path, error_code) || error_code)) {
-        logging::error{ R"(Fail to create "{}" directories: {} ({}))", thumbnail_path.string(), error_code.message(), error_code.value() };
+    if (!filesystem::create(thumbnail_path)) {
         return std::nullopt;
     }
 
@@ -473,17 +468,13 @@ bool Database::delete_video(int id) const noexcept
         return false;
     }
 
-    std::error_code error_code;
-
     // remove video file
-    if (!std::filesystem::remove(video->content_path, error_code) || error_code) {
-        logging::error{ R"(Fail to remove "{}" with error {}: "{}")", video->content_path, error_code.value(), error_code.message() };
+    if (!filesystem::remove(video->content_path)) {
         return false;
     }
 
     // remove thumbnail file
-    if (!std::filesystem::remove(video->thumbnail_path, error_code) || error_code) {
-        logging::error{ R"(Fail to remove "{}" with error {}: "{}")", video->thumbnail_path, error_code.value(), error_code.message() };
+    if (!filesystem::remove(video->thumbnail_path)) {
         return false;
     }
 

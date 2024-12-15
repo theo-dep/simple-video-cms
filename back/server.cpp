@@ -3,6 +3,7 @@
 #include "chunkworker.h"
 #include "crypto.h"
 #include "database.h"
+#include "filesystem.h"
 #include "logging.h"
 #include "search.h"
 #include "servercommon.h"
@@ -10,8 +11,6 @@
 #include "video.h"
 
 #include <httplib.h>
-
-#include <filesystem>
 
 namespace server
 {
@@ -60,7 +59,7 @@ namespace server
 
 int server::start() noexcept
 {
-    const std::filesystem::path database_file{ std::filesystem::current_path() / "data" / "video.db" };
+    const std::filesystem::path database_file{ filesystem::data_path() / "video.db" };
 
     const Database db(database_file);
     if (!db.create_tables()) {

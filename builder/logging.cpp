@@ -1,5 +1,6 @@
 #include "logging.h"
 
+#include "filesystem.h"
 #include "stringutils.h"
 
 #include <chrono>
@@ -135,10 +136,8 @@ inline logging::Logger::~Logger() noexcept
 
 inline void logging::Logger::open(const std::filesystem::path& log_file_path) noexcept
 {
-    std::error_code error_code;
     const std::filesystem::path log_file_dir{ log_file_path.parent_path() };
-    if (!std::filesystem::exists(log_file_dir) && (!std::filesystem::create_directories(log_file_dir, error_code) || error_code)) {
-        logging::error{ R"(Fail to create "{}" directories: {} ({}))", log_file_dir.string(), error_code.message(), error_code.value() };
+    if (!filesystem::create(log_file_dir)) {
         return;
     }
 
@@ -192,7 +191,6 @@ inline bool logging::Logger::is_max_log_reached() noexcept
     if (std::chrono::duration_cast<std::chrono::hours>(elapsed).count() >= hour_to_check) {
         _latest_time_check = last_log_written;
 
-        std::error_code error_code;
         const std::uintmax_t log_bytes_size{ std::filesystem::file_size(log_id_file_path(), error_code) };
         if (error_code) {
             logging::error{ R"(Fail to get the log size of "{}": {} ({}))", log_id_file_path().string(), error_code.message(), error_code.value() };

@@ -1,9 +1,10 @@
 #include "server.h"
 
+#include "filesystem.h"
 #include "logging.h"
 
 int main()
 {
-    logging::init(std::filesystem::current_path() / "data" / "logs" / "front.log");
+    logging::init(filesystem::logs_path() / "front.log");
     return server::start();
 }
