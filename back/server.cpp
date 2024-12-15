@@ -563,12 +563,14 @@ inline void server::has_video_right(const httplib::Request& req, httplib::Respon
 {
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
-    bool has_video_right{ false };
-    if (req.has_header("user_id")) {
+    bool has_video_right{ db.has_video_right(video_id) };
+    if (!has_video_right && req.has_header("user_id")) {
         const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
-        has_video_right = db.has_video_right(video_id, user_id);
-    } else {
-        has_video_right = db.has_video_right(video_id);
+        // check if user is admin
+        if (db.is_admin(user_id))
+            has_video_right = true;
+        else
+            has_video_right = db.has_video_right(video_id, user_id);
     }
 
     res.set_content(su::bool_to_string(has_video_right), "plain/text");
