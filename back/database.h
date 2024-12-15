@@ -30,8 +30,8 @@ public:
     bool is_user(int id) const noexcept;
     [[nodiscard]] std::optional<int> add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
     [[nodiscard]] std::optional<int> add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept;
-    [[nodiscard]] bool update_user_name(int id, const std::string& name) const noexcept;
-    [[nodiscard]] bool update_user_password(int id, const std::string& password) const noexcept;
+    [[nodiscard]] std::optional<int> update_user_name(int id, const std::string& name) const noexcept;
+    [[nodiscard]] std::optional<int> update_user_password(int id, const std::string& password) const noexcept;
     [[nodiscard]] bool delete_user(int id) const noexcept;
 
     int user_id(const std::string& name) const noexcept;
