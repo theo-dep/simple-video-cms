@@ -12,13 +12,21 @@ declare -a commons=($(find ${COMMON_DIR} -maxdepth 1 -type f -name "*.cpp" -exec
 declare -a common_objets
 for common in "${commons[@]}"
 do
-    make -C ${COMMON_DIR} ${common}.o CXXFLAGS="${CXXFLAGS}" && (
-        cp -f ${COMMON_DIR}/${common}.o ${SOURCE_DIR}/back;
-        cp -f ${COMMON_DIR}/${common}.o ${SOURCE_DIR}/front
+    make -C "${COMMON_DIR}" ${common}.o CXXFLAGS="${CXXFLAGS}" && (
+        ln -fs "${COMMON_DIR}/${common}.o" "${SOURCE_DIR}/back";
+        ln -fs "${COMMON_DIR}/${common}.o" "${SOURCE_DIR}/front"
     ) && common_objets+=" ${common}.o"
 done
 
-echo Build back...
+# add sqlite3
+SQLITE3_OBJ="sqlite3.o"
+if [ ! -f "${SOURCE_DIR}/back/${SQLITE3_OBJ}" ]; then
+    echo Build sqlite3...
+    "${SCRIPT_DIR}/build_sqlite3.sh"
+    ln -fs ${COMMON_DIR}/${SQLITE3_OBJ} "${SOURCE_DIR}/back"
+fi
+
+## add FFmpeg
 ZLIB_DIR=${COMMON_DIR}/third-party/zlib
 LIBPNG_DIR=${COMMON_DIR}/third-party/libpng
 FFMPEG_DIR=${COMMON_DIR}/third-party/ffmpeg
@@ -33,7 +41,13 @@ FFMPEG_LIBS=" \
     -L${LIBPNG_DIR}/.libs -lpng \
     -L${ZLIB_DIR} -lz \
 "
-make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS} -I${FFMPEG_DIR} -I${LIBPNG_DIR}" LDFLAGS="${LDFLAGS} ${common_objets} ${FFMPEG_LIBS}"
+if [ ! -f "${FFMPEG_DIR}/libavformat/libavformat.a" ]; then
+    echo Build FFmpeg...
+    "${SCRIPT_DIR}/build_ffmpeg.sh"
+fi
+
+echo Build back...
+make -C ${SOURCE_DIR}/back -j -k server CXXFLAGS="${CXXFLAGS} -I${FFMPEG_DIR} -I${LIBPNG_DIR}" LDFLAGS="${LDFLAGS} ${common_objets} ${SQLITE3_OBJ} ${FFMPEG_LIBS}"
 
 echo Build front...
 make -C ${SOURCE_DIR}/front -j -k server CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS} ${common_objets}"
