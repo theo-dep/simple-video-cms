@@ -28,7 +28,7 @@
 
 - v1.9
 - https://github.com/fnc12/sqlite_orm
-- MIT License
+- AGPL License
 
 ## rapidfuzz-cpp
 
