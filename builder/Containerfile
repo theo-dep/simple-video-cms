@@ -8,6 +8,7 @@ RUN apk add --no-cache \
 
 ENV SOURCE_DIR=/sources
 ENV CXXFLAGS="-O3 -I${SOURCE_DIR} -DNDEBUG"
+ENV CFLAGS="-O3 -I${SOURCE_DIR} -DNDEBUG"
 
 ADD third-party/ ${SOURCE_DIR}/
 

@@ -30,7 +30,5 @@ services:
       dockerfile: Containerfile
     volumes:
       - data:/data
-      - ./back/static:/static
-      - ./back/templates:/templates
     depends_on:
       - builder

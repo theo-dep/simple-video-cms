@@ -1,11 +1,14 @@
+CC = gcc
 CXX = g++
+override CFLAGS += -Wall -Wextra -Werror
 override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -DCPPHTTPLIB_USE_POLL
 override LDFLAGS += -static
 
 ANALYZER = clang-tidy
 
-SRCS = $(wildcard *.cpp)
-OBJS = $(SRCS:.cpp=.o)
+CC_SRCS =  $(wildcard *.c)
+CXX_SRCS = $(wildcard *.cpp)
+OBJS = $(CXX_SRCS:.cpp=.o) $(CC_SRCS:.c=.o)
 
 TARGET = server
 
@@ -17,7 +20,10 @@ $(TARGET): $(OBJS)
 %.o: %.cpp $(wildcard *.h)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-analyze: $(SRCS)
+%.o: %.c $(wildcard *.h)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+analyze: $(CXX_SRCS)
 	$(ANALYZER) $^ -- $(CXXFLAGS)
 
 clean:
