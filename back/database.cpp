@@ -676,8 +676,7 @@ inline auto database::safe(const Function& callback, const std::source_location&
 
 inline int database::file_size(const std::string& path) noexcept
 {
-    std::ifstream file(path, std::ios::in | std::ios::binary);
-    file.seekg(0, std::ios::end);
+    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
     return file.tellg();
 }
 
@@ -687,20 +686,20 @@ inline bool database::read_file(const std::string& path, const std::function<boo
     constexpr std::size_t chunk_size{ 4096 };
     std::array<char, chunk_size> buffer{};
     bool read_success{ true };
-    while (file.read(buffer.data(), chunk_size) && file.gcount() > 0 && read_success) {
+    while (file.good() && read_success) {
+        file.read(buffer.data(), chunk_size);
         read_success = callback(buffer.data(), file.gcount());
     }
-    return read_success;
+    return read_success && !file.bad();
 }
 
 inline std::string database::read_file(const std::string& path) noexcept
 {
     // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
-    std::ifstream file(path, std::ios::in | std::ios::binary);
-    file.seekg(0, std::ios::end);
+    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
     const std::streampos file_length{ file.tellg() };
     std::string file_content(file_length, '0');
-    file.seekg(0, std::ios::beg);
+    file.seekg(0);
     file.read(&file_content[0], file_length);
     return file_content;
 }
