@@ -940,13 +940,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
 
     const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
-    ChunkWorker* const chunk_worker{ new ChunkWorker() };
+    ChunkWorker* const chunk_worker{ new ChunkWorker };
     chunk_worker->set_buffer_size(video_size);
+    chunk_worker->start_chunk_at(req.get_header_value("Range"));
+
     chunk_worker->set_fetch_async_callback([chunk_worker, video_id, &req, &client]() noexcept -> bool {
-        return client.video(video_id, req.get_header_value("Range"), chunk_worker->append_chunk_callback(true));
+        return client.video(video_id, req.get_header_value("Range"), chunk_worker->append_chunk_callback());
     });
 
-    chunk_worker->start_chunk_at(req.get_header_value("Range"));
     chunk_worker->start_fetch_async();
 
     chunk_worker->wait_for_chunk();

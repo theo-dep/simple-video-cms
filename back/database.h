@@ -20,7 +20,7 @@ public:
     std::string video_title(int id) const noexcept;
     int video_views(int id) const noexcept;
     int video_size(int id) const noexcept;
-    bool video(int id, const std::function<bool(const char*, std::size_t)>& callback) const noexcept;
+    bool video(int id, std::size_t offset, const std::function<bool(const char*, std::size_t)>& callback) const noexcept;
     std::string thumbnail(int id) const noexcept;
 
     [[nodiscard]] std::optional<int> add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept;

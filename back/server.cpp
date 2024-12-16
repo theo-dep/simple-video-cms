@@ -511,13 +511,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const int video_size{ db.video_size(video_id) };
 
-    ChunkWorker* const chunk_worker{ new ChunkWorker() };
+    ChunkWorker* const chunk_worker{ new ChunkWorker };
     chunk_worker->set_buffer_size(video_size);
+    chunk_worker->start_chunk_at(req.get_header_value("Range"));
+
     chunk_worker->set_fetch_async_callback([chunk_worker, video_id, &db]() noexcept -> bool {
-        return db.video(video_id, chunk_worker->append_chunk_callback(false));
+        return db.video(video_id, chunk_worker->chunk_offset(), chunk_worker->append_chunk_callback());
     });
 
-    chunk_worker->start_chunk_at(req.get_header_value("Range"));
     chunk_worker->start_fetch_async();
 
     chunk_worker->wait_for_chunk();

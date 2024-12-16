@@ -20,7 +20,6 @@ void ChunkWorker::set_buffer_size(std::size_t size) noexcept
 {
     // const std::lock_guard<std::mutex> lock(_mutex);
     _buffer.reserve(size);
-    _append_offset = 0;
     _offset = 0;
     _length = size;
 }
@@ -30,19 +29,11 @@ void ChunkWorker::set_fetch_async_callback(const std::function<bool()>& callback
     _fetch_callback = callback;
 }
 
-std::function<bool(const char*, std::size_t)> ChunkWorker::append_chunk_callback(bool with_offset) noexcept
+std::function<bool(const char*, std::size_t)> ChunkWorker::append_chunk_callback() noexcept
 {
-    return [this, with_offset](const char* data, std::size_t size) noexcept -> bool {
+    return [this](const char* data, std::size_t size) noexcept -> bool {
         // const std::lock_guard<std::mutex> lock(_mutex);
-        if (with_offset) {
-            if (_buffer.size() < _append_offset) {
-                _buffer.insert(0, _append_offset, '0');
-            }
-            _buffer.insert(_append_offset, data, size);
-            _append_offset += size;
-        } else {
-            _buffer.append(data, size);
-        }
+        _buffer.append(data, size);
         return !_request_interruption;
     };
 }
@@ -78,7 +69,7 @@ void ChunkWorker::start_chunk_at(const std::string& range_header) noexcept
         // 1 is the range start
         // 2 is the range end if any
         _offset = su::string_to_int(range_match[1].str());
-        _append_offset = _offset;
+        _buffer.insert(0, _offset, '0');
 
         const std::string length_str{ range_match[2].str() };
         _length = length_str.empty() ? _buffer.capacity() - _offset : su::string_to_int(length_str);

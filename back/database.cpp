@@ -62,7 +62,7 @@ namespace database
     auto safe(const Function& callback, const std::source_location& location = std::source_location::current()) noexcept -> decltype(callback());
 
     int file_size(const std::string& path) noexcept;
-    bool read_file(const std::string& path, const std::function<bool(const char*, std::size_t)>& callback) noexcept;
+    bool read_file(const std::string& path, std::size_t offset, const std::function<bool(const char*, std::size_t)>& callback) noexcept;
     std::string read_file(const std::string& path) noexcept;
     void write_file(const std::string& path, const std::string& content) noexcept;
 }
@@ -166,15 +166,15 @@ int Database::video_size(int id) const noexcept
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/blob_binding.cpp
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/key_value.cpp
 
-bool Database::video(int id, const std::function<bool(const char*, std::size_t)>& callback) const noexcept
+bool Database::video(int id, std::size_t offset, const std::function<bool(const char*, std::size_t)>& callback) const noexcept
 {
     database::StorageType storage{ database::storage(path_) };
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         const std::optional success{
             storage.get_optional<Video>(id)
-                .transform([&callback](const Video& video) noexcept -> bool {
-                    return database::read_file(video.content_path, callback);
+                .transform([&offset, &callback](const Video& video) noexcept -> bool {
+                    return database::read_file(video.content_path, offset, callback);
                 })
                 .or_else([&] noexcept -> std::optional<bool> {
                     logging::error<int const&>{ R"(Fail to fetch video content "{}")", id, location };
@@ -680,9 +680,10 @@ inline int database::file_size(const std::string& path) noexcept
     return file.tellg();
 }
 
-inline bool database::read_file(const std::string& path, const std::function<bool(const char*, std::size_t)>& callback) noexcept
+inline bool database::read_file(const std::string& path, std::size_t offset, const std::function<bool(const char*, std::size_t)>& callback) noexcept
 {
     std::ifstream file(path, std::ios::in | std::ios::binary);
+    file.seekg(offset);
     constexpr std::size_t chunk_size{ 4096 };
     std::array<char, chunk_size> buffer{};
     bool read_success{ true };
