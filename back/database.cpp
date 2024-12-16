@@ -81,7 +81,7 @@ bool Database::create_tables() const noexcept
     });
 }
 
-std::vector<int> Database::video_list() const noexcept
+std::vector<int> Database::admin_video_list() const noexcept
 {
     database::StorageType storage{ database::storage(path_) };
     return database::safe([&] {
@@ -89,7 +89,7 @@ std::vector<int> Database::video_list() const noexcept
     });
 }
 
-std::vector<int> Database::video_list(int user_id) const noexcept
+std::vector<int> Database::user_video_list(int user_id) const noexcept
 {
     database::StorageType storage{ database::storage(path_) };
     return database::safe([&] {
@@ -97,7 +97,7 @@ std::vector<int> Database::video_list(int user_id) const noexcept
     });
 }
 
-std::vector<int> Database::no_right_video_list() const noexcept
+std::vector<int> Database::no_user_video_list() const noexcept
 {
     database::StorageType storage{ database::storage(path_) };
     return database::safe([&] {

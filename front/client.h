@@ -40,11 +40,11 @@ public:
     std::string update_video_page() const noexcept;
     std::string watch_video_page() const noexcept;
 
-    std::vector<std::string> video_list() const noexcept;
-    std::vector<std::string> video_list(const std::string& user_id) const noexcept;
-    std::vector<std::string> video_list(const std::string& user_id, const std::string& search) const noexcept;
-    std::vector<std::string> no_right_video_list() const noexcept;
-    std::vector<std::string> no_right_video_list(const std::string& search) const noexcept;
+    std::vector<std::string> admin_video_list() const noexcept;
+    std::vector<std::string> user_video_list(const std::string& user_id) const noexcept;
+    std::vector<std::string> user_video_list(const std::string& user_id, const std::string& search) const noexcept;
+    std::vector<std::string> no_user_video_list() const noexcept;
+    std::vector<std::string> no_user_video_list(const std::string& search) const noexcept;
 
     std::string video_title(const std::string& video_id) const noexcept;
     int video_views(const std::string& video_id) const noexcept;

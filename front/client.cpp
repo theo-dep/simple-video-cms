@@ -152,19 +152,19 @@ std::string Client::watch_video_page() const noexcept
     return client::format_page(res);
 }
 
-std::vector<std::string> Client::video_list() const noexcept
+std::vector<std::string> Client::admin_video_list() const noexcept
 {
-    const httplib::Result res{ _client->Get("/video-list") };
+    const httplib::Result res{ _client->Get("/admin-video-list") };
     const std::string str_ids{ client::format_page(res) };
     return su::split(str_ids);
 }
 
-std::vector<std::string> Client::video_list(const std::string& user_id) const noexcept
+std::vector<std::string> Client::user_video_list(const std::string& user_id) const noexcept
 {
     const httplib::Headers headers{
         { "user_id", user_id }
     };
-    const httplib::Result res{ _client->Get("/video-list", headers) };
+    const httplib::Result res{ _client->Get("/user-video-list", headers) };
     const std::string str_ids{ client::format_page(res) };
     return su::split(str_ids);
 }
@@ -181,7 +181,7 @@ inline httplib::Result client::get(const std::string& path, const std::unique_pt
     return client->Get(path, params, headers);
 }
 
-std::vector<std::string> Client::video_list(const std::string& user_id, const std::string& search) const noexcept
+std::vector<std::string> Client::user_video_list(const std::string& user_id, const std::string& search) const noexcept
 {
     const httplib::Headers headers{
         { "user_id", user_id }
@@ -189,25 +189,25 @@ std::vector<std::string> Client::video_list(const std::string& user_id, const st
     const httplib::Params params{
         { "search", search }
     };
-    const httplib::Result res{ client::get("/video-list", _client, params, headers) };
+    const httplib::Result res{ client::get("/user-video-list", _client, params, headers) };
     const std::string str_ids{ client::format_page(res) };
     return su::split(str_ids);
 }
 
-std::vector<std::string> Client::no_right_video_list() const noexcept
+std::vector<std::string> Client::no_user_video_list() const noexcept
 {
-    const httplib::Result res{ _client->Get("/no-right-video-list") };
+    const httplib::Result res{ _client->Get("/user-video-list") };
     const std::string str_ids{ client::format_page(res) };
     return su::split(str_ids);
 }
 
-std::vector<std::string> Client::no_right_video_list(const std::string& search) const noexcept
+std::vector<std::string> Client::no_user_video_list(const std::string& search) const noexcept
 {
     const httplib::Headers headers{};
     const httplib::Params params{
         { "search", search }
     };
-    const httplib::Result res{ client::get("/no-right-video-list", _client, params, headers) };
+    const httplib::Result res{ client::get("/user-video-list", _client, params, headers) };
     const std::string str_ids{ client::format_page(res) };
     return su::split(str_ids);
 }

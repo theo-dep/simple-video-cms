@@ -246,25 +246,18 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     }
 
     std::vector<std::string> video_ids;
-    std::vector<std::string> logged_video_ids;
     if (req.has_param("search")) {
         const std::string search{ req.get_param_value("search") };
-        video_ids = client.no_right_video_list(search);
-        if (is_logged) {
-            logged_video_ids = client.video_list(user_id, search);
-        }
+        if (is_logged)
+            video_ids = client.user_video_list(user_id, search);
+        else
+            video_ids = client.no_user_video_list(search);
     } else {
-        video_ids = client.no_right_video_list();
-        if (is_logged) {
-            logged_video_ids = client.video_list(user_id);
-        }
+        if (is_logged)
+            video_ids = client.user_video_list(user_id);
+        else
+            video_ids = client.no_user_video_list();
     }
-
-#ifdef __cpp_lib_containers_ranges
-    video_ids.append_range(logged_video_ids);
-#else
-    video_ids.insert(video_ids.end(), logged_video_ids.cbegin(), logged_video_ids.cend());
-#endif
 
     const inja::json data{
         { "is_logged", is_logged },
@@ -636,7 +629,7 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    const std::vector<std::string> video_list{ client.video_list() };
+    const std::vector<std::string> video_list{ client.admin_video_list() };
 
     inja::json video_dict = server::video_dict(video_list, client);
     for (inja::json& video : video_dict) {

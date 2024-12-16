@@ -13,9 +13,9 @@ public:
 
     [[nodiscard]] bool create_tables() const noexcept;
 
-    std::vector<int> video_list() const noexcept;
-    std::vector<int> video_list(int user_id) const noexcept;
-    std::vector<int> no_right_video_list() const noexcept;
+    std::vector<int> admin_video_list() const noexcept;
+    std::vector<int> user_video_list(int user_id) const noexcept;
+    std::vector<int> no_user_video_list() const noexcept;
 
     std::string video_title(int id) const noexcept;
     int video_views(int id) const noexcept;

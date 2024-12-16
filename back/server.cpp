@@ -19,8 +19,8 @@ namespace server
     void template_page(const httplib::Request& req, httplib::Response& res) noexcept;
     void static_file(const httplib::Request& req, httplib::Response& res) noexcept;
 
-    void video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
-    void no_right_video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
+    void admin_video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
+    void user_video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
 
     void video_title(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
     void video_views(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept;
@@ -81,8 +81,8 @@ int server::start() noexcept
         .Get("/html/:html", sc::serve(template_page))
         .Get(sc::static_regexp_path(), sc::serve(static_file))
 
-        .Get("/video-list", sc::serve(video_list, std::cref(db)))
-        .Get("/no-right-video-list", sc::serve(no_right_video_list, std::cref(db)))
+        .Get("/admin-video-list", sc::serve(admin_video_list, std::cref(db)))
+        .Get("/user-video-list", sc::serve(user_video_list, std::cref(db)))
 
         .Get("/title/:video_id", sc::serve(video_title, std::cref(db)))
         .Get("/views/:video_id", sc::serve(video_views, std::cref(db)))
@@ -184,35 +184,32 @@ inline std::vector<int> server::extract(const Database& db, const std::string& s
 {
     std::unordered_map<std::string, int> title_ids;
     title_ids.reserve(ids.size());
-    std::ranges::transform(ids, std::inserter(title_ids, title_ids.begin()),
+    std::ranges::transform(ids, std::inserter(title_ids, title_ids.end()),
                            [&db](const int& id) noexcept -> decltype(title_ids)::value_type {
                                return std::make_pair(db.video_title(id), id);
                            });
     return search::extract(search, title_ids);
 }
 
-inline void server::video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+inline void server::admin_video_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db) noexcept
 {
-    std::vector<int> ids;
-    if (req.has_header("user_id")) {
-        const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
-        ids = db.video_list(user_id);
-    } else {
-        ids = db.video_list();
-    }
-
-    if (req.has_param("search")) {
-        const std::string search{ req.get_param_value("search") };
-        ids = extract(db, search, ids);
-    }
-
+    const std::vector ids{ db.admin_video_list() };
     const std::vector str_ids{ transform(ids) };
     res.set_content(su::join(str_ids), "plain/text");
 }
 
-inline void server::no_right_video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
+inline void server::user_video_list(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
-    std::vector ids{ db.no_right_video_list() };
+    std::vector ids{ db.no_user_video_list() };
+    if (req.has_header("user_id")) {
+        const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
+        const std::vector user_ids{ db.user_video_list(user_id) };
+#ifdef __cpp_lib_containers_ranges
+        ids.append_range(user_ids);
+#else
+        ids.insert(ids.end(), user_ids.cbegin(), user_ids.cend());
+#endif
+    }
 
     if (req.has_param("search")) {
         const std::string search{ req.get_param_value("search") };
