@@ -289,10 +289,11 @@ std::string Client::add_user(const std::string& username, const std::string& pas
     return client::format_page(res);
 }
 
-void Client::update_user(const std::string& user_id, const std::string& password) const noexcept
+void Client::update_user(const std::string& user_id, const std::string& username, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
         { "user_id", user_id, "", "" },
+        { "username", username, "", "" },
         { "password", password, "", "" }
     };
     _client->Post("/update-user", items);
@@ -359,9 +360,10 @@ std::string Client::add_video(const std::string& title, const std::string& conte
     return client::format_page(res);
 }
 
-void Client::update_video(const std::string& video_id, const std::vector<std::string>& allowed_user_ids) const noexcept
+void Client::update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const noexcept
 {
     const httplib::MultipartFormDataItems items{
+        { "title", title, "", "" },
         { "user_ids", su::join(allowed_user_ids), "", "" }
     };
     _client->Post("/update-video/" + video_id, items);

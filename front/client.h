@@ -57,7 +57,7 @@ public:
     std::string user_id(const std::string& username) const noexcept;
     std::string add_admin(const std::string& username, const std::string& password) const noexcept;
     std::string add_user(const std::string& username, const std::string& password) const noexcept;
-    void update_user(const std::string& user_id, const std::string& password) const noexcept;
+    void update_user(const std::string& user_id, const std::string& username, const std::string& password) const noexcept;
     void delete_user(const std::string& user_id) const noexcept;
     bool is_valid_user(const std::string& user_id, const std::string& password) const noexcept;
 
@@ -69,7 +69,7 @@ public:
     std::vector<std::string> admin_list() const noexcept;
 
     std::string add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const noexcept;
-    void update_video(const std::string& video_id, const std::vector<std::string>& allowed_user_ids) const noexcept;
+    void update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const noexcept;
     void delete_video(const std::string& video_id) const noexcept;
     void increment_video_views(const std::string& video_id) const noexcept;
     bool video(const std::string& video_id, const std::string& range_header, const std::function<bool(const char*, std::size_t)>& callback) const noexcept;

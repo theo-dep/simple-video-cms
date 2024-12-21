@@ -53,8 +53,10 @@ namespace server
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void update_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
-    void update_video_post(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
+    void update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
     void delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
+
+    void download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
 
     void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
@@ -113,8 +115,10 @@ int server::start() noexcept
         .Get("/add-video", sc::serve(add_video_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/add-video", sc::serve(add_video_post, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/update-video/:video_id", sc::serve(update_video_get, std::ref(env), std::ref(session), std::cref(client)))
-        .Post("/update-video/:video_id", sc::serve(update_video_post, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Post("/update-video/:video_id", sc::serve(update_video_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+
+        .Get("/download-video/:video_id", sc::serve(download_video, std::cref(session), std::cref(client)))
 
         .Get("/watch-video/:video_id", sc::serve(watch_video, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)))
@@ -490,16 +494,19 @@ inline void server::confirm(const httplib::Request& req, httplib::Response& res,
 
 namespace server
 {
-    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, bool is_admin, bool login_error, bool update_error);
+    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id,
+                                 bool is_admin, bool login_error, bool update_error, bool invalid_username);
 }
 
-inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, bool is_admin, bool login_error, bool update_error)
+inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id,
+                                            bool is_admin, bool login_error, bool update_error, bool invalid_username)
 {
     const inja::json data{
         { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
         { "is_admin", is_admin },
         { "login_error", login_error },
         { "update_error", update_error },
+        { "invalid_username", invalid_username }
     };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -513,7 +520,7 @@ inline void server::update_user_get(const httplib::Request& req, httplib::Respon
 
     const std::string user_id{ req.path_params.at("user_id") };
     const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
-    set_update_user_content(res, env, client, user_id, is_admin, false, false);
+    set_update_user_content(res, env, client, user_id, is_admin, false, false, false);
 }
 
 inline void server::update_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
@@ -522,24 +529,36 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
         return;
 
     const std::string user_id{ req.path_params.at("user_id") };
-    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
+    const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
 
     const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
     if (!is_valid_user) {
-        set_update_user_content(res, env, client, user_id, is_admin, true, false);
+        set_update_user_content(res, env, client, user_id, is_admin_req, true, false, false);
         return;
     }
 
     const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
     if (new_password.empty()) {
-        set_update_user_content(res, env, client, user_id, is_admin, false, true);
+        set_update_user_content(res, env, client, user_id, is_admin_req, false, true, false);
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (new_password != confirm_password) {
-        set_update_user_content(res, env, client, user_id, is_admin, false, true);
+        set_update_user_content(res, env, client, user_id, is_admin_req, false, true, false);
+        return;
+    }
+
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    const std::string tested_user_id{ client.user_id(username) };
+    const bool is_user{ client.is_user(tested_user_id) };
+    const bool is_admin{ client.is_admin(tested_user_id) };
+    if ((is_user && !is_admin_req) || (is_admin && is_admin_req)) {
+        set_update_user_content(res, env, client, user_id, is_admin_req, false, false, true);
         return;
     }
 
@@ -548,8 +567,8 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     std::string signal_str;
     if (is_admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
-                             client.update_user(user_id, new_password);
+                         .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
+                             client.update_user(user_id, username, new_password);
                              res.set_redirect("/admin-list");
                              logging::info{ "Admin {} updated by {}", user_id, updater_user_id };
                          })
@@ -559,8 +578,8 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
-                             client.update_user(user_id, new_password);
+                         .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
+                             client.update_user(user_id, username, new_password);
                              res.set_redirect("/user-list");
                              logging::info{ "User {} updated by {}", user_id, updater_user_id };
                          })
@@ -713,12 +732,18 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
     logging::info{ "Video {} added by {}", video_id, creator_user_id };
 }
 
-inline void server::update_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+namespace server
 {
-    if (!is_logged_and_admin(req, res, session, client))
-        return;
+    void set_update_video_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client,
+                                  const std::string& video_title_placeholder);
+}
 
+inline void server::set_update_video_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client,
+                                             const std::string& video_title_placeholder)
+{
     const std::string video_id{ req.path_params.at("video_id") };
+
+    const std::string video_title{ client.video_title(video_id) };
 
     const std::vector<std::string> user_list{ client.user_list() };
     const std::vector<std::string> user_right_list{ client.video_right_list(video_id) };
@@ -732,6 +757,8 @@ inline void server::update_video_get(const httplib::Request& req, httplib::Respo
 
     const inja::json data{
         { "video_id", video_id },
+        { "video_title", video_title },
+        { "video_title_placeholder", video_title_placeholder },
         { "user_dict", user_dict }
     };
     logging::debug{ data.dump() };
@@ -740,12 +767,26 @@ inline void server::update_video_get(const httplib::Request& req, httplib::Respo
     res.set_content(body, "text/html");
 }
 
-inline void server::update_video_post(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
+inline void server::update_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    set_update_video_content(req, res, env, client, default_video_title_placeholder());
+}
+
+inline void server::update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
 {
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
     const std::string video_id{ req.path_params.at("video_id") };
+
+    const std::string video_title{ req.get_param_value("title") };
+    if (video_title.empty()) {
+        set_update_video_content(req, res, env, client, "Enter a non-empty video title here");
+        return;
+    }
 
     const std::size_t user_id_count{ req.get_param_value_count("user_ids") };
     std::vector<std::string> allowed_user_ids(user_id_count);
@@ -757,8 +798,8 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, allowed_user_ids, updater_user_id, &client](httplib::Response& res) noexcept {
-                client.update_video(video_id, allowed_user_ids);
+            .on_confirm([video_id, video_title, allowed_user_ids, updater_user_id, &client](httplib::Response& res) noexcept {
+                client.update_video(video_id, video_title, allowed_user_ids);
                 res.set_redirect("/video-list");
                 logging::info{ "Video {} updated by {}", video_id, updater_user_id };
             })
@@ -795,6 +836,44 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     };
 
     confirm_action(req, res, session, client, signal_str);
+}
+
+inline void server::download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string video_id{ req.path_params.at("video_id") };
+
+    std::string* video_content{ new std::string };
+    const bool success{
+        client.video(video_id, "", [video_content](const char* data, std::size_t size) noexcept -> bool {
+            video_content->append(data, size);
+            return true;
+        })
+    };
+
+    if (!success) {
+        delete video_content;
+        logging::error{ "Fail to download video {}", video_id };
+        res.set_redirect("/video-list");
+        return;
+    }
+
+    const std::string downloader_user_id{ connected_user_id(req, session) };
+
+    res.set_content_provider(
+        video_content->size(), // Content length
+        "video/mp4",           // Content type
+        [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+            constexpr std::size_t chunk_size{ 4096 };
+            sink.write(&(*video_content)[offset], std::min(chunk_size, length));
+            return true; // return 'false' if you want to cancel the process.
+        },
+        [video_id, downloader_user_id, video_content](bool success) noexcept {
+            delete video_content;
+            logging::info{ "Video {} downloaded by {}: {}", video_id, downloader_user_id, success };
+        });
 }
 
 namespace server
