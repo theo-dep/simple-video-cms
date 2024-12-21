@@ -439,7 +439,7 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     std::string user_id{ client.user_id(username) };
     const bool is_user{ client.is_user(user_id) };
     const bool is_admin{ client.is_admin(user_id) };
-    if ((is_user && !is_admin_req) || (is_admin && is_admin_req)) {
+    if (is_user || is_admin) {
         set_add_user_content(res, env, client, is_admin_req, false, true);
     } else if (is_admin_req) {
         user_id = client.add_admin(username, password);
@@ -550,7 +550,7 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     const std::string tested_user_id{ client.user_id(username) };
     const bool is_user{ client.is_user(tested_user_id) };
     const bool is_admin{ client.is_admin(tested_user_id) };
-    if ((is_user && !is_admin_req) || (is_admin && is_admin_req)) {
+    if (user_id != tested_user_id && (is_user || is_admin)) {
         set_update_user_content(res, env, client, user_id, is_admin_req, false, false, true);
         return;
     }
@@ -558,7 +558,7 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     const std::string updater_user_id{ connected_user_id(req, session) };
 
     std::string signal_str;
-    if (is_admin) {
+    if (is_admin_req) {
         signal_str = confirm_handler.create()
                          .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
                              client.update_user(user_id, username, new_password);
