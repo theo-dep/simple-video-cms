@@ -18,7 +18,7 @@ namespace client
                <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
                <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
                <link rel="stylesheet" href="/static/css/404.css" type="text/css">
-               <link rel="icon" href="/static/img/favicon.png" type="image/png">
+               <link rel="icon" href="/static/img/icon.svg" type="image/png">
            </head>
            <body>
                <div class="content">

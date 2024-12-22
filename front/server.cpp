@@ -84,6 +84,11 @@ int server::start() noexcept
         return website_name;
     });
 
+    const std::string icon_path{ sc::get_env("ICON_PATH", "/static/img/icon.svg") };
+    env.add_callback("icon", 0, [icon_path](inja::Arguments) noexcept {
+        return icon_path;
+    });
+
     env.add_callback("footer", 0, [](inja::Arguments) noexcept {
         return footer();
     });

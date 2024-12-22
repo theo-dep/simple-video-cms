@@ -45,6 +45,8 @@ To personalize front and backends, there is few environment variables to know:
   - BACK_SERVER_URL (default localhost:5000)
 - Name of your hosted website:
   - WEBSITE_NAME (default Simple Video CMS)
+- Browser icon:
+  - ICON_PATH (default /static/img/icon.svg), mount a volume with your custom icon and set this variable to the path
 
 # Screenshots
 
