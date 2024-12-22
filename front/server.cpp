@@ -77,6 +77,11 @@ int server::start() noexcept
     ConfirmHandler confirm_handler;
     httplib::Server server;
 
+    const std::string website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
+    env.add_callback("website_name", 0, [website_name](inja::Arguments) noexcept {
+        return website_name;
+    });
+
     set_error_handler(server, client);
     set_exception_handler(server);
     set_logger(server);

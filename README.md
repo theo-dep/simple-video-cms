@@ -31,6 +31,17 @@ This will generates server binaries in `front/server` and `back/server`.
 
 Servers can be run using VS Code or with both scripts `./scripts/start_front.sh` and `./scripts/start_back.sh`.
 
+### Environment
+
+To personalize front and backends, there is few environment variables to know:
+- Super administrator (cannot be deleted):
+  - SUPER_ADMIN_USERNAME (default admin)
+  - SUPER_ADMIN_PASSWORD (default... admin)
+- Back server address:
+  - SERVER_URL (default localhost:8080)
+- Name of your hosted website:
+  - WEBSITE_NAME (default Simple Video CMS)
+
 # Screenshots
 
 ## Normal user
