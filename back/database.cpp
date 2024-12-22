@@ -41,9 +41,7 @@ inline auto database::storage(const std::filesystem::path& path) noexcept
         make_table("videos",
                    make_column("id", &Video::id, primary_key().autoincrement()),
                    make_column("title", &Video::title),
-                   make_column("views", &Video::views),
-                   make_column("content_path", &Video::content_path),
-                   make_column("thumbnail_path", &Video::thumbnail_path)),
+                   make_column("views", &Video::views)),
         make_table("video_rights",
                    make_column("video_id", &VideoRight::video_id),
                    make_column("user_id", &VideoRight::user_id),
@@ -150,8 +148,8 @@ int Database::video_size(int id) const noexcept
     return database::safe([&] {
         const std::optional video_size{
             storage.get_optional<Video>(id)
-                .transform([](const Video& video) noexcept -> int {
-                    return database::file_size(video.content_path);
+                .transform([&](const Video& video) noexcept -> int {
+                    return database::file_size(video_path(video.id));
                 })
                 .or_else([&] noexcept -> std::optional<int> {
                     logging::error<int const&>{ R"(Fail to fetch video size "{}")", id, location };
@@ -173,8 +171,8 @@ bool Database::video(int id, std::size_t offset, const std::function<bool(const 
     return database::safe([&] {
         const std::optional success{
             storage.get_optional<Video>(id)
-                .transform([&offset, &callback](const Video& video) noexcept -> bool {
-                    return database::read_file(video.content_path, offset, callback);
+                .transform([&](const Video& video) noexcept -> bool {
+                    return database::read_file(video_path(video.id), offset, callback);
                 })
                 .or_else([&] noexcept -> std::optional<bool> {
                     logging::error<int const&>{ R"(Fail to fetch video content "{}")", id, location };
@@ -192,8 +190,8 @@ std::string Database::thumbnail(int id) const noexcept
     return database::safe([&] {
         const std::optional thumbnail{
             storage.get_optional<Video>(id)
-                .transform([](const Video& video) noexcept -> std::string {
-                    return database::read_file(video.thumbnail_path);
+                .transform([&](const Video& video) noexcept -> std::string {
+                    return database::read_file(thumbnail_path(video.id));
                 })
                 .or_else([&] noexcept -> std::optional<std::string> {
                     logging::error<int const&>{ R"(Fail to fetch video thumbnail "{}")", id, location };
@@ -466,8 +464,7 @@ std::vector<int> Database::admin_list() const noexcept
 
 std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const noexcept
 {
-    const std::filesystem::path video_path{ path_.parent_path() / "videos" };
-    if (!filesystem::create(video_path)) {
+    if (!filesystem::create(video_path())) {
         return std::nullopt;
     }
 
@@ -479,10 +476,9 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
     return database::safe([&] {
         video.id = storage.insert(video);
 
-        video.content_path = video_path / su::int_to_string(video.id);
         storage.update(video);
 
-        database::write_file(video.content_path, video_content);
+        database::write_file(video_path(video.id), video_content);
 
         return video.id;
     });
@@ -490,8 +486,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
 
 std::optional<int> Database::add_video_thumbnail(int id, const std::string& thumbnail_content) const noexcept
 {
-    const std::filesystem::path thumbnail_path{ path_.parent_path() / "thumbnails" };
-    if (!filesystem::create(thumbnail_path)) {
+    if (!filesystem::create(thumbnail_path())) {
         return std::nullopt;
     }
 
@@ -499,13 +494,8 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
     return database::safe([&] {
         const std::optional video_id{
             storage.get_optional<Video>(id)
-                .and_then([&](Video&& video) noexcept -> std::optional<Video> {
-                    video.thumbnail_path = thumbnail_path / su::int_to_string(video.id);
-                    storage.update(std::move(video));
-                    return video;
-                })
                 .transform([&](const Video& video) noexcept -> int {
-                    database::write_file(video.thumbnail_path, thumbnail_content);
+                    database::write_file(thumbnail_path(video.id), thumbnail_content);
                     return video.id;
                 })
         };
@@ -564,13 +554,13 @@ bool Database::delete_video(int id) const noexcept
     return database::safe([&] {
         const std::optional success{
             storage.get_optional<Video>(id)
-                .and_then([](const Video& video) noexcept -> std::optional<Video> {
+                .and_then([&](const Video& video) noexcept -> std::optional<Video> {
                     // remove video file
-                    return filesystem::remove(video.content_path) ? std::optional(video) : std::nullopt;
+                    return filesystem::remove(video_path(video.id)) ? std::optional(video) : std::nullopt;
                 })
-                .and_then([](const Video& video) noexcept -> std::optional<Video> {
+                .and_then([&](const Video& video) noexcept -> std::optional<Video> {
                     // remove thumbnail file
-                    return filesystem::remove(video.thumbnail_path) ? std::optional(video) : std::nullopt;
+                    return filesystem::remove(thumbnail_path(video.id)) ? std::optional(video) : std::nullopt;
                 })
                 .transform([&](const Video& video) -> bool {
                     storage.remove<Video>(video.id);
@@ -628,6 +618,31 @@ std::vector<int> Database::video_right_list(int id) const noexcept
     return database::safe([&] {
         return storage.select(distinct(&VideoRight::user_id), where(c(&VideoRight::video_id) == id));
     });
+}
+
+std::filesystem::path Database::base_path() const noexcept
+{
+    return path_.parent_path();
+}
+
+std::filesystem::path Database::video_path() const noexcept
+{
+    return base_path() / "videos";
+}
+
+std::filesystem::path Database::video_path(int id) const noexcept
+{
+    return video_path() / su::int_to_string(id);
+}
+
+std::filesystem::path Database::thumbnail_path() const noexcept
+{
+    return base_path() / "thumbnails";
+}
+
+std::filesystem::path Database::thumbnail_path(int id) const noexcept
+{
+    return thumbnail_path() / su::int_to_string(id);
 }
 
 #ifdef DEBUG_LOG
