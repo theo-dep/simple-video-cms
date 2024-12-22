@@ -221,7 +221,7 @@ inline inja::json server::video_dict(const std::vector<std::string>& video_ids, 
     inja::json video_dict;
     for (const std::string& video_id : video_ids) {
         const std::string title{ client.video_title(video_id) };
-        const std::int64_t views{ client.video_views(video_id) };
+        const int views{ client.video_views(video_id) };
         video_dict.emplace_back(inja::json::object({ { "id", video_id }, { "title", title }, { "views", views } }));
     }
     return video_dict;
@@ -246,25 +246,18 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     }
 
     std::vector<std::string> video_ids;
-    std::vector<std::string> logged_video_ids;
     if (req.has_param("search")) {
         const std::string search{ req.get_param_value("search") };
-        video_ids = client.no_right_video_list(search);
-        if (is_logged) {
-            logged_video_ids = client.video_list(user_id, search);
-        }
+        if (is_logged)
+            video_ids = client.user_video_list(user_id, search);
+        else
+            video_ids = client.no_user_video_list(search);
     } else {
-        video_ids = client.no_right_video_list();
-        if (is_logged) {
-            logged_video_ids = client.video_list(user_id);
-        }
+        if (is_logged)
+            video_ids = client.user_video_list(user_id);
+        else
+            video_ids = client.no_user_video_list();
     }
-
-#ifdef __cpp_lib_containers_ranges
-    video_ids.append_range(logged_video_ids);
-#else
-    video_ids.insert(video_ids.end(), logged_video_ids.cbegin(), logged_video_ids.cend());
-#endif
 
     const inja::json data{
         { "is_logged", is_logged },
@@ -446,7 +439,7 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     std::string user_id{ client.user_id(username) };
     const bool is_user{ client.is_user(user_id) };
     const bool is_admin{ client.is_admin(user_id) };
-    if ((is_user && !is_admin_req) || (is_admin && is_admin_req)) {
+    if (is_user || is_admin) {
         set_add_user_content(res, env, client, is_admin_req, false, true);
     } else if (is_admin_req) {
         user_id = client.add_admin(username, password);
@@ -557,7 +550,7 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     const std::string tested_user_id{ client.user_id(username) };
     const bool is_user{ client.is_user(tested_user_id) };
     const bool is_admin{ client.is_admin(tested_user_id) };
-    if ((is_user && !is_admin_req) || (is_admin && is_admin_req)) {
+    if (user_id != tested_user_id && (is_user || is_admin)) {
         set_update_user_content(res, env, client, user_id, is_admin_req, false, false, true);
         return;
     }
@@ -565,7 +558,7 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     const std::string updater_user_id{ connected_user_id(req, session) };
 
     std::string signal_str;
-    if (is_admin) {
+    if (is_admin_req) {
         signal_str = confirm_handler.create()
                          .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
                              client.update_user(user_id, username, new_password);
@@ -636,7 +629,7 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    const std::vector<std::string> video_list{ client.video_list() };
+    const std::vector<std::string> video_list{ client.admin_video_list() };
 
     inja::json video_dict = server::video_dict(video_list, client);
     for (inja::json& video : video_dict) {
@@ -916,7 +909,7 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
     const bool is_logged{ session.is_valid_session_from_cookie(cookie) };
 
     const std::string video_title{ client.video_title(video_id) };
-    const std::int64_t video_views{ client.video_views(video_id) };
+    const int video_views{ client.video_views(video_id) };
 
     const inja::json data{
         { "is_logged", is_logged },
@@ -947,13 +940,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
 
     const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
-    ChunkWorker* const chunk_worker{ new ChunkWorker() };
+    ChunkWorker* const chunk_worker{ new ChunkWorker };
     chunk_worker->set_buffer_size(video_size);
+    chunk_worker->start_chunk_at(req.get_header_value("Range"));
+
     chunk_worker->set_fetch_async_callback([chunk_worker, video_id, &req, &client]() noexcept -> bool {
-        return client.video(video_id, req.get_header_value("Range"), chunk_worker->append_chunk_callback(true));
+        return client.video(video_id, req.get_header_value("Range"), chunk_worker->append_chunk_callback());
     });
 
-    chunk_worker->start_chunk_at(req.get_header_value("Range"));
     chunk_worker->start_fetch_async();
 
     chunk_worker->wait_for_chunk();

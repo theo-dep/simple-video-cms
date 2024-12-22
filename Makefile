@@ -1,4 +1,4 @@
-all: up
+all: up clean
 
 up:
 	docker compose up -d
@@ -16,12 +16,10 @@ down:
 	docker compose down
 
 clean:
-	docker compose rm
+	docker compose rm -f -v
 
 local_build:
-	bash local_build.sh
+	./scripts/build.sh
 
 local_clean:
-	make -C back clean
-	make -C front clean
-	find . -type f -name '*.o' -delete
+	./scripts/clean.sh

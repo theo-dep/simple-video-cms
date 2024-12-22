@@ -11,4 +11,4 @@ make -C ${SOURCE_DIR}/back clean
 make -C ${SOURCE_DIR}/front clean
 
 find ${SOURCE_DIR} -name "*.o" -delete -print
-find ${SOURCE_DIR} -name "*.log" -delete -print
+find ${SOURCE_DIR} -name "*.log*" -delete -print

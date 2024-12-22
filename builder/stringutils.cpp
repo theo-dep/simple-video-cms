@@ -49,9 +49,9 @@ bool su::string_to_bool(const std::string& str) noexcept
     return (str == "true");
 }
 
-std::int64_t su::string_to_int(const std::string& str) noexcept
+int su::string_to_int(const std::string& str) noexcept
 {
-    std::int64_t value{ 0 };
+    int value{ 0 };
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): wait for c++26
     const std::from_chars_result ret{ std::from_chars(str.data(), str.data() + str.size(), value) };
     if (ret.ec == std::errc{})
@@ -59,7 +59,7 @@ std::int64_t su::string_to_int(const std::string& str) noexcept
     return 0;
 }
 
-std::string su::int_to_string(const std::int64_t& val) noexcept
+std::string su::int_to_string(int val) noexcept
 {
     return std::to_string(val);
 }

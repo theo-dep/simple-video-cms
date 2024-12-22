@@ -9,5 +9,7 @@ RUN make -C ${SOURCE_DIR} -j -k server LDFLAGS="-lavformat -lavcodec -lavdevice 
 FROM scratch
 
 COPY --from=builder /sources/server /server
+ADD static/ /static/
+ADD templates/ /templates/
 
 CMD ["/server"]

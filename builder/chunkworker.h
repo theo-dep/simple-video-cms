@@ -16,14 +16,15 @@ public:
 
     void set_fetch_async_callback(const std::function<bool()>& callback) noexcept;
 
-    // client side append with offset, server side append all the data from DB
-    std::function<bool(const char*, std::size_t)> append_chunk_callback(bool with_offset) noexcept;
+    std::function<bool(const char*, std::size_t)> append_chunk_callback() noexcept;
 
     void start_fetch_async() noexcept;
 
     bool fetch_result() noexcept;
 
     void start_chunk_at(const std::string& range_header) noexcept;
+    std::size_t chunk_offset() const { return _offset; }
+
     void wait_for_chunk() const noexcept;
     std::string chunk() noexcept;
 
@@ -36,7 +37,6 @@ private:
     bool _request_interruption;
     std::optional<bool> _fetch_result{ std::nullopt };
 
-    std::size_t _append_offset{ 0 };
     std::size_t _offset{ 0 };
     std::size_t _length{ 0 };
     std::string _buffer;

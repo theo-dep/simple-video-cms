@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -41,14 +40,14 @@ public:
     std::string update_video_page() const noexcept;
     std::string watch_video_page() const noexcept;
 
-    std::vector<std::string> video_list() const noexcept;
-    std::vector<std::string> video_list(const std::string& user_id) const noexcept;
-    std::vector<std::string> video_list(const std::string& user_id, const std::string& search) const noexcept;
-    std::vector<std::string> no_right_video_list() const noexcept;
-    std::vector<std::string> no_right_video_list(const std::string& search) const noexcept;
+    std::vector<std::string> admin_video_list() const noexcept;
+    std::vector<std::string> user_video_list(const std::string& user_id) const noexcept;
+    std::vector<std::string> user_video_list(const std::string& user_id, const std::string& search) const noexcept;
+    std::vector<std::string> no_user_video_list() const noexcept;
+    std::vector<std::string> no_user_video_list(const std::string& search) const noexcept;
 
     std::string video_title(const std::string& video_id) const noexcept;
-    std::int64_t video_views(const std::string& video_id) const noexcept;
+    int video_views(const std::string& video_id) const noexcept;
 
     bool is_admin(const std::string& user_id) const noexcept;
     bool is_super_admin(const std::string& user_id) const noexcept;
@@ -61,9 +60,9 @@ public:
     void delete_user(const std::string& user_id) const noexcept;
     bool is_valid_user(const std::string& user_id, const std::string& password) const noexcept;
 
-    std::int64_t user_count() const noexcept;
-    std::int64_t video_count() const noexcept;
-    std::int64_t view_count() const noexcept;
+    int user_count() const noexcept;
+    int video_count() const noexcept;
+    int view_count() const noexcept;
 
     std::vector<std::string> user_list() const noexcept;
     std::vector<std::string> admin_list() const noexcept;
@@ -73,7 +72,7 @@ public:
     void delete_video(const std::string& video_id) const noexcept;
     void increment_video_views(const std::string& video_id) const noexcept;
     bool video(const std::string& video_id, const std::string& range_header, const std::function<bool(const char*, std::size_t)>& callback) const noexcept;
-    std::int64_t video_size(const std::string& video_id) const noexcept;
+    int video_size(const std::string& video_id) const noexcept;
     std::string thumbnail(const std::string& video_id) const noexcept;
     bool has_video_right(const std::string& video_id) const noexcept;
     bool has_video_right(const std::string& video_id, const std::string& user_id) const noexcept;

@@ -1,5 +1,9 @@
 {
     "editor.formatOnSave": true,
+    "files.watcherExclude": {
+        "${workspaceFolder}/builder/third-party/sqlite3.h": true,
+        "${workspaceFolder}/builder/third-party/sqlite3.c": true,
+    },
     "C_Cpp.codeAnalysis.exclude": {
         "${workspaceFolder}/builder/third-party/**": true,
         "/usr/include/**": true
