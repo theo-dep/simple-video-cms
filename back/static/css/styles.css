@@ -7,7 +7,14 @@
 /*
 * BASE
 */
+html,
 body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
     color: #c9c9c9;
     line-height: 1.7em;
     background: rgba(0, 0, 0, 0.9);
@@ -101,6 +108,7 @@ hr {
 */
 .content {
     margin: 5em 1em;
+    flex: 1 0 auto;
 }
 
 .info {
@@ -149,6 +157,23 @@ hr {
 */
 video {
     width: 100%;
+}
+
+/*
+* FOOTER
+*/
+.footer {
+    flex-shrink: 0;
+    width: 100%;
+    border-top: 1px solid #464646;
+    background-color: #323232;
+    line-height: 1.5;
+    font-size: 85%;
+    padding: 0 1.5em;
+}
+
+.footer .legal-link {
+    text-align: right;
 }
 
 /*

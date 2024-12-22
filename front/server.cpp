@@ -14,6 +14,8 @@
 
 namespace server
 {
+    constexpr std::string_view footer() noexcept;
+
     void set_no_cache_headers(httplib::Response& res) noexcept;
 
     void set_error_handler(httplib::Server& server, const Client& client) noexcept;
@@ -82,6 +84,10 @@ int server::start() noexcept
         return website_name;
     });
 
+    env.add_callback("footer", 0, [](inja::Arguments) noexcept {
+        return footer();
+    });
+
     set_error_handler(server, client);
     set_exception_handler(server);
     set_logger(server);
@@ -133,6 +139,30 @@ int server::start() noexcept
     constexpr int port{ 8080 };
     logging::info{ "Serving HTTP on {0} port {1} ...", host, port };
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
+}
+
+constexpr std::string_view server::footer() noexcept
+{
+    using namespace std::literals::string_view_literals;
+    return R"(
+    <div class="footer pure-g">
+      <div class="pure-u-1 pure-u-sm-1-2">
+        <p class="legal-license">This site is built with ❤️ using
+          <a href="https://pure-css.github.io/">Pure CSS</a>,
+          <a href="https://videojs.com/">Video.js</a>,
+          <a href="https://www.ffmpeg.org/">FFmpeg</a>,
+          <a href="https://sqliteorm.com/">SQLite ORM</a> and
+          many awesome <a href="https://gitlab.devau.co/theo/simple-video-cms/-/blob/prod/builder/third-party/Readme.md">c++ libraries</a>.<br>
+          All code on this site is licensed under the
+          <a href="https://gitlab.devau.co/theo/simple-video-cms/-/blob/prod/LICENSE">GPLv3</a> unless otherwise stated.
+        </p>
+      </div>
+      <div class="pure-u-1 pure-u-sm-1-2">
+        <br>
+        <p class="legal-link"><a href="https://gitlab.devau.co/theo/simple-video-cms">Open Source Project</a></p>
+      </div>
+    </div>
+    )"sv;
 }
 
 inline void server::set_no_cache_headers(httplib::Response& res) noexcept
