@@ -1,10 +1,7 @@
-.venv/
-__pycache__/
-
 **/data/
 
 backup.tar.gz
 
 *.o
 **/server
-*.log
+*.log*
