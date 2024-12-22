@@ -37,8 +37,12 @@ To personalize front and backends, there is few environment variables to know:
 - Super administrator (cannot be deleted):
   - SUPER_ADMIN_USERNAME (default admin)
   - SUPER_ADMIN_PASSWORD (default... admin)
-- Back server address:
-  - SERVER_URL (default localhost:8080)
+- Server addresses:
+  - BACK_HOST (default 0.0.0.0)
+  - BACK_PORT (default 5000)
+  - FRONT_HOST (default 0.0.0.0)
+  - FRONT_PORT (default 8080)
+  - BACK_SERVER_URL (default localhost:5000)
 - Name of your hosted website:
   - WEBSITE_NAME (default Simple Video CMS)
 

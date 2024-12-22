@@ -135,8 +135,8 @@ int server::start() noexcept
         .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)))
         .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(session), std::cref(client)));
 
-    constexpr const char* host{ "0.0.0.0" };
-    constexpr int port{ 8080 };
+    const std::string host{ sc::get_env("FRONT_HOST", "0.0.0.0") };
+    const int port{ su::string_to_int(sc::get_env("FRONT_PORT", "8080")) };
     logging::info{ "Serving HTTP on {0} port {1} ...", host, port };
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }

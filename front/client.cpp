@@ -39,7 +39,7 @@ namespace client
 }
 
 Client::Client(bool& create_ok) noexcept
-try : _client{ std::make_unique<httplib::Client>(sc::get_env("SERVER_URL", "localhost:8080")) } {
+try : _client{ std::make_unique<httplib::Client>(sc::get_env("BACK_SERVER_URL", "localhost:5000")) } {
     create_ok = true;
 } catch (const std::exception& e) {
     logging::error{ "Fail to create: {}", e.what() };

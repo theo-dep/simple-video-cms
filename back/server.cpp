@@ -118,8 +118,8 @@ int server::start() noexcept
 
         .Get("/video-right-list/:video_id", sc::serve(video_right_list, std::cref(db)));
 
-    constexpr const char* host{ "0.0.0.0" };
-    constexpr int port{ 5000 };
+    const std::string host{ sc::get_env("BACK_HOST", "0.0.0.0") };
+    const int port{ su::string_to_int(sc::get_env("BACK_PORT", "5000")) };
     logging::info{ "Serving HTTP on {0} port {1} ...", host, port };
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
