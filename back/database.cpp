@@ -99,7 +99,7 @@ std::vector<int> Database::no_user_video_list() const noexcept
 {
     database::StorageType storage{ database::storage(path_) };
     return database::safe([&] {
-        return storage.select(distinct(&Video::id), where(not(in(&Video::id, select(&VideoRight::video_id)))));
+        return storage.select(distinct(&Video::id), from<Video>(), where(not_in(&Video::id, select(&VideoRight::video_id))));
     });
 }
 
@@ -251,8 +251,8 @@ bool Database::is_user(int id) const noexcept
         return storage.get_all<User>(
                           where(
                               c(&User::id) == id and
-                              not(in(id, select(&Admin::id))) and
-                              not(in(id, select(&SuperAdmin::id)))))
+                              not_in(id, select(&Admin::id)) and
+                              not_in(id, select(&SuperAdmin::id))))
                    .size() == 1;
     });
 }
