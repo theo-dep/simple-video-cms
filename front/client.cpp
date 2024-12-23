@@ -18,7 +18,7 @@ namespace client
                <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
                <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
                <link rel="stylesheet" href="/static/css/404.css" type="text/css">
-               <link rel="icon" href="/static/img/favicon.png" type="image/png">
+               <link rel="icon" href="/static/img/icon.svg" type="image/png">
            </head>
            <body>
                <div class="content">
@@ -39,7 +39,7 @@ namespace client
 }
 
 Client::Client(bool& create_ok) noexcept
-try : _client{ std::make_unique<httplib::Client>(sc::get_env("SERVER_URL", "localhost:8080")) } {
+try : _client{ std::make_unique<httplib::Client>(sc::get_env("BACK_SERVER_URL", "localhost:5000")) } {
     create_ok = true;
 } catch (const std::exception& e) {
     logging::error{ "Fail to create: {}", e.what() };
