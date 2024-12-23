@@ -59,8 +59,8 @@ std::string video::extract_first_frame(const std::string& video_content, const s
     av_log_set_level(AV_LOG_DEBUG);
 #endif
 
-    AVFormatContext* raw_format_context(avformat_alloc_context());
-    if (raw_format_context == nullptr) {
+    AVFormatContextPtr format_context(avformat_alloc_context());
+    if (format_context == nullptr) {
         logging::error{ "Could not allocate format context" };
         return {};
     }
@@ -84,19 +84,18 @@ std::string video::extract_first_frame(const std::string& video_content, const s
         return {};
     }
 
-    raw_format_context->pb = avio_context.get();
-    raw_format_context->flags = AVFMT_FLAG_CUSTOM_IO;
-    raw_format_context->iformat = av_find_input_format(format.c_str()); // not necessary
+    format_context->pb = avio_context.get();
+    format_context->flags = AVFMT_FLAG_CUSTOM_IO;
+    format_context->iformat = av_find_input_format(format.c_str()); // not necessary
     constexpr std::int64_t probe_size{ 1200000 };
-    raw_format_context->probesize = probe_size;
+    format_context->probesize = probe_size;
 
     // Open the input video
-    if (const int ret{ avformat_open_input(&raw_format_context, nullptr, nullptr, nullptr) }; ret < 0) {
+    if (const int ret{ avformat_open_input(std::inout_ptr(format_context), nullptr, nullptr, nullptr) }; ret < 0) {
         logging::error{ "Could not open input: {}", err2str(ret) };
         return {};
     }
 
-    const AVFormatContextPtr format_context(raw_format_context);
     logging::debug{ "Format: {}, Duration: {} us, Bitrate: {} bits/s", format_context->iformat->name, format_context->duration, format_context->bit_rate };
 
     if (const int ret{ avformat_find_stream_info(format_context.get(), nullptr) }; ret < 0) {
@@ -213,7 +212,7 @@ inline void video::AVDeleter::operator()(AVFrame* frame) const noexcept
 inline void video::AVDeleter::operator()(AVIOContext* avio_context) const noexcept
 {
     if (avio_context != nullptr)
-        av_freep(&avio_context->buffer);
+        av_freep(&avio_context->buffer); // NOLINT(bugprone-multi-level-implicit-pointer-conversion): incorrect FFmpeg API
     avio_context_free(&avio_context);
 }
 
@@ -371,8 +370,8 @@ inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* 
 
     for (std::size_t y{ 0 }; y < scaled_height; ++y) {
         // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        std::memcpy(final_rgb_frame->data[0] + (y + y_offset) * final_rgb_frame->linesize[0] + x_offset * 3, // For RGB24
-                    rgb_frame->data[0] + y * rgb_frame->linesize[0],
+        std::memcpy(final_rgb_frame->data[0] + ((y + y_offset) * final_rgb_frame->linesize[0]) + (x_offset * 3), // For RGB24
+                    rgb_frame->data[0] + (y * rgb_frame->linesize[0]),
                     scaled_width * 3);
         // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     }
@@ -411,7 +410,7 @@ inline std::string video::frame_to_png(const AVFrame* frame) noexcept
     std::vector<png_bytep> raw_pointers(frame->height);
     std::ranges::generate(raw_pointers, [pos{ 0 }, frame]() mutable noexcept -> png_bytep {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        return frame->data[0] + static_cast<std::ptrdiff_t>(pos++) * frame->linesize[0];
+        return frame->data[0] + (static_cast<std::ptrdiff_t>(pos++) * frame->linesize[0]);
     });
 
     png_set_rows(png_ptr, info_ptr, raw_pointers.data());

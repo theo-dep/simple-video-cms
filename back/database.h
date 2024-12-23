@@ -9,7 +9,7 @@
 class Database
 {
 public:
-    Database(const std::filesystem::path& path) noexcept;
+    Database(std::filesystem::path path) noexcept;
 
     [[nodiscard]] bool create_tables() const noexcept;
 

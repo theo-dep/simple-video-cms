@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace httplib
@@ -21,10 +22,20 @@ namespace sc
         Args&&... args) noexcept;
 
     constexpr std::string static_regexp_path() noexcept;
+
+    template <class T, class Deleter = std::default_delete<T>>
+    struct ContentProviderReleaser
+    {
+        T* ptr;
+        Deleter deleter;
+
+        ContentProviderReleaser(std::unique_ptr<T, Deleter>&& u) noexcept;
+        void operator()(bool) const noexcept;
+    };
 }
 
 template <typename... Args>
-std::function<void(const httplib::Request&, httplib::Response&)> sc::serve(
+inline std::function<void(const httplib::Request&, httplib::Response&)> sc::serve(
     const std::function<void(const httplib::Request&, httplib::Response&, std::decay_t<Args>...)>& handler,
     Args&&... args) noexcept
 {
@@ -40,4 +51,17 @@ constexpr std::string sc::static_regexp_path() noexcept
     // 2: stem (with path)
     // 3: extension
     return R"(\/static\/(([\w\/\-]+)\.(\w)+))"s;
+}
+
+template <class T, class Deleter>
+inline sc::ContentProviderReleaser<T, Deleter>::ContentProviderReleaser(std::unique_ptr<T, Deleter>&& u) noexcept
+    : ptr{ u.release() }
+    , deleter{ u.get_deleter() }
+{
+}
+
+template <class T, class Deleter>
+inline void sc::ContentProviderReleaser<T, Deleter>::operator()(bool) const noexcept
+{
+    deleter(ptr);
 }

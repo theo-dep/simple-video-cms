@@ -16,7 +16,7 @@ namespace logging
 
     // two times a day, test if the file is more than 500 Mo
     constexpr std::int64_t hour_to_check{ 12 };
-    constexpr std::uintmax_t bytes_to_check{ 500 * 1024 * 1024 };
+    constexpr std::uintmax_t bytes_to_check{ 500L * 1024L * 1024L };
     // then, open another log file in the limit of 5
     constexpr std::size_t max_log_file_id{ 5 };
 
@@ -163,7 +163,7 @@ inline logging::Logger& logging::Logger::operator<<(const T& message) noexcept
 
 inline std::filesystem::path logging::Logger::log_id_file_path() const noexcept
 {
-    return _log_file_path.string() + '.' + su::int_to_string(_log_file_id);
+    return _log_file_path.string() + '.' + su::int_to_string(static_cast<int>(_log_file_id));
 }
 
 inline void logging::Logger::flush() noexcept

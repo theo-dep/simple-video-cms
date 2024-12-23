@@ -55,7 +55,7 @@ namespace server
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void update_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
-    void update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
+    void update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
 
     void download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
@@ -79,17 +79,17 @@ int server::start() noexcept
     ConfirmHandler confirm_handler;
     httplib::Server server;
 
-    const std::string website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
-    env.add_callback("website_name", 0, [website_name](inja::Arguments) noexcept {
+    std::string&& website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
+    env.add_callback("website_name", 0, [website_name](const inja::Arguments&) noexcept {
         return website_name;
     });
 
-    const std::string icon_path{ sc::get_env("ICON_PATH", "/static/img/icon.svg") };
-    env.add_callback("icon", 0, [icon_path](inja::Arguments) noexcept {
+    std::string&& icon_path{ sc::get_env("ICON_PATH", "/static/img/icon.svg") };
+    env.add_callback("icon", 0, [icon_path](const inja::Arguments&) noexcept {
         return icon_path;
     });
 
-    env.add_callback("footer", 0, [](inja::Arguments) noexcept {
+    env.add_callback("footer", 0, [](const inja::Arguments&) noexcept {
         return footer();
     });
 
@@ -808,7 +808,7 @@ inline void server::update_video_get(const httplib::Request& req, httplib::Respo
     set_update_video_content(req, res, env, client, default_video_title_placeholder());
 }
 
-inline void server::update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
+inline void server::update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
     if (!is_logged_and_admin(req, res, session, client))
         return;
@@ -878,33 +878,35 @@ inline void server::download_video(const httplib::Request& req, httplib::Respons
 
     const std::string video_id{ req.path_params.at("video_id") };
 
-    std::string* video_content{ new std::string };
+    std::unique_ptr video_content{ std::make_unique<std::string>() };
+    std::string* const raw_video_content{ video_content.get() };
+
     const bool success{
-        client.video(video_id, "", [video_content](const char* data, std::size_t size) noexcept -> bool {
-            video_content->append(data, size);
+        client.video(video_id, "", [raw_video_content](const char* data, std::size_t size) noexcept -> bool {
+            raw_video_content->append(data, size);
             return true;
         })
     };
 
     if (!success) {
-        delete video_content;
         logging::error{ "Fail to download video {}", video_id };
         res.set_redirect("/video-list");
         return;
     }
 
     const std::string downloader_user_id{ connected_user_id(req, session) };
+    const sc::ContentProviderReleaser releaser{ std::move(video_content) };
 
     res.set_content_provider(
-        video_content->size(), // Content length
-        "video/mp4",           // Content type
-        [video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+        raw_video_content->size(), // Content length
+        "video/mp4",               // Content type
+        [raw_video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
             constexpr std::size_t chunk_size{ 4096 };
-            sink.write(&(*video_content)[offset], std::min(chunk_size, length));
+            sink.write(&(*raw_video_content)[offset], std::min(chunk_size, length));
             return true; // return 'false' if you want to cancel the process.
         },
-        [video_id, downloader_user_id, video_content](bool success) noexcept {
-            delete video_content;
+        [video_id, downloader_user_id, releaser](bool success) noexcept {
+            releaser(success);
             logging::info{ "Video {} downloaded by {}: {}", video_id, downloader_user_id, success };
         });
 }
@@ -980,12 +982,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
 
     const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
-    ChunkWorker* const chunk_worker{ new ChunkWorker };
+    std::unique_ptr chunk_worker{ std::make_unique<ChunkWorker>() };
     chunk_worker->set_buffer_size(video_size);
     chunk_worker->start_chunk_at(req.get_header_value("Range"));
 
-    chunk_worker->set_fetch_async_callback([chunk_worker, video_id, &req, &client]() noexcept -> bool {
-        return client.video(video_id, req.get_header_value("Range"), chunk_worker->append_chunk_callback());
+    ChunkWorker* const raw_chunk_worker{ chunk_worker.get() };
+
+    chunk_worker->set_fetch_async_callback([raw_chunk_worker, video_id, &req, &client]() noexcept -> bool {
+        return client.video(video_id, req.get_header_value("Range"), raw_chunk_worker->append_chunk_callback());
     });
 
     chunk_worker->start_fetch_async();
@@ -995,12 +999,12 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     res.set_content_provider(
         video_size,  // Content length
         "video/mp4", // Content type
-        [chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
-            const std::string chunk{ chunk_worker->chunk() };
-            sink.write(&chunk[0], chunk.size());
-            return chunk_worker->fetch_result(); // return 'false' will cancel the process.
+        [raw_chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
+            const std::string chunk{ raw_chunk_worker->chunk() };
+            sink.write(chunk.data(), chunk.size());
+            return raw_chunk_worker->fetch_result(); // return 'false' will cancel the process.
         },
-        [chunk_worker](bool) noexcept { delete chunk_worker; });
+        sc::ContentProviderReleaser{ std::move(chunk_worker) });
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept

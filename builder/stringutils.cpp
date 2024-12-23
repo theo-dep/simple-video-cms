@@ -12,11 +12,7 @@ std::string su::join(const std::vector<std::string>& list, char delim) noexcept
 
 std::vector<std::string> su::split(const std::string& str, char delim) noexcept
 {
-    // const std::vector<std::string> list{ std::ranges::split_view(str, delim) | std::ranges::to<std::vector>() };
-    std::vector<std::string> list;
-    for (auto&& item : std::views::split(str, delim)) {
-        list.emplace_back(item.cbegin(), item.cend());
-    }
+    const std::vector list(std::views::split(str, delim) | std::ranges::to<std::vector<std::string>>());
     return list;
 }
 
@@ -24,7 +20,7 @@ void su::trim(std::string& str) noexcept
 {
     static const auto ischar{ [](const std::string::value_type& c) noexcept -> bool { return (std::isspace(c) == 0); } };
     // trim left
-    str.erase(str.begin(), std::find_if(str.begin(), str.end(), ischar));
+    str.erase(str.begin(), std::ranges::find_if(str, ischar));
     // trim right
     str.erase(std::ranges::find_if(std::views::reverse(str), ischar).base(), str.end());
 }
