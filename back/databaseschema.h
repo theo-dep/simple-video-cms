@@ -27,8 +27,6 @@ struct Video
     int id{ 0 };
     std::string title;
     int views{ 0 };
-    std::string content_path{};
-    std::string thumbnail_path{};
 };
 
 // Structure for video rights

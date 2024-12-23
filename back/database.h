@@ -58,6 +58,13 @@ public:
 
     std::vector<int> video_right_list(int id) const noexcept;
 
+protected:
+    std::filesystem::path base_path() const noexcept;
+    std::filesystem::path video_path() const noexcept;
+    std::filesystem::path video_path(int id) const noexcept;
+    std::filesystem::path thumbnail_path() const noexcept;
+    std::filesystem::path thumbnail_path(int id) const noexcept;
+
 private:
     const std::filesystem::path path_;
 };
