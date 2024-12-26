@@ -18,14 +18,14 @@ namespace server
 
     void set_no_cache_headers(httplib::Response& res) noexcept;
 
-    void set_error_handler(httplib::Server& server, const Client& client) noexcept;
+    // inja exceptions catched by httplib Server::set_exception_handler
+
+    void set_error_handler(httplib::Server& server, inja::Environment& env, const Client& client);
     void set_exception_handler(httplib::Server& server) noexcept;
     void set_logger(httplib::Server& server) noexcept;
 
     bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
     std::string connected_user_id(const httplib::Request& req, const Session& session) noexcept;
-
-    // inja exceptions catched by httplib Server::set_exception_handler
 
     inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client);
 
@@ -44,19 +44,19 @@ namespace server
     void add_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
-    void confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const Client& client, const std::string& confirm_signal_str) noexcept;
+    void confirm_action(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client, const std::string& confirm_signal_str);
     void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
 
     void update_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void update_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
-    void delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
+    void delete_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void update_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
-    void delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
+    void delete_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
     void download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
 
@@ -93,7 +93,7 @@ int server::start() noexcept
         return footer();
     });
 
-    set_error_handler(server, client);
+    set_error_handler(server, env, client);
     set_exception_handler(server);
     set_logger(server);
 
@@ -124,7 +124,7 @@ int server::start() noexcept
 
         .Get("/update-user/:user_id", sc::serve(update_user_get, std::ref(env), std::ref(session), std::cref(client)))
         .Post("/update-user/:user_id", sc::serve(update_user_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
-        .Get("/delete-user/:user_id", sc::serve(delete_user, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/delete-user/:user_id", sc::serve(delete_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -132,7 +132,7 @@ int server::start() noexcept
         .Post("/add-video", sc::serve(add_video_post, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/update-video/:video_id", sc::serve(update_video_get, std::ref(env), std::ref(session), std::cref(client)))
         .Post("/update-video/:video_id", sc::serve(update_video_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
-        .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/delete-video/:video_id", sc::serve(delete_video, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/download-video/:video_id", sc::serve(download_video, std::cref(session), std::cref(client)))
 
@@ -178,9 +178,9 @@ inline void server::set_no_cache_headers(httplib::Response& res) noexcept
     res.set_header("Expires", "-1");
 }
 
-inline void server::set_error_handler(httplib::Server& server, const Client& client) noexcept
+inline void server::set_error_handler(httplib::Server& server, inja::Environment& env, const Client& client)
 {
-    server.set_error_handler([&client](const httplib::Request& /*req*/, httplib::Response& res) noexcept {
+    server.set_error_handler([&env, &client](const httplib::Request& /*req*/, httplib::Response& res) {
         std::string body;
 
         switch (res.status) {
@@ -196,7 +196,7 @@ inline void server::set_error_handler(httplib::Server& server, const Client& cli
                 body = Client::generic_error(res.status, httplib::status_message(res.status));
         }
 
-        // body = env.render(body, _data);
+        body = env.render(body, {});
         res.set_content(body, "text/html");
     });
 }
@@ -217,7 +217,7 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
         logging::error{ message };
 
         std::string body{ Client::generic_error(error_code, message) };
-        // body = env.render(body, _data);
+        // body = env.render(body, {});
 
         res.set_content(body, "text/html");
         res.status = error_code;
@@ -497,7 +497,7 @@ namespace server
     constexpr const char* session_confirm_key() { return "Confirm-Signal"; }
 }
 
-inline void server::confirm_action(const httplib::Request& req, httplib::Response& res, Session& session, const Client& client, const std::string& confirm_signal_str) noexcept
+inline void server::confirm_action(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client, const std::string& confirm_signal_str)
 {
     if (!is_logged_and_admin(req, res, session, client))
         return;
@@ -506,7 +506,7 @@ inline void server::confirm_action(const httplib::Request& req, httplib::Respons
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     session.insert_value_from_session(session_id, session_confirm_key(), confirm_signal_str);
 
-    const std::string body{ client.confirm_action_page() };
+    const std::string body{ env.render(client.confirm_action_page(), {}) };
     res.set_content(body, "text/html");
 }
 
@@ -622,10 +622,10 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
                          .to_string();
     }
 
-    confirm_action(req, res, session, client, signal_str);
+    confirm_action(req, res, env, session, client, signal_str);
 }
 
-inline void server::delete_user(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
+inline void server::delete_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
     if (!is_logged_and_admin(req, res, session, client))
         return;
@@ -661,7 +661,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
                          .to_string();
     }
 
-    confirm_action(req, res, session, client, signal_str);
+    confirm_action(req, res, env, session, client, signal_str);
 }
 
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
@@ -842,10 +842,10 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
             .to_string()
     };
 
-    confirm_action(req, res, session, client, signal_str);
+    confirm_action(req, res, env, session, client, signal_str);
 }
 
-inline void server::delete_video(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
+inline void server::delete_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
     if (!is_logged_and_admin(req, res, session, client))
         return;
@@ -868,7 +868,7 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
             .to_string()
     };
 
-    confirm_action(req, res, session, client, signal_str);
+    confirm_action(req, res, env, session, client, signal_str);
 }
 
 inline void server::download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
