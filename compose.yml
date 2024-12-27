@@ -1,6 +1,7 @@
 volumes:
   data:
 
+
 services:
 
   builder:
@@ -15,7 +16,7 @@ services:
       context: ./front
       dockerfile: Containerfile
     environment:
-      SERVER_URL: back:5000
+      BACK_SERVER_URL: back:5000
     ports:
       - 8080:8080
     volumes:
