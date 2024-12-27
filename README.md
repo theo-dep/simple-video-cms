@@ -1,46 +1,52 @@
-# VideoHub
-A video sharing platform.
-A rough client-server architecture replica of YouTube with Flask and MySQL.
+# Simple Video CMS
 
-###### All CSS files are available offline.
+A managed video sharing platform inspired by [VideoHub](https://github.com/sharadbhat/VideoHub).
+A back and front architecture video content management system with FFmpeg and SQLite.
 
-### Requirements
-
-To install the server requirements,
-```bash
-pip install -r ./Server/requirements.txt
-```
-
-To install the client requirements,
-```bash
-pip install -r ./Client/requirements.txt
-```
-
-### Starting server
-
-To start server,
-```bash
-python3 ./Server/server.py
-```
-
-### Starting client
-
-To start client,
-```bash
-python3 ./Client/client.py
-```
-
-
-## You're done!
-
-Visit http://127.0.0.1:5000
+###### All third party files are available offline.
 
 ### Docker
 
-Install Docker Compose then,
+Install Docker and Docker Compose then,
+
 ```bash
 docker compose up -d
 ```
+
+### Local
+
+For development purpose, files can be compiled with `gcc` and `g++` minimum version 14.2.
+
+Install development requirements:
+```bash
+sudo apt install make gcc yasm g++
+```
+
+Then build (zlib, libpng, ffmpeg and servers):
+```bash
+./scripts/build.sh
+```
+
+This will generates server binaries in `front/server` and `back/server`.
+
+Servers can be run using VS Code or with both scripts `./scripts/start_front.sh` and `./scripts/start_back.sh`.
+
+### Environment
+
+To personalize front and backends, there is few environment variables to know:
+- Super administrator (cannot be deleted):
+  - SUPER_ADMIN_USERNAME (default admin)
+  - SUPER_ADMIN_PASSWORD (default... admin)
+- Server addresses:
+  - BACK_HOST (default 0.0.0.0)
+  - BACK_PORT (default 5000)
+  - FRONT_HOST (default 0.0.0.0)
+  - FRONT_PORT (default 8080)
+  - BACK_SERVER_URL (default localhost:5000)
+- Name of your hosted website:
+  - WEBSITE_NAME (default Simple Video CMS)
+- Browser icon:
+  - ICON_PATH (default /static/img/icon.svg), mount a volume with your custom icon and set this variable to the path
 
 # Screenshots
 

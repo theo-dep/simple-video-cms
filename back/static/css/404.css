@@ -1,0 +1,13 @@
+a.back {
+    display: inline-block;
+    border: 1px solid #16A085;
+    border-radius: 4px;
+    padding: 0.5em 1em;
+    margin: 2em;
+}
+
+a.back:hover {
+    color: white;
+    border-color: white;
+    transition: all 0.5s ease-in-out;
+}

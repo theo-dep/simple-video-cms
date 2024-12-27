@@ -1,0 +1,16 @@
+FROM alpine-builder AS builder
+
+ADD *.h *.cpp ${SOURCE_DIR}/
+
+RUN rm ${SOURCE_DIR}/sqlite3.c \
+    && make -C ${SOURCE_DIR} -j -k server \
+    && strip ${SOURCE_DIR}/server
+
+# --------------------------------------------------------------------------------
+FROM scratch
+
+COPY --from=builder /sources/server /server
+
+EXPOSE 80
+
+CMD ["/server"]

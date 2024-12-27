@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/usr/include/mysql",
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/builder",
+                "${workspaceFolder}/builder/third-party",
+                "${workspaceFolder}/builder/third-party/ffmpeg",
+                "${workspaceFolder}/builder/third-party/libpng"
+            ],
+            "defines": [
+                "CPPHTTPLIB_USE_POLL"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "compilerArgs": [
+                "-std=c++23",
+                "-Wall",
+                "-Wextra",
+                "-Werror"
+            ],
+            "cStandard": "c17",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

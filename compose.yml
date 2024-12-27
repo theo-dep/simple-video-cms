@@ -1,33 +1,35 @@
+volumes:
+  data:
+
+
 services:
 
-  client:
+  builder:
+    image: alpine-builder
     build:
-      context: ./Client
+      context: ./builder
+      dockerfile: Containerfile
+    command: /bin/true
+
+  front:
+    build:
+      context: ./front
       dockerfile: Containerfile
     environment:
-      SERVER_URL: http://server:8080
-    volumes:
-      - ./Client/static:/VideoHub/static
+      BACK_SERVER_URL: back:5000
     ports:
-      - 5000:5000
+      - 8080:8080
+    volumes:
+      - data:/data
     depends_on:
-      - server
+      - builder
+      - back
 
-  server:
+  back:
     build:
-      context: ./Server
+      context: ./back
       dockerfile: Containerfile
-    environment:
-      MYSQL_ROOT_PASSWORD: "6y51^HsXrNcx"
-      MYSQL_DB_URL: db
     volumes:
-      - ./Server/templates:/VideoHub/templates
+      - data:/data
     depends_on:
-      - db
-
-  db:
-    image: mysql:9.0.1
-    volumes:
-      - ./database.sql:/docker-entrypoint-initdb.d/database.sql
-    environment:
-      MYSQL_ROOT_PASSWORD: "6y51^HsXrNcx"
+      - builder

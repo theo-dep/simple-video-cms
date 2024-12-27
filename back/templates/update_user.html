@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>User Update - {{ website_name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/alert.css" type="text/css">
+  <link rel="icon" href="{{ icon }}" type="image/png">
+</head>
+
+<body>
+  <div class="content">
+    <div class="info">
+      <a href="/">
+        <h1>{{ website_name }}</h1>
+      </a>
+
+      <h2>Update &laquo; {{ user.name }} &raquo;</h2>
+      <h3>Re-enter old password and new password</h3>
+
+      <form class="pure-form pure-form-aligned" action="/update-user/{{ user.id }}?is_admin={{ is_admin }}"
+        method="post">
+        <fieldset>
+          {% if login_error %}
+          <div class="alert pure-control-group">
+            <span class="close-button" onclick="this.parentElement.style.display='none';">&times;</span>
+            Old password does not match
+          </div>
+          {% else if update_error %}
+          <div class="alert pure-control-group">
+            <span class="close-button" onclick="this.parentElement.style.display='none';">&times;</span>
+            New passwords do not match
+          </div>
+          {% else if invalid_username %}
+          <div class="alert pure-control-group">
+            <span class="close-button" onclick="this.parentElement.style.display='none';">&times;</span>
+            Username already taken
+          </div>
+          {% endif %}
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="text" name="username" placeholder="username" value="{{ user.name }}"
+              required />
+          </div>
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="password" name="old-password" placeholder="old password" required
+              autofocus />
+          </div>
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="password" name="new-password" placeholder="new password" required />
+          </div>
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="password" name="confirm-password" placeholder="new password" required />
+          </div>
+          <div class="pure-control-group">
+            <button id="update-button" class="pure-input-1 button pure-button">Update</button>
+          </div>
+        </fieldset>
+      </form>
+    </div>
+  </div>
+</body>
+
+<script type="text/javascript" src="/static/js/button.js"></script>
+
+</html>

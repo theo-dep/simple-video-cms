@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Admin List - {{ website_name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
+  <link rel="icon" href="{{ icon }}" type="image/png">
+</head>
+
+<body>
+  <div class="header pure-g">
+    <div class="pure-u-1 pure-u-sm-1-5 pure-menu pure-menu-horizontal">
+      <a href="/" class="menu-link pure-menu-heading pure-menu-link">{{ website_name }}</a>
+    </div>
+
+    <div class="pure-u-1 pure-u-sm-4-5 menu-scrollable pure-menu pure-menu-horizontal pure-menu-scrollable">
+      <ul class="menu-scrollable-list pure-menu-list">
+        <li class="pure-menu-item">
+          <a href="/admin-list" class="menu-link menu-selected pure-menu-link pure-menu-selected">Admin List</a>
+        </li>
+        <li class="pure-menu-item">
+          <a href="/user-list" class="menu-link pure-menu-link">User List</a>
+        </li>
+        <li class="pure-menu-item">
+          <a href="/video-list" class="menu-link pure-menu-link">Video List</a>
+        </li>
+        <li class="pure-menu-item">
+          <a href="/logout" class="menu-link pure-menu-link">Logout</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="content">
+    <h2>List of administrators</h2>
+    <table id="table" class="table pure-table pure-table-horizontal">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th></th>
+          <th class="add-user">
+            <a href="/add-user?is_admin=true">
+              <img src="/static/img/person-add.svg" alt="add a new admin" />
+            </a>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for admin in admin_dict %}
+        <tr>
+          <td data-title="Username">{{ admin.name }}</td>
+          {% if not admin.is_super_admin %}
+          <td data-title="Update">
+            <a href="/update-user/{{ admin.id }}?is_admin=true">
+              Update
+            </a>
+          </td>
+          <td data-title="Delete">
+            <a href="/delete-user/{{ admin.id }}?is_admin=true">
+              Delete
+            </a>
+          </td>
+          {% else %}
+          <td></td>
+          <td></td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+
+</html>

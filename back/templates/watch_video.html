@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Watch - {{ website_name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/third-party/video-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
+  <link rel="icon" href="{{ icon }}" type="image/png">
+</head>
+
+<body>
+  <div class="header">
+    <div class="pure-menu pure-menu-horizontal">
+      <a href="/" class="menu-link pure-menu-heading pure-menu-link">{{ website_name }}</a>
+
+      <ul class="menu-list pure-menu-list">
+        <li class="pure-menu-item">
+          {% if not is_logged %}
+          <a href="/login" class="menu-link pure-menu-link">Login</a>
+          {% else %}
+          <a href="/logout" class="menu-link pure-menu-link">Logout</a>
+          {% endif %}
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="info info-video">
+      <h1>{{ title }}</h1>
+      <video oncontextmenu="return false;" id="video-player" class="video-js vjs-default-skin" controls
+        data-setup='{"fluid": true}' preload="auto" poster="/thumbnail/{{ video_id }}">
+        <source src="/video/{{ video_id }}" type="video/mp4" />
+        <p class="vjs-no-js">
+          To view this video please enable JavaScript, and consider upgrading to a web browser that
+          <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+        </p>
+      </video>
+      {% if views == "1" %}
+      <p>{{ views }} view</p>
+      {% endif %}
+      {% if views != "1" %}
+      <p>{{ views }} views</p>
+      {% endif %}
+    </div>
+  </div>
+
+  {{ footer }}
+</body>
+
+<script type="text/javascript" src="/static/js/third-party/video-min.js"></script>
+
+</html>
