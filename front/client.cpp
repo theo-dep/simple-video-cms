@@ -272,8 +272,8 @@ std::string Client::user_id(const std::string& username) const noexcept
 std::string Client::add_admin(const std::string& username, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "username", username, "", "" },
-        { "password", password, "", "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "" },
+        { .name = "password", .content = password, .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-admin", items) };
     return client::format_page(res);
@@ -282,8 +282,8 @@ std::string Client::add_admin(const std::string& username, const std::string& pa
 std::string Client::add_user(const std::string& username, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "username", username, "", "" },
-        { "password", password, "", "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "" },
+        { .name = "password", .content = password, .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-user", items) };
     return client::format_page(res);
@@ -292,9 +292,9 @@ std::string Client::add_user(const std::string& username, const std::string& pas
 void Client::update_user(const std::string& user_id, const std::string& username, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "user_id", user_id, "", "" },
-        { "username", username, "", "" },
-        { "password", password, "", "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
+        { .name = "username", .content = username, .filename = "", .content_type = "" },
+        { .name = "password", .content = password, .filename = "", .content_type = "" }
     };
     _client->Post("/update-user", items);
 }
@@ -302,7 +302,7 @@ void Client::update_user(const std::string& user_id, const std::string& username
 void Client::delete_user(const std::string& user_id) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "user_id", user_id, "", "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
     };
     _client->Post("/delete-user", items);
 }
@@ -310,8 +310,8 @@ void Client::delete_user(const std::string& user_id) const noexcept
 bool Client::is_valid_user(const std::string& user_id, const std::string& password) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "user_id", user_id, "", "" },
-        { "password", password, "", "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
+        { .name = "password", .content = password, .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/is-valid-user", items) };
     return su::string_to_bool(client::format_page(res));
@@ -352,9 +352,9 @@ std::vector<std::string> Client::admin_list() const noexcept
 std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "title", title, "", "" },
-        { "video", content, "", "" },
-        { "user_ids", su::join(allowed_user_ids), "", "" }
+        { .name = "title", .content = title, .filename = "", .content_type = "" },
+        { .name = "video", .content = content, .filename = "", .content_type = "" },
+        { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-video", items) };
     return client::format_page(res);
@@ -363,8 +363,8 @@ std::string Client::add_video(const std::string& title, const std::string& conte
 void Client::update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const noexcept
 {
     const httplib::MultipartFormDataItems items{
-        { "title", title, "", "" },
-        { "user_ids", su::join(allowed_user_ids), "", "" }
+        { .name = "title", .content = title, .filename = "", .content_type = "" },
+        { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "" }
     };
     _client->Post("/update-video/" + video_id, items);
 }
@@ -455,7 +455,7 @@ bool Client::has_video_right(const std::string& video_id, const std::string& use
 
 std::vector<std::string> Client::video_right_list(const std::string& video_id) const noexcept
 {
-    const httplib::Result res{ _client->Get("/video-right-list/" + video_id) };
+    const httplib::Result res{ _client->Get("/video-right-list/" + video_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
     const std::string str_rights{ client::format_page(res) };
     return su::split(str_rights);
 }

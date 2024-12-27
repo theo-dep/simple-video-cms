@@ -60,7 +60,6 @@ namespace server
 int server::start() noexcept
 {
     const std::filesystem::path database_file{ filesystem::data_path() / "video.db" };
-
     const Database db(database_file);
     if (!db.create_tables()) {
         logging::error{ "Fail to create database tables" };
@@ -185,7 +184,7 @@ inline std::vector<int> server::extract(const Database& db, const std::string& s
     std::unordered_map<std::string, int> title_ids;
     title_ids.reserve(ids.size());
     std::ranges::transform(ids, std::inserter(title_ids, title_ids.end()),
-                           [&db](const int& id) noexcept -> decltype(title_ids)::value_type {
+                           [&db](int id) noexcept -> decltype(title_ids)::value_type {
                                return std::make_pair(db.video_title(id), id);
                            });
     return search::extract(search, title_ids);
@@ -443,18 +442,17 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
     const std::string thumbnail_content{ video::extract_first_frame(video_content) };
 
-    const std::optional video_id{ db.add_video(video_title, video_content) };
-    const std::optional success{
-        video_id
-            .and_then([&](const int& video_id) noexcept -> std::optional<int> {
+    const std::optional video_id{
+        db.add_video(video_title, video_content)
+            .and_then([&](int video_id) noexcept -> std::optional<int> {
                 return db.add_video_thumbnail(video_id, thumbnail_content);
             })
-            .transform([&](const int& video_id) noexcept -> bool {
-                return db.add_video_rights(video_id, transform(allowed_user_ids));
+            .and_then([&](int video_id) noexcept -> std::optional<int> {
+                return db.add_video_rights(video_id, transform(allowed_user_ids)) ? std::optional(video_id) : std::nullopt;
             })
     };
 
-    if (!success.value_or(false)) {
+    if (!video_id.has_value()) {
         logging::error{ R"(Fail to add video "{}")", video_title };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -511,12 +509,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const int video_size{ db.video_size(video_id) };
 
-    ChunkWorker* const chunk_worker{ new ChunkWorker };
+    std::unique_ptr chunk_worker{ std::make_unique<ChunkWorker>() };
     chunk_worker->set_buffer_size(video_size);
     chunk_worker->start_chunk_at(req.get_header_value("Range"));
 
-    chunk_worker->set_fetch_async_callback([chunk_worker, video_id, &db]() noexcept -> bool {
-        return db.video(video_id, chunk_worker->chunk_offset(), chunk_worker->append_chunk_callback());
+    ChunkWorker* const raw_chunk_worker{ chunk_worker.get() };
+
+    chunk_worker->set_fetch_async_callback([raw_chunk_worker, video_id, &db]() noexcept -> bool {
+        return db.video(video_id, raw_chunk_worker->chunk_offset(), raw_chunk_worker->append_chunk_callback());
     });
 
     chunk_worker->start_fetch_async();
@@ -526,12 +526,12 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     res.set_content_provider(
         video_size,  // Content length
         "video/mp4", // Content type
-        [chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
-            const std::string chunk{ chunk_worker->chunk() };
-            sink.write(&chunk[0], chunk.size());
-            return chunk_worker->fetch_result(); // return 'false' will cancel the process.
+        [raw_chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
+            const std::string chunk{ raw_chunk_worker->chunk() };
+            sink.write(chunk.data(), chunk.size());
+            return raw_chunk_worker->fetch_result(); // return 'false' will cancel the process.
         },
-        [chunk_worker](bool) noexcept { delete chunk_worker; });
+        sc::ContentProviderReleaser{ std::move(chunk_worker) });
 }
 
 inline void server::video_size(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -544,17 +544,18 @@ inline void server::video_size(const httplib::Request& req, httplib::Response& r
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string* const thumbnail_content{ new std::string(db.thumbnail(video_id)) };
+    std::unique_ptr thumbnail_content{ std::make_unique<std::string>(db.thumbnail(video_id)) };
+    const std::string* const raw_thumbnail_content{ thumbnail_content.get() };
 
     static constexpr std::size_t data_chunk_size{ static_cast<std::size_t>(4LL * 1024LL) };
     res.set_content_provider(
-        thumbnail_content->size(), // Content length
-        "image/png",               // Content type
-        [thumbnail_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
-            sink.write(&(*thumbnail_content)[offset], std::min(length, data_chunk_size));
+        raw_thumbnail_content->size(), // Content length
+        "image/png",                   // Content type
+        [raw_thumbnail_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+            sink.write(&(*raw_thumbnail_content)[offset], std::min(length, data_chunk_size));
             return true; // return 'false' if you want to cancel the process.
         },
-        [thumbnail_content](bool) noexcept { delete thumbnail_content; });
+        sc::ContentProviderReleaser{ std::move(thumbnail_content) });
 }
 
 inline void server::has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -565,10 +566,7 @@ inline void server::has_video_right(const httplib::Request& req, httplib::Respon
     if (!has_video_right && req.has_header("user_id")) {
         const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
         // check if user is admin
-        if (db.is_admin(user_id))
-            has_video_right = true;
-        else
-            has_video_right = db.has_video_right(video_id, user_id);
+        has_video_right = db.is_admin(user_id) || db.has_video_right(video_id, user_id);
     }
 
     res.set_content(su::bool_to_string(has_video_right), "plain/text");

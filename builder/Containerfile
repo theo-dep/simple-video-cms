@@ -1,4 +1,4 @@
-FROM alpine:3.20.2
+FROM alpine:3.21.0
 
 RUN apk add --no-cache \
     make \
@@ -7,8 +7,6 @@ RUN apk add --no-cache \
     g++
 
 ENV SOURCE_DIR=/sources
-ENV CXXFLAGS="-O3 -I${SOURCE_DIR} -DNDEBUG"
-ENV CFLAGS="-O3 -I${SOURCE_DIR} -DNDEBUG"
 
 ADD third-party/ ${SOURCE_DIR}/
 
@@ -40,6 +38,12 @@ RUN cd "${SOURCE_DIR}/ffmpeg" \
     --disable-network  \
     && make -j -k \
     && make install
+
+ENV CXXFLAGS="-O3 -I${SOURCE_DIR} -DNDEBUG"
+ENV CFLAGS="-O3 -I${SOURCE_DIR} -DNDEBUG -Wno-stringop-overread"
+# alpine 3.21.0
+# sqlite3.c:35252:28: error: 'strlen' reading 1 or more bytes from a region of size 0 [-Werror=stringop-overread]
+#       return 0x3fffffff & (int)strlen(z);
 
 # add local file after building FFmpeg for performance
 ADD *.h *.cpp Makefile ${SOURCE_DIR}/

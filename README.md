@@ -15,7 +15,7 @@ docker compose up -d
 
 ### Local
 
-For development purpose, files can be compiled with `gcc` and `g++`.
+For development purpose, files can be compiled with `gcc` and `g++` minimum version 14.2.
 
 Install development requirements:
 ```bash

@@ -30,6 +30,16 @@
 - https://github.com/fnc12/sqlite_orm
 - AGPL License
 
+### Patch
+
+- line 1320 with Ubuntu LLVM version 19.1.1
+```cpp
+  - template<size_t Pos, size_t... Idx>
+  - SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+  + template<size_t Pos, size_t... Idx>
+  + SQLITE_ORM_CONSTEVAL auto index_sequence_value_at(std::index_sequence<Idx...>) {
+```
+
 ## rapidfuzz-cpp
 
 - v3.1.1

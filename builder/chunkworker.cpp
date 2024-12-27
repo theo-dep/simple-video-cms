@@ -1,5 +1,6 @@
 #include "chunkworker.h"
 
+#include "logging.h"
 #include "stringutils.h"
 
 #include <chrono>
@@ -47,22 +48,37 @@ void ChunkWorker::start_fetch_async() noexcept
 
 bool ChunkWorker::fetch_result() noexcept
 {
-    if (_fetch_result.has_value())
+    try {
+        if (_fetch_result.has_value())
+            return _fetch_result.value();
+
+        if (!_fetch_future.valid())
+            return false;
+
+        if (_fetch_future.wait_for(1ms) != std::future_status::ready) // work in progress
+            return true;
+
+        _fetch_result.emplace(_fetch_future.get());
         return _fetch_result.value();
 
-    if (!_fetch_future.valid())
+    } catch (const std::exception& e) {
+        logging::error{ "Fail to fetch result: {}", e.what() };
         return false;
-
-    if (_fetch_future.wait_for(1ms) != std::future_status::ready) // work in progress
-        return true;
-
-    _fetch_result.emplace(_fetch_future.get());
-    return _fetch_result.value();
+    }
 }
 
 void ChunkWorker::start_chunk_at(const std::string& range_header) noexcept
 {
-    static const std::regex pattern("bytes=(\\d+)-(\\d*)");
+    static std::regex pattern;
+    static std::once_flag create_pattern_once;
+    std::call_once(create_pattern_once, [] noexcept {
+        try {
+            pattern = "bytes=(\\d+)-(\\d*)";
+        } catch (const std::exception& e) {
+            logging::error{ "Fail to create chunk regular expression: {}", e.what() };
+        }
+    });
+
     std::smatch range_match;
     if (std::regex_match(range_header, range_match, pattern) && range_match.size() >= 3) {
         // index 0 is the whole pattern matched
