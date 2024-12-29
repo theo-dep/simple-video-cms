@@ -101,7 +101,7 @@ std::string Database::video_title(int id) const
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video title "{}")", id };
-                return {};
+                return std::string{};
             })
     };
     return *video_title;
@@ -324,7 +324,7 @@ std::string Database::user_name(int id) const
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch user name "{}")", id };
-                return {};
+                return std::string{};
             })
     };
     return *user_name;
@@ -340,7 +340,7 @@ std::string Database::user_password(int id) const
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch user password "{}")", id };
-                return {};
+                return std::string{};
             })
     };
     return *user_password;
@@ -356,7 +356,7 @@ std::string Database::user_salt(int id) const
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch user salt "{}")", id };
-                return {};
+                return std::string{};
             })
     };
     return *user_salt;
