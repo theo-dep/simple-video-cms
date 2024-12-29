@@ -1,6 +1,5 @@
 #include "server.h"
 
-#include "chunkworker.h"
 #include "client.h"
 #include "confirmhandler.h"
 #include "crypto.h"
@@ -15,6 +14,7 @@
 namespace server
 {
     constexpr std::string_view footer() noexcept;
+    constexpr std::size_t video_chunk_size() { return 1024 * 1024; }
 
     void set_no_cache_headers(httplib::Response& res) noexcept;
 
@@ -878,35 +878,19 @@ inline void server::download_video(const httplib::Request& req, httplib::Respons
 
     const std::string video_id{ req.path_params.at("video_id") };
 
-    std::unique_ptr video_content{ std::make_unique<std::string>() };
-    std::string* const raw_video_content{ video_content.get() };
-
-    const bool success{
-        client.video(video_id, "", [raw_video_content](const char* data, std::size_t size) noexcept -> bool {
-            raw_video_content->append(data, size);
-            return true;
-        })
-    };
-
-    if (!success) {
-        logging::error{ "Fail to download video {}", video_id };
-        res.set_redirect("/video-list");
-        return;
-    }
+    const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
     const std::string downloader_user_id{ connected_user_id(req, session) };
-    const sc::ContentProviderReleaser releaser{ std::move(video_content) };
 
     res.set_content_provider(
-        raw_video_content->size(), // Content length
-        "video/mp4",               // Content type
-        [raw_video_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
-            constexpr std::size_t chunk_size{ 4096 };
-            sink.write(&(*raw_video_content)[offset], std::min(chunk_size, length));
+        video_size,  // Content length
+        "video/mp4", // Content type
+        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+            const std::string chunk{ client.video(video_id, offset, std::min(length, video_chunk_size())) };
+            sink.write(chunk.data(), chunk.size());
             return true; // return 'false' if you want to cancel the process.
         },
-        [video_id, downloader_user_id, releaser](bool success) noexcept {
-            releaser(success);
+        [video_id, downloader_user_id](bool success) noexcept {
             logging::info{ "Video {} downloaded by {}: {}", video_id, downloader_user_id, success };
         });
 }
@@ -982,26 +966,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
 
     const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
-    std::unique_ptr chunk_worker{ std::make_unique<ChunkWorker>() };
-    const std::size_t offset{ chunk_worker->start_chunk_at(req.get_header_value("Range"), video_size) };
-
-    ChunkWorker* const raw_chunk_worker{ chunk_worker.get() };
-
-    chunk_worker->set_fetch_async_callback([raw_chunk_worker, video_id, &req, &client]() noexcept -> bool {
-        return client.video(video_id, req.get_header_value("Range"), raw_chunk_worker->append_chunk_callback());
-    });
-
-    chunk_worker->start_fetch_async();
-
     res.set_content_provider(
-        offset + raw_chunk_worker->buffer_size(), // Content length
-        "video/mp4",                              // Content type
-        [raw_chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
-            const std::string chunk{ raw_chunk_worker->chunk() };
+        video_size,  // Content length
+        "video/mp4", // Content type
+        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+            const std::string chunk{ client.video(video_id, offset, std::min(length, video_chunk_size())) };
             sink.write(chunk.data(), chunk.size());
-            return raw_chunk_worker->fetch_result(); // return 'false' will cancel the process.
-        },
-        sc::ContentProviderReleaser{ std::move(chunk_worker) });
+            return true; // return 'false' if you want to cancel the process.
+        });
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept

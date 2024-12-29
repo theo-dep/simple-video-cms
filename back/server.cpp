@@ -1,6 +1,5 @@
 #include "server.h"
 
-#include "chunkworker.h"
 #include "crypto.h"
 #include "database.h"
 #include "filesystem.h"
@@ -507,28 +506,21 @@ inline void server::increment_video_views(const httplib::Request& req, httplib::
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const int video_size{ db.video_size(video_id) };
 
-    std::unique_ptr chunk_worker{ std::make_unique<ChunkWorker>() };
-    const std::size_t offset{ chunk_worker->start_chunk_at(req.get_header_value("Range"), video_size) };
+    const std::size_t offset{
+        req.has_header("Offset")
+            ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Offset")))
+            : 0u
+    };
 
-    ChunkWorker* const raw_chunk_worker{ chunk_worker.get() };
+    const std::size_t length{
+        req.has_header("Length")
+            ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Length")))
+            : static_cast<std::size_t>(db.video_size(video_id))
+    };
 
-    chunk_worker->set_fetch_async_callback([raw_chunk_worker, offset, video_id, &db]() noexcept -> bool {
-        return db.video(video_id, offset, raw_chunk_worker->append_chunk_callback());
-    });
-
-    chunk_worker->start_fetch_async();
-
-    res.set_content_provider(
-        offset + raw_chunk_worker->buffer_size(), // Content length
-        "video/mp4",                              // Content type
-        [raw_chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
-            const std::string chunk{ raw_chunk_worker->chunk() };
-            sink.write(chunk.data(), chunk.size());
-            return raw_chunk_worker->fetch_result(); // return 'false' will cancel the process.
-        },
-        sc::ContentProviderReleaser{ std::move(chunk_worker) });
+    const std::string video{ db.video(video_id, offset, length) };
+    res.set_content(video, "video/mp4");
 }
 
 inline void server::video_size(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept

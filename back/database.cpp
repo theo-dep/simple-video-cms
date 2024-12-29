@@ -12,7 +12,6 @@
 #pragma GCC diagnostic pop
 
 #include <algorithm>
-#include <array>
 #include <fstream>
 
 using namespace sqlite_orm;
@@ -60,7 +59,7 @@ namespace database
     auto safe(const Function& callback, const std::source_location& location = std::source_location::current()) noexcept -> decltype(callback());
 
     int file_size(const std::string& path) noexcept;
-    bool read_file(const std::string& path, std::size_t offset, const std::function<bool(const char*, std::size_t)>& callback) noexcept;
+    std::string read_file(const std::string& path, std::size_t offset, std::size_t length) noexcept;
     std::string read_file(const std::string& path) noexcept;
     void write_file(const std::string& path, const std::string& content) noexcept;
 }
@@ -164,22 +163,22 @@ int Database::video_size(int id) const noexcept
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/blob_binding.cpp
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/key_value.cpp
 
-bool Database::video(int id, std::size_t offset, const std::function<bool(const char*, std::size_t)>& callback) const noexcept
+std::string Database::video(int id, std::size_t offset, std::size_t length) const noexcept
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
-        const std::optional success{
+        const std::optional video{
             storage.get_optional<Video>(id)
-                .transform([&](const Video& video) noexcept -> bool {
-                    return database::read_file(video_path(video.id), offset, callback);
+                .transform([&](const Video& video) noexcept -> std::string {
+                    return database::read_file(video_path(video.id), offset, length);
                 })
-                .or_else([&] noexcept -> std::optional<bool> {
+                .or_else([&] noexcept -> std::optional<std::string> {
                     logging::error<int const&>{ R"(Fail to fetch video content "{}")", id, location };
-                    return false;
+                    return std::string{};
                 })
         };
-        return *success;
+        return *video;
     });
 }
 
@@ -694,34 +693,25 @@ inline int database::file_size(const std::string& path) noexcept
     return static_cast<int>(file.tellg());
 }
 
-inline bool database::read_file(const std::string& path, std::size_t offset, const std::function<bool(const char*, std::size_t)>& callback) noexcept
+inline std::string database::read_file(const std::string& path, std::size_t offset, std::size_t length) noexcept
 {
     std::ifstream file(path, std::ios::in | std::ios::binary);
     file.seekg(static_cast<std::streamoff>(offset));
 
-    constexpr std::size_t chunk_size{ 4096 };
-    std::array<char, chunk_size> buffer{};
-    bool read_success{ true };
-    while (file.good() && read_success) {
-        file.read(buffer.data(), chunk_size);
-        read_success = callback(buffer.data(), file.gcount());
-    }
-    return read_success && !file.bad();
+    std::string file_content;
+    file_content.resize_and_overwrite(length, [&file](char* buffer, std::size_t buffer_size) noexcept -> std::size_t {
+        file.read(buffer, static_cast<std::streamoff>(buffer_size));
+        return file.gcount();
+    });
+    return file_content;
 }
 
 inline std::string database::read_file(const std::string& path) noexcept
 {
     // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
-    const std::streampos file_length{ file.tellg() };
-    file.seekg(0);
-
-    std::string file_content;
-    file_content.resize_and_overwrite(file_length, [&file](char* buffer, std::size_t buffer_size) noexcept -> std::size_t {
-        file.read(buffer, static_cast<std::streamoff>(buffer_size));
-        return file.gcount();
-    });
-    return file_content;
+    const std::size_t file_length{ static_cast<std::size_t>(file.tellg()) };
+    return read_file(path, 0, file_length);
 }
 
 inline void database::write_file(const std::string& path, const std::string& content) noexcept
