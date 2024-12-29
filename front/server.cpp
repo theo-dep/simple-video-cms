@@ -67,13 +67,7 @@ namespace server
 
 int server::start()
 {
-    bool is_client_ok{ false };
-    const Client client(is_client_ok);
-    if (!is_client_ok) {
-        logging::error{ "Fail to create the client" };
-        return EXIT_FAILURE;
-    }
-
+    const Client client;
     inja::Environment env;
     Session session;
     ConfirmHandler confirm_handler;

@@ -64,29 +64,17 @@ namespace logging
 template <class... Args>
 logging::info<Args...>::info(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location)
 {
-    try {
-        info<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
-    } catch (const std::exception& e) {
-        error<std::string>{ e.what(), location };
-    }
+    info<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
 }
 
 template <class... Args>
 logging::error<Args...>::error(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location)
 {
-    try {
-        error<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
-    } catch (const std::exception& e) {
-        error<std::string>{ e.what(), location };
-    }
+    error<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
 }
 
 template <class... Args>
 logging::debug<Args...>::debug(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location)
 {
-    try {
-        debug<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
-    } catch (const std::exception& e) {
-        error<std::string>{ e.what(), location };
-    }
+    debug<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
 }

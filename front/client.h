@@ -13,7 +13,7 @@ namespace httplib
 class Client
 {
 public:
-    Client(bool& create_ok);
+    Client();
     ~Client() = default;
 
     std::string error_page_404() const;

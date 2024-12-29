@@ -38,12 +38,9 @@ namespace client
     std::string format_page(const httplib::Result& res);
 }
 
-Client::Client(bool& create_ok)
-try : _client{ std::make_unique<httplib::Client>(sc::get_env("BACK_SERVER_URL", "localhost:5000")) } {
-    create_ok = true;
-} catch (const std::exception& e) {
-    logging::error{ "Fail to create: {}", e.what() };
-    create_ok = false;
+Client::Client()
+    : _client{ std::make_unique<httplib::Client>(sc::get_env("BACK_SERVER_URL", "localhost:5000")) }
+{
 }
 
 std::string Client::error_page_404() const
@@ -463,11 +460,7 @@ std::vector<std::string> Client::video_right_list(const std::string& video_id) c
 
 inline std::string client::generic_error(int error, const std::string& message)
 {
-    try {
-        return std::format(generic_error_html, "Error", error, message, CPPHTTPLIB_VERSION);
-    } catch (const std::exception& e) {
-        return e.what();
-    }
+    return std::format(generic_error_html, "Error", error, message, CPPHTTPLIB_VERSION);
 }
 
 inline std::string client::format_page(const httplib::Result& res)
