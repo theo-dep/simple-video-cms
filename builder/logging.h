@@ -7,10 +7,10 @@
 
 namespace logging
 {
-    void init(const std::filesystem::path& log_file_path) noexcept;
+    void init(const std::filesystem::path& log_file_path);
 
-    std::string time_local() noexcept;
-    void raw_log(const std::string& message) noexcept; // for server log
+    std::string time_local();
+    void raw_log(const std::string& message); // for server log
 
     // https://www.cppstories.com/2020/09/variadic-pack-first.html/
     // https://cor3ntin.github.io/posts/variadic/
@@ -18,7 +18,7 @@ namespace logging
     template <class... Args>
     struct info
     {
-        info(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current()) noexcept;
+        info(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current());
     };
     template <class... Args>
     info(std::format_string<Args...> fmt, Args&&... args) -> info<Args...>;
@@ -26,14 +26,14 @@ namespace logging
     template <>
     struct info<std::string>
     {
-        info(const std::string& message, const std::source_location& location = std::source_location::current()) noexcept;
+        info(const std::string& message, const std::source_location& location = std::source_location::current());
     };
     info(const std::string& message) -> info<std::string>;
 
     template <class... Args>
     struct error
     {
-        error(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current()) noexcept;
+        error(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current());
     };
     template <class... Args>
     error(std::format_string<Args...> fmt, Args&&... args) -> error<Args...>;
@@ -41,14 +41,14 @@ namespace logging
     template <>
     struct error<std::string>
     {
-        error(const std::string& message, const std::source_location& location = std::source_location::current()) noexcept;
+        error(const std::string& message, const std::source_location& location = std::source_location::current());
     };
     error(const std::string& message) -> error<std::string>;
 
     template <class... Args>
     struct debug
     {
-        debug(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current()) noexcept;
+        debug(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current());
     };
     template <class... Args>
     debug(std::format_string<Args...> fmt, Args&&... args) -> debug<Args...>;
@@ -56,13 +56,13 @@ namespace logging
     template <>
     struct debug<std::string>
     {
-        debug(const std::string& message, const std::source_location& location = std::source_location::current()) noexcept;
+        debug(const std::string& message, const std::source_location& location = std::source_location::current());
     };
     debug(const std::string& message) -> debug<std::string>;
 }
 
 template <class... Args>
-logging::info<Args...>::info(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location) noexcept
+logging::info<Args...>::info(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location)
 {
     try {
         info<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
@@ -72,7 +72,7 @@ logging::info<Args...>::info(std::format_string<Args...> fmt, Args&&... args, co
 }
 
 template <class... Args>
-logging::error<Args...>::error(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location) noexcept
+logging::error<Args...>::error(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location)
 {
     try {
         error<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
@@ -82,7 +82,7 @@ logging::error<Args...>::error(std::format_string<Args...> fmt, Args&&... args, 
 }
 
 template <class... Args>
-logging::debug<Args...>::debug(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location) noexcept
+logging::debug<Args...>::debug(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location)
 {
     try {
         debug<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };

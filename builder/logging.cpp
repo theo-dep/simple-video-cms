@@ -12,7 +12,7 @@
 namespace logging
 {
     // only the name, without return type and parameters
-    std::string light_function_name(const std::source_location& location) noexcept;
+    std::string light_function_name(const std::source_location& location);
 
     // two times a day, test if the file is more than 500 Mo
     constexpr std::int64_t hour_to_check{ 12 };
@@ -23,18 +23,18 @@ namespace logging
     class Logger
     {
     public:
-        Logger() noexcept;
-        ~Logger() noexcept;
+        Logger();
+        ~Logger();
 
-        void open(const std::filesystem::path& log_file_path) noexcept;
+        void open(const std::filesystem::path& log_file_path);
 
         template <typename T>
-        Logger& operator<<(const T& message) noexcept;
+        Logger& operator<<(const T& message);
 
     protected:
-        std::filesystem::path log_id_file_path() const noexcept;
-        void flush() noexcept;
-        bool is_max_log_reached() noexcept;
+        std::filesystem::path log_id_file_path() const;
+        void flush();
+        bool is_max_log_reached();
 
     private:
         std::filesystem::path _log_file_path;
@@ -53,16 +53,16 @@ namespace logging
         Logger& operator=(Logger&&) = delete;
     };
 
-    Logger& logger() noexcept;
-    void log(const std::string& type, const std::source_location& location, const std::string& message) noexcept;
+    Logger& logger();
+    void log(const std::string& type, const std::source_location& location, const std::string& message);
 }
 
-void logging::init(const std::filesystem::path& log_file_path) noexcept
+void logging::init(const std::filesystem::path& log_file_path)
 {
     logger().open(log_file_path);
 }
 
-std::string logging::time_local() noexcept
+std::string logging::time_local()
 {
     const std::chrono::time_point p{ std::chrono::system_clock::now() };
     const std::time_t t{ std::chrono::system_clock::to_time_t(p) };
@@ -72,22 +72,22 @@ std::string logging::time_local() noexcept
     return ss.str();
 }
 
-void logging::raw_log(const std::string& message) noexcept
+void logging::raw_log(const std::string& message)
 {
     logger() << message << '\n';
 }
 
-logging::info<std::string>::info(const std::string& message, const std::source_location& location) noexcept
+logging::info<std::string>::info(const std::string& message, const std::source_location& location)
 {
     log("MSG", location, message);
 }
 
-logging::error<std::string>::error(const std::string& message, const std::source_location& location) noexcept
+logging::error<std::string>::error(const std::string& message, const std::source_location& location)
 {
     log("ERR", location, message);
 }
 
-logging::debug<std::string>::debug(const std::string& message, const std::source_location& location) noexcept
+logging::debug<std::string>::debug(const std::string& message, const std::source_location& location)
 {
 #ifdef DEBUG_LOG
     info<std::string>{ message, location };
@@ -97,7 +97,7 @@ logging::debug<std::string>::debug(const std::string& message, const std::source
 #endif
 }
 
-inline std::string logging::light_function_name(const std::source_location& location) noexcept
+inline std::string logging::light_function_name(const std::source_location& location)
 {
     const std::string function_name{ location.function_name() };
     const std::size_t start_index{ function_name.find_first_of(' ') + 1 };
@@ -105,9 +105,9 @@ inline std::string logging::light_function_name(const std::source_location& loca
     return std::string{ function_name, start_index, end_index - start_index };
 }
 
-inline logging::Logger::Logger() noexcept
+inline logging::Logger::Logger()
     : _flush_thread{
-        [&]() noexcept {
+        [&]() {
             while (_is_running) {
                 flush();
 
@@ -124,7 +124,7 @@ inline logging::Logger::Logger() noexcept
 {
 }
 
-inline logging::Logger::~Logger() noexcept
+inline logging::Logger::~Logger()
 {
     if (_flush_thread.joinable()) {
         _is_running = false;
@@ -134,7 +134,7 @@ inline logging::Logger::~Logger() noexcept
     flush(); // flush one more time for precaution
 }
 
-inline void logging::Logger::open(const std::filesystem::path& log_file_path) noexcept
+inline void logging::Logger::open(const std::filesystem::path& log_file_path)
 {
     const std::filesystem::path log_file_dir{ log_file_path.parent_path() };
     if (!filesystem::create(log_file_dir)) {
@@ -154,19 +154,19 @@ inline void logging::Logger::open(const std::filesystem::path& log_file_path) no
 }
 
 template <typename T>
-inline logging::Logger& logging::Logger::operator<<(const T& message) noexcept
+inline logging::Logger& logging::Logger::operator<<(const T& message)
 {
     _log_file << message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     std::clog << message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
     return *this;
 }
 
-inline std::filesystem::path logging::Logger::log_id_file_path() const noexcept
+inline std::filesystem::path logging::Logger::log_id_file_path() const
 {
     return _log_file_path.string() + '.' + su::int_to_string(static_cast<int>(_log_file_id));
 }
 
-inline void logging::Logger::flush() noexcept
+inline void logging::Logger::flush()
 {
     if (_log_file.is_open()) {
         _log_file.flush();
@@ -175,7 +175,7 @@ inline void logging::Logger::flush() noexcept
     std::clog.flush();
 }
 
-inline bool logging::Logger::is_max_log_reached() noexcept
+inline bool logging::Logger::is_max_log_reached()
 {
     if (!_log_file.is_open())
         return false;
@@ -203,13 +203,13 @@ inline bool logging::Logger::is_max_log_reached() noexcept
     return false;
 }
 
-inline logging::Logger& logging::logger() noexcept
+inline logging::Logger& logging::logger()
 {
     static Logger instance;
     return instance;
 }
 
-inline void logging::log(const std::string& type, const std::source_location& location, const std::string& message) noexcept
+inline void logging::log(const std::string& type, const std::source_location& location, const std::string& message)
 {
     logger() << type << " - " << time_local() << " - " << message << " - " << light_function_name(location)
              << " (" << location.file_name() << " at line " << location.line() << ")" << '\n';

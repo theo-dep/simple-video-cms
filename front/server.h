@@ -2,5 +2,5 @@
 
 namespace server
 {
-    int start() noexcept;
+    int start();
 }

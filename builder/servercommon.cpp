@@ -4,7 +4,7 @@
 
 #include <httplib.h>
 
-std::string sc::log(const httplib::Request& req, const httplib::Response& res) noexcept
+std::string sc::log(const httplib::Request& req, const httplib::Response& res)
 {
     try {
         const std::string remote_user("-"); // TODO:
@@ -25,7 +25,7 @@ std::string sc::log(const httplib::Request& req, const httplib::Response& res) n
     }
 }
 
-std::string sc::get_env(const std::string& key, const std::string& default_value) noexcept
+std::string sc::get_env(const std::string& key, const std::string& default_value)
 {
     const char* const db_url_env{ std::getenv(key.c_str()) };
     return (db_url_env != nullptr ? std::string(db_url_env) : default_value);

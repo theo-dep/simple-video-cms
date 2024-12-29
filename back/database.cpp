@@ -56,20 +56,20 @@ namespace database
     using StorageType = decltype(database::storage({}));
 
     template <typename Function>
-    auto safe(const Function& callback, const std::source_location& location = std::source_location::current()) noexcept -> decltype(callback());
+    auto safe(const Function& callback, const std::source_location& location = std::source_location::current()) -> decltype(callback());
 
-    int file_size(const std::string& path) noexcept;
-    std::string read_file(const std::string& path, std::size_t offset, std::size_t length) noexcept;
-    std::string read_file(const std::string& path) noexcept;
-    void write_file(const std::string& path, const std::string& content) noexcept;
+    int file_size(const std::string& path);
+    std::string read_file(const std::string& path, std::size_t offset, std::size_t length);
+    std::string read_file(const std::string& path);
+    void write_file(const std::string& path, const std::string& content);
 }
 
-Database::Database(std::filesystem::path path) noexcept
+Database::Database(std::filesystem::path path)
     : path_{ std::move(path) }
 {
 }
 
-bool Database::create_tables() const noexcept
+bool Database::create_tables() const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -78,7 +78,7 @@ bool Database::create_tables() const noexcept
     });
 }
 
-std::vector<int> Database::admin_video_list() const noexcept
+std::vector<int> Database::admin_video_list() const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -86,7 +86,7 @@ std::vector<int> Database::admin_video_list() const noexcept
     });
 }
 
-std::vector<int> Database::user_video_list(int user_id) const noexcept
+std::vector<int> Database::user_video_list(int user_id) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -94,7 +94,7 @@ std::vector<int> Database::user_video_list(int user_id) const noexcept
     });
 }
 
-std::vector<int> Database::no_user_video_list() const noexcept
+std::vector<int> Database::no_user_video_list() const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -102,17 +102,17 @@ std::vector<int> Database::no_user_video_list() const noexcept
     });
 }
 
-std::string Database::video_title(int id) const noexcept
+std::string Database::video_title(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional video_title{
             storage.get_optional<Video>(id)
-                .transform([](const Video& video) noexcept -> std::string {
+                .transform([](const Video& video) -> std::string {
                     return video.title;
                 })
-                .or_else([&] noexcept -> std::optional<std::string> {
+                .or_else([&] -> std::optional<std::string> {
                     logging::error<int const&>{ R"(Fail to fetch video title "{}")", id, location };
                     return {};
                 })
@@ -121,17 +121,17 @@ std::string Database::video_title(int id) const noexcept
     });
 }
 
-int Database::video_views(int id) const noexcept
+int Database::video_views(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional video_views{
             storage.get_optional<Video>(id)
-                .transform([](const Video& video) noexcept -> int {
+                .transform([](const Video& video) -> int {
                     return video.views;
                 })
-                .or_else([&] noexcept -> std::optional<int> {
+                .or_else([&] -> std::optional<int> {
                     logging::error<int const&>{ R"(Fail to fetch video views "{}")", id, location };
                     return -1;
                 })
@@ -140,17 +140,17 @@ int Database::video_views(int id) const noexcept
     });
 }
 
-int Database::video_size(int id) const noexcept
+int Database::video_size(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional video_size{
             storage.get_optional<Video>(id)
-                .transform([&](const Video& video) noexcept -> int {
+                .transform([&](const Video& video) -> int {
                     return database::file_size(video_path(video.id));
                 })
-                .or_else([&] noexcept -> std::optional<int> {
+                .or_else([&] -> std::optional<int> {
                     logging::error<int const&>{ R"(Fail to fetch video size "{}")", id, location };
                     return -1;
                 })
@@ -163,17 +163,17 @@ int Database::video_size(int id) const noexcept
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/blob_binding.cpp
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/key_value.cpp
 
-std::string Database::video(int id, std::size_t offset, std::size_t length) const noexcept
+std::string Database::video(int id, std::size_t offset, std::size_t length) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional video{
             storage.get_optional<Video>(id)
-                .transform([&](const Video& video) noexcept -> std::string {
+                .transform([&](const Video& video) -> std::string {
                     return database::read_file(video_path(video.id), offset, length);
                 })
-                .or_else([&] noexcept -> std::optional<std::string> {
+                .or_else([&] -> std::optional<std::string> {
                     logging::error<int const&>{ R"(Fail to fetch video content "{}")", id, location };
                     return std::string{};
                 })
@@ -182,17 +182,17 @@ std::string Database::video(int id, std::size_t offset, std::size_t length) cons
     });
 }
 
-std::string Database::thumbnail(int id) const noexcept
+std::string Database::thumbnail(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional thumbnail{
             storage.get_optional<Video>(id)
-                .transform([&](const Video& video) noexcept -> std::string {
+                .transform([&](const Video& video) -> std::string {
                     return database::read_file(thumbnail_path(video.id));
                 })
-                .or_else([&] noexcept -> std::optional<std::string> {
+                .or_else([&] -> std::optional<std::string> {
                     logging::error<int const&>{ R"(Fail to fetch video thumbnail "{}")", id, location };
                     return std::string{};
                 })
@@ -201,7 +201,7 @@ std::string Database::thumbnail(int id) const noexcept
     });
 }
 
-std::optional<int> Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+std::optional<int> Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const
 {
     User user_super_admin{
         .name = name,
@@ -222,7 +222,7 @@ std::optional<int> Database::add_super_admin(const std::string& name, const std:
     });
 }
 
-bool Database::is_super_admin(int id) const noexcept
+bool Database::is_super_admin(int id) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -230,7 +230,7 @@ bool Database::is_super_admin(int id) const noexcept
     });
 }
 
-bool Database::is_admin(int id) const noexcept
+bool Database::is_admin(int id) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -243,7 +243,7 @@ bool Database::is_admin(int id) const noexcept
     });
 }
 
-bool Database::is_user(int id) const noexcept
+bool Database::is_user(int id) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -256,7 +256,7 @@ bool Database::is_user(int id) const noexcept
     });
 }
 
-std::optional<int> Database::add_admin(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+std::optional<int> Database::add_admin(const std::string& name, const std::string& password, const std::string& salt) const
 {
     User user_admin{
         .name = name,
@@ -277,7 +277,7 @@ std::optional<int> Database::add_admin(const std::string& name, const std::strin
     });
 }
 
-std::optional<int> Database::add_user(const std::string& name, const std::string& password, const std::string& salt) const noexcept
+std::optional<int> Database::add_user(const std::string& name, const std::string& password, const std::string& salt) const
 {
     User user{
         .name = name,
@@ -292,7 +292,7 @@ std::optional<int> Database::add_user(const std::string& name, const std::string
     });
 }
 
-std::optional<int> Database::update_user_name(int id, const std::string& name) const noexcept
+std::optional<int> Database::update_user_name(int id, const std::string& name) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
@@ -304,7 +304,7 @@ std::optional<int> Database::update_user_name(int id, const std::string& name) c
                     storage.update(user);
                     return id;
                 })
-                .or_else([&] noexcept -> std::optional<int> {
+                .or_else([&] -> std::optional<int> {
                     logging::error<int const&>{ R"(Fail to update user name "{}")", id, location };
                     return std::nullopt;
                 })
@@ -313,7 +313,7 @@ std::optional<int> Database::update_user_name(int id, const std::string& name) c
     });
 }
 
-std::optional<int> Database::update_user_password(int id, const std::string& password) const noexcept
+std::optional<int> Database::update_user_password(int id, const std::string& password) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
@@ -325,7 +325,7 @@ std::optional<int> Database::update_user_password(int id, const std::string& pas
                     storage.update(user);
                     return id;
                 })
-                .or_else([&] noexcept -> std::optional<int> {
+                .or_else([&] -> std::optional<int> {
                     logging::error<int const&>{ R"(Fail to update user password "{}")", id, location };
                     return std::nullopt;
                 })
@@ -334,7 +334,7 @@ std::optional<int> Database::update_user_password(int id, const std::string& pas
     });
 }
 
-bool Database::delete_user(int id) const noexcept
+bool Database::delete_user(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
@@ -345,7 +345,7 @@ bool Database::delete_user(int id) const noexcept
                     storage.remove<User>(user.id);
                     return true;
                 })
-                .or_else([&] noexcept -> std::optional<bool> {
+                .or_else([&] -> std::optional<bool> {
                     logging::error<int const&>{ R"(Fail to delete user "{}")", id, location };
                     return false;
                 })
@@ -354,7 +354,7 @@ bool Database::delete_user(int id) const noexcept
     });
 }
 
-int Database::user_id(const std::string& name) const noexcept
+int Database::user_id(const std::string& name) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -363,17 +363,17 @@ int Database::user_id(const std::string& name) const noexcept
     });
 }
 
-std::string Database::user_name(int id) const noexcept
+std::string Database::user_name(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional user_name{
             storage.get_optional<User>(id)
-                .transform([](const User& user) noexcept -> std::string {
+                .transform([](const User& user) -> std::string {
                     return user.name;
                 })
-                .or_else([&] noexcept -> std::optional<std::string> {
+                .or_else([&] -> std::optional<std::string> {
                     logging::error<int const&>{ R"(Fail to fetch user name "{}")", id, location };
                     return {};
                 })
@@ -382,17 +382,17 @@ std::string Database::user_name(int id) const noexcept
     });
 }
 
-std::string Database::user_password(int id) const noexcept
+std::string Database::user_password(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional user_password{
             storage.get_optional<User>(id)
-                .transform([](const User& user) noexcept -> std::string {
+                .transform([](const User& user) -> std::string {
                     return user.password;
                 })
-                .or_else([&] noexcept -> std::optional<std::string> {
+                .or_else([&] -> std::optional<std::string> {
                     logging::error<int const&>{ R"(Fail to fetch user password "{}")", id, location };
                     return {};
                 })
@@ -401,17 +401,17 @@ std::string Database::user_password(int id) const noexcept
     });
 }
 
-std::string Database::user_salt(int id) const noexcept
+std::string Database::user_salt(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional user_salt{
             storage.get_optional<User>(id)
-                .transform([](const User& user) noexcept -> std::string {
+                .transform([](const User& user) -> std::string {
                     return user.salt;
                 })
-                .or_else([&] noexcept -> std::optional<std::string> {
+                .or_else([&] -> std::optional<std::string> {
                     logging::error<int const&>{ R"(Fail to fetch user salt "{}")", id, location };
                     return {};
                 })
@@ -420,7 +420,7 @@ std::string Database::user_salt(int id) const noexcept
     });
 }
 
-int Database::user_count() const noexcept
+int Database::user_count() const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -428,7 +428,7 @@ int Database::user_count() const noexcept
     });
 }
 
-int Database::video_count() const noexcept
+int Database::video_count() const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -436,7 +436,7 @@ int Database::video_count() const noexcept
     });
 }
 
-int Database::view_count() const noexcept
+int Database::view_count() const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -445,7 +445,7 @@ int Database::view_count() const noexcept
     });
 }
 
-std::vector<int> Database::user_list() const noexcept
+std::vector<int> Database::user_list() const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -453,7 +453,7 @@ std::vector<int> Database::user_list() const noexcept
     });
 }
 
-std::vector<int> Database::admin_list() const noexcept
+std::vector<int> Database::admin_list() const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -461,7 +461,7 @@ std::vector<int> Database::admin_list() const noexcept
     });
 }
 
-std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const noexcept
+std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const
 {
     if (!filesystem::create(video_path())) {
         return std::nullopt;
@@ -483,7 +483,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
     });
 }
 
-std::optional<int> Database::add_video_thumbnail(int id, const std::string& thumbnail_content) const noexcept
+std::optional<int> Database::add_video_thumbnail(int id, const std::string& thumbnail_content) const
 {
     if (!filesystem::create(thumbnail_path())) {
         return std::nullopt;
@@ -493,7 +493,7 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
         database::StorageType storage{ database::storage(path_) };
         const std::optional video_id{
             storage.get_optional<Video>(id)
-                .transform([&](const Video& video) noexcept -> int {
+                .transform([&](const Video& video) -> int {
                     database::write_file(thumbnail_path(video.id), thumbnail_content);
                     return video.id;
                 })
@@ -502,10 +502,10 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
     });
 }
 
-bool Database::add_video_rights(int id, const std::vector<int>& user_ids) const noexcept
+bool Database::add_video_rights(int id, const std::vector<int>& user_ids) const
 {
     std::vector<VideoRight> video_rights(user_ids.size());
-    std::ranges::transform(user_ids, video_rights.begin(), [&id](int user_id) noexcept -> VideoRight {
+    std::ranges::transform(user_ids, video_rights.begin(), [&id](int user_id) -> VideoRight {
         return VideoRight{ .video_id = id, .user_id = user_id };
     });
 
@@ -516,7 +516,7 @@ bool Database::add_video_rights(int id, const std::vector<int>& user_ids) const 
     });
 }
 
-std::optional<int> Database::update_video_title(int id, const std::string& title) const noexcept
+std::optional<int> Database::update_video_title(int id, const std::string& title) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
@@ -528,7 +528,7 @@ std::optional<int> Database::update_video_title(int id, const std::string& title
                     storage.update(video);
                     return id;
                 })
-                .or_else([&] noexcept -> std::optional<int> {
+                .or_else([&] -> std::optional<int> {
                     logging::error<int const&>{ R"(Fail to update video title "{}")", id, location };
                     return std::nullopt;
                 })
@@ -537,7 +537,7 @@ std::optional<int> Database::update_video_title(int id, const std::string& title
     });
 }
 
-bool Database::update_video_rights(int id, const std::vector<int>& user_ids) const noexcept
+bool Database::update_video_rights(int id, const std::vector<int>& user_ids) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -546,18 +546,18 @@ bool Database::update_video_rights(int id, const std::vector<int>& user_ids) con
     });
 }
 
-bool Database::delete_video(int id) const noexcept
+bool Database::delete_video(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
         const std::optional success{
             storage.get_optional<Video>(id)
-                .and_then([&](const Video& video) noexcept -> std::optional<Video> {
+                .and_then([&](const Video& video) -> std::optional<Video> {
                     // remove video file
                     return filesystem::remove(video_path(video.id)) ? std::optional(video) : std::nullopt;
                 })
-                .and_then([&](const Video& video) noexcept -> std::optional<Video> {
+                .and_then([&](const Video& video) -> std::optional<Video> {
                     // remove thumbnail file
                     return filesystem::remove(thumbnail_path(video.id)) ? std::optional(video) : std::nullopt;
                 })
@@ -565,7 +565,7 @@ bool Database::delete_video(int id) const noexcept
                     storage.remove<Video>(video.id);
                     return true;
                 })
-                .or_else([&] noexcept -> std::optional<bool> {
+                .or_else([&] -> std::optional<bool> {
                     logging::error<int const&>{ R"(Fail to delete video "{}")", id, location };
                     return false;
                 })
@@ -574,7 +574,7 @@ bool Database::delete_video(int id) const noexcept
     });
 }
 
-bool Database::increment_video_views(int id) const noexcept
+bool Database::increment_video_views(int id) const
 {
     constexpr std::source_location location{ std::source_location::current() };
     return database::safe([&] {
@@ -586,7 +586,7 @@ bool Database::increment_video_views(int id) const noexcept
                     storage.update(video);
                     return true;
                 })
-                .or_else([&] noexcept -> std::optional<bool> {
+                .or_else([&] -> std::optional<bool> {
                     logging::error<int const&>{ R"(Fail to increment video views "{}")", id, location };
                     return false;
                 })
@@ -595,7 +595,7 @@ bool Database::increment_video_views(int id) const noexcept
     });
 }
 
-bool Database::has_video_right(int id) const noexcept
+bool Database::has_video_right(int id) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -603,7 +603,7 @@ bool Database::has_video_right(int id) const noexcept
     });
 }
 
-bool Database::has_video_right(int id, int user_id) const noexcept
+bool Database::has_video_right(int id, int user_id) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -611,7 +611,7 @@ bool Database::has_video_right(int id, int user_id) const noexcept
     });
 }
 
-std::vector<int> Database::video_right_list(int id) const noexcept
+std::vector<int> Database::video_right_list(int id) const
 {
     return database::safe([&] {
         database::StorageType storage{ database::storage(path_) };
@@ -619,27 +619,27 @@ std::vector<int> Database::video_right_list(int id) const noexcept
     });
 }
 
-std::filesystem::path Database::base_path() const noexcept
+std::filesystem::path Database::base_path() const
 {
     return path_.parent_path();
 }
 
-std::filesystem::path Database::video_path() const noexcept
+std::filesystem::path Database::video_path() const
 {
     return base_path() / "videos";
 }
 
-std::filesystem::path Database::video_path(int id) const noexcept
+std::filesystem::path Database::video_path(int id) const
 {
     return video_path() / su::int_to_string(id);
 }
 
-std::filesystem::path Database::thumbnail_path() const noexcept
+std::filesystem::path Database::thumbnail_path() const
 {
     return base_path() / "thumbnails";
 }
 
-std::filesystem::path Database::thumbnail_path(int id) const noexcept
+std::filesystem::path Database::thumbnail_path(int id) const
 {
     return thumbnail_path() / su::int_to_string(id);
 }
@@ -673,7 +673,7 @@ struct std::formatter<std::vector<T>, char> : std::formatter<std::string, char>
 #endif
 
 template <typename Function>
-inline auto database::safe(const Function& callback, const std::source_location& location) noexcept -> decltype(callback())
+inline auto database::safe(const Function& callback, const std::source_location& location) -> decltype(callback())
 {
     decltype(callback()) result{};
     try {
@@ -687,26 +687,26 @@ inline auto database::safe(const Function& callback, const std::source_location&
     return result;
 }
 
-inline int database::file_size(const std::string& path) noexcept
+inline int database::file_size(const std::string& path)
 {
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
     return static_cast<int>(file.tellg());
 }
 
-inline std::string database::read_file(const std::string& path, std::size_t offset, std::size_t length) noexcept
+inline std::string database::read_file(const std::string& path, std::size_t offset, std::size_t length)
 {
     std::ifstream file(path, std::ios::in | std::ios::binary);
     file.seekg(static_cast<std::streamoff>(offset));
 
     std::string file_content;
-    file_content.resize_and_overwrite(length, [&file](char* buffer, std::size_t buffer_size) noexcept -> std::size_t {
+    file_content.resize_and_overwrite(length, [&file](char* buffer, std::size_t buffer_size) -> std::size_t {
         file.read(buffer, static_cast<std::streamoff>(buffer_size));
         return file.gcount();
     });
     return file_content;
 }
 
-inline std::string database::read_file(const std::string& path) noexcept
+inline std::string database::read_file(const std::string& path)
 {
     // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
@@ -714,7 +714,7 @@ inline std::string database::read_file(const std::string& path) noexcept
     return read_file(path, 0, file_length);
 }
 
-inline void database::write_file(const std::string& path, const std::string& content) noexcept
+inline void database::write_file(const std::string& path, const std::string& content)
 {
     std::ofstream file(path, std::ios::out | std::ios::binary | std::ios::trunc);
     file.write(content.data(), static_cast<std::streamoff>(content.size()));

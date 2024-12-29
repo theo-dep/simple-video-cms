@@ -13,30 +13,30 @@
 
 namespace server
 {
-    constexpr std::string_view footer() noexcept;
+    constexpr std::string_view footer();
     constexpr std::size_t video_chunk_size() { return 1024 * 1024; }
 
-    void set_no_cache_headers(httplib::Response& res) noexcept;
+    void set_no_cache_headers(httplib::Response& res);
 
     // inja exceptions catched by httplib Server::set_exception_handler
 
     void set_error_handler(httplib::Server& server, inja::Environment& env, const Client& client);
-    void set_exception_handler(httplib::Server& server) noexcept;
-    void set_logger(httplib::Server& server) noexcept;
+    void set_exception_handler(httplib::Server& server);
+    void set_logger(httplib::Server& server);
 
-    bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
-    std::string connected_user_id(const httplib::Request& req, const Session& session) noexcept;
+    bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
+    std::string connected_user_id(const httplib::Request& req, const Session& session);
 
     inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client);
 
-    void static_file(const httplib::Request& req, httplib::Response& res, const Client& client) noexcept;
+    void static_file(const httplib::Request& req, httplib::Response& res, const Client& client);
 
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
     void login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
-    void logout(const httplib::Request& req, httplib::Response& res, Session& session) noexcept;
+    void logout(const httplib::Request& req, httplib::Response& res, Session& session);
 
     void admin_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -45,7 +45,7 @@ namespace server
     void add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
     void confirm_action(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client, const std::string& confirm_signal_str);
-    void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept;
+    void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
     void update_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void update_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
@@ -58,14 +58,14 @@ namespace server
     void update_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void delete_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
-    void download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
+    void download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 
     void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
-    void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
-    void thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
+    void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
+    void thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 }
 
-int server::start() noexcept
+int server::start()
 {
     bool is_client_ok{ false };
     const Client client(is_client_ok);
@@ -80,16 +80,16 @@ int server::start() noexcept
     httplib::Server server;
 
     std::string&& website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
-    env.add_callback("website_name", 0, [website_name](const inja::Arguments&) noexcept {
+    env.add_callback("website_name", 0, [website_name](const inja::Arguments&) {
         return website_name;
     });
 
     std::string&& icon_path{ sc::get_env("ICON_PATH", "/static/img/icon.svg") };
-    env.add_callback("icon", 0, [icon_path](const inja::Arguments&) noexcept {
+    env.add_callback("icon", 0, [icon_path](const inja::Arguments&) {
         return icon_path;
     });
 
-    env.add_callback("footer", 0, [](const inja::Arguments&) noexcept {
+    env.add_callback("footer", 0, [](const inja::Arguments&) {
         return footer();
     });
 
@@ -97,7 +97,7 @@ int server::start() noexcept
     set_exception_handler(server);
     set_logger(server);
 
-    server.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) noexcept {
+    server.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) {
         if (!req.path.contains("static")) {
             set_no_cache_headers(res);
         }
@@ -146,7 +146,7 @@ int server::start() noexcept
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
-constexpr std::string_view server::footer() noexcept
+constexpr std::string_view server::footer()
 {
     using namespace std::literals::string_view_literals;
     return R"(
@@ -170,7 +170,7 @@ constexpr std::string_view server::footer() noexcept
     )"sv;
 }
 
-inline void server::set_no_cache_headers(httplib::Response& res) noexcept
+inline void server::set_no_cache_headers(httplib::Response& res)
 {
     res.set_header("Last-Modified", logging::time_local());
     res.set_header("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0");
@@ -201,9 +201,9 @@ inline void server::set_error_handler(httplib::Server& server, inja::Environment
     });
 }
 
-inline void server::set_exception_handler(httplib::Server& server) noexcept
+inline void server::set_exception_handler(httplib::Server& server)
 {
-    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) noexcept {
+    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
         constexpr int error_code{ httplib::StatusCode::InternalServerError_500 };
         std::string message;
         try {
@@ -224,14 +224,14 @@ inline void server::set_exception_handler(httplib::Server& server) noexcept
     });
 }
 
-inline void server::set_logger(httplib::Server& server) noexcept
+inline void server::set_logger(httplib::Server& server)
 {
-    server.set_logger([](const httplib::Request& req, const httplib::Response& res) noexcept {
+    server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
         logging::raw_log(sc::log(req, res));
     });
 }
 
-inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
+inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
@@ -249,7 +249,7 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
     return true;
 }
 
-std::string server::connected_user_id(const httplib::Request& req, const Session& session) noexcept
+std::string server::connected_user_id(const httplib::Request& req, const Session& session)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
@@ -267,7 +267,7 @@ inline inja::json server::video_dict(const std::vector<std::string>& video_ids, 
     return video_dict;
 }
 
-inline void server::static_file(const httplib::Request& req, httplib::Response& res, const Client& client) noexcept
+inline void server::static_file(const httplib::Request& req, httplib::Response& res, const Client& client)
 {
     const std::string file{ req.matches[1] };
     const auto [content, content_type]{ client.static_file(file) };
@@ -372,7 +372,7 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     }
 }
 
-inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session) noexcept
+inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
@@ -510,7 +510,7 @@ inline void server::confirm_action(const httplib::Request& req, httplib::Respons
     res.set_content(body, "text/html");
 }
 
-inline void server::confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client) noexcept
+inline void server::confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
     if (!is_logged_and_admin(req, res, session, client))
         return;
@@ -600,23 +600,23 @@ inline void server::update_user_post(const httplib::Request& req, httplib::Respo
     std::string signal_str;
     if (is_admin_req) {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
+                         .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) {
                              client.update_user(user_id, username, new_password);
                              res.set_redirect("/admin-list");
                              logging::info{ "Admin {} updated by {}", user_id, updater_user_id };
                          })
-                         .on_deny([](httplib::Response& res) noexcept {
+                         .on_deny([](httplib::Response& res) {
                              res.set_redirect("/admin-list");
                          })
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) noexcept {
+                         .on_confirm([user_id, username, new_password, updater_user_id, &client](httplib::Response& res) {
                              client.update_user(user_id, username, new_password);
                              res.set_redirect("/user-list");
                              logging::info{ "User {} updated by {}", user_id, updater_user_id };
                          })
-                         .on_deny([](httplib::Response& res) noexcept {
+                         .on_deny([](httplib::Response& res) {
                              res.set_redirect("/user-list");
                          })
                          .to_string();
@@ -639,23 +639,23 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     std::string signal_str;
     if (admin) {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, suppressor_user_id, &client](httplib::Response& res) noexcept {
+                         .on_confirm([user_id, suppressor_user_id, &client](httplib::Response& res) {
                              client.delete_user(user_id);
                              res.set_redirect("/admin-list");
                              logging::info{ "Admin {} deleted by {}", user_id, suppressor_user_id };
                          })
-                         .on_deny([](httplib::Response& res) noexcept {
+                         .on_deny([](httplib::Response& res) {
                              res.set_redirect("/admin-list");
                          })
                          .to_string();
     } else {
         signal_str = confirm_handler.create()
-                         .on_confirm([user_id, suppressor_user_id, &client](httplib::Response& res) noexcept {
+                         .on_confirm([user_id, suppressor_user_id, &client](httplib::Response& res) {
                              client.delete_user(user_id);
                              res.set_redirect("/user-list");
                              logging::info{ "User {} deleted by {}", user_id, suppressor_user_id };
                          })
-                         .on_deny([](httplib::Response& res) noexcept {
+                         .on_deny([](httplib::Response& res) {
                              res.set_redirect("/user-list");
                          })
                          .to_string();
@@ -676,7 +676,7 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
         const std::vector rights{ client.video_right_list(video["id"]) };
         std::vector<std::string> user_rights(rights.size());
         std::ranges::transform(rights, user_rights.begin(),
-                               [&](const std::string& user_id) noexcept -> std::string {
+                               [&](const std::string& user_id) -> std::string {
                                    return client.user_name(user_id);
                                });
         video += { "right_list", user_rights };
@@ -756,7 +756,7 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
     const std::vector user_id_items{ req.get_file_values("user_ids") };
     std::vector<std::string> allowed_user_ids(user_id_items.size());
     std::ranges::transform(user_id_items, allowed_user_ids.begin(),
-                           [](const httplib::MultipartFormData& item) noexcept -> std::string { return item.content; });
+                           [](const httplib::MultipartFormData& item) -> std::string { return item.content; });
 
     const std::string video_id{ client.add_video(video_title, item.content, allowed_user_ids) };
     res.set_redirect("/video-list");
@@ -831,12 +831,12 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, video_title, allowed_user_ids, updater_user_id, &client](httplib::Response& res) noexcept {
+            .on_confirm([video_id, video_title, allowed_user_ids, updater_user_id, &client](httplib::Response& res) {
                 client.update_video(video_id, video_title, allowed_user_ids);
                 res.set_redirect("/video-list");
                 logging::info{ "Video {} updated by {}", video_id, updater_user_id };
             })
-            .on_deny([](httplib::Response& res) noexcept {
+            .on_deny([](httplib::Response& res) {
                 res.set_redirect("/video-list");
             })
             .to_string()
@@ -857,12 +857,12 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, suppressor_user_id, &client](httplib::Response& res) noexcept {
+            .on_confirm([video_id, suppressor_user_id, &client](httplib::Response& res) {
                 client.delete_video(video_id);
                 res.set_redirect("/video-list");
                 logging::info{ "Video {} deleted by {}", video_id, suppressor_user_id };
             })
-            .on_deny([](httplib::Response& res) noexcept {
+            .on_deny([](httplib::Response& res) {
                 res.set_redirect("/video-list");
             })
             .to_string()
@@ -871,7 +871,7 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
     confirm_action(req, res, env, session, client, signal_str);
 }
 
-inline void server::download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
+inline void server::download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
 {
     if (!is_logged_and_admin(req, res, session, client))
         return;
@@ -885,22 +885,22 @@ inline void server::download_video(const httplib::Request& req, httplib::Respons
     res.set_content_provider(
         video_size,  // Content length
         "video/mp4", // Content type
-        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) -> bool {
             const std::string chunk{ client.video(video_id, offset, std::min(length, video_chunk_size())) };
             sink.write(chunk.data(), chunk.size());
             return true; // return 'false' if you want to cancel the process.
         },
-        [video_id, downloader_user_id](bool success) noexcept {
+        [video_id, downloader_user_id](bool success) {
             logging::info{ "Video {} downloaded by {}: {}", video_id, downloader_user_id, success };
         });
 }
 
 namespace server
 {
-    bool has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept;
+    bool has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 }
 
-inline bool server::has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
+inline bool server::has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
@@ -949,7 +949,7 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
     res.set_content(body, "text/html");
 }
 
-inline void server::video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
+inline void server::video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
 {
     if (!has_video_right(req, res, session, client))
         return;
@@ -969,14 +969,14 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     res.set_content_provider(
         video_size,  // Content length
         "video/mp4", // Content type
-        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
+        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) -> bool {
             const std::string chunk{ client.video(video_id, offset, std::min(length, video_chunk_size())) };
             sink.write(chunk.data(), chunk.size());
             return true; // return 'false' if you want to cancel the process.
         });
 }
 
-inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client) noexcept
+inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
 {
     if (!has_video_right(req, res, session, client))
         return;
