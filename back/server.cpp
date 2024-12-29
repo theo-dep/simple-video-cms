@@ -11,6 +11,8 @@
 
 #include <httplib.h>
 
+#include <stacktrace>
+
 namespace server
 {
     bool create_super_admin(const Database& db);
@@ -73,6 +75,20 @@ int server::start()
     httplib::Server server;
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
         logging::raw_log(sc::log(req, res));
+    });
+
+    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& /*res*/, std::exception_ptr ep) {
+        std::string message;
+        try {
+            std::rethrow_exception(std::move(ep));
+        } catch (const std::exception& e) {
+            message = e.what();
+        } catch (...) {
+            message = "Unknown Exception";
+        }
+
+        logging::error{ std::to_string(std::stacktrace::current()) };
+        logging::error{ message };
     });
 
     server

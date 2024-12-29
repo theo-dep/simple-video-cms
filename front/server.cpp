@@ -11,14 +11,14 @@
 #include <httplib.h>
 #include <inja.hpp>
 
+#include <stacktrace>
+
 namespace server
 {
     constexpr std::string_view footer();
     constexpr std::size_t video_chunk_size() { return 1024 * 1024; }
 
     void set_no_cache_headers(httplib::Response& res);
-
-    // inja exceptions catched by httplib Server::set_exception_handler
 
     void set_error_handler(httplib::Server& server, inja::Environment& env, const Client& client);
     void set_exception_handler(httplib::Server& server);
@@ -214,6 +214,7 @@ inline void server::set_exception_handler(httplib::Server& server)
             message = "Unknown Exception";
         }
 
+        logging::error{ std::to_string(std::stacktrace::current()) };
         logging::error{ message };
 
         std::string body{ Client::generic_error(error_code, message) };
