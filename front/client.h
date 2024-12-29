@@ -71,7 +71,7 @@ public:
     void update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const noexcept;
     void delete_video(const std::string& video_id) const noexcept;
     void increment_video_views(const std::string& video_id) const noexcept;
-    bool video(const std::string& video_id, const std::string& range_header, const std::function<bool(const char*, std::size_t)>& callback) const noexcept;
+    std::string video(const std::string& video_id, std::size_t offset, std::size_t length) const noexcept;
     int video_size(const std::string& video_id) const noexcept;
     std::string thumbnail(const std::string& video_id) const noexcept;
     bool has_video_right(const std::string& video_id) const noexcept;

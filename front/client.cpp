@@ -379,12 +379,13 @@ void Client::increment_video_views(const std::string& video_id) const noexcept
     _client->Post("/increment-video-views/" + video_id);
 }
 
-bool Client::video(const std::string& video_id, const std::string& range_header, const std::function<bool(const char*, std::size_t)>& callback) const noexcept
+std::string Client::video(const std::string& video_id, std::size_t offset, std::size_t length) const noexcept
 {
     const httplib::Headers headers{
-        { "Range", range_header.empty() ? "bytes=0-" : range_header }
+        { "Offset", su::int_to_string(offset) },
+        { "Length", su::int_to_string(length) }
     };
-    const httplib::Result res{ _client->Get("/video/" + video_id, headers, callback) };
+    const httplib::Result res{ _client->Get("/video/" + video_id, headers) };
     // logging::debug{ "Video length: {}", video_content.size() };
 
     if (!res) {
@@ -394,15 +395,15 @@ bool Client::video(const std::string& video_id, const std::string& range_header,
         } else {
             logging::error{ "Fail to get the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
         }
-        return false;
+        return {};
     }
 
     if (res->status != httplib::StatusCode::OK_200 && res->status != httplib::StatusCode::PartialContent_206) {
         logging::error{ "Fail to get the video with error: {} ({})", httplib::status_message(res->status), res->status };
-        return false;
+        return {};
     }
 
-    return true;
+    return res->body;
 }
 
 int Client::video_size(const std::string& video_id) const noexcept

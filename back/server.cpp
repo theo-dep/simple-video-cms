@@ -1,6 +1,5 @@
 #include "server.h"
 
-#include "chunkworker.h"
 #include "crypto.h"
 #include "database.h"
 #include "filesystem.h"
@@ -507,31 +506,21 @@ inline void server::increment_video_views(const httplib::Request& req, httplib::
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const int video_size{ db.video_size(video_id) };
 
-    std::unique_ptr chunk_worker{ std::make_unique<ChunkWorker>() };
-    chunk_worker->set_buffer_size(video_size);
-    chunk_worker->start_chunk_at(req.get_header_value("Range"));
+    const std::size_t offset{
+        req.has_header("Offset")
+            ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Offset")))
+            : 0u
+    };
 
-    ChunkWorker* const raw_chunk_worker{ chunk_worker.get() };
+    const std::size_t length{
+        req.has_header("Length")
+            ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Length")))
+            : static_cast<std::size_t>(db.video_size(video_id))
+    };
 
-    chunk_worker->set_fetch_async_callback([raw_chunk_worker, video_id, &db]() noexcept -> bool {
-        return db.video(video_id, raw_chunk_worker->chunk_offset(), raw_chunk_worker->append_chunk_callback());
-    });
-
-    chunk_worker->start_fetch_async();
-
-    chunk_worker->wait_for_chunk();
-
-    res.set_content_provider(
-        video_size,  // Content length
-        "video/mp4", // Content type
-        [raw_chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
-            const std::string chunk{ raw_chunk_worker->chunk() };
-            sink.write(chunk.data(), chunk.size());
-            return raw_chunk_worker->fetch_result(); // return 'false' will cancel the process.
-        },
-        sc::ContentProviderReleaser{ std::move(chunk_worker) });
+    const std::string video{ db.video(video_id, offset, length) };
+    res.set_content(video, "video/mp4");
 }
 
 inline void server::video_size(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
@@ -544,18 +533,8 @@ inline void server::video_size(const httplib::Request& req, httplib::Response& r
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
 {
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    std::unique_ptr thumbnail_content{ std::make_unique<std::string>(db.thumbnail(video_id)) };
-    const std::string* const raw_thumbnail_content{ thumbnail_content.get() };
-
-    static constexpr std::size_t data_chunk_size{ static_cast<std::size_t>(4LL * 1024LL) };
-    res.set_content_provider(
-        raw_thumbnail_content->size(), // Content length
-        "image/png",                   // Content type
-        [raw_thumbnail_content](std::size_t offset, std::size_t length, httplib::DataSink& sink) noexcept -> bool {
-            sink.write(&(*raw_thumbnail_content)[offset], std::min(length, data_chunk_size));
-            return true; // return 'false' if you want to cancel the process.
-        },
-        sc::ContentProviderReleaser{ std::move(thumbnail_content) });
+    const std::string thumbnail{ db.thumbnail(video_id) };
+    res.set_content(thumbnail, "image/png");
 }
 
 inline void server::has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db) noexcept
