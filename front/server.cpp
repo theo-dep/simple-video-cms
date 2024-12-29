@@ -983,8 +983,7 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
     std::unique_ptr chunk_worker{ std::make_unique<ChunkWorker>() };
-    chunk_worker->set_buffer_size(video_size);
-    chunk_worker->start_chunk_at(req.get_header_value("Range"));
+    const std::size_t offset{ chunk_worker->start_chunk_at(req.get_header_value("Range"), video_size) };
 
     ChunkWorker* const raw_chunk_worker{ chunk_worker.get() };
 
@@ -994,11 +993,9 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
 
     chunk_worker->start_fetch_async();
 
-    chunk_worker->wait_for_chunk();
-
     res.set_content_provider(
-        video_size,  // Content length
-        "video/mp4", // Content type
+        offset + raw_chunk_worker->buffer_size(), // Content length
+        "video/mp4",                              // Content type
         [raw_chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
             const std::string chunk{ raw_chunk_worker->chunk() };
             sink.write(chunk.data(), chunk.size());

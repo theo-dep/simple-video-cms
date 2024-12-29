@@ -510,22 +510,19 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const int video_size{ db.video_size(video_id) };
 
     std::unique_ptr chunk_worker{ std::make_unique<ChunkWorker>() };
-    chunk_worker->set_buffer_size(video_size);
-    chunk_worker->start_chunk_at(req.get_header_value("Range"));
+    const std::size_t offset{ chunk_worker->start_chunk_at(req.get_header_value("Range"), video_size) };
 
     ChunkWorker* const raw_chunk_worker{ chunk_worker.get() };
 
-    chunk_worker->set_fetch_async_callback([raw_chunk_worker, video_id, &db]() noexcept -> bool {
-        return db.video(video_id, raw_chunk_worker->chunk_offset(), raw_chunk_worker->append_chunk_callback());
+    chunk_worker->set_fetch_async_callback([raw_chunk_worker, offset, video_id, &db]() noexcept -> bool {
+        return db.video(video_id, offset, raw_chunk_worker->append_chunk_callback());
     });
 
     chunk_worker->start_fetch_async();
 
-    chunk_worker->wait_for_chunk();
-
     res.set_content_provider(
-        video_size,  // Content length
-        "video/mp4", // Content type
+        offset + raw_chunk_worker->buffer_size(), // Content length
+        "video/mp4",                              // Content type
         [raw_chunk_worker](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) noexcept -> bool {
             const std::string chunk{ raw_chunk_worker->chunk() };
             sink.write(chunk.data(), chunk.size());
