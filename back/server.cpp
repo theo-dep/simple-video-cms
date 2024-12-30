@@ -526,7 +526,7 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const std::size_t offset{
         req.has_header("Offset")
             ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Offset")))
-            : 0u
+            : 0U
     };
 
     const std::size_t length{

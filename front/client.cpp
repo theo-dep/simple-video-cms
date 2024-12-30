@@ -379,8 +379,8 @@ void Client::increment_video_views(const std::string& video_id) const
 std::string Client::video(const std::string& video_id, std::size_t offset, std::size_t length) const
 {
     const httplib::Headers headers{
-        { "Offset", su::int_to_string(offset) },
-        { "Length", su::int_to_string(length) }
+        { "Offset", su::int_to_string(static_cast<int>(offset)) },
+        { "Length", su::int_to_string(static_cast<int>(length)) }
     };
     const httplib::Result res{ _client->Get("/video/" + video_id, headers) };
     // logging::debug{ "Video length: {}", video_content.size() };

@@ -104,7 +104,7 @@ std::string Database::video_title(int id) const
                 return std::string{};
             })
     };
-    return *video_title;
+    return video_title.value_or(std::string{});
 }
 
 int Database::video_views(int id) const
@@ -120,7 +120,7 @@ int Database::video_views(int id) const
                 return -1;
             })
     };
-    return *video_views;
+    return video_views.value_or(-1);
 }
 
 int Database::video_size(int id) const
@@ -136,7 +136,7 @@ int Database::video_size(int id) const
                 return -1;
             })
     };
-    return *video_size;
+    return video_size.value_or(-1);
 }
 
 // maybe https://www.sqlite.org/fasterthanfs.html
@@ -156,7 +156,7 @@ std::string Database::video(int id, std::size_t offset, std::size_t length) cons
                 return std::string{};
             })
     };
-    return *video;
+    return video.value_or(std::string{});
 }
 
 std::string Database::thumbnail(int id) const
@@ -172,7 +172,7 @@ std::string Database::thumbnail(int id) const
                 return std::string{};
             })
     };
-    return *thumbnail;
+    return thumbnail.value_or(std::string{});
 }
 
 std::optional<int> Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const
@@ -269,7 +269,7 @@ std::optional<int> Database::update_user_name(int id, const std::string& name) c
                 return std::nullopt;
             })
     };
-    return *user_id;
+    return user_id;
 }
 
 std::optional<int> Database::update_user_password(int id, const std::string& password) const
@@ -287,7 +287,7 @@ std::optional<int> Database::update_user_password(int id, const std::string& pas
                 return std::nullopt;
             })
     };
-    return *user_id;
+    return user_id;
 }
 
 bool Database::delete_user(int id) const
@@ -304,7 +304,7 @@ bool Database::delete_user(int id) const
                 return false;
             })
     };
-    return *success;
+    return success.value_or(false);
 }
 
 int Database::user_id(const std::string& name) const
@@ -327,7 +327,7 @@ std::string Database::user_name(int id) const
                 return std::string{};
             })
     };
-    return *user_name;
+    return user_name.value_or(std::string{});
 }
 
 std::string Database::user_password(int id) const
@@ -343,7 +343,7 @@ std::string Database::user_password(int id) const
                 return std::string{};
             })
     };
-    return *user_password;
+    return user_password.value_or(std::string{});
 }
 
 std::string Database::user_salt(int id) const
@@ -359,7 +359,7 @@ std::string Database::user_salt(int id) const
                 return std::string{};
             })
     };
-    return *user_salt;
+    return user_salt.value_or(std::string{});
 }
 
 int Database::user_count() const
@@ -457,7 +457,7 @@ std::optional<int> Database::update_video_title(int id, const std::string& title
                 return std::nullopt;
             })
     };
-    return *video_id;
+    return video_id;
 }
 
 bool Database::update_video_rights(int id, const std::vector<int>& user_ids) const
@@ -489,7 +489,7 @@ bool Database::delete_video(int id) const
                 return false;
             })
     };
-    return *success;
+    return success.value_or(false);
 }
 
 bool Database::increment_video_views(int id) const
@@ -507,7 +507,7 @@ bool Database::increment_video_views(int id) const
                 return false;
             })
     };
-    return *success;
+    return success.value_or(false);
 }
 
 bool Database::has_video_right(int id) const
