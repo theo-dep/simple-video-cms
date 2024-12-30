@@ -17,24 +17,24 @@ public:
     struct Signal
     {
         // called on confirm true
-        const Signal& on_confirm(const std::function<void(httplib::Response&)>& handle) const noexcept;
+        const Signal& on_confirm(const std::function<void(httplib::Response&)>& handle) const;
         // called on confirm false
-        const Signal& on_deny(const std::function<void(httplib::Response&)>& handle) const noexcept;
+        const Signal& on_deny(const std::function<void(httplib::Response&)>& handle) const;
         // transform to string to be shared by requests
-        std::string to_string() const noexcept;
+        std::string to_string() const;
 
     private:
         friend class ConfirmHandler;
-        Signal(const ConfirmHandler& handler) noexcept;
+        Signal(const ConfirmHandler& handler);
 
         const ConfirmHandler& _handler;
     };
 
-    ConfirmHandler() noexcept;
-    ~ConfirmHandler() noexcept;
+    ConfirmHandler();
+    ~ConfirmHandler();
 
     // create a ConfirmConnection to connect after to a confirm/deny handle
-    const Signal& create() noexcept;
+    const Signal& create();
 
     // send the confirmation to previously connected handles (transformed to string)
     // exception must be catched by httplib Server::set_exception_handler

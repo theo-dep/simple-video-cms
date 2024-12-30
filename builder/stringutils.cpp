@@ -4,48 +4,48 @@
 #include <charconv>
 #include <ranges>
 
-std::string su::join(const std::vector<std::string>& list, char delim) noexcept
+std::string su::join(const std::vector<std::string>& list, char delim)
 {
     const std::string str{ std::ranges::fold_left(list | std::views::join_with(delim), std::string{}, std::plus{}) };
     return str;
 }
 
-std::vector<std::string> su::split(const std::string& str, char delim) noexcept
+std::vector<std::string> su::split(const std::string& str, char delim)
 {
     const std::vector list(std::views::split(str, delim) | std::ranges::to<std::vector<std::string>>());
     return list;
 }
 
-void su::trim(std::string& str) noexcept
+void su::trim(std::string& str)
 {
-    static const auto ischar{ [](const std::string::value_type& c) noexcept -> bool { return (std::isspace(c) == 0); } };
+    static const auto ischar{ [](const std::string::value_type& c) -> bool { return (std::isspace(c) == 0); } };
     // trim left
     str.erase(str.begin(), std::ranges::find_if(str, ischar));
     // trim right
     str.erase(std::ranges::find_if(std::views::reverse(str), ischar).base(), str.end());
 }
 
-void su::lower(std::string& str) noexcept
+void su::lower(std::string& str)
 {
     static const auto tolower{
-        [](const std::string::value_type& c) noexcept -> std::string::value_type {
+        [](const std::string::value_type& c) -> std::string::value_type {
             return static_cast<std::string::value_type>(std::tolower(c));
         }
     };
     std::ranges::copy(std::views::transform(str, tolower), str.begin());
 }
 
-std::string su::bool_to_string(bool b) noexcept
+std::string su::bool_to_string(bool b)
 {
     return (b ? "true" : "false");
 }
 
-bool su::string_to_bool(const std::string& str) noexcept
+bool su::string_to_bool(const std::string& str)
 {
     return (str == "true");
 }
 
-int su::string_to_int(const std::string& str) noexcept
+int su::string_to_int(const std::string& str)
 {
     int value{ 0 };
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): wait for c++26
@@ -55,7 +55,7 @@ int su::string_to_int(const std::string& str) noexcept
     return 0;
 }
 
-std::string su::int_to_string(int val) noexcept
+std::string su::int_to_string(int val)
 {
     return std::to_string(val);
 }

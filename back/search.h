@@ -8,5 +8,5 @@ namespace search
 {
     std::vector<int> extract(const std::string& search,
                              const std::unordered_map<std::string, int>& choices, /* title/id */
-                             double score_cutoff = 0.0) noexcept;
+                             double score_cutoff = 0.0);
 }

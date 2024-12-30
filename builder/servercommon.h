@@ -11,27 +11,27 @@ namespace httplib
 
 namespace sc
 {
-    std::string log(const httplib::Request& req, const httplib::Response& res) noexcept;
+    std::string log(const httplib::Request& req, const httplib::Response& res);
 
-    std::string get_env(const std::string& key, const std::string& default_value) noexcept;
+    std::string get_env(const std::string& key, const std::string& default_value);
 
     template <typename... Args>
     std::function<void(const httplib::Request&, httplib::Response&)> serve(
         const std::function<void(const httplib::Request&, httplib::Response&, std::decay_t<Args>...)>& handler,
-        Args&&... args) noexcept;
+        Args&&... args);
 
-    constexpr std::string static_regexp_path() noexcept;
+    constexpr std::string static_regexp_path();
 }
 
 template <typename... Args>
 inline std::function<void(const httplib::Request&, httplib::Response&)> sc::serve(
     const std::function<void(const httplib::Request&, httplib::Response&, std::decay_t<Args>...)>& handler,
-    Args&&... args) noexcept
+    Args&&... args)
 {
     return std::bind(handler, std::placeholders::_1, std::placeholders::_2, std::forward<Args>(args)...);
 }
 
-constexpr std::string sc::static_regexp_path() noexcept
+constexpr std::string sc::static_regexp_path()
 {
     using namespace std::literals;
     // /static/((stem).(extension))

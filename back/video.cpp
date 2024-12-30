@@ -22,12 +22,12 @@ namespace video
 {
     struct AVDeleter
     {
-        void operator()(AVFormatContext* format_context) const noexcept;
-        void operator()(AVCodecContext* codex_context) const noexcept;
-        void operator()(AVFrame* frame) const noexcept;
-        void operator()(AVIOContext* avio_context) const noexcept;
-        void operator()(AVPacket* packet) const noexcept;
-        void operator()(SwsContext* color_context) const noexcept;
+        void operator()(AVFormatContext* format_context) const;
+        void operator()(AVCodecContext* codex_context) const;
+        void operator()(AVFrame* frame) const;
+        void operator()(AVIOContext* avio_context) const;
+        void operator()(AVPacket* packet) const;
+        void operator()(SwsContext* color_context) const;
     };
 
     using AVFormatContextPtr = std::unique_ptr<AVFormatContext, AVDeleter>;
@@ -37,23 +37,23 @@ namespace video
     using AVPacketPtr = std::unique_ptr<AVPacket, AVDeleter>;
     using SwsContextPtr = std::unique_ptr<SwsContext, AVDeleter>;
 
-    const char* err2str(int error_numero) noexcept;
+    const char* err2str(int error_numero);
 
     struct BufferData
     {
         std::span<char const> pointer;
         const std::span<char const> ref_pointer; // NOLINT(cppcoreguidelines-avoid-const-or-ref-data-members)
     };
-    int read_packet(void* opaque, std::uint8_t* buffer, int buffer_size) noexcept;
-    std::int64_t seek(void* opaque, std::int64_t offset, int whence) noexcept;
+    int read_packet(void* opaque, std::uint8_t* buffer, int buffer_size);
+    std::int64_t seek(void* opaque, std::int64_t offset, int whence);
 
-    std::string decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame, std::size_t width, std::size_t height) noexcept;
-    std::string frame_to_png(const AVFrame* frame) noexcept;
-    void write_data(png_structp png_ptr, png_bytep data, png_size_t length) noexcept;
+    std::string decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame, std::size_t width, std::size_t height);
+    std::string frame_to_png(const AVFrame* frame);
+    void write_data(png_structp png_ptr, png_bytep data, png_size_t length);
 }
 
 std::string video::extract_first_frame(const std::string& video_content, const std::string& format, std::int64_t timestamp,
-                                       std::size_t width, std::size_t height) noexcept
+                                       std::size_t width, std::size_t height)
 {
 #ifndef NDEBUG
     av_log_set_level(AV_LOG_DEBUG);
@@ -194,47 +194,47 @@ std::string video::extract_first_frame(const std::string& video_content, const s
     return image;
 }
 
-inline void video::AVDeleter::operator()(AVFormatContext* format_context) const noexcept
+inline void video::AVDeleter::operator()(AVFormatContext* format_context) const
 {
     avformat_close_input(&format_context);
 }
 
-inline void video::AVDeleter::operator()(AVCodecContext* codex_context) const noexcept
+inline void video::AVDeleter::operator()(AVCodecContext* codex_context) const
 {
     avcodec_free_context(&codex_context);
 }
 
-inline void video::AVDeleter::operator()(AVFrame* frame) const noexcept
+inline void video::AVDeleter::operator()(AVFrame* frame) const
 {
     av_frame_free(&frame);
 }
 
-inline void video::AVDeleter::operator()(AVIOContext* avio_context) const noexcept
+inline void video::AVDeleter::operator()(AVIOContext* avio_context) const
 {
     if (avio_context != nullptr)
         av_freep(&avio_context->buffer); // NOLINT(bugprone-multi-level-implicit-pointer-conversion): incorrect FFmpeg API
     avio_context_free(&avio_context);
 }
 
-inline void video::AVDeleter::operator()(AVPacket* packet) const noexcept
+inline void video::AVDeleter::operator()(AVPacket* packet) const
 {
     if (packet != nullptr)
         av_packet_unref(packet);
     av_packet_free(&packet);
 }
 
-inline void video::AVDeleter::operator()(SwsContext* color_context) const noexcept
+inline void video::AVDeleter::operator()(SwsContext* color_context) const
 {
     sws_freeContext(color_context);
 }
 
-inline const char* video::err2str(int error_numero) noexcept
+inline const char* video::err2str(int error_numero)
 {
     static std::array<char, AV_ERROR_MAX_STRING_SIZE> error_buffer{};
     return av_make_error_string(error_buffer.data(), AV_ERROR_MAX_STRING_SIZE, error_numero);
 }
 
-inline int video::read_packet(void* opaque, std::uint8_t* buffer, int buffer_size) noexcept
+inline int video::read_packet(void* opaque, std::uint8_t* buffer, int buffer_size)
 {
     BufferData* const buffer_data{ static_cast<BufferData*>(opaque) };
     buffer_size = FFMIN(static_cast<std::size_t>(buffer_size), buffer_data->pointer.size());
@@ -251,7 +251,7 @@ inline int video::read_packet(void* opaque, std::uint8_t* buffer, int buffer_siz
     return buffer_size;
 }
 
-inline std::int64_t video::seek(void* opaque, std::int64_t offset, int whence) noexcept
+inline std::int64_t video::seek(void* opaque, std::int64_t offset, int whence)
 {
     BufferData* const buffer_data{ static_cast<BufferData*>(opaque) };
     std::int64_t pos{ -1 };
@@ -270,7 +270,7 @@ inline std::int64_t video::seek(void* opaque, std::int64_t offset, int whence) n
     return pos;
 }
 
-inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame, std::size_t width, std::size_t height) noexcept
+inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame, std::size_t width, std::size_t height)
 {
     if (const int ret{ avcodec_send_packet(codec_context, packet) }; ret < 0) {
         logging::error{ "Could not send frame packet: {}", err2str(ret) };
@@ -379,7 +379,7 @@ inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* 
     return frame_to_png(final_rgb_frame.get());
 }
 
-inline std::string video::frame_to_png(const AVFrame* frame) noexcept
+inline std::string video::frame_to_png(const AVFrame* frame)
 {
     png_structp png_ptr{ png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
     if (png_ptr == nullptr) {
@@ -408,7 +408,7 @@ inline std::string video::frame_to_png(const AVFrame* frame) noexcept
                  PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
     std::vector<png_bytep> raw_pointers(frame->height);
-    std::ranges::generate(raw_pointers, [pos{ 0 }, frame]() mutable noexcept -> png_bytep {
+    std::ranges::generate(raw_pointers, [pos{ 0 }, frame]() mutable -> png_bytep {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         return frame->data[0] + (static_cast<std::ptrdiff_t>(pos++) * frame->linesize[0]);
     });
@@ -421,7 +421,7 @@ inline std::string video::frame_to_png(const AVFrame* frame) noexcept
     return png_stream.str();
 }
 
-inline void video::write_data(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
+inline void video::write_data(png_structp png_ptr, png_bytep data, png_size_t length)
 {
     std::ostringstream* out_stream{ static_cast<std::ostringstream*>(png_get_io_ptr(png_ptr)) };
     out_stream->write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(length)); // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)

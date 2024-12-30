@@ -2,7 +2,7 @@ CC = gcc
 CXX = g++
 override CFLAGS += -Wall -Wextra -Werror
 override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -DCPPHTTPLIB_USE_POLL
-override LDFLAGS += -static
+override LDFLAGS += -static -lstdc++exp
 
 ANALYZER = clang-tidy
 

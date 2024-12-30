@@ -4,9 +4,9 @@
 
 namespace filesystem
 {
-    const std::filesystem::path& data_path() noexcept;
-    const std::filesystem::path& logs_path() noexcept;
+    const std::filesystem::path& data_path();
+    const std::filesystem::path& logs_path();
 
-    bool create(const std::filesystem::path& path) noexcept;
-    bool remove(const std::filesystem::path& path) noexcept;
+    bool create(const std::filesystem::path& path);
+    bool remove(const std::filesystem::path& path);
 }

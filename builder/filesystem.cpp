@@ -2,19 +2,19 @@
 
 #include "logging.h"
 
-const std::filesystem::path& filesystem::data_path() noexcept
+const std::filesystem::path& filesystem::data_path()
 {
     static const std::filesystem::path data_path{ std::filesystem::current_path() / "data" };
     return data_path;
 }
 
-const std::filesystem::path& filesystem::logs_path() noexcept
+const std::filesystem::path& filesystem::logs_path()
 {
     static const std::filesystem::path logs_path{ data_path() / "logs" };
     return logs_path;
 }
 
-bool filesystem::create(const std::filesystem::path& path) noexcept
+bool filesystem::create(const std::filesystem::path& path)
 {
     if (std::filesystem::exists(path))
         return true;
@@ -27,7 +27,7 @@ bool filesystem::create(const std::filesystem::path& path) noexcept
     return true;
 }
 
-bool filesystem::remove(const std::filesystem::path& path) noexcept
+bool filesystem::remove(const std::filesystem::path& path)
 {
     if (!std::filesystem::exists(path))
         return true;
