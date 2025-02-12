@@ -1,0 +1,64 @@
+SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
+SOURCE_DIR=${SCRIPT_DIR}
+
+ZLIB_DIR=${SOURCE_DIR}/builder/third-party/zlib
+LIBPNG_DIR=${SOURCE_DIR}/builder/third-party/libpng
+FFMPEG_DIR=${SOURCE_DIR}/builder/third-party/ffmpeg
+
+function configure_zlib() {
+    echo --- Configuring zlib
+    cd ${ZLIB_DIR}
+    ./configure --static
+}
+
+function configure_libpng() {
+    echo --- Configuring libpng
+    export ZLIBLIB="${ZLIB_DIR}"
+    export ZLIBINC="${ZLIB_DIR}"
+    export CPPFLAGS="-I${ZLIB_DIR}"
+    export LDFLAGS="-L${ZLIB_DIR}"
+    export  LD_LIBRARY_PATH="${ZLIB_DIR}:$LD_LIBRARY_PATH"
+    cd ${LIBPNG_DIR}
+    ./configure --disable-shared --enable-static
+}
+
+function configure_ffmpeg() {
+    echo --- Configuring FFmpeg
+    cd ${FFMPEG_DIR}
+    ./configure \
+        --enable-version3 \
+        --enable-swscale \
+        --enable-avformat \
+        --enable-avcodec \
+        --enable-avutil \
+        --disable-protocols \
+        --disable-zlib \
+        --disable-bzlib \
+        --disable-lzma \
+        --disable-libdrm \
+        --disable-programs \
+        --disable-doc \
+        --disable-network
+}
+
+function test_argument() {
+    local argument="$1"
+    echo "${@:2}" | grep -q -- "$argument"
+    return $?
+}
+
+if [ $# -eq 0 ]; then
+    configure_zlib
+    configure_libpng
+    configure_ffmpeg
+else
+    if test_argument "--zlib" "$@"; then
+        configure_zlib
+    fi
+    if test_argument "--libpng" "$@"; then
+        configure_libpng
+    fi
+    if test_argument "--ffmpeg" "$@"; then
+        configure_ffmpeg
+    fi
+fi

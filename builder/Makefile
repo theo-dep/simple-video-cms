@@ -1,32 +1,17 @@
-CC = gcc
-CXX = g++
-override CFLAGS += -Wall -Wextra -Werror
-override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -DCPPHTTPLIB_USE_POLL
-override LDFLAGS += -static -lstdc++exp
+TOP := ..
 
-ANALYZER = clang-tidy
+include $(TOP)/mk/boilerplate.mk
 
-CC_SRCS =  $(wildcard *.c)
-CXX_SRCS = $(wildcard *.cpp)
-OBJS = $(CXX_SRCS:.cpp=.o) $(CC_SRCS:.c=.o)
+MODULE := builder
+BUILD_MODULE_DIR := $(BUILD_DIR)/$(MODULE)
 
-TARGET = server
+CXX_SRCS := \
+	crypto.cpp \
+	filesystem.cpp \
+	logging.cpp \
+	servercommon.cpp \
+	stringutils.cpp
 
-all: $(TARGET)
+include $(TOP)/mk/module-target.mk
 
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-
-%.o: %.cpp $(wildcard *.h)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-%.o: %.c $(wildcard *.h)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-analyze: $(CXX_SRCS)
-	$(ANALYZER) $^ -- $(CXXFLAGS)
-
-clean:
-	rm -f $(OBJS) $(TARGET)
-
-.PHONY: all clean
+BUILDER_OBJS := $(OBJS)

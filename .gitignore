@@ -2,6 +2,6 @@
 
 backup.tar.gz
 
-*.o
-**/server
+**/build/
+**/bin/
 *.log*
