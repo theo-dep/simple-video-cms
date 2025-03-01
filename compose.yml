@@ -7,8 +7,8 @@ services:
   builder:
     image: alpine-builder
     build:
-      context: ./builder
-      dockerfile: Containerfile
+      context: .
+      dockerfile: builder/Containerfile
     command: /bin/true
 
   front:

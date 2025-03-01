@@ -22,22 +22,22 @@ analyze-front:
 docker-all: up clean
 
 docker-up:
-	docker compose up -d
+	docker compose up -d ;
 
 docker-build:
-	docker compose build
+	docker compose build ;
 
 docker-start:
-	docker compose start
+	docker compose start ;
 
 docker-stop:
-	docker compose stop
+	docker compose stop ;
 
 docker-down:
-	docker compose down
+	docker compose down ;
 
 docker-clean:
-	docker compose rm
+	docker compose rm ;
 
 clean::
 	-@$(MAKE) -C back clean

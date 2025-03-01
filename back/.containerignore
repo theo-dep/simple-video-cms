@@ -1,5 +1,4 @@
 Containerfile
 data/
-Makefile
 *.o
 server
