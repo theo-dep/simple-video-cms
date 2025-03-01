@@ -16,6 +16,12 @@ override LDFLAGS += \
 	$(addprefix -L,$(ZLIB_DIR) $(LIBPNG_DIR)/.libs $(addprefix $(FFMPEG_DIR)/lib,$(FFMPEG_LIBS))) \
 	$(addprefix -l,$(FFMPEG_LIBS) $(LIBPNG_LIBS) $(ZLIB_LIBS))
 
+ifeq ($(DEBUG), 0)
+	# sqlite3.c:35252:28: error: 'strlen' reading 1 or more bytes from a region of size 0 [-Werror=stringop-overread]
+	#       return 0x3fffffff & (int)strlen(z);
+	override CFLAGS += -Wno-stringop-overread
+endif
+
 include $(TOP)/mk/boilerplate.mk
 
 include $(TOP)/builder/Makefile
