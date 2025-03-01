@@ -16,6 +16,10 @@ $(BUILD_MODULE_DIR)/%.c.o: %.c
 ifeq ($(MODULE_MAKEFILE_GUARD),)
 MODULE_MAKEFILE_GUARD := defined
 
+.PHONY: analyze
+analyze: $(CXX_SRCS)
+	$(ANALYZER) $^ -- $(CPPFLAGS) $(CXXFLAGS)
+
 .PHONY: clean
 clean::
 	$(RM) -r $(BASE_BUILD_DIR)
