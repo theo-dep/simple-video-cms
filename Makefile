@@ -5,6 +5,12 @@ local-all: back front
 back front:
 	@$(MAKE) -C $@ all
 
+local-start-back:
+	@$(MAKE) -C back start
+
+local-start-front:
+	@$(MAKE) -C front start
+
 analyze-all: analyze-back analyze-front
 
 analyze-back:
@@ -42,6 +48,6 @@ distclean:: clean
 	-git submodule foreach 'git clean -ffdx'
 	-git submodule foreach 'git reset --hard HEAD'
 
-.PHONY: all local-all back front analyze-all analyze-back analyze-front \
+.PHONY: all local-all back front analyze-all analyze-back analyze-front local-start-back local-start-front \
 	docker-all docker-up docker-build docker-start docker-stop docker-down docker-clean \
 	clean distclean
