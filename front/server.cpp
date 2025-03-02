@@ -151,7 +151,7 @@ constexpr std::string_view server::footer()
           <a href="https://videojs.com/">Video.js</a>,
           <a href="https://www.ffmpeg.org/">FFmpeg</a>,
           <a href="https://sqliteorm.com/">SQLite ORM</a> and
-          many awesome <a href="https://gitlab.devau.co/theo/simple-video-cms/-/blob/prod/builder/third-party/Readme.md">c++ libraries</a>.<br>
+          many awesome <a href="https://gitlab.devau.co/theo/simple-video-cms/-/blob/prod/common/third-party/Readme.md">c++ libraries</a>.<br>
           All code on this site is licensed under the
           <a href="https://gitlab.devau.co/theo/simple-video-cms/-/blob/prod/LICENSE">GPLv3</a> unless otherwise stated.
         </p>

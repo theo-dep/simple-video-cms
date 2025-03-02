@@ -1,0 +1,11 @@
+FROM alpine:3.21.0
+
+RUN apk add --no-cache \
+    g++ \
+    make
+
+ENV SOURCE_DIR=/sources
+
+ADD configure ${SOURCE_DIR}/configure
+ADD mk/ ${SOURCE_DIR}/mk
+ADD common/ ${SOURCE_DIR}/common

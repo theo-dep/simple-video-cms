@@ -1,15 +1,14 @@
-FROM alpine-builder AS builder
+FROM alpine-common AS common
 
-ADD *.h *.cpp ${SOURCE_DIR}/
+ADD *.h *.cpp Makefile ${SOURCE_DIR}/front/
 
-RUN rm ${SOURCE_DIR}/sqlite3.c \
-    && make -C ${SOURCE_DIR} -j -k server \
-    && strip ${SOURCE_DIR}/server
+RUN make -C ${SOURCE_DIR}/front DEBUG=0 -j all \
+    && strip ${SOURCE_DIR}/bin/release/front/server
 
 # --------------------------------------------------------------------------------
 FROM scratch
 
-COPY --from=builder /sources/server /server
+COPY --from=common /sources/bin/release/front/server /server
 
 EXPOSE 80
 

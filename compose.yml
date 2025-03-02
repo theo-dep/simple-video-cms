@@ -4,11 +4,11 @@ volumes:
 
 services:
 
-  builder:
-    image: alpine-builder
+  common:
+    image: alpine-common
     build:
-      context: ./builder
-      dockerfile: Containerfile
+      context: .
+      dockerfile: common/Containerfile
     command: /bin/true
 
   front:
@@ -22,7 +22,7 @@ services:
     volumes:
       - data:/data
     depends_on:
-      - builder
+      - common
       - back
 
   back:
@@ -32,4 +32,4 @@ services:
     volumes:
       - data:/data
     depends_on:
-      - builder
+      - common

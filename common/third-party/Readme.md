@@ -62,7 +62,7 @@
 ## FFmpeg
 
 - v7.1.0
-- https://git.ffmpeg.org/gitweb/ffmpeg.git
+- https://git.ffmpeg.org/gitweb/ffmpeg
 - GNU LGPL v2 and GPL v2 for parts upgraded to v3
 
 ## zlib
@@ -74,5 +74,5 @@
 ## libpng
 
 - v1.6.44
-- https://github.com/pnggroup/libpng.git
+- https://github.com/pnggroup/libpng
 - PNG Reference Library License version 2

@@ -1,0 +1,11 @@
+.vscode/
+.gitignore
+.gitmodule
+compose.yml
+LICENSE
+Makefile
+*.md
+back/
+front/
+images/
+scripts/

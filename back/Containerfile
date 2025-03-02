@@ -1,14 +1,20 @@
-FROM alpine-builder AS builder
+FROM alpine-common AS common
 
-ADD *.h *.cpp ${SOURCE_DIR}/
+RUN apk add --no-cache \
+    gcc \
+    yasm
 
-RUN make -C ${SOURCE_DIR} -j -k server LDFLAGS="-lavformat -lavcodec -lavdevice -lavfilter -lswresample -lswscale -lavutil -lpng -lz" \
-    && strip ${SOURCE_DIR}/server
+ADD *.h *.cpp Makefile ${SOURCE_DIR}/back/
+
+# configure zlib and build it because it is a dependency of libpng configure
+RUN ${SOURCE_DIR}/configure --zlib && make -C ${SOURCE_DIR}/back -j zlib && \
+    ${SOURCE_DIR}/configure --libpng --ffmpeg && make -C ${SOURCE_DIR}/back DEBUG=0 -j all \
+    && strip ${SOURCE_DIR}/bin/release/back/server
 
 # --------------------------------------------------------------------------------
 FROM scratch
 
-COPY --from=builder /sources/server /server
+COPY --from=common /sources/bin/release/back/server /server
 ADD static/ /static/
 ADD templates/ /templates/
 

@@ -24,12 +24,13 @@ sudo apt install make gcc yasm g++
 
 Then build (zlib, libpng, ffmpeg and servers):
 ```bash
-./scripts/build.sh
+./configure
+make local-all
 ```
 
-This will generates server binaries in `front/server` and `back/server`.
+This will generates server binaries in `bin/debug/front/server` and `bin/debug/back/server`. Use `DEBUG=0` to make release binaries.
 
-Servers can be run using VS Code or with both scripts `./scripts/start_front.sh` and `./scripts/start_back.sh`.
+Servers can be run using VS Code or with both commands `make local-start-front` and `make local-start-back`.
 
 ### Environment
 
