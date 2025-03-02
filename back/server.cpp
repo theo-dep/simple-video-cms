@@ -479,7 +479,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::string video_title{ req.get_file_value("title").content };
     const std::string video_content{ req.get_file_value("video").content };
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
-    const std::string thumbnail_content{ video::extract_first_frame(video_content) };
+    const std::string thumbnail_content{ video::thumbnail(video_content) };
 
     const std::optional video_id{
         db.add_video(video_title, video_content)

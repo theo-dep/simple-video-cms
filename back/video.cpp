@@ -4,10 +4,13 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include <libavfilter/avfilter.h>
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
 #include <libavformat/avformat.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/mem.h>
-#include <libswscale/swscale.h>
+#include <libavutil/opt.h>
 
 #include <png.h>
 }
@@ -15,7 +18,9 @@ extern "C" {
 #include <algorithm>
 #include <cstring>
 #include <memory>
+#include <ranges>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace video
@@ -26,16 +31,18 @@ namespace video
         void operator()(AVCodecContext* codex_context) const;
         void operator()(AVFrame* frame) const;
         void operator()(AVIOContext* avio_context) const;
+        void operator()(AVFilterGraph* filter_graph) const;
+        void operator()(AVFilterContext* filter_context) const;
         void operator()(AVPacket* packet) const;
-        void operator()(SwsContext* color_context) const;
     };
 
     using AVFormatContextPtr = std::unique_ptr<AVFormatContext, AVDeleter>;
     using AVCodecContextPtr = std::unique_ptr<AVCodecContext, AVDeleter>;
     using AVFramePtr = std::unique_ptr<AVFrame, AVDeleter>;
     using AVIOContextPtr = std::unique_ptr<AVIOContext, AVDeleter>;
+    using AVFilterGraphPtr = std::unique_ptr<AVFilterGraph, AVDeleter>;
+    using AVFilterContextPtr = std::unique_ptr<AVFilterContext, AVDeleter>;
     using AVPacketPtr = std::unique_ptr<AVPacket, AVDeleter>;
-    using SwsContextPtr = std::unique_ptr<SwsContext, AVDeleter>;
 
     const char* err2str(int error_numero);
 
@@ -47,13 +54,12 @@ namespace video
     int read_packet(void* opaque, std::uint8_t* buffer, int buffer_size);
     std::int64_t seek(void* opaque, std::int64_t offset, int whence);
 
-    std::string decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame, std::size_t width, std::size_t height);
     std::string frame_to_png(const AVFrame* frame);
     void write_data(png_structp png_ptr, png_bytep data, png_size_t length);
 }
 
-std::string video::extract_first_frame(const std::string& video_content, const std::string& format, std::int64_t timestamp,
-                                       std::size_t width, std::size_t height)
+std::string video::thumbnail(const std::string& video_content, const std::string& format,
+                             std::size_t width, std::size_t height, std::size_t n_images)
 {
 #ifndef NDEBUG
     av_log_set_level(AV_LOG_DEBUG);
@@ -114,41 +120,13 @@ std::string video::extract_first_frame(const std::string& video_content, const s
     }
 
     const AVCodec* input_codec{ nullptr };
-    const AVCodecParameters* input_codec_parameters{ nullptr };
-    int video_stream_index{ -1 };
-    // Loop though all the streams and print its main information
-    for (unsigned i{ 0 }; i < format_context->nb_streams; i++) {
-        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        const AVCodecParameters* const local_codec_parameters{ format_context->streams[i]->codecpar };
-        logging::debug{ "    AVStream->time_base before open coded {}/{}", format_context->streams[i]->time_base.num, format_context->streams[i]->time_base.den };
-        logging::debug{ "    AVStream->r_frame_rate before open coded {}/{}", format_context->streams[i]->r_frame_rate.num, format_context->streams[i]->r_frame_rate.den };
-        logging::debug{ "    AVStream->start_time {}", format_context->streams[i]->start_time };
-        logging::debug{ "    AVStream->duration {}", format_context->streams[i]->duration };
-
-        const AVCodec* const local_codec{ avcodec_find_decoder(local_codec_parameters->codec_id) };
-        if (local_codec == nullptr) {
-            logging::error{ "Could not find codec: {}", static_cast<int>(local_codec_parameters->codec_id) };
-            continue;
-        }
-        // NOLINTEND(cppcoreguidelines-pro-bounds-array-to-pointer-decay, cppcoreguidelines-pro-bounds-pointer-arithmetic)
-
-        if (local_codec_parameters->codec_type == AVMEDIA_TYPE_VIDEO && video_stream_index == -1) {
-            video_stream_index = static_cast<int>(i);
-            input_codec = local_codec;
-            input_codec_parameters = local_codec_parameters;
-
-            logging::debug{ "Video Codec: resolution {} x {}", local_codec_parameters->width, local_codec_parameters->height };
-        } else if (local_codec_parameters->codec_type == AVMEDIA_TYPE_AUDIO) {
-            logging::debug{ "Audio Codec: {} channels, sample rate {} bits/s", local_codec_parameters->ch_layout.nb_channels, local_codec_parameters->sample_rate };
-        }
-
-        logging::debug{ "    Codec {} ID {} bit_rate {} bits/s", local_codec->name, static_cast<int>(local_codec->id), local_codec_parameters->bit_rate };
-    }
-
-    if (video_stream_index == -1) {
+    int video_stream_index{ av_find_best_stream(format_context.get(), AVMEDIA_TYPE_VIDEO, -1, -1, &input_codec, 0) };
+    if (video_stream_index < 0) {
         logging::error{ "Could not find video stream" };
         return {};
     }
+
+    const AVCodecParameters* const input_codec_parameters{ format_context->streams[video_stream_index]->codecpar };
 
     const AVCodecContextPtr codec_context(avcodec_alloc_context3(input_codec));
     if (codec_context == nullptr) {
@@ -165,30 +143,229 @@ std::string video::extract_first_frame(const std::string& video_content, const s
         return {};
     }
 
-    if (const int ret{ av_seek_frame(format_context.get(), video_stream_index, timestamp * AV_TIME_BASE, AVSEEK_FLAG_BACKWARD) }; ret < 0) {
-        logging::error{ "Could not seek to {}s: {}", timestamp, err2str(ret) };
+    const AVFilterGraphPtr filter_graph{ avfilter_graph_alloc() };
+    if (filter_graph == nullptr) {
+        logging::error{ "Could not allocate filter graph" };
         return {};
     }
 
-    const AVFramePtr input_frame(av_frame_alloc());
+    const AVFilter* const buffer_source{ avfilter_get_by_name("buffer") };
+    if (buffer_source == nullptr) {
+        logging::error{ "Could not find buffer source filter" };
+        return {};
+    }
+
+    const std::string filter_args{ std::format(
+        "video_size={}x{}:pix_fmt={}:time_base={}/{}:pixel_aspect={}/{}",
+        codec_context->width, codec_context->height, std::to_underlying(codec_context->pix_fmt),
+        format_context->streams[video_stream_index]->time_base.num, format_context->streams[video_stream_index]->time_base.den,
+        codec_context->sample_aspect_ratio.num, codec_context->sample_aspect_ratio.den) };
+
+    AVFilterContextPtr buffer_source_context{ nullptr };
+    if (const int ret{ avfilter_graph_create_filter(std::out_ptr(buffer_source_context), buffer_source, "in", filter_args.c_str(), nullptr, filter_graph.get()) }; ret < 0) {
+        logging::error{ "Cannot create buffer source: {}", err2str(ret) };
+        return {};
+    }
+
+    // Sink buffer
+    const AVFilter* const buffer_sink{ avfilter_get_by_name("buffersink") };
+    if (buffer_sink == nullptr) {
+        logging::error{ "Could not find buffer sink filter" };
+        return {};
+    }
+
+    AVFilterContextPtr buffer_sink_context{ nullptr };
+    if (const int ret{ avfilter_graph_create_filter(std::out_ptr(buffer_sink_context), buffer_sink, "out", nullptr, nullptr, filter_graph.get()) }; ret < 0) {
+        logging::error{ "Cannot create buffer sink: {}", err2str(ret) };
+        return {};
+    }
+
+    constexpr std::array pixel_formats{ AV_PIX_FMT_RGB24, AV_PIX_FMT_NONE };
+    if (const int ret{ av_opt_set_int_list(buffer_sink_context.get(), "pix_fmts", pixel_formats.data(), AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN) }; ret < 0) {
+        logging::error{ "Cannot set output pixel format: {}", err2str(ret) };
+        return {};
+    }
+
+    // thumbnail filter
+    const AVFilter* thumbnail_filter{ avfilter_get_by_name("thumbnail") };
+    if (thumbnail_filter == nullptr) {
+        logging::error{ "Could not find thumbnail filter" };
+        return {};
+    }
+
+    const std::string thumbnail_args{ std::format("n={}", n_images) };
+
+    AVFilterContextPtr thumbnail_context{ nullptr };
+    if (const int ret{ avfilter_graph_create_filter(std::out_ptr(thumbnail_context), thumbnail_filter, "thumbnail", thumbnail_args.c_str(), nullptr, filter_graph.get()) }; ret < 0) {
+        logging::error{ "Could not create thumbnail filter: {}", err2str(ret) };
+        return {};
+    }
+
+    AVFilterContextPtr scale_context{ nullptr };
+    if (width > 0 && height > 0) {
+        const AVFilter* const scale_filter{ avfilter_get_by_name("scale") };
+        if (scale_filter == nullptr) {
+            logging::error{ "Could not find scale filter" };
+            return {};
+        }
+
+        const std::string scale_args{ std::format("{}:{}:force_original_aspect_ratio=decrease", width, height) };
+
+        if (const int ret{ avfilter_graph_create_filter(std::out_ptr(scale_context), scale_filter, "scale", scale_args.c_str(), nullptr, filter_graph.get()) }; ret < 0) {
+            logging::error{ "Could not create scale filter: {}", err2str(ret) };
+            return {};
+        }
+    }
+
+    // Connect filters
+    std::vector<AVFilterContext*> filter_context_list;
+    if (scale_context != nullptr) {
+        // buffer -> thumbnail -> scale -> buffersink
+        filter_context_list.push_back(buffer_source_context.get());
+        filter_context_list.push_back(thumbnail_context.get());
+        filter_context_list.push_back(scale_context.get());
+        filter_context_list.push_back(buffer_sink_context.get());
+    } else {
+        // buffer -> thumbnail -> buffersink
+        filter_context_list.push_back(buffer_source_context.get());
+        filter_context_list.push_back(thumbnail_context.get());
+        filter_context_list.push_back(buffer_sink_context.get());
+    }
+
+    for (int ret{ -1 }; const auto& [source_context, dest_context] : std::views::zip(filter_context_list, std::views::drop(filter_context_list, 1))) {
+        if ((ret = avfilter_link(source_context, 0, dest_context, 0)) < 0) {
+            logging::error{ "Could not link filters: {}", err2str(ret) };
+            return {};
+        }
+    }
+
+    if (const int ret{ avfilter_graph_config(filter_graph.get(), nullptr) }; ret < 0) {
+        logging::error{ "Error configuring filter graph: {}", err2str(ret) };
+        return {};
+    }
+
+    const AVFramePtr input_frame{ av_frame_alloc() };
     if (input_frame == nullptr) {
         logging::error{ "Could not allocate frame" };
         return {};
     }
 
-    const AVPacketPtr input_packet(av_packet_alloc());
+    const AVPacketPtr input_packet{ av_packet_alloc() };
     if (input_packet == nullptr) {
         logging::error{ "Could not allocate packet" };
         return {};
     }
 
     std::string image;
-    while (av_read_frame(format_context.get(), input_packet.get()) >= 0 && image.empty()) {
+    bool end_of_stream{ false };
+    while (!end_of_stream && image.empty()) {
+        if (const int ret{ av_read_frame(format_context.get(), input_packet.get()) }; ret < 0) {
+            logging::error{ "Error reading frame: {}", err2str(ret) };
+            return {};
+        }
+
         if (input_packet->stream_index != video_stream_index) {
             continue;
         }
 
-        image = decode_packet(input_packet.get(), codec_context.get(), input_frame.get(), width, height);
+        if (const int ret{ avcodec_send_packet(codec_context.get(), input_packet.get()) }; ret < 0) {
+            logging::error{ "Could not send frame packet: {}", err2str(ret) };
+            return {};
+        }
+
+        if (const int ret{ avcodec_receive_frame(codec_context.get(), input_frame.get()) }; ret == AVERROR(EAGAIN)) {
+            continue;
+        } else if (ret == AVERROR_EOF) {
+            end_of_stream = true;
+        } else if (ret < 0) {
+            logging::error{ "Could not receive frame packet: {}", err2str(ret) };
+            return {};
+        }
+
+        if (!end_of_stream) {
+            logging::debug{
+                "Frame {} (type={}, format={}) pts {} [DTS {}]",
+                codec_context->frame_num,
+                av_get_picture_type_char(input_frame->pict_type),
+                input_frame->format,
+                input_frame->pts,
+                input_frame->pkt_dts
+            };
+
+            if (input_frame->format != AV_PIX_FMT_YUV420P) {
+                logging::info{ "Warning: the generated file may not be a grayscale image, but could e.g. be just the R component if the video format is RGB" };
+            }
+
+            if (const int ret{ av_buffersrc_add_frame_flags(buffer_source_context.get(), input_frame.get(), AV_BUFFERSRC_FLAG_KEEP_REF) }; ret < 0) {
+                logging::error{ "Error feeding the filter chain: {}", err2str(ret) };
+                return {};
+            }
+        } else {
+            // force the last frame, close the buffer
+            if (const int ret{ av_buffersrc_add_frame_flags(buffer_source_context.get(), nullptr, AV_BUFFERSRC_FLAG_PUSH) }; ret < 0) {
+                logging::error{ "Error feeding the filter chain: {}", err2str(ret) };
+                return {};
+            }
+        }
+
+        AVFramePtr filtered_frame{ av_frame_alloc() };
+        if (filtered_frame == nullptr) {
+            logging::error{ "Could not allocate filtered frame" };
+            return {};
+        }
+
+        if (const int ret{ av_buffersink_get_frame(buffer_sink_context.get(), filtered_frame.get()) }; ret == AVERROR(EAGAIN)) {
+            continue;
+        } else if (ret == AVERROR_EOF) {
+            /* last frame */
+        } else if (ret < 0) {
+            logging::error{ "Error getting filtered frame: {}", err2str(ret) };
+            return {};
+        }
+
+        logging::debug{
+            "Thumbnail selected frame {} (type={}, format={})",
+            codec_context->frame_num,
+            av_get_picture_type_char(filtered_frame->pict_type),
+            filtered_frame->format
+        };
+
+        // Calculate aspect ratio of the source frame
+        if (filtered_frame->width != static_cast<int>(width) || filtered_frame->height != static_cast<int>(height)) {
+            AVFramePtr padded_frame{ av_frame_alloc() };
+            if (padded_frame == nullptr) {
+                logging::error{ "Could not allocate padded frame" };
+                return {};
+            }
+
+            // Set the properties of the padded AVFrame
+            padded_frame->format = filtered_frame->format;
+            padded_frame->width = width;
+            padded_frame->height = height;
+
+            if (const int ret{ av_image_alloc(padded_frame->data, padded_frame->linesize, static_cast<int>(width), static_cast<int>(height), static_cast<AVPixelFormat>(filtered_frame->format), 32) }; ret < 0) {
+                logging::error{ "Could not allocate padded frame: {}", err2str(ret) };
+                return {};
+            }
+
+            // fill with black
+            for (std::size_t y{ 0 }; y < height; y++) {
+                std::memset(padded_frame->data[0] + y * padded_frame->linesize[0], 0, width * 3);
+            }
+
+            // copy image to center
+            const std::size_t x_offset{ (width - filtered_frame->width) / 2 };
+            const std::size_t y_offset{ (height - filtered_frame->height) / 2 };
+            for (int y{ 0 }; y < filtered_frame->height; y++) {
+                std::memcpy(padded_frame->data[0] + ((y + y_offset) * padded_frame->linesize[0]) + (x_offset * 3),
+                            filtered_frame->data[0] + (y * filtered_frame->linesize[0]),
+                            filtered_frame->width * 3);
+            }
+
+            std::swap(filtered_frame, padded_frame);
+        }
+
+        image = frame_to_png(filtered_frame.get());
     }
 
     return image;
@@ -216,16 +393,22 @@ inline void video::AVDeleter::operator()(AVIOContext* avio_context) const
     avio_context_free(&avio_context);
 }
 
+inline void video::AVDeleter::operator()(AVFilterGraph* filter_graph) const
+{
+    avfilter_graph_free(&filter_graph);
+}
+
+inline void video::AVDeleter::operator()(AVFilterContext* filter_context) const
+{
+    avfilter_free(filter_context); // call av_free(filter_context)
+    // delete filter_context;
+}
+
 inline void video::AVDeleter::operator()(AVPacket* packet) const
 {
     if (packet != nullptr)
         av_packet_unref(packet);
     av_packet_free(&packet);
-}
-
-inline void video::AVDeleter::operator()(SwsContext* color_context) const
-{
-    sws_freeContext(color_context);
 }
 
 inline const char* video::err2str(int error_numero)
@@ -268,115 +451,6 @@ inline std::int64_t video::seek(void* opaque, std::int64_t offset, int whence)
     }
 
     return pos;
-}
-
-inline std::string video::decode_packet(const AVPacket* packet, AVCodecContext* codec_context, AVFrame* frame, std::size_t width, std::size_t height)
-{
-    if (const int ret{ avcodec_send_packet(codec_context, packet) }; ret < 0) {
-        logging::error{ "Could not send frame packet: {}", err2str(ret) };
-        return {};
-    }
-
-    const int ret{ avcodec_receive_frame(codec_context, frame) };
-    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-        return {};
-    }
-
-    if (ret < 0) {
-        logging::error{ "Could not receive frame packet: {}", err2str(ret) };
-        return {};
-    }
-
-    logging::debug{
-        "Frame {} (type={}, format={}) pts {} [DTS {}]",
-        codec_context->frame_num,
-        av_get_picture_type_char(frame->pict_type),
-        frame->format,
-        frame->pts,
-        frame->pkt_dts
-    };
-
-    if (frame->format != AV_PIX_FMT_YUV420P) {
-        logging::info{ "Warning: the generated file may not be a grayscale image, but could e.g. be just the R component if the video format is RGB" };
-    }
-
-    // Calculate aspect ratio of the source frame
-    const double src_aspect_ratio{ static_cast<double>(frame->width) / static_cast<double>(frame->height) };
-    const double target_aspect_ratio{ static_cast<double>(width) / static_cast<double>(height) };
-
-    std::size_t scaled_width{ 0 };
-    std::size_t scaled_height{ 0 };
-    std::size_t x_offset{ 0 };
-    std::size_t y_offset{ 0 };
-
-    if (src_aspect_ratio > target_aspect_ratio) {
-        // Fit width, add padding to height
-        scaled_width = width;
-        scaled_height = static_cast<std::size_t>(static_cast<double>(width) / src_aspect_ratio);
-        y_offset = (height - scaled_height) / 2;
-    } else {
-        // Fit height, add padding to width
-        scaled_width = static_cast<std::size_t>(static_cast<double>(height) * src_aspect_ratio);
-        scaled_height = height;
-        x_offset = (width - scaled_width) / 2;
-    }
-
-    const SwsContextPtr color_context(
-        sws_getContext(codec_context->width, codec_context->height, codec_context->pix_fmt,
-                       static_cast<int>(scaled_width), static_cast<int>(scaled_height), AV_PIX_FMT_RGB24, SWS_BICUBIC, nullptr, nullptr, nullptr));
-    if (color_context == nullptr) {
-        logging::error{ "Could not allocate color conversion context" };
-        return {};
-    }
-
-    const AVFramePtr rgb_frame(av_frame_alloc());
-    if (rgb_frame == nullptr) {
-        logging::error{ "Could not allocate RGB frame" };
-        return {};
-    }
-
-    // Set the properties of the output AVFrame
-    rgb_frame->format = AV_PIX_FMT_RGB24;
-    rgb_frame->width = static_cast<int>(scaled_width);
-    rgb_frame->height = static_cast<int>(scaled_height);
-
-    if (const int ret{ av_frame_get_buffer(rgb_frame.get(), 0) }; ret < 0) {
-        logging::error{ "Could not prepare RGB frame: {}", err2str(ret) };
-        return {};
-    }
-
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-    if (const int ret{ sws_scale(color_context.get(), frame->data, frame->linesize, 0, frame->height, rgb_frame->data, rgb_frame->linesize) }; ret < 0) {
-        logging::error{ "Could not translate the frame format from YUV420P into RGB24: {}", err2str(ret) };
-        return {};
-    }
-
-    const AVFramePtr final_rgb_frame(av_frame_alloc());
-    if (final_rgb_frame == nullptr) {
-        logging::error{ "Could not allocate final RGB frame" };
-        return {};
-    }
-
-    // Copy scaled content into padded frame
-    final_rgb_frame->format = AV_PIX_FMT_RGB24;
-    final_rgb_frame->width = static_cast<int>(width);
-    final_rgb_frame->height = static_cast<int>(height);
-
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-    if (const int ret{ av_image_alloc(final_rgb_frame->data, final_rgb_frame->linesize, static_cast<int>(width), static_cast<int>(height), AV_PIX_FMT_RGB24, 32) }; ret < 0) {
-        logging::error{ "Could not allocate final image data RGB frame: {}", err2str(ret) };
-        return {};
-    }
-
-    for (std::size_t y{ 0 }; y < scaled_height; ++y) {
-        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        std::memcpy(final_rgb_frame->data[0] + ((y + y_offset) * final_rgb_frame->linesize[0]) + (x_offset * 3), // For RGB24
-                    rgb_frame->data[0] + (y * rgb_frame->linesize[0]),
-                    scaled_width * 3);
-        // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    }
-
-    return frame_to_png(final_rgb_frame.get());
 }
 
 inline std::string video::frame_to_png(const AVFrame* frame)
