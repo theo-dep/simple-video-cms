@@ -35,6 +35,7 @@ CC_SRCS := \
 
 CXX_SRCS := \
 	database.cpp \
+	logcontroller.cpp \
 	main.cpp \
 	search.cpp \
 	server.cpp \
