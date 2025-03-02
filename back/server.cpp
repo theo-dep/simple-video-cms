@@ -17,6 +17,8 @@ namespace server
 {
     bool create_super_admin(const Database& db);
 
+    void set_exception_handler(httplib::Server& server);
+
     void template_page(const httplib::Request& req, httplib::Response& res);
     void static_file(const httplib::Request& req, httplib::Response& res);
 
@@ -76,20 +78,7 @@ int server::start()
     server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
         logging::raw_log(sc::log(req, res));
     });
-
-    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& /*res*/, std::exception_ptr ep) {
-        std::string message;
-        try {
-            std::rethrow_exception(std::move(ep));
-        } catch (const std::exception& e) {
-            message = e.what();
-        } catch (...) {
-            message = "Unknown Exception";
-        }
-
-        logging::error{ std::to_string(std::stacktrace::current()) };
-        logging::error{ message };
-    });
+    set_exception_handler(server);
 
     server
         .Get("/html/:html", sc::serve(template_page))
@@ -156,6 +145,23 @@ inline bool server::create_super_admin(const Database& db)
     }
 
     return true;
+}
+
+inline void server::set_exception_handler(httplib::Server& server)
+{
+    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& /*res*/, std::exception_ptr ep) {
+        std::string message;
+        try {
+            std::rethrow_exception(std::move(ep));
+        } catch (const std::exception& e) {
+            message = e.what();
+        } catch (...) {
+            message = "Unknown Exception";
+        }
+
+        logging::error{ std::to_string(std::stacktrace::current()) };
+        logging::error{ message };
+    });
 }
 
 inline void server::template_page(const httplib::Request& req, httplib::Response& res)
