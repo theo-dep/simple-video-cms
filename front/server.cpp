@@ -167,7 +167,7 @@ constexpr std::string_view server::footer()
 constexpr std::size_t server::video_chunk_size()
 {
     constexpr unsigned long binary_prefix{ 1024UL };
-    return static_cast<std::size_t>(binary_prefix * binary_prefix);
+    return static_cast<std::size_t>(10UL * binary_prefix);
 }
 
 inline void server::set_no_cache_headers(httplib::Response& res)
