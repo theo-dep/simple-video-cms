@@ -1,4 +1,4 @@
-FROM alpine-builder AS builder
+FROM alpine-common AS common
 
 ADD *.h *.cpp Makefile ${SOURCE_DIR}/front/
 
@@ -8,7 +8,7 @@ RUN make -C ${SOURCE_DIR}/front DEBUG=0 -j all \
 # --------------------------------------------------------------------------------
 FROM scratch
 
-COPY --from=builder /sources/bin/release/front/server /server
+COPY --from=common /sources/bin/release/front/server /server
 
 EXPOSE 80
 

@@ -1,11 +1,11 @@
 {
     "editor.formatOnSave": true,
     "files.watcherExclude": {
-        "${workspaceFolder}/builder/third-party/sqlite3.h": true,
-        "${workspaceFolder}/builder/third-party/sqlite3.c": true,
+        "${workspaceFolder}/common/third-party/sqlite3.h": true,
+        "${workspaceFolder}/common/third-party/sqlite3.c": true,
     },
     "C_Cpp.codeAnalysis.exclude": {
-        "${workspaceFolder}/builder/third-party/**": true,
+        "${workspaceFolder}/common/third-party/**": true,
         "/usr/include/**": true
     },
     "C_Cpp.codeAnalysis.clangTidy.enabled": true,

@@ -1,11 +1,11 @@
 TOP := ..
 
-vpath %.cpp $(TOP)/builder
-vpath %.c $(TOP)/builder/third-party
+vpath %.cpp $(TOP)/common
+vpath %.c $(TOP)/common/third-party
 
-ZLIB_DIR := $(TOP)/builder/third-party/zlib
-LIBPNG_DIR := $(TOP)/builder/third-party/libpng
-FFMPEG_DIR := $(TOP)/builder/third-party/ffmpeg
+ZLIB_DIR := $(TOP)/common/third-party/zlib
+LIBPNG_DIR := $(TOP)/common/third-party/libpng
+FFMPEG_DIR := $(TOP)/common/third-party/ffmpeg
 
 ZLIB_LIBS := z
 LIBPNG_LIBS := png16
@@ -24,7 +24,7 @@ endif
 
 include $(TOP)/mk/boilerplate.mk
 
-include $(TOP)/builder/Makefile
+include $(TOP)/common/Makefile
 
 MODULE := back
 BUILD_MODULE_DIR := $(BUILD_DIR)/$(MODULE)
@@ -62,7 +62,7 @@ ffmpeg: $(firstword $(FFMPEG_TARGETS))
 $(firstword $(FFMPEG_TARGETS)):
 	@$(MAKE) -C $(dir $@)/..
 
-# link with builder objects
+# link with common objects
 OBJS := $(OBJS) $(BUILDER_OBJS)
 $(BIN_MODULE_DIR)/$(TARGET): zlib libpng ffmpeg $(BUILDER_OBJS)
 

@@ -5,10 +5,10 @@
             "includePath": [
                 "/usr/include/mysql",
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/builder",
-                "${workspaceFolder}/builder/third-party",
-                "${workspaceFolder}/builder/third-party/ffmpeg",
-                "${workspaceFolder}/builder/third-party/libpng"
+                "${workspaceFolder}/common",
+                "${workspaceFolder}/common/third-party",
+                "${workspaceFolder}/common/third-party/ffmpeg",
+                "${workspaceFolder}/common/third-party/libpng"
             ],
             "defines": [
                 "CPPHTTPLIB_USE_POLL"

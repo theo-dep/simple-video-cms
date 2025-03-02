@@ -8,4 +8,4 @@ ENV SOURCE_DIR=/sources
 
 ADD configure ${SOURCE_DIR}/configure
 ADD mk/ ${SOURCE_DIR}/mk
-ADD builder/ ${SOURCE_DIR}/builder
+ADD common/ ${SOURCE_DIR}/common

@@ -1,4 +1,4 @@
-FROM alpine-builder AS builder
+FROM alpine-common AS common
 
 RUN apk add --no-cache \
     gcc \
@@ -14,7 +14,7 @@ RUN ${SOURCE_DIR}/configure --zlib && make -C ${SOURCE_DIR}/back -j zlib && \
 # --------------------------------------------------------------------------------
 FROM scratch
 
-COPY --from=builder /sources/bin/release/back/server /server
+COPY --from=common /sources/bin/release/back/server /server
 ADD static/ /static/
 ADD templates/ /templates/
 

@@ -6,7 +6,7 @@ TOP := ..
 override RELEASE_FLAGS += -O3 -DNDEBUG
 override DEBUG_FLAGS += -g -D_DEBUG -DDEBUG_LOG
 
-override INC_DIRS += $(TOP)/builder $(TOP)/builder/third-party
+override INC_DIRS += $(TOP)/common $(TOP)/common/third-party
 override CFLAGS += -Wall -Wextra -Werror
 override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -DCPPHTTPLIB_USE_POLL
 override LDFLAGS += -static -lstdc++exp

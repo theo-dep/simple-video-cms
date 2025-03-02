@@ -2,7 +2,7 @@ TOP := ..
 
 include $(TOP)/mk/boilerplate.mk
 
-MODULE := builder
+MODULE := common
 BUILD_MODULE_DIR := $(BUILD_DIR)/$(MODULE)
 
 CXX_SRCS := \

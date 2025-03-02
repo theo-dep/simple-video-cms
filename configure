@@ -1,9 +1,9 @@
 SCRIPT_DIR=$(dirname -- "$( readlink -f -- "$0"; )")
 SOURCE_DIR=${SCRIPT_DIR}
 
-ZLIB_DIR=${SOURCE_DIR}/builder/third-party/zlib
-LIBPNG_DIR=${SOURCE_DIR}/builder/third-party/libpng
-FFMPEG_DIR=${SOURCE_DIR}/builder/third-party/ffmpeg
+ZLIB_DIR=${SOURCE_DIR}/common/third-party/zlib
+LIBPNG_DIR=${SOURCE_DIR}/common/third-party/libpng
+FFMPEG_DIR=${SOURCE_DIR}/common/third-party/ffmpeg
 
 function configure_zlib() {
     echo --- Configuring zlib

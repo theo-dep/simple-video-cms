@@ -1,9 +1,9 @@
-[submodule "builder/third-party/ffmpeg"]
-	path = builder/third-party/ffmpeg
-	url = https://git.ffmpeg.org/ffmpeg.git
-[submodule "builder/third-party/libpng"]
-	path = builder/third-party/libpng
-	url = https://github.com/pnggroup/libpng.git
-[submodule "builder/third-party/zlib"]
-	path = builder/third-party/zlib
-	url = https://github.com/madler/zlib.git
+[submodule "common/third-party/ffmpeg"]
+	path = common/third-party/ffmpeg
+	url = https://git.ffmpeg.org/ffmpeg
+[submodule "common/third-party/libpng"]
+	path = common/third-party/libpng
+	url = https://github.com/pnggroup/libpng
+[submodule "common/third-party/zlib"]
+	path = common/third-party/zlib
+	url = https://github.com/madler/zlib/
