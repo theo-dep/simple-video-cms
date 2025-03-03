@@ -120,13 +120,16 @@ std::string video::thumbnail(const std::string& video_content, const std::string
     }
 
     const AVCodec* input_codec{ nullptr };
-    int video_stream_index{ av_find_best_stream(format_context.get(), AVMEDIA_TYPE_VIDEO, -1, -1, &input_codec, 0) };
+    const int video_stream_index{ av_find_best_stream(format_context.get(), AVMEDIA_TYPE_VIDEO, -1, -1, &input_codec, 0) };
     if (video_stream_index < 0) {
         logging::error{ "Could not find video stream" };
         return {};
     }
 
-    const AVCodecParameters* const input_codec_parameters{ format_context->streams[video_stream_index]->codecpar };
+    const std::span streams(format_context->streams, format_context->nb_streams);
+    const AVStream* const video_stream{ streams[video_stream_index] };
+
+    const AVCodecParameters* const input_codec_parameters{ video_stream->codecpar };
 
     const AVCodecContextPtr codec_context(avcodec_alloc_context3(input_codec));
     if (codec_context == nullptr) {
@@ -158,7 +161,7 @@ std::string video::thumbnail(const std::string& video_content, const std::string
     const std::string filter_args{ std::format(
         "video_size={}x{}:pix_fmt={}:time_base={}/{}:pixel_aspect={}/{}",
         codec_context->width, codec_context->height, std::to_underlying(codec_context->pix_fmt),
-        format_context->streams[video_stream_index]->time_base.num, format_context->streams[video_stream_index]->time_base.den,
+        video_stream->time_base.num, video_stream->time_base.den,
         codec_context->sample_aspect_ratio.num, codec_context->sample_aspect_ratio.den) };
 
     AVFilterContextPtr buffer_source_context{ nullptr };
@@ -181,6 +184,7 @@ std::string video::thumbnail(const std::string& video_content, const std::string
     }
 
     constexpr std::array pixel_formats{ AV_PIX_FMT_RGB24, AV_PIX_FMT_NONE };
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast): c-style cast inside av_opt_set_int_list macro
     if (const int ret{ av_opt_set_int_list(buffer_sink_context.get(), "pix_fmts", pixel_formats.data(), AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN) }; ret < 0) {
         logging::error{ "Cannot set output pixel format: {}", err2str(ret) };
         return {};
@@ -233,7 +237,8 @@ std::string video::thumbnail(const std::string& video_content, const std::string
     }
 
     for (int ret{ -1 }; const auto& [source_context, dest_context] : std::views::zip(filter_context_list, std::views::drop(filter_context_list, 1))) {
-        if ((ret = avfilter_link(source_context, 0, dest_context, 0)) < 0) {
+        ret = avfilter_link(source_context, 0, dest_context, 0);
+        if (ret < 0) {
             logging::error{ "Could not link filters: {}", err2str(ret) };
             return {};
         }
@@ -273,13 +278,15 @@ std::string video::thumbnail(const std::string& video_content, const std::string
             return {};
         }
 
-        if (const int ret{ avcodec_receive_frame(codec_context.get(), input_frame.get()) }; ret == AVERROR(EAGAIN)) {
-            continue;
-        } else if (ret == AVERROR_EOF) {
-            end_of_stream = true;
-        } else if (ret < 0) {
-            logging::error{ "Could not receive frame packet: {}", err2str(ret) };
-            return {};
+        switch (const int ret{ avcodec_receive_frame(codec_context.get(), input_frame.get()) }; ret) {
+            case AVERROR(EAGAIN):
+                continue;
+            case AVERROR_EOF:
+                end_of_stream = true;
+                break;
+            default:
+                logging::error{ "Could not receive frame packet: {}", err2str(ret) };
+                return {};
         }
 
         if (!end_of_stream) {
@@ -314,13 +321,14 @@ std::string video::thumbnail(const std::string& video_content, const std::string
             return {};
         }
 
-        if (const int ret{ av_buffersink_get_frame(buffer_sink_context.get(), filtered_frame.get()) }; ret == AVERROR(EAGAIN)) {
-            continue;
-        } else if (ret == AVERROR_EOF) {
-            /* last frame */
-        } else if (ret < 0) {
-            logging::error{ "Error getting filtered frame: {}", err2str(ret) };
-            return {};
+        switch (const int ret{ av_buffersink_get_frame(buffer_sink_context.get(), filtered_frame.get()) }; ret) {
+            case AVERROR(EAGAIN):
+                continue;
+            case AVERROR_EOF:
+                break; // last frame
+            default:
+                logging::error{ "Error getting filtered frame: {}", err2str(ret) };
+                return {};
         }
 
         logging::debug{
@@ -340,9 +348,10 @@ std::string video::thumbnail(const std::string& video_content, const std::string
 
             // Set the properties of the padded AVFrame
             padded_frame->format = filtered_frame->format;
-            padded_frame->width = width;
-            padded_frame->height = height;
+            padded_frame->width = static_cast<int>(width);
+            padded_frame->height = static_cast<int>(height);
 
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
             if (const int ret{ av_image_alloc(padded_frame->data, padded_frame->linesize, static_cast<int>(width), static_cast<int>(height), static_cast<AVPixelFormat>(filtered_frame->format), 32) }; ret < 0) {
                 logging::error{ "Could not allocate padded frame: {}", err2str(ret) };
                 return {};
@@ -350,16 +359,19 @@ std::string video::thumbnail(const std::string& video_content, const std::string
 
             // fill with black
             for (std::size_t y{ 0 }; y < height; y++) {
-                std::memset(padded_frame->data[0] + y * padded_frame->linesize[0], 0, width * 3);
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                std::memset(padded_frame->data[0] + (y * padded_frame->linesize[0]), 0, width * 3);
             }
 
             // copy image to center
-            const std::size_t x_offset{ (width - filtered_frame->width) / 2 };
-            const std::size_t y_offset{ (height - filtered_frame->height) / 2 };
-            for (int y{ 0 }; y < filtered_frame->height; y++) {
+            const std::size_t x_offset{ (width - static_cast<std::size_t>(filtered_frame->width)) / 2 };
+            const std::size_t y_offset{ (height - static_cast<std::size_t>(filtered_frame->height)) / 2 };
+            for (std::size_t y{ 0 }; y < static_cast<std::size_t>(filtered_frame->height); y++) {
+                // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                 std::memcpy(padded_frame->data[0] + ((y + y_offset) * padded_frame->linesize[0]) + (x_offset * 3),
                             filtered_frame->data[0] + (y * filtered_frame->linesize[0]),
-                            filtered_frame->width * 3);
+                            static_cast<std::size_t>(filtered_frame->width) * 3);
+                // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             }
 
             std::swap(filtered_frame, padded_frame);
@@ -482,9 +494,9 @@ inline std::string video::frame_to_png(const AVFrame* frame)
                  PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
     std::vector<png_bytep> raw_pointers(frame->height);
-    std::ranges::generate(raw_pointers, [pos{ 0 }, frame]() mutable -> png_bytep {
+    std::ranges::generate(raw_pointers, [pos{ 0UZ }, &frame]() mutable -> png_bytep {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        return frame->data[0] + (static_cast<std::ptrdiff_t>(pos++) * frame->linesize[0]);
+        return frame->data[0] + (pos++ * frame->linesize[0]);
     });
 
     png_set_rows(png_ptr, info_ptr, raw_pointers.data());
