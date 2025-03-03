@@ -24,7 +24,9 @@ endif
 
 include $(TOP)/mk/boilerplate.mk
 
+MODULE_MAKEFILE_GUARD := defined # do not include clean and analyze from common/Makefile
 include $(TOP)/common/Makefile
+MODULE_MAKEFILE_GUARD :=
 
 MODULE := back
 BUILD_MODULE_DIR := $(BUILD_DIR)/$(MODULE)
