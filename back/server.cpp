@@ -3,6 +3,7 @@
 #include "crypto.h"
 #include "database.h"
 #include "filesystem.h"
+#include "logcontroller.h"
 #include "logging.h"
 #include "search.h"
 #include "servercommon.h"
@@ -16,6 +17,9 @@
 namespace server
 {
     bool create_super_admin(const Database& db);
+
+    void set_logger(httplib::Server& server, LogController& video_log_buffer);
+    void set_exception_handler(httplib::Server& server);
 
     void template_page(const httplib::Request& req, httplib::Response& res);
     void static_file(const httplib::Request& req, httplib::Response& res);
@@ -73,23 +77,10 @@ int server::start()
     }
 
     httplib::Server server;
-    server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
-        logging::raw_log(sc::log(req, res));
-    });
 
-    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& /*res*/, std::exception_ptr ep) {
-        std::string message;
-        try {
-            std::rethrow_exception(std::move(ep));
-        } catch (const std::exception& e) {
-            message = e.what();
-        } catch (...) {
-            message = "Unknown Exception";
-        }
-
-        logging::error{ std::to_string(std::stacktrace::current()) };
-        logging::error{ message };
-    });
+    LogController video_log_controller("/video/");
+    set_logger(server, video_log_controller);
+    set_exception_handler(server);
 
     server
         .Get("/html/:html", sc::serve(template_page))
@@ -156,6 +147,39 @@ inline bool server::create_super_admin(const Database& db)
     }
 
     return true;
+}
+
+inline void server::set_logger(httplib::Server& server, LogController& video_log_controller)
+{
+    server.set_logger([&video_log_controller](const httplib::Request& req, const httplib::Response& res) {
+        const std::string log{ sc::log(req, res) };
+        if (video_log_controller.append(log)) {
+            return;
+        }
+
+        // flush video logs
+        video_log_controller.flush();
+
+        // log next log
+        logging::raw_log(log);
+    });
+}
+
+inline void server::set_exception_handler(httplib::Server& server)
+{
+    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& /*res*/, std::exception_ptr ep) {
+        std::string message;
+        try {
+            std::rethrow_exception(std::move(ep));
+        } catch (const std::exception& e) {
+            message = e.what();
+        } catch (...) {
+            message = "Unknown Exception";
+        }
+
+        logging::error{ std::to_string(std::stacktrace::current()) };
+        logging::error{ message };
+    });
 }
 
 inline void server::template_page(const httplib::Request& req, httplib::Response& res)

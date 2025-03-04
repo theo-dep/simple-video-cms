@@ -387,7 +387,7 @@ std::string Client::video(const std::string& video_id, std::size_t offset, std::
 
     if (!res) {
         if (res.error() == httplib::Error::Canceled) {
-            // The stream can be cancelled by the ChunkWorker or the user
+            // The stream can be cancelled by the request or the user
             logging::info{ "Video stream cancelled: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
         } else {
             logging::error{ "Fail to get the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };

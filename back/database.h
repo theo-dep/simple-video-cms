@@ -66,5 +66,5 @@ protected:
     std::filesystem::path thumbnail_path(int id) const;
 
 private:
-    const std::filesystem::path path_;
+    const std::filesystem::path _path;
 };

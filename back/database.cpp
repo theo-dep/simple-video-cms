@@ -62,38 +62,38 @@ namespace database
 }
 
 Database::Database(std::filesystem::path path)
-    : path_{ std::move(path) }
+    : _path{ std::move(path) }
 {
 }
 
 bool Database::create_tables() const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     storage.sync_schema();
     return true;
 }
 
 std::vector<int> Database::admin_video_list() const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.select(&Video::id);
 }
 
 std::vector<int> Database::user_video_list(int user_id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&VideoRight::video_id), where(c(&VideoRight::user_id) == user_id));
 }
 
 std::vector<int> Database::no_user_video_list() const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&Video::id), from<Video>(), where(not_in(&Video::id, select(&VideoRight::video_id))));
 }
 
 std::string Database::video_title(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional video_title{
         storage.get_optional<Video>(id)
             .transform([](const Video& video) -> std::string {
@@ -109,7 +109,7 @@ std::string Database::video_title(int id) const
 
 int Database::video_views(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional video_views{
         storage.get_optional<Video>(id)
             .transform([](const Video& video) -> int {
@@ -125,7 +125,7 @@ int Database::video_views(int id) const
 
 int Database::video_size(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional video_size{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> int {
@@ -145,7 +145,7 @@ int Database::video_size(int id) const
 
 std::string Database::video(int id, std::size_t offset, std::size_t length) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional video{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> std::string {
@@ -161,7 +161,7 @@ std::string Database::video(int id, std::size_t offset, std::size_t length) cons
 
 std::string Database::thumbnail(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional thumbnail{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> std::string {
@@ -183,7 +183,7 @@ std::optional<int> Database::add_super_admin(const std::string& name, const std:
         .salt = salt
     };
 
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     user_super_admin.id = storage.insert(user_super_admin);
 
     const SuperAdmin super_admin{
@@ -196,13 +196,13 @@ std::optional<int> Database::add_super_admin(const std::string& name, const std:
 
 bool Database::is_super_admin(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.get_all<SuperAdmin>(where(c(&SuperAdmin::id) == id)).size() == 1;
 }
 
 bool Database::is_admin(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.get_all<User>(
                       where(
                           c(&User::id) == id and
@@ -213,7 +213,7 @@ bool Database::is_admin(int id) const
 
 bool Database::is_user(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.get_all<User>(
                       where(
                           c(&User::id) == id and
@@ -230,7 +230,7 @@ std::optional<int> Database::add_admin(const std::string& name, const std::strin
         .salt = salt
     };
 
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     user_admin.id = storage.insert(user_admin);
 
     const Admin admin{
@@ -249,14 +249,14 @@ std::optional<int> Database::add_user(const std::string& name, const std::string
         .salt = salt
     };
 
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     user.id = storage.insert(user);
     return user.id;
 }
 
 std::optional<int> Database::update_user_name(int id, const std::string& name) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
         storage.get_optional<User>(id)
             .and_then([&](User user) -> std::optional<int> {
@@ -274,7 +274,7 @@ std::optional<int> Database::update_user_name(int id, const std::string& name) c
 
 std::optional<int> Database::update_user_password(int id, const std::string& password) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
         storage.get_optional<User>(id)
             .and_then([&](User user) -> std::optional<int> {
@@ -292,7 +292,7 @@ std::optional<int> Database::update_user_password(int id, const std::string& pas
 
 bool Database::delete_user(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional success{
         storage.get_optional<User>(id)
             .transform([&](const User& user) -> bool {
@@ -309,14 +309,14 @@ bool Database::delete_user(int id) const
 
 int Database::user_id(const std::string& name) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::vector users{ storage.select(&User::id, where(c(&User::name) == name)) };
     return users.empty() ? -1 : users[0];
 }
 
 std::string Database::user_name(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional user_name{
         storage.get_optional<User>(id)
             .transform([](const User& user) -> std::string {
@@ -332,7 +332,7 @@ std::string Database::user_name(int id) const
 
 std::string Database::user_password(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional user_password{
         storage.get_optional<User>(id)
             .transform([](const User& user) -> std::string {
@@ -348,7 +348,7 @@ std::string Database::user_password(int id) const
 
 std::string Database::user_salt(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional user_salt{
         storage.get_optional<User>(id)
             .transform([](const User& user) -> std::string {
@@ -364,32 +364,32 @@ std::string Database::user_salt(int id) const
 
 int Database::user_count() const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.count<User>();
 }
 
 int Database::video_count() const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.count<Video>();
 }
 
 int Database::view_count() const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::unique_ptr sum{ storage.sum(&Video::views) };
     return sum ? *sum : 0;
 }
 
 std::vector<int> Database::user_list() const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.select(except(select(&User::id), select(&Admin::id), select(&SuperAdmin::id)));
 }
 
 std::vector<int> Database::admin_list() const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.select(union_all(select(&SuperAdmin::id), select(&Admin::id)));
 }
 
@@ -403,7 +403,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
         .title = title
     };
 
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     video.id = storage.insert(video);
 
     storage.update(video);
@@ -419,7 +419,7 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
         return std::nullopt;
     }
 
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional video_id{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> int {
@@ -437,14 +437,14 @@ bool Database::add_video_rights(int id, const std::vector<int>& user_ids) const
         return VideoRight{ .video_id = id, .user_id = user_id };
     });
 
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     storage.replace_range(video_rights.cbegin(), video_rights.cend());
     return true;
 }
 
 std::optional<int> Database::update_video_title(int id, const std::string& title) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional video_id{
         storage.get_optional<Video>(id)
             .and_then([&](Video video) -> std::optional<int> {
@@ -462,14 +462,14 @@ std::optional<int> Database::update_video_title(int id, const std::string& title
 
 bool Database::update_video_rights(int id, const std::vector<int>& user_ids) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     storage.remove_all<VideoRight>(where(c(&VideoRight::video_id) == id));
     return add_video_rights(id, user_ids);
 }
 
 bool Database::delete_video(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional success{
         storage.get_optional<Video>(id)
             .and_then([&](const Video& video) -> std::optional<Video> {
@@ -494,7 +494,7 @@ bool Database::delete_video(int id) const
 
 bool Database::increment_video_views(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     const std::optional success{
         storage.get_optional<Video>(id)
             .transform([&](Video video) -> bool {
@@ -512,25 +512,25 @@ bool Database::increment_video_views(int id) const
 
 bool Database::has_video_right(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.get_all<VideoRight>(where(c(&VideoRight::video_id) == id)).empty();
 }
 
 bool Database::has_video_right(int id, int user_id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return !storage.get_all<VideoRight>(where(c(&VideoRight::video_id) == id and c(&VideoRight::user_id) == user_id)).empty();
 }
 
 std::vector<int> Database::video_right_list(int id) const
 {
-    database::StorageType storage{ database::storage(path_) };
+    database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&VideoRight::user_id), where(c(&VideoRight::video_id) == id));
 }
 
 std::filesystem::path Database::base_path() const
 {
-    return path_.parent_path();
+    return _path.parent_path();
 }
 
 std::filesystem::path Database::video_path() const
