@@ -44,6 +44,7 @@ namespace video
     using AVFilterContextPtr = std::unique_ptr<AVFilterContext, AVDeleter>;
     using AVPacketPtr = std::unique_ptr<AVPacket, AVDeleter>;
 
+    constexpr const char* frame_id_key() { return "id"; }
     const char* err2str(int error_numero);
 
     struct BufferData
@@ -355,9 +356,15 @@ inline std::string video::VideoProcessor::process_frames(std::size_t width, std:
         }
 
         if (!end_of_stream) {
+            const std::int64_t frame_id{ _codec_context->frame_num - 1 };
+            if (const int ret{ av_dict_set_int(&input_frame->metadata, frame_id_key(), frame_id, 0) }; ret < 0) {
+                logging::error{ "Could not set frame id {} to dictionary entry {}: {}", frame_id, frame_id_key(), err2str(ret) };
+                // continue (do not block for this)
+            }
+
             logging::debug{
                 "Frame {} (type={}, format={}) pts {} [DTS {}]",
-                _codec_context->frame_num,
+                frame_id,
                 av_get_picture_type_char(input_frame->pict_type),
                 input_frame->format,
                 input_frame->pts,
@@ -405,12 +412,16 @@ inline std::string video::VideoProcessor::retrieve_filtered_frame(std::size_t wi
             return {};
     }
 
-    logging::debug{
-        "Thumbnail selected frame {} (type={}, format={})",
-        _codec_context->frame_num,
-        av_get_picture_type_char(filtered_frame->pict_type),
-        filtered_frame->format
-    };
+    const AVDictionaryEntry* const tag{ av_dict_get(filtered_frame->metadata, frame_id_key(), NULL, 0) };
+    if (tag != nullptr) { // for diagnostic, is n_images enough?
+        const char* const frame_id{ tag->value };
+        logging::info{
+            "Thumbnail selected frame {} (type={}, format={})",
+            frame_id,
+            av_get_picture_type_char(filtered_frame->pict_type),
+            filtered_frame->format
+        };
+    }
 
     // Calculate aspect ratio of the source frame
     if (filtered_frame->width != static_cast<int>(width) || filtered_frame->height != static_cast<int>(height)) {
