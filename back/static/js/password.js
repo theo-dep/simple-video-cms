@@ -55,23 +55,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', (event) => {
-        // get visible span
-        let toggleVisiblePasswordSpan = null;
+        // get visible spans
+        let toggleVisiblePasswordSpans = [];
         togglePasswordSpans.forEach(span => {
             if (span.style.display === 'flex') {
-                toggleVisiblePasswordSpan = span;
+                toggleVisiblePasswordSpans.push(span);
             }
         });
 
-        if (toggleVisiblePasswordSpan) {
+        toggleVisiblePasswordSpans.forEach(span => {
             // get its parent
-            const parentSpan = toggleVisiblePasswordSpan.parentElement;
+            const parentSpan = span.parentElement;
 
             // test if the click is inside the parent (div)
             const isClickedInsideParent = event.composedPath().includes(parentSpan)
             if (!isClickedInsideParent) {
-                toggleVisiblePasswordSpan.style.display = 'none';
+                span.style.display = 'none';
             }
-        }
+        });
     });
 });
