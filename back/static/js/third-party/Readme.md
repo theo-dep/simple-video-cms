@@ -10,4 +10,4 @@
 
 - main
 - https://github.com/n3r4zzurr0/svg-spinners/blob/main/svg-css/blocks-shuffle-3.svg
-- License MIT
+- MIT License
