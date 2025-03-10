@@ -34,18 +34,14 @@
     cursor: pointer;
 }
 
+.modal-button:hover {
+    color: #0D5B4C;
+}
+
 .modal-close {
-    mask: url("/static/img/x-lg.svg") no-repeat;
-    background: #16A085;
-    width: 1em;
-    height: 1em;
     float: right;
     padding-right: 1em;
     margin-top: -3.5em;
-}
-
-.modal-close:hover {
-    background: #0D5B4C;
 }
 
 input:checked~.modal-overlay {

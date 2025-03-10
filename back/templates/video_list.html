@@ -55,7 +55,10 @@
           <th>Views</th>
           <th class="add-user">
             <a href="/add-video">
-              <img src="static/img/cloud-plus.svg" alt="add a new video" />
+              <svg class="svg-button">
+                <title>Add a new video</title>
+                <use href="/static/img/cloud-plus.svg#cloud-plus" />
+              </svg>
             </a>
           </th>
         </tr>
@@ -65,7 +68,10 @@
         <tr>
           <td>
             <a href="/download-video/{{ video.id }}" download="{{ video.title }}.mp4">
-              <img src="static/img/cloud-arrow-down.svg" alt="download video" />
+              <svg class="svg-button">
+                <title>Download {{ video.title }}.mp4</title>
+                <use href="/static/img/cloud-arrow-down.svg#cloud-arrow-down" />
+              </svg>
             </a>
           </td>
           <td data-title="video-name">
@@ -83,8 +89,11 @@
                     <div class="pure-g">
                       <div class="pure-u-1">
                         <h1>User Rights</h1>
-                        <label class="modal-button" for="checkbox" aria-label="Close modal">
-                          <span class="modal-close"></span>
+                        <label class="modal-button modal-close" for="checkbox" aria-label="Close modal">
+                          <svg class="svg-button">
+                            <title>Close</title>
+                            <use href="/static/img/x-lg.svg#x-lg" />
+                          </svg>
                         </label>
                       </div>
                       {% for right in video.right_list %}
