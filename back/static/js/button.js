@@ -28,20 +28,22 @@ const spinner = `
     </svg>
 `;
 
-for (let i = 0; i < document.forms.length; i++) {
-    document.forms[i].addEventListener('submit', () => {
-        // on submit form, disable all buttons and inputs in the page to prevent multi-clicks
-        for (let button of document.getElementsByClassName('button')) {
-            button.disabled = true;
-        }
-        for (let input of document.getElementsByClassName('input')) {
-            input.disabled = true;
-        }
+document.addEventListener('DOMContentLoaded', () => {
+    for (let i = 0; i < document.forms.length; i++) {
+        document.forms[i].addEventListener('submit', () => {
+            // on submit form, disable all buttons and inputs in the page to prevent multi-clicks
+            for (let button of document.getElementsByClassName('button')) {
+                button.disabled = true;
+            }
+            for (let input of document.getElementsByClassName('input')) {
+                input.disabled = true;
+            }
 
-        // replace the button form text by a spinner
-        for (let button of document.forms[i].getElementsByClassName('button')) {
-            button.innerHTML = spinner;
-            button.classList.toggle('button-spinner');
-        }
-    }, false);
-}
+            // replace the button form text by a spinner
+            for (let button of document.forms[i].getElementsByClassName('button')) {
+                button.innerHTML = spinner;
+                button.classList.toggle('button-spinner');
+            }
+        }, false);
+    }
+});
