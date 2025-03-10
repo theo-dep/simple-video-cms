@@ -66,12 +66,12 @@ input[type=checkbox i] {
   appearance: unset;
 }
 
-.button-check::before {
+.button-check-icon {
   float: left;
-  width: 35px;
-  padding: 0.1em 0;
-  background-color: rgba(255, 255, 255, 0.04);
-  content: url("/static/img/person-add.svg");
+  width: 1em;
+  height: 1em;
+  margin: 0.3em;
+  fill: rgba(255, 255, 255, 0.04);
   text-align: center;
 }
 
@@ -79,7 +79,15 @@ input[type=checkbox i] {
   border-color: #16A085;
 }
 
+.button-check:hover .button-check-icon {
+  fill: #16A085;
+}
+
 .button-check:has(input[type=checkbox]:checked) {
   border-color: #16A085;
   color: #16A085;
+}
+
+.button-check:has(input[type=checkbox]:checked) .button-check-icon {
+  fill: #16A085;
 }
