@@ -1,0 +1,59 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s ease-in-out;
+}
+
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 75%;
+    height: 75%;
+    border-radius: 10px;
+    padding: 0.5em 1em;
+    transform: translate(-50%, -70%);
+    background-color: #464646cc;
+    transition: transform 0.3s ease-in-out;
+}
+
+.modal p {
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
+
+.modal-button {
+    color: #16A085;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.modal-close {
+    mask: url("/static/img/x-lg.svg") no-repeat;
+    background: #16A085;
+    width: 1em;
+    height: 1em;
+    float: right;
+    padding-right: 1em;
+    margin-top: -3.5em;
+}
+
+.modal-close:hover {
+    background: #0D5B4C;
+}
+
+input:checked~.modal-overlay {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+input:checked~.modal-overlay .modal {
+    transform: translate(-50%, -50%);
+}
