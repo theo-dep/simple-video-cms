@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="stylesheet" href="/static/css/alert.css" type="text/css">
+  <script type="text/javascript" src="/static/js/alert.js"></script>
   <link rel="icon" href="{{ icon }}" type="image/png">
 </head>
 
@@ -22,7 +23,10 @@
         <fieldset>
           {% if login_error %}
           <div class="alert pure-control-group">
-            <span class="close-button" onclick="this.parentElement.style.display='none';">&times;</span>
+            <svg class="close-button">
+              <title>Close</title>
+              <use href="/static/img/x.svg#x" />
+            </svg>
             <p>Invalid credentials</p>
           </div>
           {% endif %}

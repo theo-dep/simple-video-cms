@@ -6,16 +6,16 @@
 }
 
 .close-button {
+  width: 1em;
+  height: 1em;
   margin-left: 0.5em;
   line-height: 0.5em;
-  color: white;
-  font-weight: bold;
+  fill: white;
   float: right;
-  font-size: 22px;
   cursor: pointer;
   transition: 0.3s;
 }
 
 .close-button:hover {
-  color: black;
+  fill: black;
 }

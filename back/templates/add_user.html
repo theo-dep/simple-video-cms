@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="stylesheet" href="/static/css/alert.css" type="text/css">
+  <script type="text/javascript" src="/static/js/alert.js"></script>
   <link rel="icon" href="{{ icon }}" type="image/png">
 </head>
 
@@ -22,13 +23,19 @@
         <fieldset>
           {% if create_error %}
           <div class="alert pure-control-group">
-            <span class="close-button" onclick="this.parentElement.style.display='none';">&times;</span>
-            Passwords do not match
+            <svg class="close-button">
+              <title>Close</title>
+              <use href="/static/img/x.svg#x" />
+            </svg>
+            <p>Passwords do not match</p>
           </div>
           {% else if invalid_username %}
           <div class="alert pure-control-group">
-            <span class="close-button" onclick="this.parentElement.style.display='none';">&times;</span>
-            Username already taken
+            <svg class="close-button">
+              <title>Close</title>
+              <use href="/static/img/x.svg#x" />
+            </svg>
+            <p>Username already taken</p>
           </div>
           {% endif %}
           <div class="pure-control-group">
