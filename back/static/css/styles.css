@@ -25,6 +25,10 @@ a {
     text-decoration: none;
 }
 
+a:hover {
+    color: #0D5B4C;
+}
+
 h1,
 h2,
 h3 {
@@ -34,6 +38,10 @@ h3 {
 
 hr {
     border-color: #c9c9c9;
+}
+
+p {
+    overflow-wrap: break-word;
 }
 
 .thumbnail {
@@ -48,6 +56,25 @@ hr {
     height: 100%;
 }
 
+.button:hover {
+    background-color: #0D5B4C;
+}
+
+.svg-button {
+    fill: #16A085;
+    width: 1em;
+    height: 1em;
+}
+
+.svg-button:hover {
+    fill: #0D5B4C;
+}
+
+.button-spinner {
+    padding-top: 0.3em;
+    padding-bottom: 0.1em;
+}
+
 .field-icon {
     float: right;
     position: relative;
@@ -55,15 +82,6 @@ hr {
     margin-top: -1.65em;
     z-index: 2;
     cursor: pointer;
-}
-
-.button:hover {
-    background-color: #0D5B4C;
-}
-
-.button-spinner {
-    padding-top: 0.3em;
-    padding-bottom: 0.1em;
 }
 
 /*

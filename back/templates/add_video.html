@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="stylesheet" href="/static/css/upload.css" type="text/css">
+  <script type="text/javascript" src="/static/js/upload.js"></script>
+  <script type="text/javascript" src="/static/js/button.js"></script>
   <link rel="icon" href="{{ icon }}" type="image/png">
 </head>
 
@@ -43,6 +45,9 @@
               <div class="user-check">
                 <label class="button-check pure-checkbox" for="{{ user.id }}">
                   <input name="user_ids" id="{{ user.id }}" value="{{ user.id }}" type="checkbox">
+                  <svg class="button-check-icon">
+                    <use href="/static/img/person-add.svg#person-add"></use>
+                  </svg>
                   {{ user.name }}
                 </label>
               </div>
@@ -60,8 +65,5 @@
     </div>
   </div>
 </body>
-
-<script type="text/javascript" src="/static/js/upload.js"></script>
-<script type="text/javascript" src="/static/js/button.js"></script>
 
 </html>
