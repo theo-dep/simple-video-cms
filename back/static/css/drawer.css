@@ -1,4 +1,4 @@
-.modal-overlay {
+.drawer-overlay {
     position: fixed;
     top: 0;
     right: 0;
@@ -10,53 +10,65 @@
     transition: opacity 0.1s ease-in-out;
 }
 
-.modal {
+.drawer {
     position: fixed;
-    overflow-y: scroll;
-    top: 50%;
-    left: 50%;
-    width: 80%;
-    height: 80%;
-    border-radius: 10px;
+    overflow-y: auto;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
     padding: 0.5em 1em;
-    transform: translate(-50%, -70%);
     background-color: #464646cc;
+    transform: translateX(100%);
     transition: transform 0.3s ease-in-out;
 }
 
-.modal-title {
+@media screen and (min-width: 35.5em) {
+    .drawer {
+        width: 50%;
+    }
+}
+
+@media screen and (min-width: 48em) {
+    .drawer {
+        width: calc(100% / 3);
+    }
+}
+
+
+.drawer-title {
     position: sticky;
     top: 0;
 }
 
-.modal p {
+.drawer p {
     overflow: hidden;
     padding-left: 0.5em;
     padding-right: 0.5em;
 }
 
-.modal-button {
+.drawer-button {
     color: #16A085;
     text-decoration: none;
     cursor: pointer;
 }
 
-.modal-button:hover {
+.drawer-button:hover {
     color: #0D5B4C;
 }
 
-.modal-close {
+.drawer-close {
     float: right;
     padding-right: 1em;
     margin-top: -3.5em;
 }
 
-input:checked~.modal-overlay {
+input:checked~.drawer-overlay {
     display: block;
     opacity: 1;
     pointer-events: auto;
 }
 
-input:checked~.modal-overlay .modal {
-    transform: translate(-50%, -50%);
+input:checked~.drawer-overlay .drawer {
+    transform: translateX(0);
 }
