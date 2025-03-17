@@ -1,0 +1,57 @@
+default:
+  image: gcc:14.2
+
+variables:
+  GIT_STRATEGY: clone
+  FF_ENABLE_JOB_CLEANUP: true
+
+include: .gitlab/build.yml
+
+.back-variables: &back-variables
+  GIT_SUBMODULE_STRATEGY: normal
+  GIT_SUBMODULE_FORCE_HTTPS: true
+  GIT_SUBMODULE_DEPTH: 0
+  GIT_SUBMODULE_UPDATE_FLAGS: --jobs 3
+
+.merge-rules:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+debug_back_build:
+  extends:
+    - .local-build
+    - .local-build-back
+  variables:
+    <<: *back-variables
+    DEBUG: 1
+    BUILD: debug
+    TARGET: back
+
+debug_front_build:
+  extends:
+    - .local-build
+  variables:
+    DEBUG: 1
+    BUILD: debug
+    TARGET: front
+
+release_back_build:
+  extends:
+    - .local-build
+    - .local-build-back
+    - .merge-rules
+  variables:
+    <<: *back-variables
+    DEBUG: 0
+    BUILD: release
+    TARGET: back
+
+release_front_build:
+  extends:
+    - .local-build
+    - .merge-rules
+  variables:
+    DEBUG: 0
+    BUILD: release
+    TARGET: front

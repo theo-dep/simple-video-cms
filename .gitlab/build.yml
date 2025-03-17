@@ -1,0 +1,30 @@
+.build-step: &build-step
+  - make DEBUG=${DEBUG} ${TARGET} -j
+
+.local-build:
+  stage: build
+  before_script:
+    - apt update && apt -y install make g++
+  script:
+    - *build-step
+  artifacts:
+    paths:
+      - bin/${BUILD}/${TARGET}
+  cache:
+    paths:
+      - build/${BUILD}/${TARGET}/**/*
+  tags:
+    - linux
+
+.local-build-back:
+  before_script:
+    - apt update && apt -y install make g++ gcc nasm
+  script:
+    - ./configure
+    - *build-step
+  cache:
+    paths:
+      - build/${BUILD}/${TARGET}/**/*
+      - common/third-party/ffmpeg/**/*
+      - common/third-party/libpng/**/*
+      - common/third-party/zlib/**/*
