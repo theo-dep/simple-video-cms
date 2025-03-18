@@ -6,4 +6,5 @@
   script:
     - make analyse-${TARGET} -j
   tags:
+    - docker
     - linux
