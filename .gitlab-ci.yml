@@ -1,11 +1,13 @@
 default:
   image: gcc:14.2
 
+stages:
+  - build
+  - analyse
+
 variables:
   GIT_STRATEGY: clone
   FF_ENABLE_JOB_CLEANUP: true
-
-include: .gitlab/build.yml
 
 .back-variables: &back-variables
   GIT_SUBMODULE_STRATEGY: normal
@@ -13,10 +15,14 @@ include: .gitlab/build.yml
   GIT_SUBMODULE_DEPTH: 0
   GIT_SUBMODULE_UPDATE_FLAGS: --jobs 3
 
-.merge-rules:
+.merge-rules: &merge-rules
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+include:
+  - local: .gitlab/build.yml
+  - local: .gitlab/analyse.yml
 
 debug_back_build:
   extends:
@@ -55,3 +61,25 @@ release_front_build:
     DEBUG: 0
     BUILD: release
     TARGET: front
+
+analyse_common:
+  extends:
+    - .analyse
+    - .merge-rules
+  variables:
+    TARGET: common
+
+analyse_front:
+  extends:
+    - .analyse
+    - .merge-rules
+  variables:
+    TARGET: front
+
+analyse_back:
+  extends:
+    - .analyse
+    - .merge-rules
+  variables:
+    <<: *back-variables
+    TARGET: back
