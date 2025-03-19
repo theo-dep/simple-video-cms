@@ -2,6 +2,7 @@ include:
   - local: /.gitlab-ci/common.yml
 
 variables:
+  BUILD_CACHE_KEY: ${BUILD}-${TARGET}
   BUILD_CACHE_PATH: build/${BUILD}/${TARGET}/**/*
 
 .local-build:
@@ -14,6 +15,7 @@ variables:
     paths:
       - bin/${BUILD}/${TARGET}
   cache:
+    key: ${BUILD_CACHE_KEY}
     paths:
       - $BUILD_CACHE_PATH
 
@@ -25,8 +27,9 @@ variables:
     - !reference [.back-base-job, script]
     - !reference [.local-build, script]
   cache:
+    key: ${BUILD_CACHE_KEY}
     paths:
-      - $BUILD_CACHE_PATH
+      - ${BUILD_CACHE_PATH}
       - common/third-party/ffmpeg/**/*
       - common/third-party/libpng/**/*
       - common/third-party/zlib/**/*
