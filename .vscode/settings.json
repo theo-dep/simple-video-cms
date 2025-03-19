@@ -15,7 +15,7 @@
         "*compose*.yaml": "dockercompose",
         "*compose*.yml": "dockercompose",
         "*gitlab*.yml": "yaml",
-        "**/.gitlab/*.yml": "yaml",
+        "**/.gitlab-ci/*.yml": "yaml",
         "*.yml": "azure-pipelines",
         "*.yaml": "azure-pipelines",
         "*.pri": "makefile",
@@ -123,6 +123,14 @@
         "text_encoding": "cpp"
     },
     "yaml.schemas": {
-        "https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json": "file:///home/theo/Dev/simple-video-cms/.gitlab/build.yml"
-    }
+        "https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json": [
+            "**/.gitlab-ci.yml",
+            "**/.gitlab-ci/analyse.yml",
+            "**/.gitlab-ci/build.yml",
+            "**/.gitlab-ci/common.yml",
+        ]
+    },
+    "yaml.customTags": [
+        "!reference sequence"
+    ]
 }

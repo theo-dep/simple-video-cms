@@ -21,20 +21,19 @@ variables:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 include:
-  - local: .gitlab/build.yml
-  - local: .gitlab/analyse.yml
+  - local: /.gitlab-ci/build.yml
+  - local: /.gitlab-ci/analyse.yml
 
-debug_back_build:
+debug_build_back:
   extends:
-    - .local-build
-    - .local-build-back
+    - .back-local-build
   variables:
     <<: *back-variables
     DEBUG: 1
     BUILD: debug
     TARGET: back
 
-debug_front_build:
+debug_build_front:
   extends:
     - .local-build
   variables:
@@ -42,10 +41,9 @@ debug_front_build:
     BUILD: debug
     TARGET: front
 
-release_back_build:
+release_build_back:
   extends:
-    - .local-build
-    - .local-build-back
+    - .back-local-build
     - .merge-rules
   variables:
     <<: *back-variables
@@ -53,7 +51,7 @@ release_back_build:
     BUILD: release
     TARGET: back
 
-release_front_build:
+release_build_front:
   extends:
     - .local-build
     - .merge-rules
@@ -78,7 +76,7 @@ analyse_front:
 
 analyse_back:
   extends:
-    - .analyse
+    - .back-analyse
     - .merge-rules
   variables:
     <<: *back-variables

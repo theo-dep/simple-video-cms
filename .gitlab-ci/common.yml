@@ -1,0 +1,15 @@
+.base-job:
+  before_script:
+    - apt-get update
+    - apt-get -y install make g++
+  tags:
+    - linux
+    - docker
+
+.back-base-job:
+  before_script:
+    - !reference [.base-job, before_script]
+    - apt-get -y install nasm gcc
+  script:
+    - ./configure
+  tags: !reference [.base-job, tags]

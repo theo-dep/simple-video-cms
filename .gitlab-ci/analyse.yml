@@ -1,0 +1,23 @@
+include:
+  - local: /.gitlab-ci/common.yml
+
+.analyse:
+  stage: analyse
+  extends:
+    - .base-job
+  before_script:
+    - !reference [.base-job, before_script]
+    - apt-get -y install clang-tidy
+  script:
+    - make analyse-${TARGET} -j
+
+.back-analyse:
+  extends:
+    - .analyse
+    - .back-base-job
+  before_script:
+    - !reference [.back-base-job, before_script]
+    - !reference [.analyse, before_script]
+  script:
+    - !reference [.back-base-job, script]
+    - !reference [.analyse, script]
