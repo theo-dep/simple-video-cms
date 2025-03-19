@@ -1,10 +1,14 @@
-.base-job:
-  before_script:
-    - apt-get update
-    - apt-get -y install make g++
+.base-tag:
   tags:
     - linux
     - docker
+
+.base-job:
+  extends:
+    - .base-tag
+  before_script:
+    - apt-get update
+    - apt-get -y install make g++
 
 .back-base-job:
   before_script:

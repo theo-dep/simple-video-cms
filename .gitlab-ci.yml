@@ -60,6 +60,18 @@ release_build_front:
     BUILD: release
     TARGET: front
 
+docker_build:
+  stage: build
+  extends:
+    - .base-tag
+    - .merge-rules
+  before_script:
+    - apt-get update
+    - apt-get -y install docker docker-compose
+  script:
+    - docker-compose build
+  variables: *back-variables
+
 analyse_common:
   extends:
     - .analyse
