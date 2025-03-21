@@ -53,5 +53,27 @@
 </body>
 
 <script type="text/javascript" src="/static/js/third-party/video-min.js"></script>
+<script>
+  const player = videojs('video-player');
+
+  player.on('play', () => {
+    const pageAccessedByReload = (
+      (window.performance.navigation && window.performance.navigation.type === 1) ||
+      window.performance
+        .getEntriesByType('navigation')
+        .map((nav) => nav.type)
+        .includes('reload')
+    );
+
+    if (pageAccessedByReload)
+      return;
+
+    fetch('/increment_video_views/{{ video_id }}', {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+      .catch(error => console.error('Increment error:', error));
+  });
+</script>
 
 </html>
