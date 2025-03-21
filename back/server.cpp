@@ -229,9 +229,14 @@ inline std::vector<int> server::extract(const Database& db, const std::string& s
     return search::extract(search, title_ids);
 }
 
-inline void server::admin_video_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
+inline void server::admin_video_list(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    const std::vector ids{ db.admin_video_list() };
+    std::vector ids{ db.admin_video_list() };
+    if (req.has_param("search")) {
+        const std::string search{ req.get_param_value("search") };
+        ids = extract(db, search, ids);
+    }
+
     const std::vector str_ids{ transform(ids) };
     res.set_content(su::join(str_ids), "plain/text");
 }

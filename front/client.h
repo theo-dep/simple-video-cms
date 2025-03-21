@@ -41,6 +41,7 @@ public:
     std::string watch_video_page() const;
 
     std::vector<std::string> admin_video_list() const;
+    std::vector<std::string> admin_video_list(const std::string& search) const;
     std::vector<std::string> user_video_list(const std::string& user_id) const;
     std::vector<std::string> user_video_list(const std::string& user_id, const std::string& search) const;
     std::vector<std::string> no_user_video_list() const;
