@@ -156,16 +156,6 @@ std::vector<std::string> Client::admin_video_list() const
     return su::split(str_ids);
 }
 
-std::vector<std::string> Client::user_video_list(const std::string& user_id) const
-{
-    const httplib::Headers headers{
-        { "user_id", user_id }
-    };
-    const httplib::Result res{ _client->Get("/user-video-list", headers) };
-    const std::string str_ids{ client::format_page(res) };
-    return su::split(str_ids);
-}
-
 namespace client
 {
     httplib::Result get(const std::string& path, const std::unique_ptr<httplib::Client>& client, const httplib::Params& param, const httplib::Headers& headers);
@@ -176,6 +166,27 @@ namespace client
 inline httplib::Result client::get(const std::string& path, const std::unique_ptr<httplib::Client>& client, const httplib::Params& params, const httplib::Headers& headers)
 {
     return client->Get(path, params, headers);
+}
+
+std::vector<std::string> Client::admin_video_list(const std::string& search) const
+{
+    const httplib::Headers headers{};
+    const httplib::Params params{
+        { "search", search }
+    };
+    const httplib::Result res{ client::get("/admin-video-list", _client, params, headers) };
+    const std::string str_ids{ client::format_page(res) };
+    return su::split(str_ids);
+}
+
+std::vector<std::string> Client::user_video_list(const std::string& user_id) const
+{
+    const httplib::Headers headers{
+        { "user_id", user_id }
+    };
+    const httplib::Result res{ _client->Get("/user-video-list", headers) };
+    const std::string str_ids{ client::format_page(res) };
+    return su::split(str_ids);
 }
 
 std::vector<std::string> Client::user_video_list(const std::string& user_id, const std::string& search) const

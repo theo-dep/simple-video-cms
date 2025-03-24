@@ -281,20 +281,21 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     const bool is_logged{ session.is_valid_session(session_id) };
     const std::string& user_id{ session.user_from_session(session_id) };
-    if (is_logged && client.is_admin(user_id)) {
-        res.set_redirect("/dashboard");
-        return;
-    }
+    const bool is_admin{ is_logged && client.is_admin(user_id) };
 
     std::vector<std::string> video_ids;
     if (req.has_param("search")) {
         const std::string search{ req.get_param_value("search") };
-        if (is_logged)
+        if (is_admin)
+            video_ids = client.admin_video_list(search);
+        else if (is_logged)
             video_ids = client.user_video_list(user_id, search);
         else
             video_ids = client.no_user_video_list(search);
     } else {
-        if (is_logged)
+        if (is_admin)
+            video_ids = client.admin_video_list();
+        else if (is_logged)
             video_ids = client.user_video_list(user_id);
         else
             video_ids = client.no_user_video_list();
@@ -302,6 +303,7 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
 
     const inja::json data{
         { "is_logged", is_logged },
+        { "is_admin", is_admin },
         { "video_dict", video_dict(video_ids, client) }
     };
     logging::debug{ data.dump() };
