@@ -62,6 +62,7 @@ namespace server
 
     void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
+    void increment_video_views(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 }
 
@@ -132,6 +133,7 @@ int server::start()
 
         .Get("/watch-video/:video_id", sc::serve(watch_video, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)))
+        .Post("/increment_video_views/:video_id", sc::serve(increment_video_views, std::cref(session), std::cref(client)))
         .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(session), std::cref(client)));
 
     const std::string host{ sc::get_env("FRONT_HOST", "0.0.0.0") };
@@ -932,7 +934,6 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
         return;
 
     const std::string video_id{ req.path_params.at("video_id") };
-    client.increment_video_views(video_id);
 
     const std::string cookie{ req.get_header_value("Cookie") };
     const bool is_logged{ session.is_valid_session_from_cookie(cookie) };
@@ -952,6 +953,23 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
     res.set_content(body, "text/html");
 }
 
+namespace server
+{
+    bool request_from_watch_video(const httplib::Request& req, httplib::Response& res, const Client& client, const std::string& video_id);
+}
+
+inline bool server::request_from_watch_video(const httplib::Request& req, httplib::Response& res, const Client& client, const std::string& video_id)
+{
+    const std::string& referrer{ req.get_header_value("Referer") };
+    if (!referrer.ends_with("/watch-video/" + video_id)) {
+        const std::string body{ client.error_page_403() };
+        res.set_content(body, "text/html");
+        return false;
+    }
+
+    return true;
+}
+
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
 {
     if (!has_video_right(req, res, session, client))
@@ -960,12 +978,8 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const std::string video_id{ req.path_params.at("video_id") };
 
     // block video if not in watch-video page
-    const std::string& referer{ req.get_header_value("Referer") };
-    if (!referer.ends_with("/watch-video/" + video_id)) {
-        const std::string body{ client.error_page_403() };
-        res.set_content(body, "text/html");
+    if (!request_from_watch_video(req, res, client, video_id))
         return;
-    }
 
     const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
@@ -977,6 +991,20 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
             sink.write(chunk.data(), chunk.size());
             return true; // return 'false' if you want to cancel the process.
         });
+}
+
+inline void server::increment_video_views(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
+{
+    if (!has_video_right(req, res, session, client))
+        return;
+
+    const std::string video_id{ req.path_params.at("video_id") };
+
+    // block increment if not in watch-video page
+    if (!request_from_watch_video(req, res, client, video_id))
+        return;
+
+    client.increment_video_views(video_id);
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
