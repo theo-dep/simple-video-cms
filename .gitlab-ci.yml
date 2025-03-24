@@ -1,5 +1,5 @@
 default:
-  image: gcc:14.2
+  image: ubuntu:24.10
 
 stages:
   - build

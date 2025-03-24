@@ -15,5 +15,7 @@
     - !reference [.base-job, before_script]
     - apt-get -y install nasm gcc
   script:
-    - ./configure
+    - ./configure --zlib
+    - make -C back zlib -j
+    - ./configure --libpng --ffmpeg
   tags: !reference [.base-job, tags]
