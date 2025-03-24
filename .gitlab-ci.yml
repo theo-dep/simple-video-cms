@@ -65,12 +65,15 @@ docker_build:
   extends:
     - .base-tag
     - .merge-rules
+  image:
+    name: docker:28.0.2
+  variables:
+    DOCKER_DRIVER: overlay2
+    <<: *back-variables
   before_script:
-    - apt-get update
-    - apt-get -y install docker docker-compose
+    - apk add --no-cache docker-compose
   script:
     - docker-compose build
-  variables: *back-variables
 
 analyse_common:
   extends:
