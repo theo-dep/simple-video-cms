@@ -3,7 +3,7 @@ default:
 
 stages:
   - build
-  - analyse
+  - analyze
 
 variables:
   GIT_STRATEGY: clone
@@ -22,7 +22,7 @@ variables:
 
 include:
   - local: /.gitlab-ci/build.yml
-  - local: /.gitlab-ci/analyse.yml
+  - local: /.gitlab-ci/analyze.yml
 
 debug_build_back:
   extends:
@@ -75,23 +75,23 @@ docker_build:
   script:
     - docker-compose build
 
-analyse_common:
+analyze_common:
   extends:
-    - .analyse
+    - .analyze
     - .merge-rules
   variables:
     TARGET: common
 
-analyse_front:
+analyze_front:
   extends:
-    - .analyse
+    - .analyze
     - .merge-rules
   variables:
     TARGET: front
 
-analyse_back:
+analyze_back:
   extends:
-    - .back-analyse
+    - .back-analyze
     - .merge-rules
   variables:
     <<: *back-variables
