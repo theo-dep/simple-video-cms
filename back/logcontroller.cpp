@@ -9,8 +9,8 @@ namespace logcontroller
     std::string add_log_date(const std::string& log);
 }
 
-LogController::LogController(const std::string& pattern)
-    : _pattern{ pattern }
+LogController::LogController(std::string pattern)
+    : _pattern{ std::move(pattern) }
 {
 }
 

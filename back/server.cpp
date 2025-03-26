@@ -18,7 +18,7 @@ namespace server
 {
     bool create_super_admin(const Database& db);
 
-    void set_logger(httplib::Server& server, LogController& video_log_buffer);
+    void set_logger(httplib::Server& server, LogController& video_log_controller);
     void set_exception_handler(httplib::Server& server);
 
     void template_page(const httplib::Request& req, httplib::Response& res);

@@ -379,12 +379,11 @@ inline std::string video::VideoProcessor::process_frames(std::size_t width, std:
                 logging::error{ "Error feeding the filter chain: {}", err2str(ret) };
                 return {};
             }
-        } else {
+
             // force the last frame, close the buffer
-            if (const int ret{ av_buffersrc_add_frame_flags(_buffer_source_context.get(), nullptr, AV_BUFFERSRC_FLAG_PUSH) }; ret < 0) {
-                logging::error{ "Error feeding the filter chain: {}", err2str(ret) };
-                return {};
-            }
+        } else if (const int ret{ av_buffersrc_add_frame_flags(_buffer_source_context.get(), nullptr, AV_BUFFERSRC_FLAG_PUSH) }; ret < 0) {
+            logging::error{ "Error feeding the filter chain: {}", err2str(ret) };
+            return {};
         }
 
         image = retrieve_filtered_frame(width, height);
@@ -412,7 +411,7 @@ inline std::string video::VideoProcessor::retrieve_filtered_frame(std::size_t wi
             return {};
     }
 
-    const AVDictionaryEntry* const tag{ av_dict_get(filtered_frame->metadata, frame_id_key(), NULL, 0) };
+    const AVDictionaryEntry* const tag{ av_dict_get(filtered_frame->metadata, frame_id_key(), nullptr, 0) };
     if (tag != nullptr) { // for diagnostic, is n_images enough?
         const char* const frame_id{ tag->value };
         logging::info{

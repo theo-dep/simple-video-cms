@@ -7,7 +7,7 @@
 class LogController
 {
 public:
-    LogController(const std::string& pattern);
+    LogController(std::string pattern);
 
     bool append(const std::string& log);
 
