@@ -3,6 +3,9 @@
 A managed video sharing platform inspired by [VideoHub](https://github.com/sharadbhat/VideoHub).
 A back and front architecture video content management system with FFmpeg and SQLite.
 
+[![Latest Release](https://gitlab.devau.co/theo/simple-video-cms/-/badges/release.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/releases) [![pipeline status](https://gitlab.devau.co/theo/simple-video-cms/badges/develop/pipeline.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/commits/develop)
+
+
 ###### All third party files are available offline.
 
 ### Docker
