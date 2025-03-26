@@ -1,0 +1,98 @@
+default:
+  image: ubuntu:24.10
+
+stages:
+  - build
+  - analyze
+
+variables:
+  GIT_STRATEGY: clone
+  FF_ENABLE_JOB_CLEANUP: true
+
+.back-variables: &back-variables
+  GIT_SUBMODULE_STRATEGY: normal
+  GIT_SUBMODULE_FORCE_HTTPS: true
+  GIT_SUBMODULE_DEPTH: 0
+  GIT_SUBMODULE_UPDATE_FLAGS: --jobs 3
+
+.merge-rules: &merge-rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+include:
+  - local: /.gitlab-ci/build.yml
+  - local: /.gitlab-ci/analyze.yml
+
+debug_build_back:
+  extends:
+    - .back-local-build
+  variables:
+    <<: *back-variables
+    DEBUG: 1
+    BUILD: debug
+    TARGET: back
+
+debug_build_front:
+  extends:
+    - .local-build
+  variables:
+    DEBUG: 1
+    BUILD: debug
+    TARGET: front
+
+release_build_back:
+  extends:
+    - .back-local-build
+    - .merge-rules
+  variables:
+    <<: *back-variables
+    DEBUG: 0
+    BUILD: release
+    TARGET: back
+
+release_build_front:
+  extends:
+    - .local-build
+    - .merge-rules
+  variables:
+    DEBUG: 0
+    BUILD: release
+    TARGET: front
+
+docker_build:
+  stage: build
+  extends:
+    - .base-tag
+    - .merge-rules
+  image:
+    name: docker:28.0.2
+  variables:
+    DOCKER_DRIVER: overlay2
+    <<: *back-variables
+  before_script:
+    - apk add --no-cache docker-compose
+  script:
+    - docker-compose build
+
+analyze_common:
+  extends:
+    - .analyze
+    - .merge-rules
+  variables:
+    TARGET: common
+
+analyze_front:
+  extends:
+    - .analyze
+    - .merge-rules
+  variables:
+    TARGET: front
+
+analyze_back:
+  extends:
+    - .back-analyze
+    - .merge-rules
+  variables:
+    <<: *back-variables
+    TARGET: back

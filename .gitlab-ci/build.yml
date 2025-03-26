@@ -1,0 +1,35 @@
+include:
+  - local: /.gitlab-ci/common.yml
+
+variables:
+  BUILD_CACHE_KEY: ${BUILD}-${TARGET}
+  BUILD_CACHE_PATH: build/${BUILD}/${TARGET}/**/*
+
+.local-build:
+  stage: build
+  extends:
+    - .base-job
+  script:
+    - make DEBUG=${DEBUG} ${TARGET} -j
+  artifacts:
+    paths:
+      - bin/${BUILD}/${TARGET}
+  cache:
+    key: ${BUILD_CACHE_KEY}
+    paths:
+      - $BUILD_CACHE_PATH
+
+.back-local-build:
+  extends:
+    - .local-build
+    - .back-base-job
+  script:
+    - !reference [.back-base-job, script]
+    - !reference [.local-build, script]
+  cache:
+    key: ${BUILD_CACHE_KEY}
+    paths:
+      - ${BUILD_CACHE_PATH}
+      - common/third-party/ffmpeg/**/*
+      - common/third-party/libpng/**/*
+      - common/third-party/zlib/**/*

@@ -65,6 +65,9 @@ ffmpeg: $(firstword $(FFMPEG_TARGETS))
 $(firstword $(FFMPEG_TARGETS)):
 	@$(MAKE) -C $(dir $@)/..
 
+# dependency to pnglibconf.h
+video.cpp: libpng
+
 # link with common objects
 OBJS := $(OBJS) $(BUILDER_OBJS)
 $(BIN_MODULE_DIR)/$(TARGET): zlib libpng ffmpeg $(BUILDER_OBJS)
