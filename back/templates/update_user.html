@@ -21,13 +21,48 @@
         <h1>{{ website_name }}</h1>
       </a>
 
-      <h2>Update &laquo; {{ user.name }} &raquo;</h2>
-      <h3>Re-enter old password and new password</h3>
+      <h3>Change username</h3>
 
-      <form class="pure-form pure-form-aligned" action="/update-user/{{ user.id }}?is_admin={{ is_admin }}"
+      <form class="pure-form pure-form-aligned" action="/update-user-name/{{ user.id }}?is_admin={{ is_admin }}"
         method="post">
         <fieldset>
-          {% if login_error %}
+          {% if login_error_username %}
+          <div class="alert pure-control-group">
+            <svg class="close-button">
+              <title>Close</title>
+              <use href="/static/img/x.svg#x" />
+            </svg>
+            <p>Confirm password does not match</p>
+          </div>
+          {% else if invalid_username %}
+          <div class="alert pure-control-group">
+            <svg class="close-button">
+              <title>Close</title>
+              <use href="/static/img/x.svg#x" />
+            </svg>
+            <p>Username already taken</p>
+          </div>
+          {% endif %}
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="text" name="username" placeholder="username" value="{{ user.name }}"
+              required />
+          </div>
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="password" name="password" placeholder="confirm password" required
+              autofocus />
+          </div>
+          <div class="pure-control-group">
+            <button id="update-button" class="pure-input-1 button pure-button">Update</button>
+          </div>
+        </fieldset>
+      </form>
+
+      <h3>Change password</h3>
+
+      <form class="pure-form pure-form-aligned" action="/update-user-password/{{ user.id }}?is_admin={{ is_admin }}"
+        method="post">
+        <fieldset>
+          {% if login_error_password %}
           <div class="alert pure-control-group">
             <svg class="close-button">
               <title>Close</title>
@@ -43,19 +78,7 @@
             </svg>
             <p>New passwords do not match</p>
           </div>
-          {% else if invalid_username %}
-          <div class="alert pure-control-group">
-            <svg class="close-button">
-              <title>Close</title>
-              <use href="/static/img/x.svg#x" />
-            </svg>
-            <p>Username already taken</p>
-          </div>
           {% endif %}
-          <div class="pure-control-group">
-            <input class="pure-input-1" type="text" name="username" placeholder="username" value="{{ user.name }}"
-              required />
-          </div>
           <div class="pure-control-group">
             <input class="pure-input-1" type="password" name="old-password" placeholder="old password" required
               autofocus />

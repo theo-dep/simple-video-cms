@@ -297,14 +297,22 @@ std::string Client::add_user(const std::string& username, const std::string& pas
     return client::format_page(res);
 }
 
-void Client::update_user(const std::string& user_id, const std::string& username, const std::string& password) const
+void Client::update_user_name(const std::string& user_id, const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
         { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
-        { .name = "username", .content = username, .filename = "", .content_type = "" },
+        { .name = "username", .content = username, .filename = "", .content_type = "" }
+    };
+    _client->Post("/update-user-name", items);
+}
+
+void Client::update_user_password(const std::string& user_id, const std::string& password) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
         { .name = "password", .content = password, .filename = "", .content_type = "" }
     };
-    _client->Post("/update-user", items);
+    _client->Post("/update-user-password", items);
 }
 
 void Client::delete_user(const std::string& user_id) const

@@ -40,7 +40,8 @@ namespace server
 
     void add_admin(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_user(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_user(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_user_name(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_user_password(const httplib::Request& req, httplib::Response& res, const Database& db);
     void delete_user(const httplib::Request& req, httplib::Response& res, const Database& db);
     void is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db);
 
@@ -105,7 +106,8 @@ int server::start()
 
         .Post("/add-admin", sc::serve(add_admin, std::cref(db)))
         .Post("/add-user", sc::serve(add_user, std::cref(db)))
-        .Post("/update-user", sc::serve(update_user, std::cref(db)))
+        .Post("/update-user-name", sc::serve(update_user_name, std::cref(db)))
+        .Post("/update-user-password", sc::serve(update_user_password, std::cref(db)))
         .Post("/delete-user", sc::serve(delete_user, std::cref(db)))
         .Post("/is-valid-user", sc::serve(is_valid_user, std::cref(db)))
 
@@ -404,9 +406,9 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     res.set_content(su::int_to_string(user_id.value()), "plan/text");
 }
 
-inline void server::update_user(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::update_user_name(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("password") || !req.has_file("username") || !req.has_file("user_id")) {
+    if (!req.has_file("username") || !req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -414,18 +416,29 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
 
     const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
     const std::string username{ req.get_file_value("username").content };
+
+    const std::optional success_user_id{ db.update_user_name(user_id, username) };
+    if (!success_user_id.has_value()) {
+        logging::error{ R"(Fail to update username "{}")", user_id };
+        return;
+    }
+}
+
+inline void server::update_user_password(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("password") || !req.has_file("user_id")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
-    const std::optional success_user_id{
-        db.update_user_name(user_id, username)
-            .and_then([&](int user_id) -> std::optional<int> {
-                return db.update_user_password(user_id, password);
-            })
-    };
-
+    const std::optional success_user_id{ db.update_user_password(user_id, password) };
     if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to update user "{}")", user_id };
+        logging::error{ R"(Fail to update user password "{}")", user_id };
         return;
     }
 }
