@@ -45,6 +45,10 @@
         <li class="pure-menu-item">
           <a href="/video-list" class="menu-link pure-menu-link">Video List</a>
         </li>
+        {% else %}
+        <li class="pure-menu-item">
+          <a href="/update-user/{{ user_id }}?is_admin=false" class="menu-link pure-menu-link">Account</a>
+        </li>
         {% endif %}
         <li class="pure-menu-item">
           <a href="/logout" class="menu-link pure-menu-link">Logout</a>

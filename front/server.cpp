@@ -309,7 +309,8 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     const inja::json data{
         { "is_logged", is_logged },
         { "is_admin", is_admin },
-        { "video_dict", video_dict(video_ids, client) }
+        { "video_dict", video_dict(video_ids, client) },
+        { "user_id", user_id }
     };
     logging::debug{ data.dump() };
 
@@ -573,20 +574,26 @@ inline void server::set_update_user_content(httplib::Response& res, inja::Enviro
 
 inline void server::update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
 {
-    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    const std::string updater_user_id{ connected_user_id(req, session) };
+    const std::string user_id{ req.path_params.at("user_id") };
+    const bool update_self{ updater_user_id == user_id };
+
+    if (!update_self && !is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
     const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
     set_update_user_content(res, env, client, user_id, is_admin, {});
 }
 
 inline void server::update_user_name(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
-    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    const std::string updater_user_id{ connected_user_id(req, session) };
+    const std::string user_id{ req.path_params.at("user_id") };
+    const bool update_self{ updater_user_id == user_id };
+
+    if (!update_self && !is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
     const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
@@ -608,42 +615,50 @@ inline void server::update_user_name(const httplib::Request& req, httplib::Respo
         return;
     }
 
-    const std::string updater_user_id{ connected_user_id(req, session) };
+    const auto update_action{ [user_id, username, is_admin_req, updater_user_id, &client] {
+        client.update_user_name(user_id, username);
+        const std::string user_type{ is_admin_req ? "Admin" : "User" };
+        logging::info{ "{} name {} updated by {}", user_type, user_id, updater_user_id };
+    } };
 
-    std::string signal_str;
-    if (is_admin_req) {
-        signal_str = confirm_handler.create()
-                         .on_confirm([user_id, username, updater_user_id, &client](httplib::Response& res) {
-                             client.update_user_name(user_id, username);
-                             res.set_redirect("/admin-list");
-                             logging::info{ "Admin name {} updated by {}", user_id, updater_user_id };
-                         })
-                         .on_deny([](httplib::Response& res) {
-                             res.set_redirect("/admin-list");
-                         })
-                         .to_string();
-    } else {
-        signal_str = confirm_handler.create()
-                         .on_confirm([user_id, username, updater_user_id, &client](httplib::Response& res) {
-                             client.update_user_name(user_id, username);
-                             res.set_redirect("/user-list");
-                             logging::info{ "User name {} updated by {}", user_id, updater_user_id };
-                         })
-                         .on_deny([](httplib::Response& res) {
-                             res.set_redirect("/user-list");
-                         })
-                         .to_string();
+    // no confirm
+    if (update_self) {
+        update_action();
+        res.set_redirect("/");
+        return;
     }
+
+    const auto redirect_action{ [is_admin_req](httplib::Response& res) {
+        if (is_admin_req)
+            res.set_redirect("/admin-list");
+        else
+            res.set_redirect("/user-list");
+    } };
+
+    const std::string signal_str{
+        confirm_handler.create()
+            .on_confirm([update_action, redirect_action](httplib::Response& res) {
+                update_action();
+                redirect_action(res);
+            })
+            .on_deny([redirect_action](httplib::Response& res) {
+                redirect_action(res);
+            })
+            .to_string()
+    };
 
     confirm_action(req, res, env, session, client, signal_str);
 }
 
 inline void server::update_user_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
-    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    const std::string updater_user_id{ connected_user_id(req, session) };
+    const std::string user_id{ req.path_params.at("user_id") };
+    const bool update_self{ updater_user_id == user_id };
+
+    if (!update_self && !is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
     const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
 
     const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
@@ -665,32 +680,37 @@ inline void server::update_user_password(const httplib::Request& req, httplib::R
         return;
     }
 
-    const std::string updater_user_id{ connected_user_id(req, session) };
+    const auto update_action{ [user_id, new_password, is_admin_req, updater_user_id, &client] {
+        client.update_user_password(user_id, new_password);
+        const std::string user_type{ is_admin_req ? "Admin" : "User" };
+        logging::info{ "{} password {} updated by {}", user_type, user_id, updater_user_id };
+    } };
 
-    std::string signal_str;
-    if (is_admin_req) {
-        signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, updater_user_id, &client](httplib::Response& res) {
-                             client.update_user_password(user_id, new_password);
-                             res.set_redirect("/admin-list");
-                             logging::info{ "Admin password {} updated by {}", user_id, updater_user_id };
-                         })
-                         .on_deny([](httplib::Response& res) {
-                             res.set_redirect("/admin-list");
-                         })
-                         .to_string();
-    } else {
-        signal_str = confirm_handler.create()
-                         .on_confirm([user_id, new_password, updater_user_id, &client](httplib::Response& res) {
-                             client.update_user_password(user_id, new_password);
-                             res.set_redirect("/user-list");
-                             logging::info{ "User password {} updated by {}", user_id, updater_user_id };
-                         })
-                         .on_deny([](httplib::Response& res) {
-                             res.set_redirect("/user-list");
-                         })
-                         .to_string();
+    // no confirm
+    if (update_self) {
+        update_action();
+        res.set_redirect("/");
+        return;
     }
+
+    const auto redirect_action{ [is_admin_req](httplib::Response& res) {
+        if (is_admin_req)
+            res.set_redirect("/admin-list");
+        else
+            res.set_redirect("/user-list");
+    } };
+
+    const std::string signal_str{
+        confirm_handler.create()
+            .on_confirm([update_action, redirect_action](httplib::Response& res) {
+                update_action();
+                redirect_action(res);
+            })
+            .on_deny([redirect_action](httplib::Response& res) {
+                redirect_action(res);
+            })
+            .to_string()
+    };
 
     confirm_action(req, res, env, session, client, signal_str);
 }
