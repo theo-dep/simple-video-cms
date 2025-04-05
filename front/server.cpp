@@ -726,30 +726,30 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 
     const std::string suppressor_user_id{ connected_user_id(req, session) };
 
-    std::string signal_str;
-    if (admin) {
-        signal_str = confirm_handler.create()
-                         .on_confirm([user_id, suppressor_user_id, &client](httplib::Response& res) {
-                             client.delete_user(user_id);
-                             res.set_redirect("/admin-list");
-                             logging::info{ "Admin {} deleted by {}", user_id, suppressor_user_id };
-                         })
-                         .on_deny([](httplib::Response& res) {
-                             res.set_redirect("/admin-list");
-                         })
-                         .to_string();
-    } else {
-        signal_str = confirm_handler.create()
-                         .on_confirm([user_id, suppressor_user_id, &client](httplib::Response& res) {
-                             client.delete_user(user_id);
-                             res.set_redirect("/user-list");
-                             logging::info{ "User {} deleted by {}", user_id, suppressor_user_id };
-                         })
-                         .on_deny([](httplib::Response& res) {
-                             res.set_redirect("/user-list");
-                         })
-                         .to_string();
-    }
+    const auto delete_action{ [user_id, admin, suppressor_user_id, &client] {
+        client.delete_user(user_id);
+        const std::string user_type{ admin ? "Admin" : "User" };
+        logging::info{ "{} {} deleted by {}", user_type, user_id, suppressor_user_id };
+    } };
+
+    const auto redirect_action{ [admin](httplib::Response& res) {
+        if (admin)
+            res.set_redirect("/admin-list");
+        else
+            res.set_redirect("/user-list");
+    } };
+
+    const std::string signal_str{
+        confirm_handler.create()
+            .on_confirm([delete_action, redirect_action](httplib::Response& res) {
+                delete_action();
+                redirect_action(res);
+            })
+            .on_deny([redirect_action](httplib::Response& res) {
+                redirect_action(res);
+            })
+            .to_string()
+    };
 
     confirm_action(req, res, env, session, client, signal_str);
 }
