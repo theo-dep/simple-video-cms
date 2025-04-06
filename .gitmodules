@@ -1,9 +1,12 @@
 [submodule "common/third-party/ffmpeg"]
 	path = common/third-party/ffmpeg
 	url = https://git.ffmpeg.org/ffmpeg
+	ignore = dirty
 [submodule "common/third-party/libpng"]
 	path = common/third-party/libpng
 	url = https://github.com/pnggroup/libpng
+	ignore = dirty
 [submodule "common/third-party/zlib"]
 	path = common/third-party/zlib
 	url = https://github.com/madler/zlib/
+	ignore = dirty
