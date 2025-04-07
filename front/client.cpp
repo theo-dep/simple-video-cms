@@ -113,6 +113,12 @@ std::string Client::add_user_page() const
     return client::format_page(res);
 }
 
+std::string Client::add_password_page() const
+{
+    const httplib::Result res{ _client->Get("/html/add_password.html") };
+    return client::format_page(res);
+}
+
 std::string Client::update_user_page() const
 {
     const httplib::Result res{ _client->Get("/html/update_user.html") };
@@ -295,6 +301,16 @@ std::string Client::add_user(const std::string& username) const
     return client::format_page(res);
 }
 
+std::string Client::add_password(const std::string& user_id, const std::string& password) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
+        { .name = "password", .content = password, .filename = "", .content_type = "" }
+    };
+    const httplib::Result res{ _client->Post("/add-password", items) };
+    return client::format_page(res);
+}
+
 void Client::update_user_name(const std::string& user_id, const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
@@ -319,6 +335,15 @@ void Client::delete_user(const std::string& user_id) const
         { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
     };
     _client->Post("/delete-user", items);
+}
+
+bool Client::is_first_connection(const std::string& user_id) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
+    };
+    const httplib::Result res{ _client->Post("/is-first-connection", items) };
+    return su::string_to_bool(client::format_page(res));
 }
 
 bool Client::is_valid_user(const std::string& user_id, const std::string& password) const

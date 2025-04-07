@@ -252,6 +252,24 @@ std::optional<int> Database::add_user(const std::string& name, const std::string
     return user.id;
 }
 
+std::optional<int> Database::add_password(int id, const std::string& password) const
+{
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional user_id{
+        storage.get_optional<User>(id)
+            .and_then([&](User user) -> std::optional<int> {
+                user.password = password;
+                storage.update(user);
+                return id;
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to add user password "{}")", id };
+                return std::nullopt;
+            })
+    };
+    return user_id;
+}
+
 std::optional<int> Database::update_user_name(int id, const std::string& name) const
 {
     database::StorageType storage{ database::storage(_path) };

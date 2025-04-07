@@ -34,7 +34,7 @@ namespace server
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
-    void login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void logout(const httplib::Request& req, httplib::Response& res, Session& session);
 
@@ -43,6 +43,9 @@ namespace server
 
     void add_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+
+    void add_password_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void add_password_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
 
     void confirm_action(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client, const std::string& confirm_signal_str);
     void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client);
@@ -105,7 +108,7 @@ int server::start()
         .Get("/", sc::serve(home, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/dashboard", sc::serve(dashboard, std::ref(env), std::cref(session), std::cref(client)))
 
-        .Get("/login", sc::serve(login_get, std::ref(env), std::ref(session), std::cref(client)))
+        .Get("/login", sc::serve(login_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/login", sc::serve(login_post, std::ref(env), std::ref(session), std::cref(client)))
 
         .Get("/logout", sc::serve(logout, std::ref(session)))
@@ -115,6 +118,9 @@ int server::start()
 
         .Get("/add-user", sc::serve(add_user_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/add-user", sc::serve(add_user_post, std::ref(env), std::cref(session), std::cref(client)))
+
+        .Get("/add-password/:user_id", sc::serve(add_password_get, std::ref(env), std::cref(session), std::cref(client)))
+        .Post("/add-password/:user_id", sc::serve(add_password_post, std::ref(env), std::ref(session), std::cref(client)))
 
         .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
@@ -351,7 +357,7 @@ inline void server::set_login_content(httplib::Response& res, inja::Environment&
     res.set_content(body, "text/html");
 }
 
-inline void server::login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+inline void server::login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     if (session.is_valid_session_from_cookie(cookie)) {
@@ -364,17 +370,28 @@ inline void server::login_get(const httplib::Request& req, httplib::Response& re
 
 inline void server::login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
 {
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    if (!username_exists(username, client)) {
+        set_login_content(res, env, client, { .login_error = true });
+        return;
+    }
+
+    const std::string user_id{ client.user_id(username) };
+    const bool is_first_connection{ client.is_first_connection(user_id) };
+    if (is_first_connection) {
+        res.set_redirect("/add-password/" + user_id);
+        return;
+    }
+
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
         set_login_content(res, env, client, { .login_error = true });
         return;
     }
 
-    std::string username{ req.get_param_value("username") };
-    su::trim(username);
-    su::lower(username);
-
-    const std::string user_id{ client.user_id(username) };
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
     if (is_valid_user) {
         const std::string session_id{ session.create_session(user_id) };
@@ -495,6 +512,68 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
         res.set_redirect("/user-list");
         logging::info{ "User {} created by {}", user_id, creator_user_id };
     }
+}
+
+namespace server
+{
+    struct AlertAddPassword
+    {
+        bool invalid_password{ false };
+    };
+    void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, const AlertAddPassword& alert);
+}
+
+inline void server::set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, const AlertAddPassword& alert)
+{
+    const inja::json data{
+        { "user_id", user_id },
+        { "invalid_password", alert.invalid_password }
+    };
+    logging::debug{ data.dump() };
+    const std::string body{ env.render(client.add_password_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::add_password_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    if (session.is_valid_session_from_cookie(cookie)) {
+        res.set_redirect("/");
+        return;
+    }
+
+    const std::string user_id{ req.path_params.at("user_id") };
+    set_add_password_content(res, env, client, user_id, {});
+}
+
+inline void server::add_password_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    std::string user_id{ req.path_params.at("user_id") };
+
+    const std::string password{ crypto::sha512(req.get_param_value("password")) };
+    if (password.empty()) {
+        set_add_password_content(res, env, client, user_id, { .invalid_password = true });
+        return;
+    }
+
+    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
+    if (confirm_password != password) {
+        set_add_password_content(res, env, client, user_id, { .invalid_password = true });
+        return;
+    }
+
+    user_id = client.add_password(user_id, password);
+    if (user_id.empty()) {
+        logging::error{ "Trying to add password with an empty user" };
+        set_login_content(res, env, client, { .login_error = true });
+        return;
+    }
+
+    logging::info{ "User password updated by {}", user_id };
+
+    const std::string session_id{ session.create_session(user_id) };
+    res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
+    res.set_redirect("/");
 }
 
 namespace server
