@@ -263,14 +263,14 @@ std::optional<int> Database::add_password(int id, const std::string& password) c
                 return id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to add user password "{}")", id };
+                logging::error{ R"(Fail to add password "{}")", id };
                 return std::nullopt;
             })
     };
     return user_id;
 }
 
-std::optional<int> Database::update_user_name(int id, const std::string& name) const
+std::optional<int> Database::update_username(int id, const std::string& name) const
 {
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
@@ -281,14 +281,14 @@ std::optional<int> Database::update_user_name(int id, const std::string& name) c
                 return id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to update user name "{}")", id };
+                logging::error{ R"(Fail to update username "{}")", id };
                 return std::nullopt;
             })
     };
     return user_id;
 }
 
-std::optional<int> Database::update_user_password(int id, const std::string& password) const
+std::optional<int> Database::update_password(int id, const std::string& password) const
 {
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
@@ -299,7 +299,7 @@ std::optional<int> Database::update_user_password(int id, const std::string& pas
                 return id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to update user password "{}")", id };
+                logging::error{ R"(Fail to update password "{}")", id };
                 return std::nullopt;
             })
     };

@@ -23,8 +23,7 @@
 
       <h3>Change username</h3>
 
-      <form class="pure-form pure-form-aligned" action="/update-user-name/{{ user.id }}?is_admin={{ is_admin }}"
-        method="post">
+      <form class="pure-form pure-form-aligned" action="/update-username/{{ user.id }}" method="post">
         <fieldset>
           {% if login_error_username %}
           <div class="alert pure-control-group">
@@ -59,8 +58,7 @@
 
       <h3>Change password</h3>
 
-      <form class="pure-form pure-form-aligned" action="/update-user-password/{{ user.id }}?is_admin={{ is_admin }}"
-        method="post">
+      <form class="pure-form pure-form-aligned" action="/update-password/{{ user.id }}" method="post">
         <fieldset>
           {% if login_error_password %}
           <div class="alert pure-control-group">

@@ -32,7 +32,8 @@ public:
     std::string user_list_page() const;
     std::string add_user_page() const;
     std::string add_password_page() const;
-    std::string update_user_page() const;
+    std::string update_user_admin_page() const;
+    std::string update_user_self_page() const;
 
     std::string admin_list_page() const;
 
@@ -59,8 +60,8 @@ public:
     std::string add_admin(const std::string& username) const;
     std::string add_user(const std::string& username) const;
     std::string add_password(const std::string& user_id, const std::string& password) const;
-    void update_user_name(const std::string& user_id, const std::string& username) const;
-    void update_user_password(const std::string& user_id, const std::string& password) const;
+    void update_username(const std::string& user_id, const std::string& username) const;
+    void update_password(const std::string& user_id, const std::string& password) const;
     void reset_user(const std::string& user_id) const;
     void delete_user(const std::string& user_id) const;
     bool is_first_connection(const std::string& user_id) const;

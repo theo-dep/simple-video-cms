@@ -119,9 +119,15 @@ std::string Client::add_password_page() const
     return client::format_page(res);
 }
 
-std::string Client::update_user_page() const
+std::string Client::update_user_admin_page() const
 {
-    const httplib::Result res{ _client->Get("/html/update_user.html") };
+    const httplib::Result res{ _client->Get("/html/update_user_admin.html") };
+    return client::format_page(res);
+}
+
+std::string Client::update_user_self_page() const
+{
+    const httplib::Result res{ _client->Get("/html/update_user_self.html") };
     return client::format_page(res);
 }
 
@@ -311,22 +317,22 @@ std::string Client::add_password(const std::string& user_id, const std::string& 
     return client::format_page(res);
 }
 
-void Client::update_user_name(const std::string& user_id, const std::string& username) const
+void Client::update_username(const std::string& user_id, const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
         { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
         { .name = "username", .content = username, .filename = "", .content_type = "" }
     };
-    _client->Post("/update-user-name", items);
+    _client->Post("/update-username", items);
 }
 
-void Client::update_user_password(const std::string& user_id, const std::string& password) const
+void Client::update_password(const std::string& user_id, const std::string& password) const
 {
     const httplib::MultipartFormDataItems items{
         { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
         { .name = "password", .content = password, .filename = "", .content_type = "" }
     };
-    _client->Post("/update-user-password", items);
+    _client->Post("/update-password", items);
 }
 
 void Client::reset_user(const std::string& user_id) const

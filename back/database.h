@@ -31,8 +31,8 @@ public:
     [[nodiscard]] std::optional<int> add_admin(const std::string& name, const std::string& salt) const;
     [[nodiscard]] std::optional<int> add_user(const std::string& name, const std::string& salt) const;
     [[nodiscard]] std::optional<int> add_password(int id, const std::string& password) const;
-    [[nodiscard]] std::optional<int> update_user_name(int id, const std::string& name) const;
-    [[nodiscard]] std::optional<int> update_user_password(int id, const std::string& password) const;
+    [[nodiscard]] std::optional<int> update_username(int id, const std::string& name) const;
+    [[nodiscard]] std::optional<int> update_password(int id, const std::string& password) const;
     [[nodiscard]] std::optional<int> clear_password(int id) const;
     [[nodiscard]] bool delete_user(int id) const;
 

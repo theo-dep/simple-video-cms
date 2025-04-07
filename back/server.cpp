@@ -41,8 +41,8 @@ namespace server
     void add_admin(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_user(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_password(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_user_name(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_user_password(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_username(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_password(const httplib::Request& req, httplib::Response& res, const Database& db);
     void delete_user(const httplib::Request& req, httplib::Response& res, const Database& db);
     void reset_user(const httplib::Request& req, httplib::Response& res, const Database& db);
     void is_first_connection(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -110,8 +110,8 @@ int server::start()
         .Post("/add-admin", sc::serve(add_admin, std::cref(db)))
         .Post("/add-user", sc::serve(add_user, std::cref(db)))
         .Post("/add-password", sc::serve(add_password, std::cref(db)))
-        .Post("/update-user-name", sc::serve(update_user_name, std::cref(db)))
-        .Post("/update-user-password", sc::serve(update_user_password, std::cref(db)))
+        .Post("/update-username", sc::serve(update_username, std::cref(db)))
+        .Post("/update-password", sc::serve(update_password, std::cref(db)))
         .Post("/reset-user", sc::serve(reset_user, std::cref(db)))
         .Post("/delete-user", sc::serve(delete_user, std::cref(db)))
         .Post("/is-first-connection", sc::serve(is_first_connection, std::cref(db)))
@@ -424,7 +424,7 @@ inline void server::add_password(const httplib::Request& req, httplib::Response&
 
     const std::optional success_user_id{ db.add_password(user_id, password) };
     if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to add user password "{}")", user_id };
+        logging::error{ R"(Fail to add password "{}")", user_id };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -432,7 +432,7 @@ inline void server::add_password(const httplib::Request& req, httplib::Response&
     res.set_content(su::int_to_string(success_user_id.value()), "plan/text");
 }
 
-inline void server::update_user_name(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::update_username(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
     if (!req.has_file("username") || !req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
@@ -443,14 +443,14 @@ inline void server::update_user_name(const httplib::Request& req, httplib::Respo
     const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
     const std::string username{ req.get_file_value("username").content };
 
-    const std::optional success_user_id{ db.update_user_name(user_id, username) };
+    const std::optional success_user_id{ db.update_username(user_id, username) };
     if (!success_user_id.has_value()) {
         logging::error{ R"(Fail to update username "{}")", user_id };
         return;
     }
 }
 
-inline void server::update_user_password(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::update_password(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
     if (!req.has_file("password") || !req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
@@ -462,9 +462,9 @@ inline void server::update_user_password(const httplib::Request& req, httplib::R
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
-    const std::optional success_user_id{ db.update_user_password(user_id, password) };
+    const std::optional success_user_id{ db.update_password(user_id, password) };
     if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to update user password "{}")", user_id };
+        logging::error{ R"(Fail to update password "{}")", user_id };
         return;
     }
 }
@@ -481,7 +481,7 @@ inline void server::reset_user(const httplib::Request& req, httplib::Response& r
 
     const std::optional success_user_id{ db.clear_password(user_id) };
     if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to clear user password "{}")", user_id };
+        logging::error{ R"(Fail to clear password "{}")", user_id };
         return;
     }
 }
