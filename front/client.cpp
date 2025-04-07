@@ -329,6 +329,14 @@ void Client::update_user_password(const std::string& user_id, const std::string&
     _client->Post("/update-user-password", items);
 }
 
+void Client::reset_user(const std::string& user_id) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
+    };
+    _client->Post("/reset-user", items);
+}
+
 void Client::delete_user(const std::string& user_id) const
 {
     const httplib::MultipartFormDataItems items{

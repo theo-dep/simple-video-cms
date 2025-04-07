@@ -306,6 +306,24 @@ std::optional<int> Database::update_user_password(int id, const std::string& pas
     return user_id;
 }
 
+std::optional<int> Database::clear_password(int id) const
+{
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional user_id{
+        storage.get_optional<User>(id)
+            .and_then([&](User user) -> std::optional<int> {
+                user.password.reset();
+                storage.update(user);
+                return id;
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to clear password "{}")", id };
+                return std::nullopt;
+            })
+    };
+    return user_id;
+}
+
 bool Database::delete_user(int id) const
 {
     database::StorageType storage{ database::storage(_path) };

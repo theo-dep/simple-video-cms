@@ -61,6 +61,7 @@ public:
     std::string add_password(const std::string& user_id, const std::string& password) const;
     void update_user_name(const std::string& user_id, const std::string& username) const;
     void update_user_password(const std::string& user_id, const std::string& password) const;
+    void reset_user(const std::string& user_id) const;
     void delete_user(const std::string& user_id) const;
     bool is_first_connection(const std::string& user_id) const;
     bool is_valid_user(const std::string& user_id, const std::string& password) const;

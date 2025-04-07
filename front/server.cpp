@@ -53,6 +53,7 @@ namespace server
     void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void update_user_name(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void update_user_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+    void reset_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void delete_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -127,6 +128,7 @@ int server::start()
         .Get("/update-user/:user_id", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
         .Post("/update-user-name/:user_id", sc::serve(update_user_name, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Post("/update-user-password/:user_id", sc::serve(update_user_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/reset-user/:user_id", sc::serve(reset_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-user/:user_id", sc::serve(delete_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
@@ -770,6 +772,45 @@ inline void server::update_user_password(const httplib::Request& req, httplib::R
         confirm_handler.create()
             ->on_confirm([update_action, redirect_action](httplib::Response& res) {
                 update_action();
+                redirect_action(res);
+            })
+            .on_deny([redirect_action](httplib::Response& res) {
+                redirect_action(res);
+            })
+            .to_string()
+    };
+
+    confirm_action(req, res, env, session, client, signal_str);
+}
+
+inline void server::reset_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string user_id{ req.path_params.at("user_id") };
+    const bool admin{ su::string_to_bool(req.get_param_value("is_admin")) };
+    logging::debug{ "Reset {} {}", user_id, client.user_name(user_id) };
+
+    const std::string suppressor_user_id{ connected_user_id(req, session) };
+
+    const auto reset_action{ [user_id, admin, suppressor_user_id, &client] {
+        client.reset_user(user_id);
+        const std::string user_type{ admin ? "Admin" : "User" };
+        logging::info{ "{} {} reset by {}", user_type, user_id, suppressor_user_id };
+    } };
+
+    const auto redirect_action{ [admin](httplib::Response& res) {
+        if (admin)
+            res.set_redirect("/admin-list");
+        else
+            res.set_redirect("/user-list");
+    } };
+
+    const std::string signal_str{
+        confirm_handler.create()
+            .on_confirm([reset_action, redirect_action](httplib::Response& res) {
+                reset_action();
                 redirect_action(res);
             })
             .on_deny([redirect_action](httplib::Response& res) {

@@ -44,6 +44,7 @@ namespace server
     void update_user_name(const httplib::Request& req, httplib::Response& res, const Database& db);
     void update_user_password(const httplib::Request& req, httplib::Response& res, const Database& db);
     void delete_user(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void reset_user(const httplib::Request& req, httplib::Response& res, const Database& db);
     void is_first_connection(const httplib::Request& req, httplib::Response& res, const Database& db);
     void is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db);
 
@@ -111,6 +112,7 @@ int server::start()
         .Post("/add-password", sc::serve(add_password, std::cref(db)))
         .Post("/update-user-name", sc::serve(update_user_name, std::cref(db)))
         .Post("/update-user-password", sc::serve(update_user_password, std::cref(db)))
+        .Post("/reset-user", sc::serve(reset_user, std::cref(db)))
         .Post("/delete-user", sc::serve(delete_user, std::cref(db)))
         .Post("/is-first-connection", sc::serve(is_first_connection, std::cref(db)))
         .Post("/is-valid-user", sc::serve(is_valid_user, std::cref(db)))
@@ -463,6 +465,23 @@ inline void server::update_user_password(const httplib::Request& req, httplib::R
     const std::optional success_user_id{ db.update_user_password(user_id, password) };
     if (!success_user_id.has_value()) {
         logging::error{ R"(Fail to update user password "{}")", user_id };
+        return;
+    }
+}
+
+inline void server::reset_user(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("user_id")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+
+    const std::optional success_user_id{ db.clear_password(user_id) };
+    if (!success_user_id.has_value()) {
+        logging::error{ R"(Fail to clear user password "{}")", user_id };
         return;
     }
 }
