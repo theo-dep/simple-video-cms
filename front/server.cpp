@@ -443,7 +443,6 @@ namespace server
 {
     struct AlertAddUser
     {
-        bool create_error{ false };
         bool invalid_username{ false };
     };
     void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, const AlertAddUser& alert);
@@ -453,7 +452,6 @@ inline void server::set_add_user_content(httplib::Response& res, inja::Environme
 {
     const inja::json data{
         { "is_admin", is_admin },
-        { "create_error", alert.create_error },
         { "invalid_username", alert.invalid_username }
     };
     logging::debug{ data.dump() };
@@ -476,17 +474,6 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
         return;
 
     const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
-    const std::string password{ crypto::sha512(req.get_param_value("password")) };
-    if (password.empty()) {
-        set_add_user_content(res, env, client, is_admin_req, { .create_error = true });
-        return;
-    }
-
-    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
-    if (confirm_password != password) {
-        set_add_user_content(res, env, client, is_admin_req, { .create_error = true });
-        return;
-    }
 
     std::string username{ req.get_param_value("username") };
     su::trim(username);
@@ -500,11 +487,11 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     if (is_user || is_admin) {
         set_add_user_content(res, env, client, is_admin_req, { .invalid_username = true });
     } else if (is_admin_req) {
-        user_id = client.add_admin(username, password);
+        user_id = client.add_admin(username);
         res.set_redirect("/admin-list");
         logging::info{ "Admin {} created by {}", user_id, creator_user_id };
     } else {
-        user_id = client.add_user(username, password);
+        user_id = client.add_user(username);
         res.set_redirect("/user-list");
         logging::info{ "User {} created by {}", user_id, creator_user_id };
     }

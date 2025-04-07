@@ -277,21 +277,19 @@ std::string Client::user_id(const std::string& username) const
     return client::format_page(res);
 }
 
-std::string Client::add_admin(const std::string& username, const std::string& password) const
+std::string Client::add_admin(const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "username", .content = username, .filename = "", .content_type = "" },
-        { .name = "password", .content = password, .filename = "", .content_type = "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-admin", items) };
     return client::format_page(res);
 }
 
-std::string Client::add_user(const std::string& username, const std::string& password) const
+std::string Client::add_user(const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "username", .content = username, .filename = "", .content_type = "" },
-        { .name = "password", .content = password, .filename = "", .content_type = "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-user", items) };
     return client::format_page(res);

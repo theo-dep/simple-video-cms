@@ -28,15 +28,15 @@ public:
 
     bool is_admin(int id) const;
     bool is_user(int id) const;
-    [[nodiscard]] std::optional<int> add_admin(const std::string& name, const std::string& password, const std::string& salt) const;
-    [[nodiscard]] std::optional<int> add_user(const std::string& name, const std::string& password, const std::string& salt) const;
+    [[nodiscard]] std::optional<int> add_admin(const std::string& name, const std::string& salt) const;
+    [[nodiscard]] std::optional<int> add_user(const std::string& name, const std::string& salt) const;
     [[nodiscard]] std::optional<int> update_user_name(int id, const std::string& name) const;
     [[nodiscard]] std::optional<int> update_user_password(int id, const std::string& password) const;
     [[nodiscard]] bool delete_user(int id) const;
 
     int user_id(const std::string& name) const;
     std::string user_name(int id) const;
-    std::string user_password(int id) const;
+    std::optional<std::string> user_password(int id) const;
     std::string user_salt(int id) const;
 
     int user_count() const;

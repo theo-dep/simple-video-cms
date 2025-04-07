@@ -364,7 +364,7 @@ inline void server::user_id(const httplib::Request& req, httplib::Response& res,
 
 inline void server::add_admin(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("password") || !req.has_file("username")) {
+    if (!req.has_file("username")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -373,8 +373,7 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
     const std::string username{ req.get_file_value("username").content };
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
-    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    const std::optional admin_id{ db.add_admin(username, password, salt) };
+    const std::optional admin_id{ db.add_admin(username, salt) };
     if (!admin_id.has_value()) {
         logging::error{ R"(Fail to add admin "{}")", username };
         res.status = httplib::StatusCode::InternalServerError_500;
@@ -386,7 +385,7 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
 
 inline void server::add_user(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("password") || !req.has_file("username")) {
+    if (!req.has_file("username")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -395,8 +394,7 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     const std::string username{ req.get_file_value("username").content };
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
-    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    const std::optional user_id{ db.add_user(username, password, salt) };
+    const std::optional user_id{ db.add_user(username, salt) };
     if (!user_id.has_value()) {
         logging::error{ R"(Fail to add user "{}")", username };
         res.status = httplib::StatusCode::InternalServerError_500;
@@ -470,8 +468,9 @@ inline void server::is_valid_user(const httplib::Request& req, httplib::Response
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
-    const std::string database_password{ db.user_password(user_id) };
-    res.set_content(su::bool_to_string(password == database_password), "plain/text");
+    const std::optional database_password{ db.user_password(user_id) };
+    const bool is_valid_user{ database_password.has_value() && password == database_password.value() };
+    res.set_content(su::bool_to_string(is_valid_user), "plain/text");
 }
 
 inline void server::user_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)

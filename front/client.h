@@ -55,8 +55,8 @@ public:
     bool is_user(const std::string& user_id) const;
     std::string user_name(const std::string& user_id) const;
     std::string user_id(const std::string& username) const;
-    std::string add_admin(const std::string& username, const std::string& password) const;
-    std::string add_user(const std::string& username, const std::string& password) const;
+    std::string add_admin(const std::string& username) const;
+    std::string add_user(const std::string& username) const;
     void update_user_name(const std::string& user_id, const std::string& username) const;
     void update_user_password(const std::string& user_id, const std::string& password) const;
     void delete_user(const std::string& user_id) const;
