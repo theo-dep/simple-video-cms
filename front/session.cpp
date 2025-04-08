@@ -96,11 +96,10 @@ std::string Session::extract_session_id_from_cookie(const std::string& cookie)
 
 std::string Session::insert_session_id_to_cookie(const std::string& session_id)
 {
-    return (session::cookie_key() + session_id + ";");
+    return (session::cookie_key() + session_id + "; SameSite=None; Secure");
 }
 
 std::string Session::generate_session_id(const std::string& user_id)
 {
-    static int counter{ 0 };
-    return crypto::sha512("sess_" + std::to_string(counter++) + "_" + user_id + "_ion");
+    return crypto::sha512("sess_" + crypto::random_string() + "_" + user_id + "_ion");
 }
