@@ -1,7 +1,9 @@
 #include "session.h"
 
 #include "crypto.h"
+#include "stringutils.h"
 
+#include <chrono>
 #include <cstring>
 
 namespace session
@@ -96,11 +98,16 @@ std::string Session::extract_session_id_from_cookie(const std::string& cookie)
 
 std::string Session::insert_session_id_to_cookie(const std::string& session_id)
 {
-    return (session::cookie_key() + session_id + ";");
+    constexpr std::chrono::days thirty_days{ 30 };
+    constexpr std::chrono::seconds thirty_days_seconds{ thirty_days };
+    return (session::cookie_key() + session_id + ";" +
+#ifndef _DEBUG
+            "SameSite=None; Secure;" +
+#endif
+            "Max-Age=" + su::int_to_string(thirty_days_seconds.count()));
 }
 
 std::string Session::generate_session_id(const std::string& user_id)
 {
-    static int counter{ 0 };
-    return crypto::sha512("sess_" + std::to_string(counter++) + "_" + user_id + "_ion");
+    return crypto::sha512("sess_" + crypto::random_string() + "_" + user_id + "_ion");
 }
