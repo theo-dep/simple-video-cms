@@ -67,9 +67,11 @@
               <div class="pure-u-1 pure-u-sm-1-3">
                 <a href="/update-user/{{ admin.id }}?is_admin=true">Update</a>
               </div>
+              {% if not user.is_first_connection %}
               <div class="pure-u-1 pure-u-sm-1-3">
                 <a href="/reset-user/{{ admin.id }}?is_admin=true">Reset password</a>
               </div>
+              {% endif %}
               <div class="pure-u-1 pure-u-sm-1-3">
                 <a href="/delete-user/{{ admin.id }}?is_admin=true">Delete</a>
               </div>

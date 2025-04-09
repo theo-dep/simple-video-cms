@@ -463,7 +463,8 @@ inline void server::admin_list(const httplib::Request& req, httplib::Response& r
         const inja::json admin = {
             { "id", user_id },
             { "name", client.user_name(user_id) },
-            { "is_super_admin", is_super_admin }
+            { "is_super_admin", is_super_admin },
+            { "is_first_connection", client.is_first_connection(user_id) }
         };
         admin_dict += admin;
     }
@@ -485,7 +486,8 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
     for (const std::string& user_id : user_list) {
         const inja::json user = {
             { "id", user_id },
-            { "name", client.user_name(user_id) }
+            { "name", client.user_name(user_id) },
+            { "is_first_connection", client.is_first_connection(user_id) }
         };
         user_dict += user;
     }
