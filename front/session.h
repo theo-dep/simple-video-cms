@@ -35,7 +35,7 @@ public:
     static std::string extract_session_id_from_cookie(const std::string& cookie);
 
     // res.set_header("Set-Cookie", "Session-ID=" + session_id + "; HttpOnly");
-    static std::string insert_session_id_to_cookie(const std::string& session_id);
+    static std::string insert_session_id_to_cookie([[maybe_unused]] const std::string& url, const std::string& session_id);
 
 private:
     // Generate a unique session ID (using a counter, a user_id and crypto sha512)

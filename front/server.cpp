@@ -24,7 +24,7 @@ namespace server
     void set_exception_handler(httplib::Server& server);
     void set_logger(httplib::Server& server);
 
-    void register_session(httplib::Response& res, Session& session, const std::string& user_id);
+    void register_session(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& user_id);
 
     bool is_logged(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
     bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
@@ -258,10 +258,10 @@ inline void server::set_logger(httplib::Server& server)
     });
 }
 
-inline void server::register_session(httplib::Response& res, Session& session, const std::string& user_id)
+inline void server::register_session(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& user_id)
 {
     const std::string session_id{ session.create_session(user_id) };
-    res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
+    res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(req.get_header_value("Host"), session_id));
 }
 
 inline bool server::is_logged(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& /*client*/)
@@ -439,7 +439,7 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
         return;
     }
 
-    register_session(res, session, user_id);
+    register_session(req, res, session, user_id);
     res.set_redirect("/");
 }
 
@@ -609,7 +609,7 @@ inline void server::add_password_post(const httplib::Request& req, httplib::Resp
 
     logging::info{ "User password updated by {}", user_id };
 
-    register_session(res, session, user_id);
+    register_session(req, res, session, user_id);
     res.set_redirect("/");
 }
 

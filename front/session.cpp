@@ -96,15 +96,22 @@ std::string Session::extract_session_id_from_cookie(const std::string& cookie)
     return session_id;
 }
 
-std::string Session::insert_session_id_to_cookie(const std::string& session_id)
+std::string Session::insert_session_id_to_cookie([[maybe_unused]] const std::string& url, const std::string& session_id)
 {
     constexpr std::chrono::days thirty_days{ 30 };
     constexpr std::chrono::seconds thirty_days_seconds{ thirty_days };
-    return (session::cookie_key() + session_id + ";" +
-#ifndef _DEBUG
-            "SameSite=None; Secure;" +
+
+    const std::string same_site_secure{
+#ifdef _DEBUG
+        !url.contains("localhost") ? "SameSite=Strict;" :
 #endif
-            "Max-Age=" + su::int_to_string(thirty_days_seconds.count()));
+                                   "SameSite=None; Secure;"
+    };
+    return {
+        session::cookie_key() + session_id + "; " +
+        "Max-Age=" + su::int_to_string(thirty_days_seconds.count()) +
+        "; HttpOnly; Path=/;" + same_site_secure
+    };
 }
 
 std::string Session::generate_session_id(const std::string& user_id)

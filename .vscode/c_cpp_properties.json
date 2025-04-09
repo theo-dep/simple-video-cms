@@ -11,7 +11,8 @@
                 "${workspaceFolder}/common/third-party/libpng"
             ],
             "defines": [
-                "CPPHTTPLIB_USE_POLL"
+                "CPPHTTPLIB_USE_POLL",
+                "_DEBUG"
             ],
             "compilerPath": "/usr/bin/gcc",
             "compilerArgs": [
@@ -20,7 +21,7 @@
                 "-Wextra",
                 "-Werror"
             ],
-            "cStandard": "c17",
+            "cStandard": "c23",
             "cppStandard": "c++23",
             "intelliSenseMode": "linux-gcc-x64"
         }
