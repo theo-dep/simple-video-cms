@@ -129,8 +129,9 @@ int server::start()
         .Get("/add-user", sc::serve(add_user_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/add-user", sc::serve(add_user_post, std::ref(env), std::cref(session), std::cref(client)))
 
-        .Get("/add-password/:user_id", sc::serve(add_password_get, std::ref(env), std::cref(session), std::cref(client)))
-        .Post("/add-password/:user_id", sc::serve(add_password_post, std::ref(env), std::ref(session), std::cref(client)))
+        .Get("/add-password", sc::serve(add_password_get, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/add-password/:username", sc::serve(add_password_get, std::ref(env), std::cref(session), std::cref(client)))
+        .Post("/add-password", sc::serve(add_password_post, std::ref(env), std::ref(session), std::cref(client)))
 
         .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
@@ -415,6 +416,12 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     su::trim(username);
     su::lower(username);
 
+    if (username.empty()) {
+        // first connection link clicked maybe
+        res.set_redirect("/add-password");
+        return;
+    }
+
     if (!username_exists(username, client)) {
         set_login_content(res, env, client, { .login_error = true });
         return;
@@ -423,7 +430,7 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     const std::string user_id{ client.user_id(username) };
     const bool is_first_connection{ client.is_first_connection(user_id) };
     if (is_first_connection) {
-        res.set_redirect("/add-password/" + user_id);
+        res.set_redirect("/add-password/" + username);
         return;
     }
 
@@ -558,15 +565,17 @@ namespace server
 {
     struct AlertAddPassword
     {
+        bool login_error{ false };
         bool invalid_password{ false };
     };
-    void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, const AlertAddPassword& alert);
+    void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, const AlertAddPassword& alert);
 }
 
-inline void server::set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& user_id, const AlertAddPassword& alert)
+inline void server::set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, const AlertAddPassword& alert)
 {
     const inja::json data{
-        { "user_id", user_id },
+        { "username", username },
+        { "login_error", alert.login_error },
         { "invalid_password", alert.invalid_password }
     };
     logging::debug{ data.dump() };
@@ -582,30 +591,54 @@ inline void server::add_password_get(const httplib::Request& req, httplib::Respo
         return;
     }
 
-    const std::string user_id{ req.path_params.at("user_id") };
-    set_add_password_content(res, env, client, user_id, {});
+    if (req.path_params.contains("username")) {
+        const std::string username{ req.path_params.at("username") };
+        set_add_password_content(res, env, client, username, {});
+    } else {
+        set_add_password_content(res, env, client, {}, {});
+    }
 }
 
 inline void server::add_password_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
 {
-    const std::string user_id{ req.path_params.at("user_id") };
+    const std::string cookie{ req.get_header_value("Cookie") };
+    if (session.is_valid_session_from_cookie(cookie)) {
+        res.set_redirect("/");
+        return;
+    }
+
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    if (!username_exists(username, client)) {
+        set_add_password_content(res, env, client, {}, { .login_error = true });
+        return;
+    }
+
+    const std::string user_id{ client.user_id(username) };
+    const bool is_first_connection{ client.is_first_connection(user_id) };
+    if (!is_first_connection) {
+        set_add_password_content(res, env, client, {}, { .login_error = true });
+        return;
+    }
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
-        set_add_password_content(res, env, client, user_id, { .invalid_password = true });
+        set_add_password_content(res, env, client, username, { .invalid_password = true });
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (confirm_password != password) {
-        set_add_password_content(res, env, client, user_id, { .invalid_password = true });
+        set_add_password_content(res, env, client, username, { .invalid_password = true });
         return;
     }
 
     const std::string user_id_check{ client.add_password(user_id, password) };
     if (user_id != user_id_check) {
         logging::error{ "Trying to add password with an invalid user" };
-        set_login_content(res, env, client, { .login_error = true });
+        set_add_password_content(res, env, client, {}, { .login_error = true });
         return;
     }
 
