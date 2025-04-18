@@ -1,78 +1,53 @@
 #include "confirmhandler.h"
 
+#include "stringutils.h"
+
 #include <httplib.h>
-#define KDBINDINGS_ENABLE_WARN_UNUSED
-#include <kdbindings/signal.h>
 
-#include <unordered_map>
-
-struct SignalHash
+std::size_t ConfirmHandler::SignalHash::operator()(const std::pair<std::string, bool>& key) const
 {
-    using hash_type = std::hash<std::string>;
-    using is_transparent = void;
+    const auto& [confirm_signal_str, confirm]{ key };
+    const std::size_t h1{ hash_type{}(confirm_signal_str) };
+    const std::size_t h2{ hash_type{}(su::bool_to_string(confirm)) };
+    return h1 ^ (h2 << 1);
+}
 
-    std::size_t operator()(const std::string& confirm_signal_str) const
-    {
-        return hash_type{}(confirm_signal_str);
-    }
-    std::size_t operator()(const ConfirmHandler::Signal* confirm_signal) const
-    {
-        return hash_type{}(confirm_signal->to_string());
-    }
-};
+std::size_t ConfirmHandler::SignalHash::operator()(const std::pair<std::shared_ptr<const ConfirmHandler::Signal>, bool>& key) const
+{
+    const auto& [confirm_signal, confirm]{ key };
+    return operator()(std::make_pair(confirm_signal->to_string(), confirm));
+}
 
-bool operator==(const std::string& str, const ConfirmHandler::Signal* signal)
+bool operator==(const std::string& str, const std::shared_ptr<const ConfirmHandler::Signal>& signal)
 {
     return (str == signal->to_string());
 }
 
-struct ConfirmHandler::ConfirmHandlerImpl
+struct ConfirmHandler::Signal::Private
 {
-    KDBindings::Signal<std::reference_wrapper<httplib::Response>, std::string, bool> signal;
-
-    struct ConnectionHandle
-    {
-        KDBindings::ConnectionHandle confirm_handle;
-        KDBindings::ConnectionHandle deny_handle;
-    };
-    std::unordered_map<const ConfirmHandler::Signal*, ConnectionHandle, SignalHash, std::equal_to<>> handle_map;
+    explicit Private() = default;
 };
 
-ConfirmHandler::ConfirmHandler()
-    : _impl{ std::make_unique<ConfirmHandlerImpl>() }
-{
-}
-
-ConfirmHandler::~ConfirmHandler()
-{
-    for (const auto& [confirm_signal, connection_handle] : _impl->handle_map)
-        delete confirm_signal; // NOLINT(cppcoreguidelines-owning-memory): need to import gsl::owner<>
-}
-
-ConfirmHandler::Signal::Signal(const ConfirmHandler& handler)
+ConfirmHandler::Signal::Signal(Private /*unused*/, ConfirmHandler& handler)
     : _handler{ handler }
 {
 }
 
-const ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::function<void(httplib::Response&)>& handle) const
+ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::function<void(httplib::Response&)>& handle)
 {
-    const KDBindings::ConnectionHandle confirm_handle{ _handler._impl->signal.connect(
-        [handle, this](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) {
-            if (confirm_signal_str == this && confirm && handle)
-                handle(res);
-        }) };
-    _handler._impl->handle_map[this].confirm_handle = confirm_handle;
+    _handler._handle_map.insert_or_assign(std::make_pair(ptr(), true), [handle](httplib::Response& res) {
+        if (handle)
+            handle(res);
+    });
     return *this;
 }
 
-const ConfirmHandler::Signal& ConfirmHandler::Signal::on_deny(const std::function<void(httplib::Response&)>& handle) const
+ConfirmHandler::Signal& ConfirmHandler::Signal::on_deny(const std::function<void(httplib::Response&)>& handle)
 {
-    const KDBindings::ConnectionHandle deny_handle{ _handler._impl->signal.connect(
-        [handle, this](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) {
-            if (confirm_signal_str == this && !confirm && handle)
-                handle(res);
-        }) };
-    _handler._impl->handle_map[this].deny_handle = deny_handle;
+    _handler._handle_map.insert_or_assign(std::make_pair(ptr(), false), [handle](httplib::Response& res) {
+        if (handle)
+            handle(res);
+    });
     return *this;
 }
 
@@ -83,18 +58,25 @@ std::string ConfirmHandler::Signal::to_string() const
     return std::to_string(reinterpret_cast<std::uintptr_t>(this));
 }
 
-const ConfirmHandler::Signal& ConfirmHandler::create()
+std::shared_ptr<const ConfirmHandler::Signal> ConfirmHandler::Signal::ptr() const
 {
-    return *(_impl->handle_map.insert({ new (std::nothrow) Signal(*this), ConfirmHandlerImpl::ConnectionHandle{} }).first->first);
+    return shared_from_this();
+}
+
+std::shared_ptr<ConfirmHandler::Signal> ConfirmHandler::create()
+{
+    return std::make_shared<Signal>(Signal::Private{}, *this);
 }
 
 void ConfirmHandler::confirm(httplib::Response& res, const std::string& confirm_signal_str, bool confirm)
 {
-    _impl->signal.emit(res, confirm_signal_str, confirm);
+    const ConnectionHandleMap::const_iterator it_handle{ _handle_map.find(std::make_pair(confirm_signal_str, confirm)) };
+    if (it_handle != _handle_map.cend() && it_handle->second)
+        it_handle->second(res);
 
-    const decltype(_impl->handle_map)::iterator it_confirm_signal{ _impl->handle_map.find(confirm_signal_str) };
-    _impl->signal.disconnect(it_confirm_signal->second.confirm_handle);
-    _impl->signal.disconnect(it_confirm_signal->second.deny_handle);
-    delete it_confirm_signal->first; // NOLINT(cppcoreguidelines-owning-memory): need to import gsl::owner<>
-    _impl->handle_map.erase(it_confirm_signal);
+    std::erase_if(_handle_map, [&confirm_signal_str](const ConnectionHandleMap::value_type& item) -> bool {
+        const auto& [key, value]{ item };
+        const auto& [confirm_signal, confirm]{ key };
+        return (confirm_signal_str == confirm_signal);
+    });
 }

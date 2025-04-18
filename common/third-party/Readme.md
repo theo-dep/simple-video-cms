@@ -47,12 +47,6 @@
 - https://github.com/rapidfuzz/rapidfuzz-cpp
 - MIT License
 
-## KDBindings
-
-- v1.1.0
-- https://github.com/KDAB/KDBindings
-- MIT License
-
 ## Hash++
 
 - v2.0.1

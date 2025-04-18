@@ -3,6 +3,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace httplib
 {
@@ -14,35 +15,50 @@ class ConfirmHandler
     friend struct Signal;
 
 public:
-    struct Signal
+    class Signal : public std::enable_shared_from_this<Signal>
     {
+        struct Private;
+        friend class ConfirmHandler;
+
+    public:
+        Signal(Private, ConfirmHandler& handler);
+
         // called on confirm true
-        const Signal& on_confirm(const std::function<void(httplib::Response&)>& handle) const;
+        Signal& on_confirm(const std::function<void(httplib::Response&)>& handle);
         // called on confirm false
-        const Signal& on_deny(const std::function<void(httplib::Response&)>& handle) const;
+        Signal& on_deny(const std::function<void(httplib::Response&)>& handle);
         // transform to string to be shared by requests
         std::string to_string() const;
 
     private:
-        friend class ConfirmHandler;
-        Signal(const ConfirmHandler& handler);
+        std::shared_ptr<const Signal> ptr() const;
 
-        const ConfirmHandler& _handler;
+        ConfirmHandler& _handler;
     };
 
-    ConfirmHandler();
-    ~ConfirmHandler();
+    ConfirmHandler() = default;
+    ~ConfirmHandler() = default;
 
     // create a ConfirmConnection to connect after to a confirm/deny handle
-    const Signal& create();
+    std::shared_ptr<Signal> create();
 
     // send the confirmation to previously connected handles (transformed to string)
     // exception must be catched by httplib Server::set_exception_handler
     void confirm(httplib::Response& res, const std::string& confirm_signal_str, bool confirm);
 
 private:
-    struct ConfirmHandlerImpl;
-    std::unique_ptr<ConfirmHandlerImpl> _impl{ nullptr };
+    struct SignalHash
+    {
+        using hash_type = std::hash<std::string>;
+        using is_transparent = void;
+
+        std::size_t operator()(const std::pair<std::string, bool>& key) const;
+        std::size_t operator()(const std::pair<std::shared_ptr<const ConfirmHandler::Signal>, bool>& key) const;
+    };
+
+    using ConnectionHandle = std::function<void(httplib::Response&)>;
+    using ConnectionHandleMap = std::unordered_map<std::pair<std::shared_ptr<const Signal>, bool>, ConnectionHandle, SignalHash, std::equal_to<>>;
+    ConnectionHandleMap _handle_map;
 
     // prevent copy/move
     ConfirmHandler(const ConfirmHandler&) = delete;

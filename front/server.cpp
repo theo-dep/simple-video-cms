@@ -637,7 +637,7 @@ inline void server::update_user_name(const httplib::Request& req, httplib::Respo
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([update_action, redirect_action](httplib::Response& res) {
+            ->on_confirm([update_action, redirect_action](httplib::Response& res) {
                 update_action();
                 redirect_action(res);
             })
@@ -702,7 +702,7 @@ inline void server::update_user_password(const httplib::Request& req, httplib::R
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([update_action, redirect_action](httplib::Response& res) {
+            ->on_confirm([update_action, redirect_action](httplib::Response& res) {
                 update_action();
                 redirect_action(res);
             })
@@ -741,7 +741,7 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([delete_action, redirect_action](httplib::Response& res) {
+            ->on_confirm([delete_action, redirect_action](httplib::Response& res) {
                 delete_action();
                 redirect_action(res);
             })
@@ -921,7 +921,7 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, video_title, allowed_user_ids, updater_user_id, &client](httplib::Response& res) {
+            ->on_confirm([video_id, video_title, allowed_user_ids, updater_user_id, &client](httplib::Response& res) {
                 client.update_video(video_id, video_title, allowed_user_ids);
                 res.set_redirect("/video-list");
                 logging::info{ "Video {} updated by {}", video_id, updater_user_id };
@@ -947,7 +947,7 @@ inline void server::delete_video(const httplib::Request& req, httplib::Response&
 
     const std::string signal_str{
         confirm_handler.create()
-            .on_confirm([video_id, suppressor_user_id, &client](httplib::Response& res) {
+            ->on_confirm([video_id, suppressor_user_id, &client](httplib::Response& res) {
                 client.delete_video(video_id);
                 res.set_redirect("/video-list");
                 logging::info{ "Video {} deleted by {}", video_id, suppressor_user_id };
