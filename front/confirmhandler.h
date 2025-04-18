@@ -52,12 +52,12 @@ private:
         using hash_type = std::hash<std::string>;
         using is_transparent = void;
 
-        std::size_t operator()(const std::string& confirm_signal_str) const;
-        std::size_t operator()(const std::shared_ptr<const ConfirmHandler::Signal>& confirm_signal) const;
+        std::size_t operator()(const std::pair<std::string, bool>& key) const;
+        std::size_t operator()(const std::pair<std::shared_ptr<const ConfirmHandler::Signal>, bool>& key) const;
     };
 
-    using ConnectionHandle = std::function<void(httplib::Response&, std::string, bool)>;
-    using ConnectionHandleMap = std::unordered_multimap<std::shared_ptr<const Signal>, ConnectionHandle, SignalHash, std::equal_to<>>;
+    using ConnectionHandle = std::function<void(httplib::Response&)>;
+    using ConnectionHandleMap = std::unordered_map<std::pair<std::shared_ptr<const Signal>, bool>, ConnectionHandle, SignalHash, std::equal_to<>>;
     ConnectionHandleMap _handle_map;
 
     // prevent copy/move

@@ -1,15 +1,21 @@
 #include "confirmhandler.h"
 
+#include "stringutils.h"
+
 #include <httplib.h>
 
-std::size_t ConfirmHandler::SignalHash::operator()(const std::string& confirm_signal_str) const
+std::size_t ConfirmHandler::SignalHash::operator()(const std::pair<std::string, bool>& key) const
 {
-    return hash_type{}(confirm_signal_str);
+    const auto& [confirm_signal_str, confirm]{ key };
+    const std::size_t h1{ hash_type{}(confirm_signal_str) };
+    const std::size_t h2{ hash_type{}(su::bool_to_string(confirm)) };
+    return h1 ^ (h2 << 1);
 }
 
-std::size_t ConfirmHandler::SignalHash::operator()(const std::shared_ptr<const ConfirmHandler::Signal>& confirm_signal) const
+std::size_t ConfirmHandler::SignalHash::operator()(const std::pair<std::shared_ptr<const ConfirmHandler::Signal>, bool>& key) const
 {
-    return hash_type{}(confirm_signal->to_string());
+    const auto& [confirm_signal, confirm]{ key };
+    return operator()(std::make_pair(confirm_signal->to_string(), confirm));
 }
 
 bool operator==(const std::string& str, const std::shared_ptr<const ConfirmHandler::Signal>& signal)
@@ -22,15 +28,15 @@ struct ConfirmHandler::Signal::Private
     explicit Private() = default;
 };
 
-ConfirmHandler::Signal::Signal(Private, ConfirmHandler& handler)
+ConfirmHandler::Signal::Signal(Private /*unused*/, ConfirmHandler& handler)
     : _handler{ handler }
 {
 }
 
 ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::function<void(httplib::Response&)>& handle)
 {
-    _handler._handle_map.emplace(ptr(), [handle, signal_ptr{ ptr() }](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) {
-        if (confirm_signal_str == signal_ptr && confirm && handle)
+    _handler._handle_map.insert_or_assign(std::make_pair(ptr(), true), [handle](httplib::Response& res) {
+        if (handle)
             handle(res);
     });
     return *this;
@@ -38,8 +44,8 @@ ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::function<v
 
 ConfirmHandler::Signal& ConfirmHandler::Signal::on_deny(const std::function<void(httplib::Response&)>& handle)
 {
-    _handler._handle_map.emplace(ptr(), [handle, signal_ptr{ ptr() }](httplib::Response& res, const std::string& confirm_signal_str, bool confirm) {
-        if (confirm_signal_str == signal_ptr && !confirm && handle)
+    _handler._handle_map.insert_or_assign(std::make_pair(ptr(), false), [handle](httplib::Response& res) {
+        if (handle)
             handle(res);
     });
     return *this;
@@ -64,12 +70,13 @@ std::shared_ptr<ConfirmHandler::Signal> ConfirmHandler::create()
 
 void ConfirmHandler::confirm(httplib::Response& res, const std::string& confirm_signal_str, bool confirm)
 {
-    const auto [it_first_confirm_signal, it_last_confirm_signal]{ _handle_map.equal_range(confirm_signal_str) };
-    std::for_each(it_first_confirm_signal, it_last_confirm_signal,
-                  [&](const ConnectionHandleMap::value_type& item) {
-                      const auto& [confirm_signal, connection_handle]{ item };
-                      connection_handle(res, confirm_signal_str, confirm);
-                  });
+    const ConnectionHandleMap::const_iterator it_handle{ _handle_map.find(std::make_pair(confirm_signal_str, confirm)) };
+    if (it_handle != _handle_map.cend() && it_handle->second)
+        it_handle->second(res);
 
-    _handle_map.erase(it_first_confirm_signal, it_last_confirm_signal);
+    std::erase_if(_handle_map, [&confirm_signal_str](const ConnectionHandleMap::value_type& item) -> bool {
+        const auto& [key, value]{ item };
+        const auto& [confirm_signal, confirm]{ key };
+        return (confirm_signal_str == confirm_signal);
+    });
 }
