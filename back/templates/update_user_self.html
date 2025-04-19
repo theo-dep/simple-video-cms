@@ -23,7 +23,7 @@
 
       <h3>Change username</h3>
 
-      <form class="pure-form pure-form-aligned" action="/update-username/{{ user.id }}" method="post">
+      <form class="pure-form pure-form-aligned" action="/update-username" method="post">
         <fieldset>
           {% if login_error_username %}
           <div class="alert pure-control-group">
@@ -43,7 +43,7 @@
           </div>
           {% endif %}
           <div class="pure-control-group">
-            <input class="pure-input-1" type="text" name="username" placeholder="username" value="{{ user.name }}"
+            <input class="pure-input-1" type="text" name="username" placeholder="username" value="{{ username }}"
               required />
           </div>
           <div class="pure-control-group">
@@ -58,7 +58,7 @@
 
       <h3>Change password</h3>
 
-      <form class="pure-form pure-form-aligned" action="/update-password/{{ user.id }}" method="post">
+      <form class="pure-form pure-form-aligned" action="/update-password" method="post">
         <fieldset>
           {% if login_error_password %}
           <div class="alert pure-control-group">

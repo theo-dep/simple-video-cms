@@ -141,9 +141,9 @@ int server::start()
         .Get("/reset-user/:user_id", sc::serve(reset_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-user/:user_id", sc::serve(delete_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
-        .Get("/update-user/:user_id", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
-        .Post("/update-username/:user_id", sc::serve(update_username, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
-        .Post("/update-password/:user_id", sc::serve(update_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/update-user", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-username", sc::serve(update_username, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Post("/update-password", sc::serve(update_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -357,8 +357,7 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     const inja::json data{
         { "is_logged", is_logged },
         { "is_admin", is_admin },
-        { "video_dict", video_dict(video_ids, client) },
-        { "user_id", user_id }
+        { "video_dict", video_dict(video_ids, client) }
     };
     logging::debug{ data.dump() };
 
@@ -856,7 +855,7 @@ inline void server::set_update_user_content(httplib::Response& res, inja::Enviro
                                             const std::string& user_id, const AlertUpdateUser& alert)
 {
     const inja::json data{
-        { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
+        { "username", client.user_name(user_id) },
         { "login_error_username", alert.login_error_username },
         { "invalid_username", alert.invalid_username },
         { "login_error_password", alert.login_error_password },
@@ -872,7 +871,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     if (!is_logged(req, res, session, client))
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
+    const std::string user_id{ connected_user_id(req, session) };
     set_update_user_content(res, env, client, user_id, {});
 }
 
@@ -881,7 +880,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     if (!is_logged(req, res, session, client))
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
+    const std::string user_id{ connected_user_id(req, session) };
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
@@ -901,9 +900,6 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
 
     client.update_username(user_id, username);
 
-    const std::string updater_user_id{ connected_user_id(req, session) };
-    logging::info{ "Username {} updated by {}", user_id, updater_user_id };
-
     const std::string referrer{ req.get_header_value("Referer") };
     res.set_redirect(referrer);
 }
@@ -913,7 +909,7 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     if (!is_logged(req, res, session, client))
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
+    const std::string user_id{ connected_user_id(req, session) };
 
     const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
@@ -935,9 +931,6 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     }
 
     client.update_password(user_id, new_password);
-
-    const std::string updater_user_id{ connected_user_id(req, session) };
-    logging::info{ "Password {} updated by {}", user_id, updater_user_id };
 
     const std::string referrer{ req.get_header_value("Referer") };
     res.set_redirect(referrer);
