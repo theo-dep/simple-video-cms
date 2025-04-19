@@ -899,9 +899,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     }
 
     client.update_username(user_id, username);
-
-    const std::string referrer{ req.get_header_value("Referer") };
-    res.set_redirect(referrer);
+    res.set_redirect("/update-user");
 }
 
 inline void server::update_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& /*confirm_handler*/, Session& session, const Client& client)
@@ -931,9 +929,7 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     }
 
     client.update_password(user_id, new_password);
-
-    const std::string referrer{ req.get_header_value("Referer") };
-    res.set_redirect(referrer);
+    res.set_redirect("/update-user");
 }
 
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
