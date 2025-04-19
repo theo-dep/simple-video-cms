@@ -141,9 +141,9 @@ int server::start()
         .Get("/reset-user/:user_id", sc::serve(reset_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-user/:user_id", sc::serve(delete_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
-        .Get("/update-user/:user_id", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
-        .Post("/update-username/:user_id", sc::serve(update_username, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
-        .Post("/update-password/:user_id", sc::serve(update_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/update-user", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-username", sc::serve(update_username, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Post("/update-password", sc::serve(update_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -357,8 +357,7 @@ inline void server::home(const httplib::Request& req, httplib::Response& res, in
     const inja::json data{
         { "is_logged", is_logged },
         { "is_admin", is_admin },
-        { "video_dict", video_dict(video_ids, client) },
-        { "user_id", user_id }
+        { "video_dict", video_dict(video_ids, client) }
     };
     logging::debug{ data.dump() };
 
@@ -841,12 +840,17 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 
 namespace server
 {
+    constexpr std::string_view changed_key{ "changed" };
+    constexpr std::string_view username_changed_value{ "username" };
+    constexpr std::string_view password_changed_value{ "password" };
     struct AlertUpdateUser
     {
         bool login_error_username{ false };
         bool invalid_username{ false };
+        bool username_changed{ false };
         bool login_error_password{ false };
         bool update_password_error{ false };
+        bool password_changed{ false };
     };
     void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
                                  const std::string& user_id, const AlertUpdateUser& alert);
@@ -856,11 +860,13 @@ inline void server::set_update_user_content(httplib::Response& res, inja::Enviro
                                             const std::string& user_id, const AlertUpdateUser& alert)
 {
     const inja::json data{
-        { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
+        { "username", client.user_name(user_id) },
         { "login_error_username", alert.login_error_username },
         { "invalid_username", alert.invalid_username },
+        { "username_changed", alert.username_changed },
         { "login_error_password", alert.login_error_password },
-        { "update_password_error", alert.update_password_error }
+        { "update_password_error", alert.update_password_error },
+        { "password_changed", alert.password_changed }
     };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.update_user_self_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -872,8 +878,14 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     if (!is_logged(req, res, session, client))
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
-    set_update_user_content(res, env, client, user_id, {});
+    AlertUpdateUser alert;
+    if (const std::string changed_value{ req.get_param_value(std::string{ changed_key }) };
+        changed_value == username_changed_value)
+        alert.username_changed = true;
+    else if (changed_value == password_changed_value)
+        alert.password_changed = true;
+    const std::string user_id{ connected_user_id(req, session) };
+    set_update_user_content(res, env, client, user_id, alert);
 }
 
 inline void server::update_username(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& /*confirm_handler*/, Session& session, const Client& client)
@@ -881,7 +893,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     if (!is_logged(req, res, session, client))
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
+    const std::string user_id{ connected_user_id(req, session) };
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
@@ -900,12 +912,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     }
 
     client.update_username(user_id, username);
-
-    const std::string updater_user_id{ connected_user_id(req, session) };
-    logging::info{ "Username {} updated by {}", user_id, updater_user_id };
-
-    const std::string referrer{ req.get_header_value("Referer") };
-    res.set_redirect(referrer);
+    res.set_redirect("/update-user" + std::format("?{}={}", changed_key, username_changed_value));
 }
 
 inline void server::update_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& /*confirm_handler*/, Session& session, const Client& client)
@@ -913,7 +920,7 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     if (!is_logged(req, res, session, client))
         return;
 
-    const std::string user_id{ req.path_params.at("user_id") };
+    const std::string user_id{ connected_user_id(req, session) };
 
     const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
@@ -935,12 +942,7 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     }
 
     client.update_password(user_id, new_password);
-
-    const std::string updater_user_id{ connected_user_id(req, session) };
-    logging::info{ "Password {} updated by {}", user_id, updater_user_id };
-
-    const std::string referrer{ req.get_header_value("Referer") };
-    res.set_redirect(referrer);
+    res.set_redirect("/update-user" + std::format("?{}={}", changed_key, password_changed_value));
 }
 
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
