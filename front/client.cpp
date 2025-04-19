@@ -113,9 +113,21 @@ std::string Client::add_user_page() const
     return client::format_page(res);
 }
 
-std::string Client::update_user_page() const
+std::string Client::add_password_page() const
 {
-    const httplib::Result res{ _client->Get("/html/update_user.html") };
+    const httplib::Result res{ _client->Get("/html/add_password.html") };
+    return client::format_page(res);
+}
+
+std::string Client::update_user_admin_page() const
+{
+    const httplib::Result res{ _client->Get("/html/update_user_admin.html") };
+    return client::format_page(res);
+}
+
+std::string Client::update_user_self_page() const
+{
+    const httplib::Result res{ _client->Get("/html/update_user_self.html") };
     return client::format_page(res);
 }
 
@@ -277,42 +289,58 @@ std::string Client::user_id(const std::string& username) const
     return client::format_page(res);
 }
 
-std::string Client::add_admin(const std::string& username, const std::string& password) const
+std::string Client::add_admin(const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "username", .content = username, .filename = "", .content_type = "" },
-        { .name = "password", .content = password, .filename = "", .content_type = "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-admin", items) };
     return client::format_page(res);
 }
 
-std::string Client::add_user(const std::string& username, const std::string& password) const
+std::string Client::add_user(const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "username", .content = username, .filename = "", .content_type = "" },
-        { .name = "password", .content = password, .filename = "", .content_type = "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-user", items) };
     return client::format_page(res);
 }
 
-void Client::update_user_name(const std::string& user_id, const std::string& username) const
-{
-    const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
-        { .name = "username", .content = username, .filename = "", .content_type = "" }
-    };
-    _client->Post("/update-user-name", items);
-}
-
-void Client::update_user_password(const std::string& user_id, const std::string& password) const
+std::string Client::add_password(const std::string& user_id, const std::string& password) const
 {
     const httplib::MultipartFormDataItems items{
         { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
         { .name = "password", .content = password, .filename = "", .content_type = "" }
     };
-    _client->Post("/update-user-password", items);
+    const httplib::Result res{ _client->Post("/add-password", items) };
+    return client::format_page(res);
+}
+
+void Client::update_username(const std::string& user_id, const std::string& username) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
+        { .name = "username", .content = username, .filename = "", .content_type = "" }
+    };
+    _client->Post("/update-username", items);
+}
+
+void Client::update_password(const std::string& user_id, const std::string& password) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
+        { .name = "password", .content = password, .filename = "", .content_type = "" }
+    };
+    _client->Post("/update-password", items);
+}
+
+void Client::reset_user(const std::string& user_id) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
+    };
+    _client->Post("/reset-user", items);
 }
 
 void Client::delete_user(const std::string& user_id) const
@@ -321,6 +349,15 @@ void Client::delete_user(const std::string& user_id) const
         { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
     };
     _client->Post("/delete-user", items);
+}
+
+bool Client::is_first_connection(const std::string& user_id) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
+    };
+    const httplib::Result res{ _client->Post("/is-first-connection", items) };
+    return su::string_to_bool(client::format_page(res));
 }
 
 bool Client::is_valid_user(const std::string& user_id, const std::string& password) const

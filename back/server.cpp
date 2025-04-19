@@ -40,9 +40,12 @@ namespace server
 
     void add_admin(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_user(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_user_name(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_user_password(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void add_password(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_username(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_password(const httplib::Request& req, httplib::Response& res, const Database& db);
     void delete_user(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void reset_user(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void is_first_connection(const httplib::Request& req, httplib::Response& res, const Database& db);
     void is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void user_name(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -106,9 +109,12 @@ int server::start()
 
         .Post("/add-admin", sc::serve(add_admin, std::cref(db)))
         .Post("/add-user", sc::serve(add_user, std::cref(db)))
-        .Post("/update-user-name", sc::serve(update_user_name, std::cref(db)))
-        .Post("/update-user-password", sc::serve(update_user_password, std::cref(db)))
+        .Post("/add-password", sc::serve(add_password, std::cref(db)))
+        .Post("/update-username", sc::serve(update_username, std::cref(db)))
+        .Post("/update-password", sc::serve(update_password, std::cref(db)))
+        .Post("/reset-user", sc::serve(reset_user, std::cref(db)))
         .Post("/delete-user", sc::serve(delete_user, std::cref(db)))
+        .Post("/is-first-connection", sc::serve(is_first_connection, std::cref(db)))
         .Post("/is-valid-user", sc::serve(is_valid_user, std::cref(db)))
 
         .Get("/user-list", sc::serve(user_list, std::cref(db)))
@@ -364,7 +370,7 @@ inline void server::user_id(const httplib::Request& req, httplib::Response& res,
 
 inline void server::add_admin(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("password") || !req.has_file("username")) {
+    if (!req.has_file("username")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -373,8 +379,7 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
     const std::string username{ req.get_file_value("username").content };
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
-    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    const std::optional admin_id{ db.add_admin(username, password, salt) };
+    const std::optional admin_id{ db.add_admin(username, salt) };
     if (!admin_id.has_value()) {
         logging::error{ R"(Fail to add admin "{}")", username };
         res.status = httplib::StatusCode::InternalServerError_500;
@@ -386,7 +391,7 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
 
 inline void server::add_user(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("password") || !req.has_file("username")) {
+    if (!req.has_file("username")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -395,8 +400,7 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     const std::string username{ req.get_file_value("username").content };
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
-    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
-    const std::optional user_id{ db.add_user(username, password, salt) };
+    const std::optional user_id{ db.add_user(username, salt) };
     if (!user_id.has_value()) {
         logging::error{ R"(Fail to add user "{}")", username };
         res.status = httplib::StatusCode::InternalServerError_500;
@@ -406,25 +410,7 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
     res.set_content(su::int_to_string(user_id.value()), "plan/text");
 }
 
-inline void server::update_user_name(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_file("username") || !req.has_file("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
-    const std::string username{ req.get_file_value("username").content };
-
-    const std::optional success_user_id{ db.update_user_name(user_id, username) };
-    if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to update username "{}")", user_id };
-        return;
-    }
-}
-
-inline void server::update_user_password(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::add_password(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
     if (!req.has_file("password") || !req.has_file("user_id")) {
         logging::error{ "Missing multipart form data" };
@@ -436,9 +422,66 @@ inline void server::update_user_password(const httplib::Request& req, httplib::R
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
-    const std::optional success_user_id{ db.update_user_password(user_id, password) };
+    const std::optional success_user_id{ db.add_password(user_id, password) };
     if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to update user password "{}")", user_id };
+        logging::error{ R"(Fail to add password "{}")", user_id };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.set_content(su::int_to_string(success_user_id.value()), "plan/text");
+}
+
+inline void server::update_username(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("username") || !req.has_file("user_id")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const std::string username{ req.get_file_value("username").content };
+
+    const std::optional success_user_id{ db.update_username(user_id, username) };
+    if (!success_user_id.has_value()) {
+        logging::error{ R"(Fail to update username "{}")", user_id };
+        return;
+    }
+}
+
+inline void server::update_password(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("password") || !req.has_file("user_id")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const std::string salt{ db.user_salt(user_id) };
+    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
+
+    const std::optional success_user_id{ db.update_password(user_id, password) };
+    if (!success_user_id.has_value()) {
+        logging::error{ R"(Fail to update password "{}")", user_id };
+        return;
+    }
+}
+
+inline void server::reset_user(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("user_id")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+
+    const std::optional success_user_id{ db.clear_password(user_id) };
+    if (!success_user_id.has_value()) {
+        logging::error{ R"(Fail to clear password "{}")", user_id };
         return;
     }
 }
@@ -458,6 +501,20 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     }
 }
 
+inline void server::is_first_connection(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("user_id")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const std::optional database_password{ db.user_password(user_id) };
+    const bool is_first_connection{ !database_password.has_value() };
+    res.set_content(su::bool_to_string(is_first_connection), "plain/text");
+}
+
 inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
     if (!req.has_file("password") || !req.has_file("user_id")) {
@@ -470,8 +527,9 @@ inline void server::is_valid_user(const httplib::Request& req, httplib::Response
     const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
 
-    const std::string database_password{ db.user_password(user_id) };
-    res.set_content(su::bool_to_string(password == database_password), "plain/text");
+    const std::optional database_password{ db.user_password(user_id) };
+    const bool is_valid_user{ database_password.has_value() && password == database_password.value() };
+    res.set_content(su::bool_to_string(is_valid_user), "plain/text");
 }
 
 inline void server::user_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)

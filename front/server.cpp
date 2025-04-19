@@ -24,8 +24,13 @@ namespace server
     void set_exception_handler(httplib::Server& server);
     void set_logger(httplib::Server& server);
 
+    void register_session(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& user_id);
+
+    bool is_logged(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
     bool is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
     std::string connected_user_id(const httplib::Request& req, const Session& session);
+
+    bool username_exists(const std::string& username, const Client& client);
 
     inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client);
 
@@ -34,7 +39,7 @@ namespace server
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void dashboard(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
-    void login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void logout(const httplib::Request& req, httplib::Response& res, Session& session);
 
@@ -44,13 +49,21 @@ namespace server
     void add_user_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
 
+    void add_password_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void add_password_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+
     void confirm_action(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client, const std::string& confirm_signal_str);
     void confirm(const httplib::Request& req, httplib::Response& res, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
-    void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
-    void update_user_name(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
-    void update_user_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+    void update_user_admin(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void update_username_admin(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+
+    void reset_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void delete_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+
+    void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void update_username(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+    void update_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -105,7 +118,7 @@ int server::start()
         .Get("/", sc::serve(home, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/dashboard", sc::serve(dashboard, std::ref(env), std::cref(session), std::cref(client)))
 
-        .Get("/login", sc::serve(login_get, std::ref(env), std::ref(session), std::cref(client)))
+        .Get("/login", sc::serve(login_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/login", sc::serve(login_post, std::ref(env), std::ref(session), std::cref(client)))
 
         .Get("/logout", sc::serve(logout, std::ref(session)))
@@ -116,12 +129,21 @@ int server::start()
         .Get("/add-user", sc::serve(add_user_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/add-user", sc::serve(add_user_post, std::ref(env), std::cref(session), std::cref(client)))
 
+        .Get("/add-password", sc::serve(add_password_get, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/add-password/:username", sc::serve(add_password_get, std::ref(env), std::cref(session), std::cref(client)))
+        .Post("/add-password", sc::serve(add_password_post, std::ref(env), std::ref(session), std::cref(client)))
+
         .Post("/confirm", sc::serve(confirm, std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
-        .Get("/update-user/:user_id", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
-        .Post("/update-user-name/:user_id", sc::serve(update_user_name, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
-        .Post("/update-user-password/:user_id", sc::serve(update_user_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/update-user-admin/:user_id", sc::serve(update_user_admin, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-username-admin/:user_id", sc::serve(update_username_admin, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+
+        .Get("/reset-user/:user_id", sc::serve(reset_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Get("/delete-user/:user_id", sc::serve(delete_user, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+
+        .Get("/update-user/:user_id", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-username/:user_id", sc::serve(update_username, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Post("/update-password/:user_id", sc::serve(update_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -237,6 +259,24 @@ inline void server::set_logger(httplib::Server& server)
     });
 }
 
+inline void server::register_session(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& user_id)
+{
+    const std::string session_id{ session.create_session(user_id) };
+    res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(req.get_header_value("Host"), session_id));
+}
+
+inline bool server::is_logged(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& /*client*/)
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    if (!session.is_valid_session(session_id)) {
+        res.set_redirect("/login");
+        return false;
+    }
+
+    return true;
+}
+
 inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
@@ -255,11 +295,19 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
     return true;
 }
 
-std::string server::connected_user_id(const httplib::Request& req, const Session& session)
+inline std::string server::connected_user_id(const httplib::Request& req, const Session& session)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     return session.user_from_session(session_id);
+}
+
+inline bool server::username_exists(const std::string& username, const Client& client)
+{
+    const std::string tested_user_id{ client.user_id(username) };
+    const bool is_user{ client.is_user(tested_user_id) };
+    const bool is_admin{ client.is_admin(tested_user_id) };
+    return (is_user || is_admin);
 }
 
 inline inja::json server::video_dict(const std::vector<std::string>& video_ids, const Client& client)
@@ -351,7 +399,7 @@ inline void server::set_login_content(httplib::Response& res, inja::Environment&
     res.set_content(body, "text/html");
 }
 
-inline void server::login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+inline void server::login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     if (session.is_valid_session_from_cookie(cookie)) {
@@ -364,25 +412,42 @@ inline void server::login_get(const httplib::Request& req, httplib::Response& re
 
 inline void server::login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
 {
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    if (username.empty()) {
+        // first connection link clicked maybe
+        res.set_redirect("/add-password");
+        return;
+    }
+
+    if (!username_exists(username, client)) {
+        set_login_content(res, env, client, { .login_error = true });
+        return;
+    }
+
+    const std::string user_id{ client.user_id(username) };
+    const bool is_first_connection{ client.is_first_connection(user_id) };
+    if (is_first_connection) {
+        res.set_redirect("/add-password/" + username);
+        return;
+    }
+
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
         set_login_content(res, env, client, { .login_error = true });
         return;
     }
 
-    std::string username{ req.get_param_value("username") };
-    su::trim(username);
-    su::lower(username);
-
-    const std::string user_id{ client.user_id(username) };
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
-    if (is_valid_user) {
-        const std::string session_id{ session.create_session(user_id) };
-        res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(session_id));
-        res.set_redirect("/");
-    } else {
+    if (!is_valid_user) {
         set_login_content(res, env, client, { .login_error = true });
+        return;
     }
+
+    register_session(req, res, session, user_id);
+    res.set_redirect("/");
 }
 
 inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
@@ -405,7 +470,8 @@ inline void server::admin_list(const httplib::Request& req, httplib::Response& r
         const inja::json admin = {
             { "id", user_id },
             { "name", client.user_name(user_id) },
-            { "is_super_admin", is_super_admin }
+            { "is_super_admin", is_super_admin },
+            { "is_first_connection", client.is_first_connection(user_id) }
         };
         admin_dict += admin;
     }
@@ -427,7 +493,8 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
     for (const std::string& user_id : user_list) {
         const inja::json user = {
             { "id", user_id },
-            { "name", client.user_name(user_id) }
+            { "name", client.user_name(user_id) },
+            { "is_first_connection", client.is_first_connection(user_id) }
         };
         user_dict += user;
     }
@@ -443,7 +510,6 @@ namespace server
 {
     struct AlertAddUser
     {
-        bool create_error{ false };
         bool invalid_username{ false };
     };
     void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, const AlertAddUser& alert);
@@ -453,7 +519,6 @@ inline void server::set_add_user_content(httplib::Response& res, inja::Environme
 {
     const inja::json data{
         { "is_admin", is_admin },
-        { "create_error", alert.create_error },
         { "invalid_username", alert.invalid_username }
     };
     logging::debug{ data.dump() };
@@ -475,18 +540,7 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
-    const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
-    const std::string password{ crypto::sha512(req.get_param_value("password")) };
-    if (password.empty()) {
-        set_add_user_content(res, env, client, is_admin_req, { .create_error = true });
-        return;
-    }
-
-    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
-    if (confirm_password != password) {
-        set_add_user_content(res, env, client, is_admin_req, { .create_error = true });
-        return;
-    }
+    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
 
     std::string username{ req.get_param_value("username") };
     su::trim(username);
@@ -494,20 +548,104 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
 
     const std::string creator_user_id{ connected_user_id(req, session) };
 
-    std::string user_id{ client.user_id(username) };
-    const bool is_user{ client.is_user(user_id) };
-    const bool is_admin{ client.is_admin(user_id) };
-    if (is_user || is_admin) {
-        set_add_user_content(res, env, client, is_admin_req, { .invalid_username = true });
-    } else if (is_admin_req) {
-        user_id = client.add_admin(username, password);
+    if (username_exists(username, client)) {
+        set_add_user_content(res, env, client, is_admin, { .invalid_username = true });
+    } else if (is_admin) {
+        const std::string user_id{ client.add_admin(username) };
         res.set_redirect("/admin-list");
         logging::info{ "Admin {} created by {}", user_id, creator_user_id };
     } else {
-        user_id = client.add_user(username, password);
+        const std::string user_id{ client.add_user(username) };
         res.set_redirect("/user-list");
         logging::info{ "User {} created by {}", user_id, creator_user_id };
     }
+}
+
+namespace server
+{
+    struct AlertAddPassword
+    {
+        bool login_error{ false };
+        bool invalid_password{ false };
+    };
+    void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, const AlertAddPassword& alert);
+}
+
+inline void server::set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, const AlertAddPassword& alert)
+{
+    const inja::json data{
+        { "username", username },
+        { "login_error", alert.login_error },
+        { "invalid_password", alert.invalid_password }
+    };
+    logging::debug{ data.dump() };
+    const std::string body{ env.render(client.add_password_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::add_password_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    if (session.is_valid_session_from_cookie(cookie)) {
+        res.set_redirect("/");
+        return;
+    }
+
+    if (req.path_params.contains("username")) {
+        const std::string username{ req.path_params.at("username") };
+        set_add_password_content(res, env, client, username, {});
+    } else {
+        set_add_password_content(res, env, client, {}, {});
+    }
+}
+
+inline void server::add_password_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    if (session.is_valid_session_from_cookie(cookie)) {
+        res.set_redirect("/");
+        return;
+    }
+
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    if (!username_exists(username, client)) {
+        set_add_password_content(res, env, client, {}, { .login_error = true });
+        return;
+    }
+
+    const std::string user_id{ client.user_id(username) };
+    const bool is_first_connection{ client.is_first_connection(user_id) };
+    if (!is_first_connection) {
+        set_add_password_content(res, env, client, {}, { .login_error = true });
+        return;
+    }
+
+    const std::string password{ crypto::sha512(req.get_param_value("password")) };
+    if (password.empty()) {
+        set_add_password_content(res, env, client, username, { .invalid_password = true });
+        return;
+    }
+
+    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
+    if (confirm_password != password) {
+        set_add_password_content(res, env, client, username, { .invalid_password = true });
+        return;
+    }
+
+    const std::string user_id_check{ client.add_password(user_id, password) };
+    if (user_id != user_id_check) {
+        logging::error{ "Trying to add password with an invalid user" };
+        set_add_password_content(res, env, client, {}, { .login_error = true });
+        return;
+    }
+
+    logging::info{ "User password updated by {}", user_id };
+
+    register_session(req, res, session, user_id);
+    res.set_redirect("/");
 }
 
 namespace server
@@ -545,91 +683,64 @@ inline void server::confirm(const httplib::Request& req, httplib::Response& res,
 
 namespace server
 {
-    struct AlertUpdateUser
+    struct AlertUpdateUserAdmin
     {
-        bool login_error_username{ false };
         bool invalid_username{ false };
-        bool login_error_password{ false };
-        bool update_password_error{ false };
     };
-    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                 const std::string& user_id, bool is_admin, const AlertUpdateUser& alert);
+    void set_update_user_admin_content(httplib::Response& res, inja::Environment& env, const Client& client,
+                                       const std::string& user_id, bool is_admin, const AlertUpdateUserAdmin& alert);
 }
 
-inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                            const std::string& user_id, bool is_admin, const AlertUpdateUser& alert)
+inline void server::set_update_user_admin_content(httplib::Response& res, inja::Environment& env, const Client& client,
+                                                  const std::string& user_id, bool is_admin, const AlertUpdateUserAdmin& alert)
 {
     const inja::json data{
         { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
         { "is_admin", is_admin },
-        { "login_error_username", alert.login_error_username },
-        { "invalid_username", alert.invalid_username },
-        { "login_error_password", alert.login_error_password },
-        { "update_password_error", alert.update_password_error }
+        { "invalid_username", alert.invalid_username }
     };
     logging::debug{ data.dump() };
-    const std::string body{ env.render(client.update_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    const std::string body{ env.render(client.update_user_admin_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
 
-inline void server::update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+inline void server::update_user_admin(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
 {
-    const std::string updater_user_id{ connected_user_id(req, session) };
-    const std::string user_id{ req.path_params.at("user_id") };
-    const bool update_self{ updater_user_id == user_id };
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
 
-    if (!update_self && !is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    const std::string user_id{ req.path_params.at("user_id") };
+    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
+    set_update_user_admin_content(res, env, client, user_id, is_admin, {});
+}
+
+inline void server::update_username_admin(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
         return;
 
     const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
-    set_update_user_content(res, env, client, user_id, is_admin, {});
-}
 
-inline void server::update_user_name(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
-{
     const std::string updater_user_id{ connected_user_id(req, session) };
     const std::string user_id{ req.path_params.at("user_id") };
-    const bool update_self{ updater_user_id == user_id };
-
-    if (!update_self && !is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
-        return;
-
-    const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
-
-    const std::string password{ crypto::sha512(req.get_param_value("password")) };
-    const bool is_valid_user{ client.is_valid_user(user_id, password) };
-    if (!is_valid_user) {
-        set_update_user_content(res, env, client, user_id, is_admin_req, { .login_error_username = true });
-        return;
-    }
 
     std::string username{ req.get_param_value("username") };
     su::trim(username);
     su::lower(username);
 
-    const std::string tested_user_id{ client.user_id(username) };
-    const bool is_user{ client.is_user(tested_user_id) };
-    const bool is_admin{ client.is_admin(tested_user_id) };
-    if (user_id != tested_user_id && (is_user || is_admin)) {
-        set_update_user_content(res, env, client, user_id, is_admin_req, { .invalid_username = true });
+    if (username_exists(username, client)) {
+        set_update_user_admin_content(res, env, client, user_id, is_admin, { .invalid_username = true });
         return;
     }
 
-    const auto update_action{ [user_id, username, is_admin_req, updater_user_id, &client] {
-        client.update_user_name(user_id, username);
-        const std::string user_type{ is_admin_req ? "Admin" : "User" };
+    const auto update_action{ [user_id, username, is_admin, updater_user_id, &client] {
+        client.update_username(user_id, username);
+        const std::string user_type{ is_admin ? "Admin" : "User" };
         logging::info{ "{} name {} updated by {}", user_type, user_id, updater_user_id };
     } };
 
-    // no confirm
-    if (update_self) {
-        update_action();
-        res.set_redirect("/");
-        return;
-    }
-
-    const auto redirect_action{ [is_admin_req](httplib::Response& res) {
-        if (is_admin_req)
+    const auto redirect_action{ [is_admin](httplib::Response& res) {
+        if (is_admin)
             res.set_redirect("/admin-list");
         else
             res.set_redirect("/user-list");
@@ -650,51 +761,25 @@ inline void server::update_user_name(const httplib::Request& req, httplib::Respo
     confirm_action(req, res, env, session, client, signal_str);
 }
 
-inline void server::update_user_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+inline void server::reset_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
 {
-    const std::string updater_user_id{ connected_user_id(req, session) };
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
     const std::string user_id{ req.path_params.at("user_id") };
-    const bool update_self{ updater_user_id == user_id };
+    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
+    logging::debug{ "Reset {} {}", user_id, client.user_name(user_id) };
 
-    if (!update_self && !is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
-        return;
+    const std::string suppressor_user_id{ connected_user_id(req, session) };
 
-    const bool is_admin_req{ su::string_to_bool(req.get_param_value("is_admin")) };
-
-    const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
-    const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
-    if (!is_valid_user) {
-        set_update_user_content(res, env, client, user_id, is_admin_req, { .login_error_password = true });
-        return;
-    }
-
-    const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
-    if (new_password.empty()) {
-        set_update_user_content(res, env, client, user_id, is_admin_req, { .update_password_error = true });
-        return;
-    }
-
-    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
-    if (new_password != confirm_password) {
-        set_update_user_content(res, env, client, user_id, is_admin_req, { .update_password_error = true });
-        return;
-    }
-
-    const auto update_action{ [user_id, new_password, is_admin_req, updater_user_id, &client] {
-        client.update_user_password(user_id, new_password);
-        const std::string user_type{ is_admin_req ? "Admin" : "User" };
-        logging::info{ "{} password {} updated by {}", user_type, user_id, updater_user_id };
+    const auto reset_action{ [user_id, is_admin, suppressor_user_id, &client] {
+        client.reset_user(user_id);
+        const std::string user_type{ is_admin ? "Admin" : "User" };
+        logging::info{ "{} {} reset by {}", user_type, user_id, suppressor_user_id };
     } };
 
-    // no confirm
-    if (update_self) {
-        update_action();
-        res.set_redirect("/");
-        return;
-    }
-
-    const auto redirect_action{ [is_admin_req](httplib::Response& res) {
-        if (is_admin_req)
+    const auto redirect_action{ [is_admin](httplib::Response& res) {
+        if (is_admin)
             res.set_redirect("/admin-list");
         else
             res.set_redirect("/user-list");
@@ -702,8 +787,8 @@ inline void server::update_user_password(const httplib::Request& req, httplib::R
 
     const std::string signal_str{
         confirm_handler.create()
-            ->on_confirm([update_action, redirect_action](httplib::Response& res) {
-                update_action();
+            ->on_confirm([reset_action, redirect_action](httplib::Response& res) {
+                reset_action();
                 redirect_action(res);
             })
             .on_deny([redirect_action](httplib::Response& res) {
@@ -721,19 +806,19 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
         return;
 
     const std::string user_id{ req.path_params.at("user_id") };
-    const bool admin{ su::string_to_bool(req.get_param_value("is_admin")) };
+    const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
     logging::debug{ "Delete {} {}", user_id, client.user_name(user_id) };
 
     const std::string suppressor_user_id{ connected_user_id(req, session) };
 
-    const auto delete_action{ [user_id, admin, suppressor_user_id, &client] {
+    const auto delete_action{ [user_id, is_admin, suppressor_user_id, &client] {
         client.delete_user(user_id);
-        const std::string user_type{ admin ? "Admin" : "User" };
+        const std::string user_type{ is_admin ? "Admin" : "User" };
         logging::info{ "{} {} deleted by {}", user_type, user_id, suppressor_user_id };
     } };
 
-    const auto redirect_action{ [admin](httplib::Response& res) {
-        if (admin)
+    const auto redirect_action{ [is_admin](httplib::Response& res) {
+        if (is_admin)
             res.set_redirect("/admin-list");
         else
             res.set_redirect("/user-list");
@@ -752,6 +837,110 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
     };
 
     confirm_action(req, res, env, session, client, signal_str);
+}
+
+namespace server
+{
+    struct AlertUpdateUser
+    {
+        bool login_error_username{ false };
+        bool invalid_username{ false };
+        bool login_error_password{ false };
+        bool update_password_error{ false };
+    };
+    void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
+                                 const std::string& user_id, const AlertUpdateUser& alert);
+}
+
+inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
+                                            const std::string& user_id, const AlertUpdateUser& alert)
+{
+    const inja::json data{
+        { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
+        { "login_error_username", alert.login_error_username },
+        { "invalid_username", alert.invalid_username },
+        { "login_error_password", alert.login_error_password },
+        { "update_password_error", alert.update_password_error }
+    };
+    logging::debug{ data.dump() };
+    const std::string body{ env.render(client.update_user_self_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    if (!is_logged(req, res, session, client))
+        return;
+
+    const std::string user_id{ req.path_params.at("user_id") };
+    set_update_user_content(res, env, client, user_id, {});
+}
+
+inline void server::update_username(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& /*confirm_handler*/, Session& session, const Client& client)
+{
+    if (!is_logged(req, res, session, client))
+        return;
+
+    const std::string user_id{ req.path_params.at("user_id") };
+
+    const std::string password{ crypto::sha512(req.get_param_value("password")) };
+    const bool is_valid_user{ client.is_valid_user(user_id, password) };
+    if (!is_valid_user) {
+        set_update_user_content(res, env, client, user_id, { .login_error_username = true });
+        return;
+    }
+
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    if (username_exists(username, client)) {
+        set_update_user_content(res, env, client, user_id, { .invalid_username = true });
+        return;
+    }
+
+    client.update_username(user_id, username);
+
+    const std::string updater_user_id{ connected_user_id(req, session) };
+    logging::info{ "Username {} updated by {}", user_id, updater_user_id };
+
+    const std::string referrer{ req.get_header_value("Referer") };
+    res.set_redirect(referrer);
+}
+
+inline void server::update_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& /*confirm_handler*/, Session& session, const Client& client)
+{
+    if (!is_logged(req, res, session, client))
+        return;
+
+    const std::string user_id{ req.path_params.at("user_id") };
+
+    const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
+    const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
+    if (!is_valid_user) {
+        set_update_user_content(res, env, client, user_id, { .login_error_password = true });
+        return;
+    }
+
+    const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
+    if (new_password.empty()) {
+        set_update_user_content(res, env, client, user_id, { .update_password_error = true });
+        return;
+    }
+
+    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
+    if (new_password != confirm_password) {
+        set_update_user_content(res, env, client, user_id, { .update_password_error = true });
+        return;
+    }
+
+    client.update_password(user_id, new_password);
+
+    const std::string updater_user_id{ connected_user_id(req, session) };
+    logging::info{ "Password {} updated by {}", user_id, updater_user_id };
+
+    const std::string referrer{ req.get_header_value("Referer") };
+    res.set_redirect(referrer);
 }
 
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
@@ -1045,7 +1234,7 @@ namespace server
 
 inline bool server::request_from_watch_video(const httplib::Request& req, httplib::Response& res, const Client& client, const std::string& video_id)
 {
-    const std::string& referrer{ req.get_header_value("Referer") };
+    const std::string referrer{ req.get_header_value("Referer") };
     if (!referrer.ends_with("/watch-video/" + video_id)) {
         const std::string body{ client.error_page_403() };
         res.set_content(body, "text/html");

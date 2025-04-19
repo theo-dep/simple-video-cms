@@ -20,13 +20,7 @@
         pure-menu pure-menu-horizontal">
       <a href="/" class="menu-link pure-menu-heading pure-menu-link">{{ website_name }}</a>
 
-      {% if is_admin %}
-    </div>
-    <div class="pure-u-1 pure-u-md-4-5 menu-scrollable pure-menu pure-menu-horizontal pure-menu-scrollable">
-      {% endif %}
-
-      <ul class="menu-list pure-menu-list
-          {% if is_admin %} menu-scrollable-list {% endif %}">
+      <ul class="menu-list pure-menu-list">
         {% if not is_logged %}
         <li class="pure-menu-item">
           <a href="/login" class="menu-link pure-menu-link">Login</a>
@@ -36,30 +30,16 @@
         <li class="pure-menu-item">
           <a href="/dashboard" class="menu-link pure-menu-link">Dashboard</a>
         </li>
-        <li class="pure-menu-item">
-          <a href="/admin-list" class="menu-link pure-menu-link">Admin List</a>
-        </li>
-        <li class="pure-menu-item">
-          <a href="/user-list" class="menu-link pure-menu-link">User List</a>
-        </li>
-        <li class="pure-menu-item">
-          <a href="/video-list" class="menu-link pure-menu-link">Video List</a>
-        </li>
-        {% else %}
-        <li class="pure-menu-item">
-          <a href="/update-user/{{ user_id }}?is_admin=false" class="menu-link pure-menu-link">Account</a>
-        </li>
         {% endif %}
+        <li class="pure-menu-item">
+          <a href="/update-user/{{ user_id }}" class="menu-link pure-menu-link">Account</a>
+        </li>
         <li class="pure-menu-item">
           <a href="/logout" class="menu-link pure-menu-link">Logout</a>
         </li>
         {% endif %}
       </ul>
     </div>
-
-    {% if is_admin %}
-    <div class="pure-u-1 pure-u-md-2-3"></div>
-    {% endif %}
 
     <div class="pure-u-1 pure-u-md-1-3">
       <form class="form-search pure-form pure-g">

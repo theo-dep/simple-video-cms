@@ -222,11 +222,10 @@ bool Database::is_user(int id) const
                .size() == 1;
 }
 
-std::optional<int> Database::add_admin(const std::string& name, const std::string& password, const std::string& salt) const
+std::optional<int> Database::add_admin(const std::string& name, const std::string& salt) const
 {
     User user_admin{
         .name = name,
-        .password = password,
         .salt = salt
     };
 
@@ -241,11 +240,10 @@ std::optional<int> Database::add_admin(const std::string& name, const std::strin
     return admin.id;
 }
 
-std::optional<int> Database::add_user(const std::string& name, const std::string& password, const std::string& salt) const
+std::optional<int> Database::add_user(const std::string& name, const std::string& salt) const
 {
     User user{
         .name = name,
-        .password = password,
         .salt = salt
     };
 
@@ -254,25 +252,7 @@ std::optional<int> Database::add_user(const std::string& name, const std::string
     return user.id;
 }
 
-std::optional<int> Database::update_user_name(int id, const std::string& name) const
-{
-    database::StorageType storage{ database::storage(_path) };
-    const std::optional user_id{
-        storage.get_optional<User>(id)
-            .and_then([&](User user) -> std::optional<int> {
-                user.name = name;
-                storage.update(user);
-                return id;
-            })
-            .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to update user name "{}")", id };
-                return std::nullopt;
-            })
-    };
-    return user_id;
-}
-
-std::optional<int> Database::update_user_password(int id, const std::string& password) const
+std::optional<int> Database::add_password(int id, const std::string& password) const
 {
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
@@ -283,7 +263,61 @@ std::optional<int> Database::update_user_password(int id, const std::string& pas
                 return id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to update user password "{}")", id };
+                logging::error{ R"(Fail to add password "{}")", id };
+                return std::nullopt;
+            })
+    };
+    return user_id;
+}
+
+std::optional<int> Database::update_username(int id, const std::string& name) const
+{
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional user_id{
+        storage.get_optional<User>(id)
+            .and_then([&](User user) -> std::optional<int> {
+                user.name = name;
+                storage.update(user);
+                return id;
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to update username "{}")", id };
+                return std::nullopt;
+            })
+    };
+    return user_id;
+}
+
+std::optional<int> Database::update_password(int id, const std::string& password) const
+{
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional user_id{
+        storage.get_optional<User>(id)
+            .and_then([&](User user) -> std::optional<int> {
+                user.password = password;
+                storage.update(user);
+                return id;
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to update password "{}")", id };
+                return std::nullopt;
+            })
+    };
+    return user_id;
+}
+
+std::optional<int> Database::clear_password(int id) const
+{
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional user_id{
+        storage.get_optional<User>(id)
+            .and_then([&](User user) -> std::optional<int> {
+                user.password.reset();
+                storage.update(user);
+                return id;
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to clear password "{}")", id };
                 return std::nullopt;
             })
     };
@@ -330,20 +364,21 @@ std::string Database::user_name(int id) const
     return user_name.value_or(std::string{});
 }
 
-std::string Database::user_password(int id) const
+std::optional<std::string> Database::user_password(int id) const
 {
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_password{
         storage.get_optional<User>(id)
-            .transform([](const User& user) -> std::string {
+            .and_then([](const User& user) -> std::optional<std::string> {
                 return user.password;
             })
-            .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch user password "{}")", id };
-                return std::string{};
-            })
+        // can be null
+        //.or_else([&] -> std::optional<std::string> {
+        //    logging::error{ R"(Fail to fetch user password "{}")", id };
+        //    return std::nullopt;
+        //})
     };
-    return user_password.value_or(std::string{});
+    return user_password;
 }
 
 std::string Database::user_salt(int id) const

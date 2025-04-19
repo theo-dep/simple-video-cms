@@ -1,3 +1,4 @@
+#include <optional>
 #include <string>
 
 // Structure for users
@@ -5,7 +6,7 @@ struct User
 {
     int id{ 0 };
     std::string name;
-    std::string password;
+    std::optional<std::string> password{ std::nullopt };
     std::string salt;
 };
 
