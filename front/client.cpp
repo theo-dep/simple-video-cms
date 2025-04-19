@@ -13,12 +13,12 @@ namespace client
     constexpr const char* generic_error_html{
         R"(<html>
            <head>
-               <title>{0}</title>
+               <title>{0} - {{{{ website_name }}}}</title>
                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
                <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
                <link rel="stylesheet" href="/static/css/404.css" type="text/css">
-               <link rel="icon" href="/static/img/icon.svg" type="image/png">
+               <link rel="icon" href="{{{{ icon }}}}" type="image/png">
            </head>
            <body>
                <div class="content">

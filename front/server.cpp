@@ -21,7 +21,7 @@ namespace server
     void set_no_cache_headers(httplib::Response& res);
 
     void set_error_handler(httplib::Server& server, inja::Environment& env, const Client& client);
-    void set_exception_handler(httplib::Server& server);
+    void set_exception_handler(httplib::Server& server, inja::Environment& env);
     void set_logger(httplib::Server& server);
 
     void register_session(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& user_id);
@@ -103,7 +103,7 @@ int server::start()
     });
 
     set_error_handler(server, env, client);
-    set_exception_handler(server);
+    set_exception_handler(server, env);
     set_logger(server);
 
     server.set_post_routing_handler([](const httplib::Request& req, httplib::Response& res) {
@@ -228,9 +228,9 @@ inline void server::set_error_handler(httplib::Server& server, inja::Environment
     });
 }
 
-inline void server::set_exception_handler(httplib::Server& server)
+inline void server::set_exception_handler(httplib::Server& server, inja::Environment& env)
 {
-    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
+    server.set_exception_handler([&env](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
         constexpr int error_code{ httplib::StatusCode::InternalServerError_500 };
         std::string message;
         try {
@@ -245,7 +245,7 @@ inline void server::set_exception_handler(httplib::Server& server)
         logging::error{ message };
 
         std::string body{ Client::generic_error(error_code, message) };
-        // body = env.render(body, {});
+        body = env.render(body, {});
 
         res.set_content(body, "text/html");
         res.status = error_code;
@@ -287,8 +287,7 @@ inline bool server::is_logged_and_admin(const httplib::Request& req, httplib::Re
     }
 
     if (!client.is_admin(session.user_from_session(session_id))) {
-        const std::string body{ client.error_page_403() };
-        res.set_content(body, "text/html");
+        res.status = httplib::StatusCode::Forbidden_403;
         return false;
     }
 
@@ -1192,8 +1191,7 @@ inline bool server::has_video_right(const httplib::Request& req, httplib::Respon
     if (is_logged) {
         const std::string& connected_user_id{ session.user_from_session(session_id) };
         if (!client.has_video_right(video_id, connected_user_id)) {
-            const std::string body{ client.error_page_403() };
-            res.set_content(body, "text/html");
+            res.status = httplib::StatusCode::Forbidden_403;
             return false;
         }
     } else if (!client.has_video_right(video_id)) {
@@ -1231,15 +1229,14 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
 
 namespace server
 {
-    bool request_from_watch_video(const httplib::Request& req, httplib::Response& res, const Client& client, const std::string& video_id);
+    bool request_from_watch_video(const httplib::Request& req, httplib::Response& res, const std::string& video_id);
 }
 
-inline bool server::request_from_watch_video(const httplib::Request& req, httplib::Response& res, const Client& client, const std::string& video_id)
+inline bool server::request_from_watch_video(const httplib::Request& req, httplib::Response& res, const std::string& video_id)
 {
     const std::string referrer{ req.get_header_value("Referer") };
     if (!referrer.ends_with("/watch-video/" + video_id)) {
-        const std::string body{ client.error_page_403() };
-        res.set_content(body, "text/html");
+        res.status = httplib::StatusCode::Forbidden_403;
         return false;
     }
 
@@ -1254,7 +1251,7 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const std::string video_id{ req.path_params.at("video_id") };
 
     // block video if not in watch-video page
-    if (!request_from_watch_video(req, res, client, video_id))
+    if (!request_from_watch_video(req, res, video_id))
         return;
 
     const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
@@ -1277,7 +1274,7 @@ inline void server::increment_video_views(const httplib::Request& req, httplib::
     const std::string video_id{ req.path_params.at("video_id") };
 
     // block increment if not in watch-video page
-    if (!request_from_watch_video(req, res, client, video_id))
+    if (!request_from_watch_video(req, res, video_id))
         return;
 
     client.increment_video_views(video_id);
