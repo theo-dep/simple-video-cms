@@ -37,16 +37,31 @@ inline auto database::storage(const std::filesystem::path& path)
         make_table("admins",
                    make_column("id", &Admin::id, primary_key()),
                    foreign_key(&Admin::id).references(&User::id).on_delete.cascade()),
+        make_table("groups",
+                   make_column("id", &Group::id, primary_key().autoincrement()),
+                   make_column("name", &Group::name, unique())),
         make_table("videos",
                    make_column("id", &Video::id, primary_key().autoincrement()),
                    make_column("title", &Video::title),
                    make_column("views", &Video::views)),
-        make_table("video_rights",
-                   make_column("video_id", &VideoRight::video_id),
-                   make_column("user_id", &VideoRight::user_id),
-                   primary_key(&VideoRight::video_id, &VideoRight::user_id),
-                   foreign_key(&VideoRight::video_id).references(&Video::id).on_delete.cascade(),
-                   foreign_key(&VideoRight::user_id).references(&User::id).on_delete.cascade()));
+        make_table("user_groups",
+                   make_column("group_id", &GroupUser::group_id),
+                   make_column("user_id", &GroupUser::user_id),
+                   primary_key(&GroupUser::group_id, &GroupUser::user_id),
+                   foreign_key(&GroupUser::group_id).references(&Group::id).on_delete.cascade(),
+                   foreign_key(&GroupUser::user_id).references(&User::id).on_delete.cascade()),
+        make_table("video_user_rights",
+                   make_column("video_id", &VideoUserRight::video_id),
+                   make_column("user_id", &VideoUserRight::user_id),
+                   primary_key(&VideoUserRight::video_id, &VideoUserRight::user_id),
+                   foreign_key(&VideoUserRight::video_id).references(&Video::id).on_delete.cascade(),
+                   foreign_key(&VideoUserRight::user_id).references(&User::id).on_delete.cascade()),
+        make_table("video_group_rights",
+                   make_column("video_id", &VideoGroupRight::video_id),
+                   make_column("group_id", &VideoGroupRight::group_id),
+                   primary_key(&VideoGroupRight::video_id, &VideoGroupRight::group_id),
+                   foreign_key(&VideoGroupRight::video_id).references(&Video::id).on_delete.cascade(),
+                   foreign_key(&VideoGroupRight::group_id).references(&Group::id).on_delete.cascade()));
     // make virtual table with FTS5 for search?
     // https://www.sqlite.org/fts5.html
 }
@@ -85,14 +100,20 @@ std::vector<int> Database::user_video_list(int user_id) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(distinct(&VideoRight::video_id), where(c(&VideoRight::user_id) == user_id));
+    return storage.select(
+        union_(select(distinct(&VideoUserRight::video_id), where(c(&VideoUserRight::user_id) == user_id)),
+               select(distinct(&VideoGroupRight::video_id),
+                      where(in(&VideoGroupRight::group_id,
+                               select(distinct(&GroupUser::group_id), where(c(&GroupUser::user_id) == user_id)))))));
 }
 
 std::vector<int> Database::no_user_video_list() const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(distinct(&Video::id), from<Video>(), where(not_in(&Video::id, select(&VideoRight::video_id))));
+    return storage.select(distinct(&Video::id), from<Video>(),
+                          where(not_in(&Video::id, select(&VideoUserRight::video_id)) and
+                                not_in(&Video::id, select(&VideoGroupRight::video_id))));
 }
 
 std::string Database::video_title(int id) const
@@ -497,9 +518,9 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
 
 bool Database::add_video_rights(int id, const std::vector<int>& user_ids) const
 {
-    std::vector<VideoRight> video_rights(user_ids.size());
-    std::ranges::transform(user_ids, video_rights.begin(), [&id](int user_id) -> VideoRight {
-        return VideoRight{ .video_id = id, .user_id = user_id };
+    std::vector<VideoUserRight> video_rights(user_ids.size());
+    std::ranges::transform(user_ids, video_rights.begin(), [&id](int user_id) -> VideoUserRight {
+        return VideoUserRight{ .video_id = id, .user_id = user_id };
     });
 
     const std::lock_guard<std::mutex> lock(_mutex);
@@ -532,7 +553,7 @@ bool Database::update_video_rights(int id, const std::vector<int>& user_ids) con
     {
         const std::lock_guard<std::mutex> lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
-        storage.remove_all<VideoRight>(where(c(&VideoRight::video_id) == id));
+        storage.remove_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id));
     }
     return add_video_rights(id, user_ids);
 }
@@ -586,21 +607,26 @@ bool Database::has_video_right(int id) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.get_all<VideoRight>(where(c(&VideoRight::video_id) == id)).empty();
+    return storage.get_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id)).empty() &&
+           storage.get_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id)).empty();
 }
 
 bool Database::has_video_right(int id, int user_id) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return !storage.get_all<VideoRight>(where(c(&VideoRight::video_id) == id and c(&VideoRight::user_id) == user_id)).empty();
+    return !storage.get_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id and c(&VideoUserRight::user_id) == user_id)).empty() ||
+           !storage.get_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id and
+                                                   in(&VideoGroupRight::group_id,
+                                                      select(&GroupUser::group_id, where(c(&GroupUser::user_id) == user_id)))))
+                .empty();
 }
 
 std::vector<int> Database::video_right_list(int id) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(distinct(&VideoRight::user_id), where(c(&VideoRight::video_id) == id));
+    return storage.select(distinct(&VideoUserRight::user_id), where(c(&VideoUserRight::video_id) == id));
 }
 
 std::filesystem::path Database::base_path() const
