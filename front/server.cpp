@@ -1033,7 +1033,7 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    const std::vector user_id_items{ req.get_file_values("user_ids") };
+    const std::vector user_id_items{ req.get_file_values("user_ids[]") };
     std::vector<std::string> allowed_user_ids(user_id_items.size());
     std::ranges::transform(user_id_items, allowed_user_ids.begin(),
                            [](const httplib::MultipartFormData& item) -> std::string { return item.content; });
@@ -1063,8 +1063,8 @@ inline void server::set_update_video_content(const httplib::Request& req, httpli
 
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {
-        const bool checked{ std::ranges::find(user_right_list, user_id) != user_right_list.cend() };
-        const inja::json user{ { "id", user_id }, { "name", client.user_name(user_id) }, { "checked", checked } };
+        const bool selected{ std::ranges::find(user_right_list, user_id) != user_right_list.cend() };
+        const inja::json user{ { "id", user_id }, { "name", client.user_name(user_id) }, { "selected", selected } };
         user_dict += user;
     }
 
@@ -1101,10 +1101,10 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
         return;
     }
 
-    const std::size_t user_id_count{ req.get_param_value_count("user_ids") };
+    const std::size_t user_id_count{ req.get_param_value_count("user_ids[]") };
     std::vector<std::string> allowed_user_ids(user_id_count);
     for (std::size_t i{ 0 }; i < user_id_count; ++i) {
-        allowed_user_ids[i] = req.get_param_value("user_ids", i);
+        allowed_user_ids[i] = req.get_param_value("user_ids[]", i);
     }
 
     const std::string updater_user_id{ connected_user_id(req, session) };

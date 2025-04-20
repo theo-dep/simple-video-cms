@@ -11,3 +11,9 @@
 - main
 - https://github.com/n3r4zzurr0/svg-spinners/blob/main/svg-css/blocks-shuffle-3.svg
 - MIT License
+
+## MultiSelect
+
+- v1.0.1
+- https://github.com/codeshackio/multi-select-dropdown-js
+- MIT License

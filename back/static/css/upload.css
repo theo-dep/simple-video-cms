@@ -50,45 +50,31 @@ p {
   }
 }
 
-/* Compensate Pure form checkbox margin */
-.user-check {
-  margin: -0.2em 0.2em;
-}
+/* MultiSelect */
 
-.button-check {
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.04);
-  overflow-wrap: break-word;
-  cursor: pointer;
-}
-
-input[type=checkbox i] {
-  appearance: unset;
-}
-
-.button-check-icon {
-  float: left;
-  width: 1em;
-  height: 1em;
-  margin: 0.3em;
-  fill: rgba(255, 255, 255, 0.04);
-  text-align: center;
-}
-
-.button-check:hover {
+.multi-select .multi-select-header:hover {
   border-color: #16A085;
 }
 
-.button-check:hover .button-check-icon {
-  fill: #16A085;
+.multi-select .multi-select-header::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23c9c9c9' viewBox='0 0 16 16'%3E%3Cpath d='M8 13.1l-8-8 2.1-2.2 5.9 5.9 5.9-5.9 2.1 2.2z'/%3E%3C/svg%3E");
 }
 
-.button-check:has(input[type=checkbox]:checked) {
+.multi-select .multi-select-header:hover::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2316A085' viewBox='0 0 16 16'%3E%3Cpath d='M8 13.1l-8-8 2.1-2.2 5.9 5.9 5.9-5.9 2.1 2.2z'/%3E%3C/svg%3E");
+}
+
+.multi-select .multi-select-header .multi-select-header-placeholder {
+  color: #c9c9c9;
+}
+
+.multi-select .multi-select-options .multi-select-option.multi-select-selected .multi-select-option-radio,
+.multi-select .multi-select-options .multi-select-all.multi-select-selected .multi-select-option-radio {
   border-color: #16A085;
+  background-color: #16A085;
+}
+
+.multi-select .multi-select-options .multi-select-option.multi-select-selected .multi-select-option-text,
+.multi-select .multi-select-options .multi-select-all.multi-select-selected .multi-select-option-text {
   color: #16A085;
-}
-
-.button-check:has(input[type=checkbox]:checked) .button-check-icon {
-  fill: #16A085;
 }

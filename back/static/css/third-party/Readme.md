@@ -13,6 +13,13 @@
 - Apache License Version 2.0
 
 ## Bootstrap Icons
+
 - latest
 - https://github.com/twbs/icons
+- MIT License
+
+## MultiSelect
+
+- v1.0.1
+- https://github.com/codeshackio/multi-select-dropdown-js
 - MIT License
