@@ -84,7 +84,7 @@ public:
     bool has_video_right(const std::string& video_id) const;
     bool has_video_right(const std::string& video_id, const std::string& user_id) const;
 
-    std::vector<std::string> video_right_list(const std::string& video_id) const;
+    std::vector<std::string> video_user_right_list(const std::string& video_id) const;
 
 private:
     std::unique_ptr<httplib::Client> _client{ nullptr };

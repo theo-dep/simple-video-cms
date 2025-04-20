@@ -516,7 +516,7 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
     return video_id;
 }
 
-bool Database::add_video_rights(int id, const std::vector<int>& user_ids) const
+bool Database::add_video_user_rights(int id, const std::vector<int>& user_ids) const
 {
     std::vector<VideoUserRight> video_rights(user_ids.size());
     std::ranges::transform(user_ids, video_rights.begin(), [&id](int user_id) -> VideoUserRight {
@@ -548,14 +548,14 @@ std::optional<int> Database::update_video_title(int id, const std::string& title
     return video_id;
 }
 
-bool Database::update_video_rights(int id, const std::vector<int>& user_ids) const
+bool Database::update_video_user_rights(int id, const std::vector<int>& user_ids) const
 {
     {
         const std::lock_guard<std::mutex> lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
         storage.remove_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id));
     }
-    return add_video_rights(id, user_ids);
+    return add_video_user_rights(id, user_ids);
 }
 
 bool Database::delete_video(int id) const
@@ -622,7 +622,7 @@ bool Database::has_video_right(int id, int user_id) const
                 .empty();
 }
 
-std::vector<int> Database::video_right_list(int id) const
+std::vector<int> Database::video_user_right_list(int id) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
     database::StorageType storage{ database::storage(_path) };

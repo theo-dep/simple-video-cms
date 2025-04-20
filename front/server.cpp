@@ -953,7 +953,7 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
 
     inja::json video_dict = server::video_dict(video_list, client);
     for (inja::json& video : video_dict) {
-        const std::vector rights{ client.video_right_list(video["id"]) };
+        const std::vector rights{ client.video_user_right_list(video["id"]) };
         std::vector<std::string> user_rights(rights.size());
         std::ranges::transform(rights, user_rights.begin(),
                                [&](const std::string& user_id) -> std::string {
@@ -1059,7 +1059,7 @@ inline void server::set_update_video_content(const httplib::Request& req, httpli
     const std::string video_title{ client.video_title(video_id) };
 
     const std::vector<std::string> user_list{ client.user_list() };
-    const std::vector<std::string> user_right_list{ client.video_right_list(video_id) };
+    const std::vector<std::string> user_right_list{ client.video_user_right_list(video_id) };
 
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {

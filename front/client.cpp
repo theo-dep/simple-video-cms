@@ -507,9 +507,9 @@ bool Client::has_video_right(const std::string& video_id, const std::string& use
     return su::string_to_bool(client::format_page(res));
 }
 
-std::vector<std::string> Client::video_right_list(const std::string& video_id) const
+std::vector<std::string> Client::video_user_right_list(const std::string& video_id) const
 {
-    const httplib::Result res{ _client->Get("/video-right-list/" + video_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
+    const httplib::Result res{ _client->Get("/video-user-right-list/" + video_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
     const std::string str_rights{ client::format_page(res) };
     return su::split(str_rights);
 }
