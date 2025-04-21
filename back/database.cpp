@@ -555,8 +555,6 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
     database::StorageType storage{ database::storage(_path) };
     video.id = storage.insert(video);
 
-    storage.update(video);
-
     database::write_file(video_path(video.id), video_content);
 
     return video.id;
