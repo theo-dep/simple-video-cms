@@ -20,6 +20,8 @@
         <h1>{{ website_name }}</h1>
       </a>
 
+      <h3>Add a new user</h3>
+
       <form class="pure-form pure-form-aligned" action="/add-user?is_admin={{ is_admin }}" method="post">
         <fieldset>
           {% if invalid_username %}

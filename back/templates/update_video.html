@@ -6,7 +6,6 @@
   <title>Video Update - {{ website_name }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
-  <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/MultiSelect.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="stylesheet" href="/static/css/upload.css" type="text/css">
@@ -23,6 +22,7 @@
 
       <h2>Update &laquo; {{ video_title }} &raquo;</h2>
       <h3>Upload video title and user rights</h3>
+
       <form class="pure-form pure-form-aligned" action="/update-video/{{ video_id }}" method="post">
         <fieldset>
           <div class="pure-control-group">
