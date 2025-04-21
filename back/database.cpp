@@ -541,6 +541,35 @@ bool Database::add_group_users(int id, const std::vector<int>& user_ids) const
     return true;
 }
 
+std::optional<int> Database::update_group_name(int id, const std::string& name) const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional group_id{
+        storage.get_optional<Group>(id)
+            .and_then([&](Group group) -> std::optional<int> {
+                group.name = name;
+                storage.update(group);
+                return id;
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to update group name "{}")", id };
+                return std::nullopt;
+            })
+    };
+    return group_id;
+}
+
+bool Database::update_group_users(int id, const std::vector<int>& user_ids) const
+{
+    {
+        const std::lock_guard<std::mutex> lock(_mutex);
+        database::StorageType storage{ database::storage(_path) };
+        storage.remove_all<GroupUser>(where(c(&GroupUser::group_id) == id));
+    }
+    return add_group_users(id, user_ids);
+}
+
 std::vector<int> Database::group_user_list(int id) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);

@@ -68,6 +68,8 @@ namespace server
     void group_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_group_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void update_group_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void update_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -153,6 +155,8 @@ int server::start()
 
         .Get("/add-group", sc::serve(add_group_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/add-group", sc::serve(add_group_post, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/update-group/:group_id", sc::serve(update_group_get, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-group/:group_id", sc::serve(update_group_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -1047,6 +1051,91 @@ inline void server::add_group_post(const httplib::Request& req, httplib::Respons
 
     const std::string creator_user_id{ connected_user_id(req, session) };
     logging::info{ "Group {} created by {}", group_id, creator_user_id };
+}
+
+namespace server
+{
+    struct AlertUpdateGroup
+    {
+        bool invalid_group_name{ false };
+    };
+    void set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, const AlertUpdateGroup& alert);
+}
+
+inline void server::set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, const AlertUpdateGroup& alert)
+{
+    const std::string group_id{ req.path_params.at("group_id") };
+
+    const std::string group_name{ client.group_name(group_id) };
+
+    const std::vector<std::string> user_list{ client.user_list() };
+    const std::vector<std::string> user_right_list{ client.group_user_list(group_id) };
+
+    inja::json user_dict = inja::json::array();
+    for (const std::string& user_id : user_list) {
+        const bool selected{ std::ranges::find(user_right_list, user_id) != user_right_list.cend() };
+        const inja::json user{ { "id", user_id }, { "name", client.user_name(user_id) }, { "selected", selected } };
+        user_dict += user;
+    }
+
+    const inja::json data{
+        { "group_id", group_id },
+        { "group_name", group_name },
+        { "user_dict", user_dict },
+        { "invalid_group_name", alert.invalid_group_name }
+    };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.update_group_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::update_group_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    set_update_group_content(req, res, env, client, {});
+}
+
+inline void server::update_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
+
+    const std::string group_id{ req.path_params.at("group_id") };
+
+    std::string group_name{ req.get_param_value("name") };
+    su::trim(group_name);
+    su::lower(group_name);
+
+    if (client.group_exists(group_name)) {
+        set_update_group_content(req, res, env, client, { .invalid_group_name = true });
+        return;
+    }
+
+    const std::size_t user_id_count{ req.get_param_value_count("user_ids[]") };
+    std::vector<std::string> group_user_ids(user_id_count);
+    for (std::size_t i{ 0 }; i < user_id_count; ++i) {
+        group_user_ids[i] = req.get_param_value("user_ids[]", i);
+    }
+
+    const std::string updater_user_id{ connected_user_id(req, session) };
+
+    const std::string signal_str{
+        confirm_handler.create()
+            ->on_confirm([group_id, group_name, group_user_ids, updater_user_id, &client](httplib::Response& res) {
+                client.update_group(group_id, group_name, group_user_ids);
+                res.set_redirect("/group-list");
+                logging::info{ "Group {} updated by {}", group_id, updater_user_id };
+            })
+            .on_deny([](httplib::Response& res) {
+                res.set_redirect("/group-list");
+            })
+            .to_string()
+    };
+
+    confirm_action(req, res, env, session, client, signal_str);
 }
 
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)

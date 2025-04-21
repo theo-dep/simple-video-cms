@@ -60,6 +60,7 @@ namespace server
     void group_name(const httplib::Request& req, httplib::Response& res, const Database& db);
     void group_exists(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_group(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_group(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void group_user_list(const httplib::Request& req, httplib::Response& res, const Database& db);
 
@@ -135,6 +136,7 @@ int server::start()
         .Get("/group-name", sc::serve(group_name, std::cref(db)))
         .Get("/group-exists", sc::serve(group_exists, std::cref(db)))
         .Post("/add-group", sc::serve(add_group, std::cref(db)))
+        .Post("/update-group/:group_id", sc::serve(update_group, std::cref(db)))
 
         .Get("/group-user-list/:group_id", sc::serve(group_user_list, std::cref(db)))
 
@@ -624,6 +626,31 @@ inline void server::add_group(const httplib::Request& req, httplib::Response& re
     }
 
     res.set_content(su::int_to_string(group_id.value()), "plain/text");
+}
+
+inline void server::update_group(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("name") || !req.has_file("user_ids")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
+    const std::string group_name{ req.get_file_value("name").content };
+    const std::vector group_user_ids{ su::split(req.get_file_value("user_ids").content) };
+
+    const std::optional success{
+        db.update_group_name(group_id, group_name)
+            .transform([&](int group_id) -> bool {
+                return db.update_group_users(group_id, transform(group_user_ids));
+            })
+    };
+
+    if (!success.value_or(false)) {
+        logging::error{ R"(Fail to update group "{}")", group_id };
+        return;
+    }
 }
 
 inline void server::group_user_list(const httplib::Request& req, httplib::Response& res, const Database& db)

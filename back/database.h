@@ -56,6 +56,8 @@ public:
     bool group_exists(const std::string& name) const;
     [[nodiscard]] std::optional<int> add_group(const std::string& name) const;
     [[nodiscard]] bool add_group_users(int id, const std::vector<int>& user_ids) const;
+    [[nodiscard]] std::optional<int> update_group_name(int id, const std::string& name) const;
+    [[nodiscard]] bool update_group_users(int id, const std::vector<int>& user_ids) const;
 
     std::vector<int> group_user_list(int id) const;
 
