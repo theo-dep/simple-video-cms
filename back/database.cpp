@@ -570,6 +570,24 @@ bool Database::update_group_users(int id, const std::vector<int>& user_ids) cons
     return add_group_users(id, user_ids);
 }
 
+bool Database::delete_group(int id) const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional success{
+        storage.get_optional<Group>(id)
+            .transform([&](const Group& group) -> bool {
+                storage.remove<Group>(group.id);
+                return true;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to delete group "{}")", id };
+                return false;
+            })
+    };
+    return success.value_or(false);
+}
+
 std::vector<int> Database::group_user_list(int id) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);

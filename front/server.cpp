@@ -70,6 +70,7 @@ namespace server
     void add_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void update_group_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void update_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+    void delete_group(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -157,6 +158,7 @@ int server::start()
         .Post("/add-group", sc::serve(add_group_post, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/update-group/:group_id", sc::serve(update_group_get, std::ref(env), std::ref(session), std::cref(client)))
         .Post("/update-group/:group_id", sc::serve(update_group_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/delete-group/:group_id", sc::serve(delete_group, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -1128,6 +1130,32 @@ inline void server::update_group_post(const httplib::Request& req, httplib::Resp
                 client.update_group(group_id, group_name, group_user_ids);
                 res.set_redirect("/group-list");
                 logging::info{ "Group {} updated by {}", group_id, updater_user_id };
+            })
+            .on_deny([](httplib::Response& res) {
+                res.set_redirect("/group-list");
+            })
+            .to_string()
+    };
+
+    confirm_action(req, res, env, session, client, signal_str);
+}
+
+inline void server::delete_group(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string group_id{ req.path_params.at("group_id") };
+    logging::debug{ "Delete {} {}", group_id, client.group_name(group_id) };
+
+    const std::string suppressor_user_id{ connected_user_id(req, session) };
+
+    const std::string signal_str{
+        confirm_handler.create()
+            ->on_confirm([group_id, suppressor_user_id, &client](httplib::Response& res) {
+                client.delete_group(group_id);
+                res.set_redirect("/group-list");
+                logging::info{ "Group {} deleted by {}", group_id, suppressor_user_id };
             })
             .on_deny([](httplib::Response& res) {
                 res.set_redirect("/group-list");

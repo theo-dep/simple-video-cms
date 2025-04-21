@@ -470,6 +470,11 @@ void Client::update_group(const std::string& group_id, const std::string& name, 
     _client->Post("/update-group/" + group_id, items);
 }
 
+void Client::delete_group(const std::string& group_id) const
+{
+    _client->Post("/delete-group/" + group_id);
+}
+
 std::vector<std::string> Client::group_user_list(const std::string& group_id) const
 {
     const httplib::Result res{ _client->Get("/group-user-list/" + group_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?

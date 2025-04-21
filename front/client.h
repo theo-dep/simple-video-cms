@@ -85,6 +85,7 @@ public:
     bool group_exists(const std::string& name) const;
     std::string add_group(const std::string& name, const std::vector<std::string>& group_user_ids) const;
     void update_group(const std::string& group_id, const std::string& name, const std::vector<std::string>& group_user_ids) const;
+    void delete_group(const std::string& group_id) const;
 
     std::vector<std::string> group_user_list(const std::string& group_id) const;
 

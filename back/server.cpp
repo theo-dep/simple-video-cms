@@ -61,6 +61,7 @@ namespace server
     void group_exists(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_group(const httplib::Request& req, httplib::Response& res, const Database& db);
     void update_group(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void delete_group(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void group_user_list(const httplib::Request& req, httplib::Response& res, const Database& db);
 
@@ -137,6 +138,7 @@ int server::start()
         .Get("/group-exists", sc::serve(group_exists, std::cref(db)))
         .Post("/add-group", sc::serve(add_group, std::cref(db)))
         .Post("/update-group/:group_id", sc::serve(update_group, std::cref(db)))
+        .Post("/delete-group/:group_id", sc::serve(delete_group, std::cref(db)))
 
         .Get("/group-user-list/:group_id", sc::serve(group_user_list, std::cref(db)))
 
@@ -649,6 +651,15 @@ inline void server::update_group(const httplib::Request& req, httplib::Response&
 
     if (!success.value_or(false)) {
         logging::error{ R"(Fail to update group "{}")", group_id };
+        return;
+    }
+}
+
+inline void server::delete_group(const httplib::Request& req, httplib::Response& /*res*/, const Database& db)
+{
+    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
+    if (!db.delete_group(group_id)) {
+        logging::error{ R"(Fail to delete group "{}")", group_id };
         return;
     }
 }
