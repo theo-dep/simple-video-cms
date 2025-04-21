@@ -448,6 +448,13 @@ int Database::user_count() const
     return storage.count<User>();
 }
 
+int Database::group_count() const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.count<Group>();
+}
+
 int Database::video_count() const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
@@ -475,6 +482,30 @@ std::vector<int> Database::admin_list() const
     const std::lock_guard<std::mutex> lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(union_all(select(&SuperAdmin::id), select(&Admin::id)));
+}
+
+std::vector<int> Database::group_list() const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(&Group::id);
+}
+
+std::string Database::group_name(int id) const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional group_name{
+        storage.get_optional<Group>(id)
+            .transform([](const Group& group) -> std::string {
+                return group.name;
+            })
+            .or_else([&] -> std::optional<std::string> {
+                logging::error{ R"(Fail to fetch group name "{}")", id };
+                return std::string{};
+            })
+    };
+    return group_name.value_or(std::string{});
 }
 
 std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const

@@ -65,6 +65,8 @@ namespace server
     void update_username(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void update_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
+    void group_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -144,6 +146,8 @@ int server::start()
         .Get("/update-user", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
         .Post("/update-username", sc::serve(update_username, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Post("/update-password", sc::serve(update_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+
+        .Get("/group-list", sc::serve(group_list, std::ref(env), std::cref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -371,6 +375,7 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
 
     const inja::json data{
         { "user_count", client.user_count() },
+        { "group_count", client.group_count() },
         { "video_count", client.video_count() },
         { "view_count", client.view_count() }
     };
@@ -942,6 +947,29 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
 
     client.update_password(user_id, new_password);
     res.set_redirect("/update-user" + std::format("?{}={}", changed_key, password_changed_value));
+}
+
+inline void server::group_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::vector<std::string> group_list{ client.group_list() };
+
+    inja::json group_dict = inja::json::array();
+    for (const std::string& group_id : group_list) {
+        const inja::json group = {
+            { "id", group_id },
+            { "name", client.group_name(group_id) }
+        };
+        group_dict += group;
+    }
+
+    const inja::json data{ { "group_dict", group_dict } };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.group_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
 }
 
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)

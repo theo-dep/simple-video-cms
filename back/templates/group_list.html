@@ -2,8 +2,8 @@
 <html>
 
 <head>
-  <meta charset="utf-8">
-  <title>Administrator Dashboard - {{ website_name }}</title>
+  <meta charset="UTF-8">
+  <title>Group List - {{ website_name }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
@@ -12,7 +12,6 @@
 </head>
 
 <body>
-
   <div class="header pure-g">
     <div class="pure-u-1 pure-u-md-1-5 pure-menu pure-menu-horizontal">
       <a href="/" class="menu-link pure-menu-heading pure-menu-link">{{ website_name }}</a>
@@ -24,7 +23,7 @@
           <a href="/" class="menu-link pure-menu-link">Home</a>
         </li>
         <li class="pure-menu-item">
-          <a href="/dashboard" class="menu-link menu-selected pure-menu-link pure-menu-selected">Dashboard</a>
+          <a href="/dashboard" class="menu-link pure-menu-link">Dashboard</a>
         </li>
         <li class="pure-menu-item">
           <a href="/video-list" class="menu-link pure-menu-link">Video List</a>
@@ -36,7 +35,7 @@
           <a href="/user-list" class="menu-link pure-menu-link">User List</a>
         </li>
         <li class="pure-menu-item">
-          <a href="/group-list" class="menu-link pure-menu-link">Group List</a>
+          <a href="/group-list" class="menu-link menu-selected pure-menu-link pure-menu-selected">Group List</a>
         </li>
         <li class="pure-menu-item">
           <a href="/logout" class="menu-link pure-menu-link">Logout</a>
@@ -46,31 +45,37 @@
   </div>
 
   <div class="content">
-    <h2>{{ website_name }} Statistics</h2>
+    <h2>List of groups</h2>
     <table id="table" class="table pure-table pure-table-horizontal">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th class="add-user">
+            <a href="/add-group">
+              <svg class="svg-button">
+                <title>Add a new group</title>
+                <use href="/static/img/group-add.svg#group-add" />
+              </svg>
+            </a>
+          </th>
+        </tr>
+      </thead>
       <tbody>
+        {% for group in group_dict %}
         <tr>
-          <td data-title="user_count">Total number of users registered</td>
-          <td data-title="u_count">
-            <a href="/user-list">{{ user_count }}</a>
+          <td data-title="Name">{{ group.name }}</td>
+          <td>
+            <div class="pure-g">
+              <div class="pure-u-1 pure-u-sm-1-2">
+                <a href="/update-group/{{ group.id }}">Update</a>
+              </div>
+              <div class="pure-u-1 pure-u-sm-1-2">
+                <a href="/delete-group/{{ group.id }}">Delete</a>
+              </div>
+            </div>
           </td>
         </tr>
-        <tr>
-          <td data-title="group_count">Total number of group registered</td>
-          <td data-title="count">
-            <a href="/group-list">{{ group_count }}</a>
-          </td>
-        </tr>
-        <tr>
-          <td data-title="video_count">Total number of videos uploaded</td>
-          <td data-title="count">
-            <a href="/video-list">{{ video_count }}</a>
-          </td>
-        </tr>
-        <tr>
-          <td data-title="view_count">Total number of views</td>
-          <td data-title="v_count">{{ view_count }}</td>
-        </tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>

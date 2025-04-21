@@ -137,6 +137,12 @@ std::string Client::admin_list_page() const
     return client::format_page(res);
 }
 
+std::string Client::group_list_page() const
+{
+    const httplib::Result res{ _client->Get("/html/group_list.html") };
+    return client::format_page(res);
+}
+
 std::string Client::video_list_page() const
 {
     const httplib::Result res{ _client->Get("/html/video_list.html") };
@@ -376,6 +382,12 @@ int Client::user_count() const
     return su::string_to_int(client::format_page(res));
 }
 
+int Client::group_count() const
+{
+    const httplib::Result res{ _client->Get("/group-count") };
+    return su::string_to_int(client::format_page(res));
+}
+
 int Client::video_count() const
 {
     const httplib::Result res{ _client->Get("/video-count") };
@@ -400,6 +412,22 @@ std::vector<std::string> Client::admin_list() const
     const httplib::Result res{ _client->Get("/admin-list") };
     const std::string str_user_ids{ client::format_page(res) };
     return su::split(str_user_ids);
+}
+
+std::vector<std::string> Client::group_list() const
+{
+    const httplib::Result res{ _client->Get("/group-list") };
+    const std::string str_group_ids{ client::format_page(res) };
+    return su::split(str_group_ids);
+}
+
+std::string Client::group_name(const std::string& group_id) const
+{
+    const httplib::Headers headers{
+        { "group_id", group_id }
+    };
+    const httplib::Result res{ _client->Get("/group-name", headers) };
+    return client::format_page(res);
 }
 
 std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const

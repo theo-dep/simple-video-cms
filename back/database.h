@@ -43,11 +43,16 @@ public:
     std::string user_salt(int id) const;
 
     int user_count() const;
+    int group_count() const;
     int video_count() const;
     int view_count() const;
 
     std::vector<int> user_list() const;
     std::vector<int> admin_list() const;
+
+    std::vector<int> group_list() const;
+
+    std::string group_name(int id) const;
 
     [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
     [[nodiscard]] std::optional<int> add_video_thumbnail(int id, const std::string& thumbnail_content) const;

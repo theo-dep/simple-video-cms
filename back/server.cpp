@@ -31,6 +31,7 @@ namespace server
     void video_views(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void user_count(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void group_count(const httplib::Request& req, httplib::Response& res, const Database& db);
     void video_count(const httplib::Request& req, httplib::Response& res, const Database& db);
     void view_count(const httplib::Request& req, httplib::Response& res, const Database& db);
 
@@ -53,6 +54,10 @@ namespace server
 
     void user_list(const httplib::Request& req, httplib::Response& res, const Database& db);
     void admin_list(const httplib::Request& req, httplib::Response& res, const Database& db);
+
+    void group_list(const httplib::Request& req, httplib::Response& res, const Database& db);
+
+    void group_name(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void add_video(const httplib::Request& req, httplib::Response& res, const Database& db);
     void update_video(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -97,6 +102,7 @@ int server::start()
         .Get("/views/:video_id", sc::serve(video_views, std::cref(db)))
 
         .Get("/user-count", sc::serve(user_count, std::cref(db)))
+        .Get("/group-count", sc::serve(group_count, std::cref(db)))
         .Get("/video-count", sc::serve(video_count, std::cref(db)))
         .Get("/view-count", sc::serve(view_count, std::cref(db)))
 
@@ -119,6 +125,10 @@ int server::start()
 
         .Get("/user-list", sc::serve(user_list, std::cref(db)))
         .Get("/admin-list", sc::serve(admin_list, std::cref(db)))
+
+        .Get("/group-list", sc::serve(group_list, std::cref(db)))
+
+        .Get("/group-name", sc::serve(group_name, std::cref(db)))
 
         .Post("/add-video", sc::serve(add_video, std::cref(db)))
         .Post("/update-video/:video_id", sc::serve(update_video, std::cref(db)))
@@ -287,6 +297,12 @@ inline void server::video_views(const httplib::Request& req, httplib::Response& 
 inline void server::user_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
 {
     const int count{ db.user_count() };
+    res.set_content(su::int_to_string(count), "plain/text");
+}
+
+inline void server::group_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
+{
+    const int count{ db.group_count() };
     res.set_content(su::int_to_string(count), "plain/text");
 }
 
@@ -541,6 +557,25 @@ inline void server::admin_list(const httplib::Request& /*req*/, httplib::Respons
 {
     const std::vector user_ids{ transform(db.admin_list()) };
     res.set_content(su::join(user_ids), "plain/text");
+}
+
+inline void server::group_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
+{
+    const std::vector group_ids{ transform(db.group_list()) };
+    res.set_content(su::join(group_ids), "plain/text");
+}
+
+inline void server::group_name(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_header("group_id")) {
+        logging::error{ "Missing header data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int group_id{ su::string_to_int(req.get_header_value("group_id")) };
+    const std::string name{ db.group_name(group_id) };
+    res.set_content(name, "plain/text");
 }
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res, const Database& db)
