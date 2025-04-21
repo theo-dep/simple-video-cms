@@ -455,6 +455,13 @@ std::string Client::add_group(const std::string& name, const std::vector<std::st
     return client::format_page(res);
 }
 
+std::vector<std::string> Client::group_user_list(const std::string& group_id) const
+{
+    const httplib::Result res{ _client->Get("/group-user-list/" + group_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
+    const std::string str_users{ client::format_page(res) };
+    return su::split(str_users);
+}
+
 std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const
 {
     const httplib::MultipartFormDataItems items{

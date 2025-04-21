@@ -84,6 +84,8 @@ public:
     bool group_exists(const std::string& name) const;
     std::string add_group(const std::string& name, const std::vector<std::string>& group_user_ids) const;
 
+    std::vector<std::string> group_user_list(const std::string& group_id) const;
+
     std::string add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const;
     void update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const;
     void delete_video(const std::string& video_id) const;

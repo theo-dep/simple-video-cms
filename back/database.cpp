@@ -541,6 +541,13 @@ bool Database::add_group_users(int id, const std::vector<int>& user_ids) const
     return true;
 }
 
+std::vector<int> Database::group_user_list(int id) const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(distinct(&GroupUser::user_id), where(c(&GroupUser::group_id) == id));
+}
+
 std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const
 {
     if (!filesystem::create(video_path())) {

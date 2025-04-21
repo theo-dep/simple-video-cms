@@ -61,6 +61,8 @@ namespace server
     void group_exists(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_group(const httplib::Request& req, httplib::Response& res, const Database& db);
 
+    void group_user_list(const httplib::Request& req, httplib::Response& res, const Database& db);
+
     void add_video(const httplib::Request& req, httplib::Response& res, const Database& db);
     void update_video(const httplib::Request& req, httplib::Response& res, const Database& db);
     void delete_video(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -133,6 +135,8 @@ int server::start()
         .Get("/group-name", sc::serve(group_name, std::cref(db)))
         .Get("/group-exists", sc::serve(group_exists, std::cref(db)))
         .Post("/add-group", sc::serve(add_group, std::cref(db)))
+
+        .Get("/group-user-list/:group_id", sc::serve(group_user_list, std::cref(db)))
 
         .Post("/add-video", sc::serve(add_video, std::cref(db)))
         .Post("/update-video/:video_id", sc::serve(update_video, std::cref(db)))
@@ -620,6 +624,14 @@ inline void server::add_group(const httplib::Request& req, httplib::Response& re
     }
 
     res.set_content(su::int_to_string(group_id.value()), "plain/text");
+}
+
+inline void server::group_user_list(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
+
+    const std::vector users{ transform(db.group_user_list(group_id)) };
+    res.set_content(su::join(users), "plain/text");
 }
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res, const Database& db)

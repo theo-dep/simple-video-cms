@@ -963,9 +963,16 @@ inline void server::group_list(const httplib::Request& req, httplib::Response& r
 
     inja::json group_dict = inja::json::array();
     for (const std::string& group_id : group_list) {
+        const std::vector group_users{ client.group_user_list(group_id) };
+        std::vector<std::string> user_list(group_users.size());
+        std::ranges::transform(group_users, user_list.begin(),
+                               [&](const std::string& user_id) -> std::string {
+                                   return client.user_name(user_id);
+                               });
         const inja::json group = {
             { "id", group_id },
-            { "name", client.group_name(group_id) }
+            { "name", client.group_name(group_id) },
+            { "user_list", user_list }
         };
         group_dict += group;
     }

@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/drawer.css" type="text/css">
+  <script type="text/javascript" src="/static/js/drawer.js"></script>
   <link rel="icon" href="{{ icon }}" type="image/png">
 </head>
 
@@ -66,10 +68,36 @@
           <td data-title="Name">{{ group.name }}</td>
           <td>
             <div class="pure-g">
-              <div class="pure-u-1 pure-u-sm-1-2">
+              <div class="pure-u-1 pure-u-sm-1-3">
+                {% if group.user_list %}
+                <label class="drawer-button open-drawer" for="drawer-checkbox">Users</label>
+                <input hidden type="checkbox" id="drawer-checkbox" name="drawer-checkbox">
+                <label for="drawer-checkbox" class="drawer-overlay" role="dialog">
+                  <label class="drawer" aria-modal="true" aria-labelledby="drawer-title" role="document">
+                    <div class="pure-g">
+                      <div class="drawer-title pure-u-1">
+                        <h1>Group Users</h1>
+                        <label class="drawer-button drawer-close" for="drawer-checkbox" aria-label="Close drawer">
+                          <svg class="svg-button">
+                            <title>Close</title>
+                            <use href="/static/img/x-lg.svg#x-lg" />
+                          </svg>
+                        </label>
+                      </div>
+                      {% for user in group.user_list %}
+                      <div class="pure-u-1 pure-u-lg-1-2">
+                        <p>{{ user }}</p>
+                      </div>
+                      {% endfor %}
+                    </div>
+                  </label>
+                </label>
+                {% endif %}
+              </div>
+              <div class="pure-u-1 pure-u-sm-1-3">
                 <a href="/update-group/{{ group.id }}">Update</a>
               </div>
-              <div class="pure-u-1 pure-u-sm-1-2">
+              <div class="pure-u-1 pure-u-sm-1-3">
                 <a href="/delete-group/{{ group.id }}">Delete</a>
               </div>
             </div>
