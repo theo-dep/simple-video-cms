@@ -58,6 +58,8 @@ namespace server
     void group_list(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void group_name(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void group_exists(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void add_group(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void add_video(const httplib::Request& req, httplib::Response& res, const Database& db);
     void update_video(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -129,6 +131,8 @@ int server::start()
         .Get("/group-list", sc::serve(group_list, std::cref(db)))
 
         .Get("/group-name", sc::serve(group_name, std::cref(db)))
+        .Get("/group-exists", sc::serve(group_exists, std::cref(db)))
+        .Post("/add-group", sc::serve(add_group, std::cref(db)))
 
         .Post("/add-video", sc::serve(add_video, std::cref(db)))
         .Post("/update-video/:video_id", sc::serve(update_video, std::cref(db)))
@@ -576,6 +580,46 @@ inline void server::group_name(const httplib::Request& req, httplib::Response& r
     const int group_id{ su::string_to_int(req.get_header_value("group_id")) };
     const std::string name{ db.group_name(group_id) };
     res.set_content(name, "plain/text");
+}
+
+inline void server::group_exists(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_header("name")) {
+        logging::error{ "Missing header data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::string group_name{ req.get_header_value("name") };
+    const bool group_exists{ db.group_exists(group_name) };
+    res.set_content(su::bool_to_string(group_exists), "plain/text");
+}
+
+inline void server::add_group(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("name") || !req.has_file("user_ids")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::string group_name{ req.get_file_value("name").content };
+    const std::vector group_user_ids{ su::split(req.get_file_value("user_ids").content) };
+
+    const std::optional group_id{
+        db.add_group(group_name)
+            .and_then([&](int group_id) -> std::optional<int> {
+                return db.add_group_users(group_id, transform(group_user_ids)) ? std::optional(group_id) : std::nullopt;
+            })
+    };
+
+    if (!group_id.has_value()) {
+        logging::error{ R"(Fail to add group "{}")", group_name };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.set_content(su::int_to_string(group_id.value()), "plain/text");
 }
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res, const Database& db)

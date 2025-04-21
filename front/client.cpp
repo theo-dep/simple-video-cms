@@ -143,6 +143,12 @@ std::string Client::group_list_page() const
     return client::format_page(res);
 }
 
+std::string Client::add_group_page() const
+{
+    const httplib::Result res{ _client->Get("/html/add_group.html") };
+    return client::format_page(res);
+}
+
 std::string Client::video_list_page() const
 {
     const httplib::Result res{ _client->Get("/html/video_list.html") };
@@ -427,6 +433,25 @@ std::string Client::group_name(const std::string& group_id) const
         { "group_id", group_id }
     };
     const httplib::Result res{ _client->Get("/group-name", headers) };
+    return client::format_page(res);
+}
+
+bool Client::group_exists(const std::string& name) const
+{
+    const httplib::Headers headers{
+        { "name", name }
+    };
+    const httplib::Result res{ _client->Get("/group-exists", headers) };
+    return su::string_to_bool(client::format_page(res));
+}
+
+std::string Client::add_group(const std::string& name, const std::vector<std::string>& group_user_ids) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "name", .content = name, .filename = "", .content_type = "" },
+        { .name = "user_ids", .content = su::join(group_user_ids), .filename = "", .content_type = "" }
+    };
+    const httplib::Result res{ _client->Post("/add-group", items) };
     return client::format_page(res);
 }
 

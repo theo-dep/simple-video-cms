@@ -53,6 +53,9 @@ public:
     std::vector<int> group_list() const;
 
     std::string group_name(int id) const;
+    bool group_exists(const std::string& name) const;
+    [[nodiscard]] std::optional<int> add_group(const std::string& name) const;
+    [[nodiscard]] bool add_group_users(int id, const std::vector<int>& user_ids) const;
 
     [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
     [[nodiscard]] std::optional<int> add_video_thumbnail(int id, const std::string& thumbnail_content) const;

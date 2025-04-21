@@ -508,6 +508,39 @@ std::string Database::group_name(int id) const
     return group_name.value_or(std::string{});
 }
 
+bool Database::group_exists(const std::string& name) const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name)) };
+    return !groups.empty();
+}
+
+std::optional<int> Database::add_group(const std::string& name) const
+{
+    Group group{
+        .name = name,
+    };
+
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    group.id = storage.insert(group);
+    return group.id;
+}
+
+bool Database::add_group_users(int id, const std::vector<int>& user_ids) const
+{
+    std::vector<GroupUser> group_users(user_ids.size());
+    std::ranges::transform(user_ids, group_users.begin(), [&id](int user_id) -> GroupUser {
+        return GroupUser{ .group_id = id, .user_id = user_id };
+    });
+
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    storage.replace_range(group_users.cbegin(), group_users.cend());
+    return true;
+}
+
 std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const
 {
     if (!filesystem::create(video_path())) {

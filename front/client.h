@@ -38,6 +38,7 @@ public:
     std::string admin_list_page() const;
 
     std::string group_list_page() const;
+    std::string add_group_page() const;
 
     std::string video_list_page() const;
     std::string add_video_page() const;
@@ -80,6 +81,8 @@ public:
     std::vector<std::string> group_list() const;
 
     std::string group_name(const std::string& group_id) const;
+    bool group_exists(const std::string& name) const;
+    std::string add_group(const std::string& name, const std::vector<std::string>& group_user_ids) const;
 
     std::string add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const;
     void update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const;
