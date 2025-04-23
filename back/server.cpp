@@ -146,10 +146,9 @@ inline bool server::create_super_admin(const Database& db)
         return true;
     }
 
-    const std::string password{ crypto::sha512(sc::get_env("SUPER_ADMIN_PASSWORD", "admin")) };
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
-    if (!db.add_super_admin(username, crypto::password(password, salt), salt)) {
+    if (!db.add_super_admin(username, salt)) {
         logging::error{ R"(Fail to add super admin "{}")", username };
         return false;
     }
