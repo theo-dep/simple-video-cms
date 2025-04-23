@@ -541,6 +541,19 @@ bool Database::add_group_users(int id, const std::vector<int>& user_ids) const
     return true;
 }
 
+bool Database::add_user_groups(int user_id, const std::vector<int>& group_ids) const
+{
+    std::vector<GroupUser> group_users(group_ids.size());
+    std::ranges::transform(group_ids, group_users.begin(), [&user_id](int group_id) -> GroupUser {
+        return GroupUser{ .group_id = group_id, .user_id = user_id };
+    });
+
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    storage.replace_range(group_users.cbegin(), group_users.cend());
+    return true;
+}
+
 std::optional<int> Database::update_group_name(int id, const std::string& name) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
@@ -570,6 +583,16 @@ bool Database::update_group_users(int id, const std::vector<int>& user_ids) cons
     return add_group_users(id, user_ids);
 }
 
+bool Database::update_user_groups(int user_id, const std::vector<int>& group_ids) const
+{
+    {
+        const std::lock_guard<std::mutex> lock(_mutex);
+        database::StorageType storage{ database::storage(_path) };
+        storage.remove_all<GroupUser>(where(c(&GroupUser::user_id) == user_id));
+    }
+    return add_user_groups(user_id, group_ids);
+}
+
 bool Database::delete_group(int id) const
 {
     const std::lock_guard<std::mutex> lock(_mutex);
@@ -593,6 +616,13 @@ std::vector<int> Database::group_user_list(int id) const
     const std::lock_guard<std::mutex> lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&GroupUser::user_id), where(c(&GroupUser::group_id) == id));
+}
+
+std::vector<int> Database::user_group_list(int user_id) const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(distinct(&GroupUser::group_id), where(c(&GroupUser::user_id) == user_id));
 }
 
 std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const

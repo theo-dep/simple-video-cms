@@ -43,6 +43,7 @@ namespace server
     void add_user(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_password(const httplib::Request& req, httplib::Response& res, const Database& db);
     void update_username(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_user_groups(const httplib::Request& req, httplib::Response& res, const Database& db);
     void update_password(const httplib::Request& req, httplib::Response& res, const Database& db);
     void delete_user(const httplib::Request& req, httplib::Response& res, const Database& db);
     void reset_user(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -64,6 +65,7 @@ namespace server
     void delete_group(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void group_user_list(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void user_group_list(const httplib::Request& req, httplib::Response& res, const Database& db);
 
     void add_video(const httplib::Request& req, httplib::Response& res, const Database& db);
     void update_video(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -123,6 +125,7 @@ int server::start()
         .Post("/add-user", sc::serve(add_user, std::cref(db)))
         .Post("/add-password", sc::serve(add_password, std::cref(db)))
         .Post("/update-username", sc::serve(update_username, std::cref(db)))
+        .Post("/update-user-groups", sc::serve(update_user_groups, std::cref(db)))
         .Post("/update-password", sc::serve(update_password, std::cref(db)))
         .Post("/reset-user", sc::serve(reset_user, std::cref(db)))
         .Post("/delete-user", sc::serve(delete_user, std::cref(db)))
@@ -141,6 +144,7 @@ int server::start()
         .Post("/delete-group/:group_id", sc::serve(delete_group, std::cref(db)))
 
         .Get("/group-user-list/:group_id", sc::serve(group_user_list, std::cref(db)))
+        .Get("/user-group-list/:user_id", sc::serve(user_group_list, std::cref(db)))
 
         .Post("/add-video", sc::serve(add_video, std::cref(db)))
         .Post("/update-video/:video_id", sc::serve(update_video, std::cref(db)))
@@ -418,7 +422,7 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
 
 inline void server::add_user(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("username")) {
+    if (!req.has_file("username") || !req.has_file("group_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -426,8 +430,17 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
 
     const std::string username{ req.get_file_value("username").content };
     const std::string salt{ crypto::random_string() };
+
+    const std::vector group_ids{ su::split(req.get_file_value("group_ids").content) };
+
     logging::debug{ "Salt: {}", salt };
-    const std::optional user_id{ db.add_user(username, salt) };
+    const std::optional user_id{
+        db.add_user(username, salt)
+            .and_then([&](int user_id) -> std::optional<int> {
+                return db.add_user_groups(user_id, transform(group_ids)) ? std::optional(user_id) : std::nullopt;
+            })
+    };
+
     if (!user_id.has_value()) {
         logging::error{ R"(Fail to add user "{}")", username };
         res.status = httplib::StatusCode::InternalServerError_500;
@@ -473,6 +486,23 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     const std::optional success_user_id{ db.update_username(user_id, username) };
     if (!success_user_id.has_value()) {
         logging::error{ R"(Fail to update username "{}")", user_id };
+        return;
+    }
+}
+
+inline void server::update_user_groups(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    if (!req.has_file("group_ids") || !req.has_file("user_id")) {
+        logging::error{ "Missing multipart form data" };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const std::vector group_ids{ su::split(req.get_file_value("group_ids").content) };
+
+    if (!db.update_user_groups(user_id, transform(group_ids))) {
+        logging::error{ R"(Fail to update user groups "{}")", user_id };
         return;
     }
 }
@@ -670,6 +700,14 @@ inline void server::group_user_list(const httplib::Request& req, httplib::Respon
 
     const std::vector users{ transform(db.group_user_list(group_id)) };
     res.set_content(su::join(users), "plain/text");
+}
+
+inline void server::user_group_list(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+
+    const std::vector groups{ transform(db.user_group_list(user_id)) };
+    res.set_content(su::join(groups), "plain/text");
 }
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res, const Database& db)

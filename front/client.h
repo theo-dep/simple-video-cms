@@ -62,9 +62,10 @@ public:
     std::string user_name(const std::string& user_id) const;
     std::string user_id(const std::string& username) const;
     std::string add_admin(const std::string& username) const;
-    std::string add_user(const std::string& username) const;
+    std::string add_user(const std::string& username, const std::vector<std::string>& group_ids) const;
     std::string add_password(const std::string& user_id, const std::string& password) const;
     void update_username(const std::string& user_id, const std::string& username) const;
+    void update_user_groups(const std::string& user_id, const std::vector<std::string>& group_ids) const;
     void update_password(const std::string& user_id, const std::string& password) const;
     void reset_user(const std::string& user_id) const;
     void delete_user(const std::string& user_id) const;
@@ -88,6 +89,7 @@ public:
     void delete_group(const std::string& group_id) const;
 
     std::vector<std::string> group_user_list(const std::string& group_id) const;
+    std::vector<std::string> user_group_list(const std::string& user_id) const;
 
     std::string add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const;
     void update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const;

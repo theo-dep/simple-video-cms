@@ -316,10 +316,11 @@ std::string Client::add_admin(const std::string& username) const
     return client::format_page(res);
 }
 
-std::string Client::add_user(const std::string& username) const
+std::string Client::add_user(const std::string& username, const std::vector<std::string>& group_ids) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "username", .content = username, .filename = "", .content_type = "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "" },
+        { .name = "group_ids", .content = su::join(group_ids), .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-user", items) };
     return client::format_page(res);
@@ -342,6 +343,15 @@ void Client::update_username(const std::string& user_id, const std::string& user
         { .name = "username", .content = username, .filename = "", .content_type = "" }
     };
     _client->Post("/update-username", items);
+}
+
+void Client::update_user_groups(const std::string& user_id, const std::vector<std::string>& group_ids) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
+        { .name = "group_ids", .content = su::join(group_ids), .filename = "", .content_type = "" }
+    };
+    _client->Post("/update-user-groups", items);
 }
 
 void Client::update_password(const std::string& user_id, const std::string& password) const
@@ -480,6 +490,13 @@ std::vector<std::string> Client::group_user_list(const std::string& group_id) co
     const httplib::Result res{ _client->Get("/group-user-list/" + group_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
     const std::string str_users{ client::format_page(res) };
     return su::split(str_users);
+}
+
+std::vector<std::string> Client::user_group_list(const std::string& user_id) const
+{
+    const httplib::Result res{ _client->Get("/user-group-list/" + user_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
+    const std::string str_groups{ client::format_page(res) };
+    return su::split(str_groups);
 }
 
 std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const

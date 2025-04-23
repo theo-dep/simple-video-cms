@@ -56,11 +56,14 @@ public:
     bool group_exists(const std::string& name) const;
     [[nodiscard]] std::optional<int> add_group(const std::string& name) const;
     [[nodiscard]] bool add_group_users(int id, const std::vector<int>& user_ids) const;
+    [[nodiscard]] bool add_user_groups(int user_id, const std::vector<int>& group_ids) const;
     [[nodiscard]] std::optional<int> update_group_name(int id, const std::string& name) const;
     [[nodiscard]] bool update_group_users(int id, const std::vector<int>& user_ids) const;
+    [[nodiscard]] bool update_user_groups(int user_id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool delete_group(int id) const;
 
     std::vector<int> group_user_list(int id) const;
+    std::vector<int> user_group_list(int user_id) const;
 
     [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
     [[nodiscard]] std::optional<int> add_video_thumbnail(int id, const std::string& thumbnail_content) const;
