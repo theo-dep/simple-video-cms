@@ -17,18 +17,19 @@ services:
       dockerfile: Containerfile
     environment:
       BACK_SERVER_URL: back:5000
-    ports:
-      - 8080:8080
+    restart: unless-stopped
     volumes:
       - data:/data
+    ports:
+      - 8080:8080
     depends_on:
       - common
-      - back
 
   back:
     build:
       context: ./back
       dockerfile: Containerfile
+    restart: unless-stopped
     volumes:
       - data:/data
     depends_on:
