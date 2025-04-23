@@ -23,7 +23,7 @@ public:
     std::string video(int id, std::size_t offset, std::size_t length) const;
     std::string thumbnail(int id) const;
 
-    [[nodiscard]] std::optional<int> add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const;
+    [[nodiscard]] std::optional<int> add_super_admin(const std::string& name, const std::string& salt) const;
     bool is_super_admin(int id) const;
 
     bool is_admin(int id) const;

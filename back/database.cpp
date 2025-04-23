@@ -175,11 +175,10 @@ std::string Database::thumbnail(int id) const
     return thumbnail.value_or(std::string{});
 }
 
-std::optional<int> Database::add_super_admin(const std::string& name, const std::string& password, const std::string& salt) const
+std::optional<int> Database::add_super_admin(const std::string& name, const std::string& salt) const
 {
     User user_super_admin{
         .name = name,
-        .password = password,
         .salt = salt
     };
 

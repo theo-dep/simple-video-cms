@@ -40,7 +40,6 @@ Servers can be run using VS Code or with both commands `make local-start-front` 
 To personalize front and backends, there is few environment variables to know:
 - Super administrator (cannot be deleted):
   - SUPER_ADMIN_USERNAME (default admin)
-  - SUPER_ADMIN_PASSWORD (default... admin)
 - Server addresses:
   - BACK_HOST (default 0.0.0.0)
   - BACK_PORT (default 5000)
