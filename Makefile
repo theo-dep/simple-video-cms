@@ -22,7 +22,7 @@ analyze-back:
 analyze-front:
 	@$(MAKE) -C front analyze
 
-docker-all: up clean
+docker-all: docker-up docker-clean
 
 docker-up:
 	docker compose up -d ;
