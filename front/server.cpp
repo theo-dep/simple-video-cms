@@ -801,7 +801,7 @@ inline void server::update_username_admin(const httplib::Request& req, httplib::
     su::trim(username);
     su::lower(username);
 
-    if (username_exists(username, client)) {
+    if (username != client.user_name(user_id) && username_exists(username, client)) {
         set_update_user_admin_content(res, env, client, user_id, is_admin, { .invalid_username = true });
         return;
     }
@@ -1169,7 +1169,7 @@ inline void server::update_group_post(const httplib::Request& req, httplib::Resp
     su::trim(group_name);
     su::lower(group_name);
 
-    if (client.group_exists(group_name)) {
+    if (group_name != client.group_name(group_id) && client.group_exists(group_name)) {
         set_update_group_content(req, res, env, client, { .invalid_group_name = true });
         return;
     }
