@@ -12,6 +12,13 @@
 - https://github.com/mister-ben/videojs-mobile-ui
 - MIT License
 
+## videojs-yt-style
+
+- v0.1.10
+- https://github.com/paidless/videojs-yt-style
+- packages updated from https://github.com/theo-dep/videojs-yt-style/tree/update-videojs
+- Unlicensed
+
 ## SVG-Spinners
 
 - main
