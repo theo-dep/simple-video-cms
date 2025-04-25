@@ -12,6 +12,12 @@
 - https://github.com/videojs/video.js
 - Apache License Version 2.0
 
+## videojs-mobile-ui
+
+- v1.1.1 (cd9c73dac63b834a94b94b90209ad98806b6a0ee)
+- https://github.com/mister-ben/videojs-mobile-ui
+- MIT License
+
 ## Bootstrap Icons
 
 - latest

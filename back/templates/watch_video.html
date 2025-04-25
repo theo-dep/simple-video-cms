@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/video-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/third-party/videojs-mobile-ui-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="icon" href="{{ icon }}" type="image/png">
 </head>
@@ -53,8 +54,10 @@
 </body>
 
 <script type="text/javascript" src="/static/js/third-party/video-min.js"></script>
+<script type="text/javascript" src="/static/js/third-party/videojs-mobile-ui-min.js"></script>
 <script>
   const player = videojs('video-player');
+  player.mobileUi();
 
   player.on('play', () => {
     const pageAccessedByReload = (
