@@ -529,9 +529,16 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
     const std::vector<std::string> user_list{ client.user_list() };
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {
+        const std::vector user_groups{ client.user_group_list(user_id) };
+        std::vector<std::string> group_list(user_groups.size());
+        std::ranges::transform(user_groups, group_list.begin(),
+                               [&](const std::string& group_id) -> std::string {
+                                   return client.group_name(group_id);
+                               });
         const inja::json user = {
             { "id", user_id },
             { "name", client.user_name(user_id) },
+            { "group_list", group_list },
             { "is_first_connection", client.is_first_connection(user_id) }
         };
         user_dict += user;
@@ -1222,13 +1229,24 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
 
     inja::json video_dict = server::video_dict(video_list, client);
     for (inja::json& video : video_dict) {
-        const std::vector rights{ client.video_user_right_list(video["id"]) };
-        std::vector<std::string> user_rights(rights.size());
-        std::ranges::transform(rights, user_rights.begin(),
-                               [&](const std::string& user_id) -> std::string {
-                                   return client.user_name(user_id);
-                               });
-        video += { "right_list", user_rights };
+        {
+            const std::vector rights{ client.video_group_right_list(video["id"]) };
+            std::vector<std::string> group_rights(rights.size());
+            std::ranges::transform(rights, group_rights.begin(),
+                                   [&](const std::string& group_id) -> std::string {
+                                       return client.group_name(group_id);
+                                   });
+            video += { "group_right_list", group_rights };
+        }
+        {
+            const std::vector rights{ client.video_user_right_list(video["id"]) };
+            std::vector<std::string> user_rights(rights.size());
+            std::ranges::transform(rights, user_rights.begin(),
+                                   [&](const std::string& user_id) -> std::string {
+                                       return client.user_name(user_id);
+                                   });
+            video += { "user_right_list", user_rights };
+        }
     }
 
     const inja::json data{ { "video_dict", video_dict } };
