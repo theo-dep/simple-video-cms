@@ -35,7 +35,17 @@
               required>
           </div>
 
-          <!-- Optional checklist of usernames -->
+          {% if group_dict %}
+          <div class="pure-control-group">
+            <select id="group_ids" name="group_ids" class="pure-input-1" multiple
+              data-placeholder="Select groups (optional):">
+              {% for group in group_dict %}
+              <option value="{{ group.id }}">{{ group.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
           {% if user_dict %}
           <div class="pure-control-group">
             <select id="user_ids" name="user_ids" class="pure-input-1" multiple
@@ -57,6 +67,7 @@
 
   <script type="text/javascript" src="/static/js/third-party/MultiSelect.js"></script>
   <script>
+    new MultiSelect(document.getElementById('group_ids'));
     new MultiSelect(document.getElementById('user_ids'));
   </script>
 </body>

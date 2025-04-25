@@ -20,8 +20,7 @@
         <h1>{{ website_name }}</h1>
       </a>
 
-      <h2>Update &laquo; {{ video_title }} &raquo;</h2>
-      <h3>Upload video title and user rights</h3>
+      <h3>Change video title, group and user rights</h3>
 
       <form class="pure-form pure-form-aligned" action="/update-video/{{ video_id }}" method="post">
         <fieldset>
@@ -29,6 +28,18 @@
             <input class="pure-input-1" type="text" name="title" id="title" value="{{ video_title }}"
               placeholder="{{ video_title_placeholder }}" required>
           </div>
+
+          {% if group_dict %}
+          <div class="pure-control-group">
+            <select id="group_ids" name="group_ids" class="pure-input-1" multiple
+              data-placeholder="Select groups (optional):">
+              {% for group in group_dict %}
+              <option value="{{ group.id }}" {% if group.selected %} selected {% endif %}>{{ group.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <br>
+          {% endif %}
 
           {% if user_dict %}
           <div class="pure-control-group">
@@ -51,6 +62,7 @@
 
   <script type="text/javascript" src="/static/js/third-party/MultiSelect.js"></script>
   <script>
+    new MultiSelect(document.getElementById('group_ids'));
     new MultiSelect(document.getElementById('user_ids'));
   </script>
 </body>

@@ -662,6 +662,19 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
     return video_id;
 }
 
+bool Database::add_video_group_rights(int id, const std::vector<int>& group_ids) const
+{
+    std::vector<VideoGroupRight> video_rights(group_ids.size());
+    std::ranges::transform(group_ids, video_rights.begin(), [&id](int group_id) -> VideoGroupRight {
+        return VideoGroupRight{ .video_id = id, .group_id = group_id };
+    });
+
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    storage.replace_range(video_rights.cbegin(), video_rights.cend());
+    return true;
+}
+
 bool Database::add_video_user_rights(int id, const std::vector<int>& user_ids) const
 {
     std::vector<VideoUserRight> video_rights(user_ids.size());
@@ -692,6 +705,16 @@ std::optional<int> Database::update_video_title(int id, const std::string& title
             })
     };
     return video_id;
+}
+
+bool Database::update_video_group_rights(int id, const std::vector<int>& group_ids) const
+{
+    {
+        const std::lock_guard<std::mutex> lock(_mutex);
+        database::StorageType storage{ database::storage(_path) };
+        storage.remove_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id));
+    }
+    return add_video_group_rights(id, group_ids);
 }
 
 bool Database::update_video_user_rights(int id, const std::vector<int>& user_ids) const
@@ -766,6 +789,13 @@ bool Database::has_video_right(int id, int user_id) const
                                                    in(&VideoGroupRight::group_id,
                                                       select(&GroupUser::group_id, where(c(&GroupUser::user_id) == user_id)))))
                 .empty();
+}
+
+std::vector<int> Database::video_group_right_list(int id) const
+{
+    const std::lock_guard<std::mutex> lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(distinct(&VideoGroupRight::group_id), where(c(&VideoGroupRight::video_id) == id));
 }
 
 std::vector<int> Database::video_user_right_list(int id) const

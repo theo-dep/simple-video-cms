@@ -76,6 +76,7 @@ namespace server
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db);
     void has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db);
 
+    void video_group_right_list(const httplib::Request& req, httplib::Response& res, const Database& db);
     void video_user_right_list(const httplib::Request& req, httplib::Response& res, const Database& db);
 }
 
@@ -155,6 +156,7 @@ int server::start()
         .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
         .Get("/has-video-right/:video_id", sc::serve(has_video_right, std::cref(db)))
 
+        .Get("/video-group-right-list/:video_id", sc::serve(video_group_right_list, std::cref(db)))
         .Get("/video-user-right-list/:video_id", sc::serve(video_user_right_list, std::cref(db)));
 
     const std::string host{ sc::get_env("BACK_HOST", "0.0.0.0") };
@@ -712,7 +714,7 @@ inline void server::user_group_list(const httplib::Request& req, httplib::Respon
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("title") || !req.has_file("video") || !req.has_file("user_ids")) {
+    if (!req.has_file("title") || !req.has_file("video") || !req.has_file("group_ids") || !req.has_file("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -720,13 +722,17 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
     const std::string video_title{ req.get_file_value("title").content };
     const std::string video_content{ req.get_file_value("video").content };
-    const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
     const std::string thumbnail_content{ video::thumbnail(video_content) };
+    const std::vector allowed_group_ids{ su::split(req.get_file_value("group_ids").content) };
+    const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
 
     const std::optional video_id{
         db.add_video(video_title, video_content)
             .and_then([&](int video_id) -> std::optional<int> {
                 return db.add_video_thumbnail(video_id, thumbnail_content);
+            })
+            .and_then([&](int video_id) -> std::optional<int> {
+                return db.add_video_group_rights(video_id, transform(allowed_group_ids)) ? std::optional(video_id) : std::nullopt;
             })
             .and_then([&](int video_id) -> std::optional<int> {
                 return db.add_video_user_rights(video_id, transform(allowed_user_ids)) ? std::optional(video_id) : std::nullopt;
@@ -744,7 +750,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
 inline void server::update_video(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("title") || !req.has_file("user_ids")) {
+    if (!req.has_file("title") || !req.has_file("group_ids") || !req.has_file("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
@@ -752,10 +758,14 @@ inline void server::update_video(const httplib::Request& req, httplib::Response&
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const std::string video_title{ req.get_file_value("title").content };
+    const std::vector allowed_group_ids{ su::split(req.get_file_value("group_ids").content) };
     const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
 
     const std::optional success{
         db.update_video_title(video_id, video_title)
+            .and_then([&](int video_id) -> std::optional<int> {
+                return db.update_video_group_rights(video_id, transform(allowed_group_ids)) ? std::optional(video_id) : std::nullopt;
+            })
             .transform([&](int video_id) -> bool {
                 return db.update_video_user_rights(video_id, transform(allowed_user_ids));
             })
@@ -831,6 +841,14 @@ inline void server::has_video_right(const httplib::Request& req, httplib::Respon
     }
 
     res.set_content(su::bool_to_string(has_video_right), "plain/text");
+}
+
+inline void server::video_group_right_list(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+
+    const std::vector rights{ transform(db.video_group_right_list(video_id)) };
+    res.set_content(su::join(rights), "plain/text");
 }
 
 inline void server::video_user_right_list(const httplib::Request& req, httplib::Response& res, const Database& db)

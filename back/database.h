@@ -67,14 +67,17 @@ public:
 
     [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
     [[nodiscard]] std::optional<int> add_video_thumbnail(int id, const std::string& thumbnail_content) const;
+    [[nodiscard]] bool add_video_group_rights(int id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool add_video_user_rights(int id, const std::vector<int>& user_ids) const;
     [[nodiscard]] std::optional<int> update_video_title(int id, const std::string& title) const;
+    [[nodiscard]] bool update_video_group_rights(int id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool update_video_user_rights(int id, const std::vector<int>& user_ids) const;
     [[nodiscard]] bool delete_video(int id) const;
     [[nodiscard]] bool increment_video_views(int id) const;
     bool has_video_right(int id) const;
     bool has_video_right(int id, int user_id) const;
 
+    std::vector<int> video_group_right_list(int id) const;
     std::vector<int> video_user_right_list(int id) const;
 
 protected:

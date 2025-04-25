@@ -499,21 +499,23 @@ std::vector<std::string> Client::user_group_list(const std::string& user_id) con
     return su::split(str_groups);
 }
 
-std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const
+std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_group_ids, const std::vector<std::string>& allowed_user_ids) const
 {
     const httplib::MultipartFormDataItems items{
         { .name = "title", .content = title, .filename = "", .content_type = "" },
         { .name = "video", .content = content, .filename = "", .content_type = "" },
+        { .name = "group_ids", .content = su::join(allowed_group_ids), .filename = "", .content_type = "" },
         { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-video", items) };
     return client::format_page(res);
 }
 
-void Client::update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const
+void Client::update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_group_ids, const std::vector<std::string>& allowed_user_ids) const
 {
     const httplib::MultipartFormDataItems items{
         { .name = "title", .content = title, .filename = "", .content_type = "" },
+        { .name = "group_ids", .content = su::join(allowed_group_ids), .filename = "", .content_type = "" },
         { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "" }
     };
     _client->Post("/update-video/" + video_id, items);
@@ -602,6 +604,13 @@ bool Client::has_video_right(const std::string& video_id, const std::string& use
     };
     const httplib::Result res{ _client->Get("/has-video-right/" + video_id, headers) };
     return su::string_to_bool(client::format_page(res));
+}
+
+std::vector<std::string> Client::video_group_right_list(const std::string& video_id) const
+{
+    const httplib::Result res{ _client->Get("/video-group-right-list/" + video_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
+    const std::string str_rights{ client::format_page(res) };
+    return su::split(str_rights);
 }
 
 std::vector<std::string> Client::video_user_right_list(const std::string& video_id) const

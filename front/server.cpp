@@ -1252,7 +1252,15 @@ inline void server::set_add_video_content(httplib::Response& res, inja::Environm
                                           const std::string& button_video_text_helper,
                                           const std::string& video_text_helper, const std::string& video_title_placeholder)
 {
-    const std::vector<std::string> user_list{ client.user_list() };
+    const std::vector group_list{ client.group_list() };
+
+    inja::json group_dict = inja::json::array();
+    for (const std::string& group_id : group_list) {
+        const inja::json group{ { "id", group_id }, { "name", client.group_name(group_id) } };
+        group_dict += group;
+    }
+
+    const std::vector user_list{ client.user_list() };
 
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {
@@ -1261,6 +1269,7 @@ inline void server::set_add_video_content(httplib::Response& res, inja::Environm
     }
 
     const inja::json data{
+        { "group_dict", group_dict },
         { "user_dict", user_dict },
         { "button_video_text_helper", button_video_text_helper },
         { "video_text_helper", video_text_helper },
@@ -1302,8 +1311,9 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
         return;
     }
 
+    const std::vector allowed_group_ids{ file_value_list(req, "group_ids") };
     const std::vector allowed_user_ids{ file_value_list(req, "user_ids") };
-    const std::string video_id{ client.add_video(video_title, item.content, allowed_user_ids) };
+    const std::string video_id{ client.add_video(video_title, item.content, allowed_group_ids, allowed_user_ids) };
     res.set_redirect("/video-list");
 
     const std::string creator_user_id{ connected_user_id(req, session) };
@@ -1323,8 +1333,18 @@ inline void server::set_update_video_content(const httplib::Request& req, httpli
 
     const std::string video_title{ client.video_title(video_id) };
 
-    const std::vector<std::string> user_list{ client.user_list() };
-    const std::vector<std::string> user_right_list{ client.video_user_right_list(video_id) };
+    const std::vector group_list{ client.group_list() };
+    const std::vector group_right_list{ client.video_group_right_list(video_id) };
+
+    inja::json group_dict = inja::json::array();
+    for (const std::string& group_id : group_list) {
+        const bool selected{ std::ranges::find(group_right_list, group_id) != group_right_list.cend() };
+        const inja::json group{ { "id", group_id }, { "name", client.group_name(group_id) }, { "selected", selected } };
+        group_dict += group;
+    }
+
+    const std::vector user_list{ client.user_list() };
+    const std::vector user_right_list{ client.video_user_right_list(video_id) };
 
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {
@@ -1337,6 +1357,7 @@ inline void server::set_update_video_content(const httplib::Request& req, httpli
         { "video_id", video_id },
         { "video_title", video_title },
         { "video_title_placeholder", video_title_placeholder },
+        { "group_dict", group_dict },
         { "user_dict", user_dict }
     };
     logging::debug{ data.dump() };
@@ -1366,14 +1387,15 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
         return;
     }
 
+    const std::vector allowed_group_ids{ param_value_list(req, "group_ids") };
     const std::vector allowed_user_ids{ param_value_list(req, "user_ids") };
 
     const std::string updater_user_id{ connected_user_id(req, session) };
 
     const std::string signal_str{
         confirm_handler.create()
-            ->on_confirm([video_id, video_title, allowed_user_ids, updater_user_id, &client](httplib::Response& res) {
-                client.update_video(video_id, video_title, allowed_user_ids);
+            ->on_confirm([video_id, video_title, allowed_group_ids, allowed_user_ids, updater_user_id, &client](httplib::Response& res) {
+                client.update_video(video_id, video_title, allowed_group_ids, allowed_user_ids);
                 res.set_redirect("/video-list");
                 logging::info{ "Video {} updated by {}", video_id, updater_user_id };
             })
