@@ -8,7 +8,10 @@
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/video-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/third-party/videojs-mobile-ui-min.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/third-party/videojs-yt-style-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/video.css" type="text/css">
   <link rel="icon" href="{{ icon }}" type="image/png">
 </head>
 
@@ -33,7 +36,7 @@
     <div class="info info-video">
       <h1>{{ title }}</h1>
       <video oncontextmenu="return false;" id="video-player" class="video-js vjs-default-skin" controls
-        data-setup='{"fluid": true}' preload="auto" poster="/thumbnail/{{ video_id }}">
+        data-setup='{"fluid": true}' preload="auto">
         <source src="/video/{{ video_id }}" type="video/mp4" />
         <p class="vjs-no-js">
           To view this video please enable JavaScript, and consider upgrading to a web browser that
@@ -53,8 +56,12 @@
 </body>
 
 <script type="text/javascript" src="/static/js/third-party/video-min.js"></script>
+<script type="text/javascript" src="/static/js/third-party/videojs-mobile-ui-min.js"></script>
+<script type="text/javascript" src="/static/js/third-party/videojs-yt-style-min.js"></script>
 <script>
   const player = videojs('video-player');
+  // player.mobileUi();
+  player.ytStyle();
 
   player.on('play', () => {
     const pageAccessedByReload = (
