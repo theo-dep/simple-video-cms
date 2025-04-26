@@ -62,7 +62,8 @@
 
   <script type="text/javascript" src="/static/js/third-party/MultiSelect.js"></script>
   <script>
-    new MultiSelect(document.getElementById('group_ids'));
+    const groupIdsElement = document.getElementById('group_ids');
+    if (groupIdsElement) new MultiSelect(groupIdsElement);
   </script>
 </body>
 

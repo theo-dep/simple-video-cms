@@ -59,7 +59,8 @@
 
   <script type="text/javascript" src="/static/js/third-party/MultiSelect.js"></script>
   <script>
-    new MultiSelect(document.getElementById('user_ids'));
+    const userIdsElement = document.getElementById('user_ids');
+    if (userIdsElement) new MultiSelect(userIdsElement);
   </script>
 </body>
 
