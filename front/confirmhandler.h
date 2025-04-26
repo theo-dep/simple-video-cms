@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -59,6 +60,7 @@ private:
     using ConnectionHandle = std::function<void(httplib::Response&)>;
     using ConnectionHandleMap = std::unordered_map<std::pair<std::shared_ptr<const Signal>, bool>, ConnectionHandle, SignalHash, std::equal_to<>>;
     ConnectionHandleMap _handle_map;
+    mutable std::mutex _mutex;
 
     // prevent copy/move
     ConfirmHandler(const ConfirmHandler&) = delete;

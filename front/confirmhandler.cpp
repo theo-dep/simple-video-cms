@@ -35,6 +35,7 @@ ConfirmHandler::Signal::Signal(Private /*unused*/, ConfirmHandler& handler)
 
 ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::function<void(httplib::Response&)>& handle)
 {
+    const std::lock_guard<std::mutex> lock(_handler._mutex);
     _handler._handle_map.insert_or_assign(std::make_pair(ptr(), true), [handle](httplib::Response& res) {
         if (handle)
             handle(res);
@@ -44,6 +45,7 @@ ConfirmHandler::Signal& ConfirmHandler::Signal::on_confirm(const std::function<v
 
 ConfirmHandler::Signal& ConfirmHandler::Signal::on_deny(const std::function<void(httplib::Response&)>& handle)
 {
+    const std::lock_guard<std::mutex> lock(_handler._mutex);
     _handler._handle_map.insert_or_assign(std::make_pair(ptr(), false), [handle](httplib::Response& res) {
         if (handle)
             handle(res);
@@ -70,6 +72,7 @@ std::shared_ptr<ConfirmHandler::Signal> ConfirmHandler::create()
 
 void ConfirmHandler::confirm(httplib::Response& res, const std::string& confirm_signal_str, bool confirm)
 {
+    const std::lock_guard<std::mutex> lock(_mutex);
     const ConnectionHandleMap::const_iterator it_handle{ _handle_map.find(std::make_pair(confirm_signal_str, confirm)) };
     if (it_handle != _handle_map.cend() && it_handle->second)
         it_handle->second(res);
