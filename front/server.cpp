@@ -34,6 +34,9 @@ namespace server
 
     inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client);
 
+    std::vector<std::string> param_value_list(const httplib::Request& req, const std::string& param_name);
+    std::vector<std::string> file_value_list(const httplib::Request& req, const std::string& file_name);
+
     void static_file(const httplib::Request& req, httplib::Response& res, const Client& client);
 
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -64,6 +67,13 @@ namespace server
     void update_user(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
     void update_username(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
     void update_password(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+
+    void group_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void add_group_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void add_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
+    void update_group_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
+    void update_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
+    void delete_group(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client);
 
     void video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void add_video_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -144,6 +154,14 @@ int server::start()
         .Get("/update-user", sc::serve(update_user, std::ref(env), std::ref(session), std::cref(client)))
         .Post("/update-username", sc::serve(update_username, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
         .Post("/update-password", sc::serve(update_password, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+
+        .Get("/group-list", sc::serve(group_list, std::ref(env), std::cref(session), std::cref(client)))
+
+        .Get("/add-group", sc::serve(add_group_get, std::ref(env), std::cref(session), std::cref(client)))
+        .Post("/add-group", sc::serve(add_group_post, std::ref(env), std::cref(session), std::cref(client)))
+        .Get("/update-group/:group_id", sc::serve(update_group_get, std::ref(env), std::ref(session), std::cref(client)))
+        .Post("/update-group/:group_id", sc::serve(update_group_post, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
+        .Get("/delete-group/:group_id", sc::serve(delete_group, std::ref(env), std::ref(confirm_handler), std::ref(session), std::cref(client)))
 
         .Get("/video-list", sc::serve(video_list, std::ref(env), std::cref(session), std::cref(client)))
 
@@ -320,6 +338,27 @@ inline inja::json server::video_dict(const std::vector<std::string>& video_ids, 
     return video_dict;
 }
 
+inline std::vector<std::string> server::param_value_list(const httplib::Request& req, const std::string& param_name)
+{
+    const std::string key{ param_name + "[]" };
+    const std::size_t param_count{ req.get_param_value_count(key) };
+    std::vector<std::string> param_list(param_count);
+    for (std::size_t i{ 0 }; i < param_count; ++i) {
+        param_list[i] = req.get_param_value(key, i);
+    }
+    return param_list;
+}
+
+inline std::vector<std::string> server::file_value_list(const httplib::Request& req, const std::string& file_name)
+{
+    const std::string key{ file_name + "[]" };
+    const std::vector file_items{ req.get_file_values(key) };
+    std::vector<std::string> file_list(file_items.size());
+    std::ranges::transform(file_items, file_list.begin(),
+                           [](const httplib::MultipartFormData& item) -> std::string { return item.content; });
+    return file_list;
+}
+
 inline void server::static_file(const httplib::Request& req, httplib::Response& res, const Client& client)
 {
     const std::string file{ req.matches[1] };
@@ -371,6 +410,7 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
 
     const inja::json data{
         { "user_count", client.user_count() },
+        { "group_count", client.group_count() },
         { "video_count", client.video_count() },
         { "view_count", client.view_count() }
     };
@@ -489,9 +529,16 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
     const std::vector<std::string> user_list{ client.user_list() };
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {
+        const std::vector user_groups{ client.user_group_list(user_id) };
+        std::vector<std::string> group_list(user_groups.size());
+        std::ranges::transform(user_groups, group_list.begin(),
+                               [&](const std::string& group_id) -> std::string {
+                                   return client.group_name(group_id);
+                               });
         const inja::json user = {
             { "id", user_id },
             { "name", client.user_name(user_id) },
+            { "group_list", group_list },
             { "is_first_connection", client.is_first_connection(user_id) }
         };
         user_dict += user;
@@ -515,11 +562,23 @@ namespace server
 
 inline void server::set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, const AlertAddUser& alert)
 {
-    const inja::json data{
+    inja::json data{
         { "is_admin", is_admin },
         { "invalid_username", alert.invalid_username }
     };
+
+    if (!is_admin) {
+        const std::vector<std::string> group_list{ client.group_list() };
+        inja::json group_dict = inja::json::array();
+        for (const std::string& group_id : group_list) {
+            const inja::json group{ { "id", group_id }, { "name", client.group_name(group_id) } };
+            group_dict += group;
+        }
+        data["group_dict"] = group_dict;
+    }
+
     logging::debug{ data.dump() };
+
     const std::string body{ env.render(client.add_user_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
@@ -553,7 +612,8 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
         res.set_redirect("/admin-list");
         logging::info{ "Admin {} created by {}", user_id, creator_user_id };
     } else {
-        const std::string user_id{ client.add_user(username) };
+        const std::vector group_ids{ param_value_list(req, "group_ids") };
+        const std::string user_id{ client.add_user(username, group_ids) };
         res.set_redirect("/user-list");
         logging::info{ "User {} created by {}", user_id, creator_user_id };
     }
@@ -692,12 +752,27 @@ namespace server
 inline void server::set_update_user_admin_content(httplib::Response& res, inja::Environment& env, const Client& client,
                                                   const std::string& user_id, bool is_admin, const AlertUpdateUserAdmin& alert)
 {
-    const inja::json data{
+    inja::json data{
         { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
         { "is_admin", is_admin },
         { "invalid_username", alert.invalid_username }
     };
+
+    if (!is_admin) {
+        const std::vector group_list{ client.group_list() };
+        const std::vector user_group_list{ client.user_group_list(user_id) };
+
+        inja::json group_dict = inja::json::array();
+        for (const std::string& group_id : group_list) {
+            const bool selected{ std::ranges::find(user_group_list, group_id) != user_group_list.cend() };
+            const inja::json group{ { "id", group_id }, { "name", client.group_name(group_id) }, { "selected", selected } };
+            group_dict += group;
+        }
+        data["group_dict"] = group_dict;
+    }
+
     logging::debug{ data.dump() };
+
     const std::string body{ env.render(client.update_user_admin_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
@@ -726,13 +801,17 @@ inline void server::update_username_admin(const httplib::Request& req, httplib::
     su::trim(username);
     su::lower(username);
 
-    if (username_exists(username, client)) {
+    if (username != client.user_name(user_id) && username_exists(username, client)) {
         set_update_user_admin_content(res, env, client, user_id, is_admin, { .invalid_username = true });
         return;
     }
 
-    const auto update_action{ [user_id, username, is_admin, updater_user_id, &client] {
+    const std::vector group_ids{ param_value_list(req, "group_ids") };
+
+    const auto update_action{ [user_id, username, is_admin, group_ids, updater_user_id, &client] {
         client.update_username(user_id, username);
+        if (!is_admin)
+            client.update_user_groups(user_id, group_ids);
         const std::string user_type{ is_admin ? "Admin" : "User" };
         logging::info{ "{} name {} updated by {}", user_type, user_id, updater_user_id };
     } };
@@ -944,6 +1023,203 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     res.set_redirect("/update-user" + std::format("?{}={}", changed_key, password_changed_value));
 }
 
+inline void server::group_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::vector<std::string> group_list{ client.group_list() };
+
+    inja::json group_dict = inja::json::array();
+    for (const std::string& group_id : group_list) {
+        const std::vector group_users{ client.group_user_list(group_id) };
+        std::vector<std::string> user_list(group_users.size());
+        std::ranges::transform(group_users, user_list.begin(),
+                               [&](const std::string& user_id) -> std::string {
+                                   return client.user_name(user_id);
+                               });
+        const inja::json group = {
+            { "id", group_id },
+            { "name", client.group_name(group_id) },
+            { "user_list", user_list }
+        };
+        group_dict += group;
+    }
+
+    const inja::json data{ { "group_dict", group_dict } };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.group_list_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+namespace server
+{
+    struct AlertAddGroup
+    {
+        bool invalid_group_name{ false };
+    };
+    void set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertAddGroup& alert);
+}
+
+inline void server::set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertAddGroup& alert)
+{
+    const std::vector<std::string> user_list{ client.user_list() };
+
+    inja::json user_dict = inja::json::array();
+    for (const std::string& user_id : user_list) {
+        const inja::json user{ { "id", user_id }, { "name", client.user_name(user_id) } };
+        user_dict += user;
+    }
+
+    const inja::json data{
+        { "user_dict", user_dict },
+        { "invalid_group_name", alert.invalid_group_name }
+    };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.add_group_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::add_group_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    set_add_group_content(res, env, client, {});
+}
+
+inline void server::add_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
+
+    std::string group_name{ req.get_param_value("name") };
+    su::trim(group_name);
+    su::lower(group_name);
+
+    if (client.group_exists(group_name)) {
+        set_add_group_content(res, env, client, { .invalid_group_name = true });
+        return;
+    }
+
+    const std::vector group_user_ids{ param_value_list(req, "user_ids") };
+    const std::string group_id{ client.add_group(group_name, group_user_ids) };
+
+    res.set_redirect("/group-list");
+
+    const std::string creator_user_id{ connected_user_id(req, session) };
+    logging::info{ "Group {} created by {}", group_id, creator_user_id };
+}
+
+namespace server
+{
+    struct AlertUpdateGroup
+    {
+        bool invalid_group_name{ false };
+    };
+    void set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, const AlertUpdateGroup& alert);
+}
+
+inline void server::set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, const AlertUpdateGroup& alert)
+{
+    const std::string group_id{ req.path_params.at("group_id") };
+
+    const std::string group_name{ client.group_name(group_id) };
+
+    const std::vector<std::string> user_list{ client.user_list() };
+    const std::vector<std::string> user_right_list{ client.group_user_list(group_id) };
+
+    inja::json user_dict = inja::json::array();
+    for (const std::string& user_id : user_list) {
+        const bool selected{ std::ranges::find(user_right_list, user_id) != user_right_list.cend() };
+        const inja::json user{ { "id", user_id }, { "name", client.user_name(user_id) }, { "selected", selected } };
+        user_dict += user;
+    }
+
+    const inja::json data{
+        { "group_id", group_id },
+        { "group_name", group_name },
+        { "user_dict", user_dict },
+        { "invalid_group_name", alert.invalid_group_name }
+    };
+    logging::debug{ data.dump() };
+
+    const std::string body{ env.render(client.update_group_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_content(body, "text/html");
+}
+
+inline void server::update_group_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    set_update_group_content(req, res, env, client, {});
+}
+
+inline void server::update_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+        return;
+
+    const std::string group_id{ req.path_params.at("group_id") };
+
+    std::string group_name{ req.get_param_value("name") };
+    su::trim(group_name);
+    su::lower(group_name);
+
+    if (group_name != client.group_name(group_id) && client.group_exists(group_name)) {
+        set_update_group_content(req, res, env, client, { .invalid_group_name = true });
+        return;
+    }
+
+    const std::vector group_user_ids{ param_value_list(req, "user_ids") };
+
+    const std::string updater_user_id{ connected_user_id(req, session) };
+
+    const std::string signal_str{
+        confirm_handler.create()
+            ->on_confirm([group_id, group_name, group_user_ids, updater_user_id, &client](httplib::Response& res) {
+                client.update_group(group_id, group_name, group_user_ids);
+                res.set_redirect("/group-list");
+                logging::info{ "Group {} updated by {}", group_id, updater_user_id };
+            })
+            .on_deny([](httplib::Response& res) {
+                res.set_redirect("/group-list");
+            })
+            .to_string()
+    };
+
+    confirm_action(req, res, env, session, client, signal_str);
+}
+
+inline void server::delete_group(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
+{
+    if (!is_logged_and_admin(req, res, session, client))
+        return;
+
+    const std::string group_id{ req.path_params.at("group_id") };
+    logging::debug{ "Delete {} {}", group_id, client.group_name(group_id) };
+
+    const std::string suppressor_user_id{ connected_user_id(req, session) };
+
+    const std::string signal_str{
+        confirm_handler.create()
+            ->on_confirm([group_id, suppressor_user_id, &client](httplib::Response& res) {
+                client.delete_group(group_id);
+                res.set_redirect("/group-list");
+                logging::info{ "Group {} deleted by {}", group_id, suppressor_user_id };
+            })
+            .on_deny([](httplib::Response& res) {
+                res.set_redirect("/group-list");
+            })
+            .to_string()
+    };
+
+    confirm_action(req, res, env, session, client, signal_str);
+}
+
 inline void server::video_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     if (!is_logged_and_admin(req, res, session, client))
@@ -953,13 +1229,24 @@ inline void server::video_list(const httplib::Request& req, httplib::Response& r
 
     inja::json video_dict = server::video_dict(video_list, client);
     for (inja::json& video : video_dict) {
-        const std::vector rights{ client.video_right_list(video["id"]) };
-        std::vector<std::string> user_rights(rights.size());
-        std::ranges::transform(rights, user_rights.begin(),
-                               [&](const std::string& user_id) -> std::string {
-                                   return client.user_name(user_id);
-                               });
-        video += { "right_list", user_rights };
+        {
+            const std::vector rights{ client.video_group_right_list(video["id"]) };
+            std::vector<std::string> group_rights(rights.size());
+            std::ranges::transform(rights, group_rights.begin(),
+                                   [&](const std::string& group_id) -> std::string {
+                                       return client.group_name(group_id);
+                                   });
+            video += { "group_right_list", group_rights };
+        }
+        {
+            const std::vector rights{ client.video_user_right_list(video["id"]) };
+            std::vector<std::string> user_rights(rights.size());
+            std::ranges::transform(rights, user_rights.begin(),
+                                   [&](const std::string& user_id) -> std::string {
+                                       return client.user_name(user_id);
+                                   });
+            video += { "user_right_list", user_rights };
+        }
     }
 
     const inja::json data{ { "video_dict", video_dict } };
@@ -983,7 +1270,15 @@ inline void server::set_add_video_content(httplib::Response& res, inja::Environm
                                           const std::string& button_video_text_helper,
                                           const std::string& video_text_helper, const std::string& video_title_placeholder)
 {
-    const std::vector<std::string> user_list{ client.user_list() };
+    const std::vector group_list{ client.group_list() };
+
+    inja::json group_dict = inja::json::array();
+    for (const std::string& group_id : group_list) {
+        const inja::json group{ { "id", group_id }, { "name", client.group_name(group_id) } };
+        group_dict += group;
+    }
+
+    const std::vector user_list{ client.user_list() };
 
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {
@@ -992,6 +1287,7 @@ inline void server::set_add_video_content(httplib::Response& res, inja::Environm
     }
 
     const inja::json data{
+        { "group_dict", group_dict },
         { "user_dict", user_dict },
         { "button_video_text_helper", button_video_text_helper },
         { "video_text_helper", video_text_helper },
@@ -1033,12 +1329,9 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    const std::vector user_id_items{ req.get_file_values("user_ids[]") };
-    std::vector<std::string> allowed_user_ids(user_id_items.size());
-    std::ranges::transform(user_id_items, allowed_user_ids.begin(),
-                           [](const httplib::MultipartFormData& item) -> std::string { return item.content; });
-
-    const std::string video_id{ client.add_video(video_title, item.content, allowed_user_ids) };
+    const std::vector allowed_group_ids{ file_value_list(req, "group_ids") };
+    const std::vector allowed_user_ids{ file_value_list(req, "user_ids") };
+    const std::string video_id{ client.add_video(video_title, item.content, allowed_group_ids, allowed_user_ids) };
     res.set_redirect("/video-list");
 
     const std::string creator_user_id{ connected_user_id(req, session) };
@@ -1058,8 +1351,18 @@ inline void server::set_update_video_content(const httplib::Request& req, httpli
 
     const std::string video_title{ client.video_title(video_id) };
 
-    const std::vector<std::string> user_list{ client.user_list() };
-    const std::vector<std::string> user_right_list{ client.video_right_list(video_id) };
+    const std::vector group_list{ client.group_list() };
+    const std::vector group_right_list{ client.video_group_right_list(video_id) };
+
+    inja::json group_dict = inja::json::array();
+    for (const std::string& group_id : group_list) {
+        const bool selected{ std::ranges::find(group_right_list, group_id) != group_right_list.cend() };
+        const inja::json group{ { "id", group_id }, { "name", client.group_name(group_id) }, { "selected", selected } };
+        group_dict += group;
+    }
+
+    const std::vector user_list{ client.user_list() };
+    const std::vector user_right_list{ client.video_user_right_list(video_id) };
 
     inja::json user_dict = inja::json::array();
     for (const std::string& user_id : user_list) {
@@ -1072,6 +1375,7 @@ inline void server::set_update_video_content(const httplib::Request& req, httpli
         { "video_id", video_id },
         { "video_title", video_title },
         { "video_title_placeholder", video_title_placeholder },
+        { "group_dict", group_dict },
         { "user_dict", user_dict }
     };
     logging::debug{ data.dump() };
@@ -1101,18 +1405,15 @@ inline void server::update_video_post(const httplib::Request& req, httplib::Resp
         return;
     }
 
-    const std::size_t user_id_count{ req.get_param_value_count("user_ids[]") };
-    std::vector<std::string> allowed_user_ids(user_id_count);
-    for (std::size_t i{ 0 }; i < user_id_count; ++i) {
-        allowed_user_ids[i] = req.get_param_value("user_ids[]", i);
-    }
+    const std::vector allowed_group_ids{ param_value_list(req, "group_ids") };
+    const std::vector allowed_user_ids{ param_value_list(req, "user_ids") };
 
     const std::string updater_user_id{ connected_user_id(req, session) };
 
     const std::string signal_str{
         confirm_handler.create()
-            ->on_confirm([video_id, video_title, allowed_user_ids, updater_user_id, &client](httplib::Response& res) {
-                client.update_video(video_id, video_title, allowed_user_ids);
+            ->on_confirm([video_id, video_title, allowed_group_ids, allowed_user_ids, updater_user_id, &client](httplib::Response& res) {
+                client.update_video(video_id, video_title, allowed_group_ids, allowed_user_ids);
                 res.set_redirect("/video-list");
                 logging::info{ "Video {} updated by {}", video_id, updater_user_id };
             })

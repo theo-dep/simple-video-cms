@@ -27,13 +27,16 @@
           <a href="/dashboard" class="menu-link menu-selected pure-menu-link pure-menu-selected">Dashboard</a>
         </li>
         <li class="pure-menu-item">
+          <a href="/video-list" class="menu-link pure-menu-link">Video List</a>
+        </li>
+        <li class="pure-menu-item">
           <a href="/admin-list" class="menu-link pure-menu-link">Admin List</a>
         </li>
         <li class="pure-menu-item">
           <a href="/user-list" class="menu-link pure-menu-link">User List</a>
         </li>
         <li class="pure-menu-item">
-          <a href="/video-list" class="menu-link pure-menu-link">Video List</a>
+          <a href="/group-list" class="menu-link pure-menu-link">Group List</a>
         </li>
         <li class="pure-menu-item">
           <a href="/logout" class="menu-link pure-menu-link">Logout</a>
@@ -47,9 +50,15 @@
     <table id="table" class="table pure-table pure-table-horizontal">
       <tbody>
         <tr>
-          <td data-title="view_count">Total number of users registered</td>
-          <td data-title="v_count">
+          <td data-title="user_count">Total number of users registered</td>
+          <td data-title="u_count">
             <a href="/user-list">{{ user_count }}</a>
+          </td>
+        </tr>
+        <tr>
+          <td data-title="group_count">Total number of group registered</td>
+          <td data-title="count">
+            <a href="/group-list">{{ group_count }}</a>
           </td>
         </tr>
         <tr>

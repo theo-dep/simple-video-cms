@@ -2,8 +2,8 @@
 <html>
 
 <head>
-  <meta charset="utf-8">
-  <title>Video List - {{ website_name }}</title>
+  <meta charset="UTF-8">
+  <title>Group List - {{ website_name }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
@@ -28,7 +28,7 @@
           <a href="/dashboard" class="menu-link pure-menu-link">Dashboard</a>
         </li>
         <li class="pure-menu-item">
-          <a href="/video-list" class="menu-link menu-selected pure-menu-link pure-menu-selected">Video List</a>
+          <a href="/video-list" class="menu-link pure-menu-link">Video List</a>
         </li>
         <li class="pure-menu-item">
           <a href="/admin-list" class="menu-link pure-menu-link">Admin List</a>
@@ -37,7 +37,7 @@
           <a href="/user-list" class="menu-link pure-menu-link">User List</a>
         </li>
         <li class="pure-menu-item">
-          <a href="/group-list" class="menu-link pure-menu-link">Group List</a>
+          <a href="/group-list" class="menu-link menu-selected pure-menu-link pure-menu-selected">Group List</a>
         </li>
         <li class="pure-menu-item">
           <a href="/logout" class="menu-link pure-menu-link">Logout</a>
@@ -47,59 +47,36 @@
   </div>
 
   <div class="content">
-    {% if not video_dict %}
-    <h1>Nothing uploaded yet</h1>
-    <h3>
-      <a href="/add-video">Upload a new video</a>
-    </h3>
-    {% else %}
-    <h1>Uploaded videos</h1>
-    <h3>
-      <a href="/add-video">Upload a new video</a>
-    </h3>
+    <h2>List of groups</h2>
     <table id="table" class="table pure-table pure-table-horizontal">
       <thead>
         <tr>
-          <th></th>
-          <th>Video Name</th>
-          <th>Views</th>
+          <th>Name</th>
           <th class="add-user">
-            <a href="/add-video">
+            <a href="/add-group">
               <svg class="svg-button">
-                <title>Add a new video</title>
-                <use href="/static/img/cloud-plus.svg#cloud-plus" />
+                <title>Add a new group</title>
+                <use href="/static/img/group-add.svg#group-add" />
               </svg>
             </a>
           </th>
         </tr>
       </thead>
       <tbody>
-        {% for video in video_dict %}
+        {% for group in group_dict %}
         <tr>
-          <td>
-            <a href="/download-video/{{ video.id }}" download="{{ video.title }}.mp4">
-              <svg class="svg-button">
-                <title>Download {{ video.title }}.mp4</title>
-                <use href="/static/img/cloud-arrow-down.svg#cloud-arrow-down" />
-              </svg>
-            </a>
-          </td>
-          <td data-title="video-name">
-            <a href="/watch-video/{{ video.id }}">{{ video.title }}</a>
-          </td>
-          <td>{{ video.views }}</td>
+          <td data-title="Name">{{ group.name }}</td>
           <td>
             <div class="pure-g">
-              <div class="pure-u-1 pure-u-lg-1-3">
-                {% if video.group_right_list or video.user_right_list %}
-                <label class="drawer-button open-drawer" for="drawer-checkbox">Rights</label>
+              <div class="pure-u-1 pure-u-sm-1-3">
+                {% if group.user_list %}
+                <label class="drawer-button open-drawer" for="drawer-checkbox">Users</label>
                 <input hidden type="checkbox" id="drawer-checkbox" name="drawer-checkbox">
                 <label for="drawer-checkbox" class="drawer-overlay" role="dialog">
                   <label class="drawer" aria-modal="true" aria-labelledby="drawer-title" role="document">
                     <div class="pure-g">
-                      {% if video.group_right_list %}
                       <div class="drawer-title pure-u-1">
-                        <h1>Group Rights</h1>
+                        <h1>Group Users</h1>
                         <label class="drawer-button drawer-close" for="drawer-checkbox" aria-label="Close drawer">
                           <svg class="svg-button">
                             <title>Close</title>
@@ -107,40 +84,21 @@
                           </svg>
                         </label>
                       </div>
-                      {% for right in video.group_right_list %}
+                      {% for user in group.user_list %}
                       <div class="pure-u-1 pure-u-lg-1-2">
-                        <p>{{ right }}</p>
+                        <p>{{ user }}</p>
                       </div>
                       {% endfor %}
-                      {% endif %}
-                      {% if video.user_right_list %}
-                      <div class="drawer-title pure-u-1">
-                        <h1>User Rights</h1>
-                        {% if not video.group_right_list %}
-                        <label class="drawer-button drawer-close" for="drawer-checkbox" aria-label="Close drawer">
-                          <svg class="svg-button">
-                            <title>Close</title>
-                            <use href="/static/img/x-lg.svg#x-lg" />
-                          </svg>
-                        </label>
-                        {% endif %}
-                      </div>
-                      {% for right in video.user_right_list %}
-                      <div class="pure-u-1 pure-u-lg-1-2">
-                        <p>{{ right }}</p>
-                      </div>
-                      {% endfor %}
-                      {% endif %}
                     </div>
                   </label>
                 </label>
                 {% endif %}
               </div>
-              <div class="pure-u-1 pure-u-lg-1-3">
-                <a href="/update-video/{{ video.id }}">Update</a>
+              <div class="pure-u-1 pure-u-sm-1-3">
+                <a href="/update-group/{{ group.id }}">Update</a>
               </div>
-              <div class="pure-u-1 pure-u-lg-1-3">
-                <a href="/delete-video/{{ video.id }}">Delete</a>
+              <div class="pure-u-1 pure-u-sm-1-3">
+                <a href="/delete-group/{{ group.id }}">Delete</a>
               </div>
             </div>
           </td>
@@ -148,7 +106,6 @@
         {% endfor %}
       </tbody>
     </table>
-    {% endif %}
   </div>
 </body>
 

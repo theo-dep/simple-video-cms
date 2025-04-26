@@ -6,7 +6,6 @@
   <title>Video Upload - {{ website_name }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
-  <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/MultiSelect.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
   <link rel="stylesheet" href="/static/css/upload.css" type="text/css">
@@ -23,6 +22,7 @@
       </a>
 
       <h3>Upload video</h3>
+
       <form class="pure-form pure-form-aligned" action="/add-video" method="post" enctype=multipart/form-data>
         <fieldset>
           <div class="pure-control-group file-drop-area">
@@ -35,7 +35,17 @@
               required>
           </div>
 
-          <!-- Optional checklist of usernames -->
+          {% if group_dict %}
+          <div class="pure-control-group">
+            <select id="group_ids" name="group_ids" class="pure-input-1" multiple
+              data-placeholder="Select groups (optional):">
+              {% for group in group_dict %}
+              <option value="{{ group.id }}">{{ group.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% endif %}
+
           {% if user_dict %}
           <div class="pure-control-group">
             <select id="user_ids" name="user_ids" class="pure-input-1" multiple
@@ -45,7 +55,6 @@
               {% endfor %}
             </select>
           </div>
-          <br>
           {% endif %}
 
           <div class="pure-control-group">
@@ -58,6 +67,7 @@
 
   <script type="text/javascript" src="/static/js/third-party/MultiSelect.js"></script>
   <script>
+    new MultiSelect(document.getElementById('group_ids'));
     new MultiSelect(document.getElementById('user_ids'));
   </script>
 </body>

@@ -137,6 +137,24 @@ std::string Client::admin_list_page() const
     return client::format_page(res);
 }
 
+std::string Client::group_list_page() const
+{
+    const httplib::Result res{ _client->Get("/html/group_list.html") };
+    return client::format_page(res);
+}
+
+std::string Client::add_group_page() const
+{
+    const httplib::Result res{ _client->Get("/html/add_group.html") };
+    return client::format_page(res);
+}
+
+std::string Client::update_group_page() const
+{
+    const httplib::Result res{ _client->Get("/html/update_group.html") };
+    return client::format_page(res);
+}
+
 std::string Client::video_list_page() const
 {
     const httplib::Result res{ _client->Get("/html/video_list.html") };
@@ -298,10 +316,11 @@ std::string Client::add_admin(const std::string& username) const
     return client::format_page(res);
 }
 
-std::string Client::add_user(const std::string& username) const
+std::string Client::add_user(const std::string& username, const std::vector<std::string>& group_ids) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "username", .content = username, .filename = "", .content_type = "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "" },
+        { .name = "group_ids", .content = su::join(group_ids), .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-user", items) };
     return client::format_page(res);
@@ -324,6 +343,15 @@ void Client::update_username(const std::string& user_id, const std::string& user
         { .name = "username", .content = username, .filename = "", .content_type = "" }
     };
     _client->Post("/update-username", items);
+}
+
+void Client::update_user_groups(const std::string& user_id, const std::vector<std::string>& group_ids) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
+        { .name = "group_ids", .content = su::join(group_ids), .filename = "", .content_type = "" }
+    };
+    _client->Post("/update-user-groups", items);
 }
 
 void Client::update_password(const std::string& user_id, const std::string& password) const
@@ -376,6 +404,12 @@ int Client::user_count() const
     return su::string_to_int(client::format_page(res));
 }
 
+int Client::group_count() const
+{
+    const httplib::Result res{ _client->Get("/group-count") };
+    return su::string_to_int(client::format_page(res));
+}
+
 int Client::video_count() const
 {
     const httplib::Result res{ _client->Get("/video-count") };
@@ -402,21 +436,86 @@ std::vector<std::string> Client::admin_list() const
     return su::split(str_user_ids);
 }
 
-std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_user_ids) const
+std::vector<std::string> Client::group_list() const
+{
+    const httplib::Result res{ _client->Get("/group-list") };
+    const std::string str_group_ids{ client::format_page(res) };
+    return su::split(str_group_ids);
+}
+
+std::string Client::group_name(const std::string& group_id) const
+{
+    const httplib::Headers headers{
+        { "group_id", group_id }
+    };
+    const httplib::Result res{ _client->Get("/group-name", headers) };
+    return client::format_page(res);
+}
+
+bool Client::group_exists(const std::string& name) const
+{
+    const httplib::Headers headers{
+        { "name", name }
+    };
+    const httplib::Result res{ _client->Get("/group-exists", headers) };
+    return su::string_to_bool(client::format_page(res));
+}
+
+std::string Client::add_group(const std::string& name, const std::vector<std::string>& group_user_ids) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "name", .content = name, .filename = "", .content_type = "" },
+        { .name = "user_ids", .content = su::join(group_user_ids), .filename = "", .content_type = "" }
+    };
+    const httplib::Result res{ _client->Post("/add-group", items) };
+    return client::format_page(res);
+}
+
+void Client::update_group(const std::string& group_id, const std::string& name, const std::vector<std::string>& group_user_ids) const
+{
+    const httplib::MultipartFormDataItems items{
+        { .name = "name", .content = name, .filename = "", .content_type = "" },
+        { .name = "user_ids", .content = su::join(group_user_ids), .filename = "", .content_type = "" }
+    };
+    _client->Post("/update-group/" + group_id, items);
+}
+
+void Client::delete_group(const std::string& group_id) const
+{
+    _client->Post("/delete-group/" + group_id);
+}
+
+std::vector<std::string> Client::group_user_list(const std::string& group_id) const
+{
+    const httplib::Result res{ _client->Get("/group-user-list/" + group_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
+    const std::string str_users{ client::format_page(res) };
+    return su::split(str_users);
+}
+
+std::vector<std::string> Client::user_group_list(const std::string& user_id) const
+{
+    const httplib::Result res{ _client->Get("/user-group-list/" + user_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
+    const std::string str_groups{ client::format_page(res) };
+    return su::split(str_groups);
+}
+
+std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_group_ids, const std::vector<std::string>& allowed_user_ids) const
 {
     const httplib::MultipartFormDataItems items{
         { .name = "title", .content = title, .filename = "", .content_type = "" },
         { .name = "video", .content = content, .filename = "", .content_type = "" },
+        { .name = "group_ids", .content = su::join(allowed_group_ids), .filename = "", .content_type = "" },
         { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "" }
     };
     const httplib::Result res{ _client->Post("/add-video", items) };
     return client::format_page(res);
 }
 
-void Client::update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_user_ids) const
+void Client::update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_group_ids, const std::vector<std::string>& allowed_user_ids) const
 {
     const httplib::MultipartFormDataItems items{
         { .name = "title", .content = title, .filename = "", .content_type = "" },
+        { .name = "group_ids", .content = su::join(allowed_group_ids), .filename = "", .content_type = "" },
         { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "" }
     };
     _client->Post("/update-video/" + video_id, items);
@@ -507,9 +606,16 @@ bool Client::has_video_right(const std::string& video_id, const std::string& use
     return su::string_to_bool(client::format_page(res));
 }
 
-std::vector<std::string> Client::video_right_list(const std::string& video_id) const
+std::vector<std::string> Client::video_group_right_list(const std::string& video_id) const
 {
-    const httplib::Result res{ _client->Get("/video-right-list/" + video_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
+    const httplib::Result res{ _client->Get("/video-group-right-list/" + video_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
+    const std::string str_rights{ client::format_page(res) };
+    return su::split(str_rights);
+}
+
+std::vector<std::string> Client::video_user_right_list(const std::string& video_id) const
+{
+    const httplib::Result res{ _client->Get("/video-user-right-list/" + video_id) }; // NOLINT(clang-analyzer-unix.BlockInCriticalSection): from httplib.h, why just here?
     const std::string str_rights{ client::format_page(res) };
     return su::split(str_rights);
 }

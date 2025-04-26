@@ -5,13 +5,29 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "(gdb) Launch Front",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/bin/debug/front/server",
             "cwd": "${workspaceFolder}/front",
-            //"program": "${workspaceFolder}/bin/debug/back/server",
-            //"cwd": "${workspaceFolder}/back",
+            "args": [],
+            "stopAtEntry": false,
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "(gdb) Launch Back",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/debug/back/server",
+            "cwd": "${workspaceFolder}/back",
             "args": [],
             "stopAtEntry": false,
             "externalConsole": false,

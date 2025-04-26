@@ -3,12 +3,13 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Video Update - {{ website_name }}</title>
+  <title>Group Update - {{ website_name }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/MultiSelect.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">
-  <link rel="stylesheet" href="/static/css/upload.css" type="text/css">
+  <link rel="stylesheet" href="/static/css/alert.css" type="text/css">
+  <script type="text/javascript" src="/static/js/alert.js"></script>
   <script type="text/javascript" src="/static/js/button.js"></script>
   <link rel="icon" href="{{ icon }}" type="image/png">
 </head>
@@ -20,31 +21,28 @@
         <h1>{{ website_name }}</h1>
       </a>
 
-      <h3>Change video title, group and user rights</h3>
+      <h3>Change group name and users to group</h3>
 
-      <form class="pure-form pure-form-aligned" action="/update-video/{{ video_id }}" method="post">
+      <form class="pure-form pure-form-aligned" action="/update-group/{{ group_id }}" method="post">
         <fieldset>
-          <div class="pure-control-group">
-            <input class="pure-input-1" type="text" name="title" id="title" value="{{ video_title }}"
-              placeholder="{{ video_title_placeholder }}" required>
+          {% if invalid_group_name %}
+          <div class="alert pure-control-group">
+            <svg class="close-button">
+              <title>Close</title>
+              <use href="/static/img/x.svg#x" />
+            </svg>
+            <p>Group name already taken</p>
           </div>
-
-          {% if group_dict %}
-          <div class="pure-control-group">
-            <select id="group_ids" name="group_ids" class="pure-input-1" multiple
-              data-placeholder="Select groups (optional):">
-              {% for group in group_dict %}
-              <option value="{{ group.id }}" {% if group.selected %} selected {% endif %}>{{ group.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <br>
           {% endif %}
+          <div class="pure-control-group">
+            <input class="pure-input-1" type="text" name="name" id="name" placeholder="name" value="{{ group_name }}"
+              required>
+          </div>
 
           {% if user_dict %}
           <div class="pure-control-group">
             <select id="user_ids" name="user_ids" class="pure-input-1" multiple
-              data-placeholder="Select usernames (optional):">
+              data-placeholder="Add users to group (optional):">
               {% for user in user_dict %}
               <option value="{{ user.id }}" {% if user.selected %} selected {% endif %}>{{ user.name }}</option>
               {% endfor %}
@@ -62,7 +60,6 @@
 
   <script type="text/javascript" src="/static/js/third-party/MultiSelect.js"></script>
   <script>
-    new MultiSelect(document.getElementById('group_ids'));
     new MultiSelect(document.getElementById('user_ids'));
   </script>
 </body>
