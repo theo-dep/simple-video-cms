@@ -10,7 +10,7 @@ std::string sc::log(const httplib::Request& req, const httplib::Response& res)
     const std::string remote_user{ "-" }; // TODO:
     const std::string request{ std::format("{} {} {}", req.method, req.path, req.version) };
     const std::string body_bytes_sent{ res.get_header_value("Content-Length") };
-    const std::string http_referer{ "-" }; // TODO:
+    const std::string http_referer{ req.get_header_value("Referer", "-") };
     const std::string http_user_agent{ req.get_header_value("User-Agent", "-") };
 
     // NOTE: From NGINX default access log format
