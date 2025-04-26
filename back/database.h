@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <vector>
@@ -69,4 +70,5 @@ protected:
 
 private:
     const std::filesystem::path _path;
+    mutable std::mutex _mutex;
 };
