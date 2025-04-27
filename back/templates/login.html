@@ -44,7 +44,13 @@
         </fieldset>
       </form>
 
-      <br>
+      <div class="add-user">
+        <a onclick="showAddPasswordDiv()">Forgot password?</a>
+      </div>
+      <div class="add-user" id="forgot-password" style="visibility: hidden;">
+        Ask an admin to reset your password
+      </div>
+
       <h4 class="lined">Or</h4>
 
       <h3>First connection?</h3>
@@ -60,6 +66,17 @@
 
     </div>
   </div>
+
+  <script>
+    function showAddPasswordDiv() {
+      const forgotPasswordDiv = document.getElementById('forgot-password');
+      if (forgotPasswordDiv.style.visibility === "hidden") {
+        forgotPasswordDiv.style.visibility = "visible";
+      } else {
+        forgotPasswordDiv.style.visibility = "hidden";
+      }
+    }
+  </script>
 
 </body>
 
