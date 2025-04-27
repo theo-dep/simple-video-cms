@@ -578,18 +578,21 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
 
 namespace server
 {
-    struct AlertAddUser
+    enum class AlertAddUser : std::uint8_t
     {
-        bool invalid_username{ false };
+        no_alert,
+        invalid_username
     };
-    void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, const AlertAddUser& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_add_user_texts{ ""sv, "Username already taken"sv };
+    void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, AlertAddUser alert);
 }
 
-inline void server::set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, const AlertAddUser& alert)
+inline void server::set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, AlertAddUser alert)
 {
     inja::json data{
         { "is_admin", is_admin },
-        { "invalid_username", alert.invalid_username }
+        { "alert", alert_to_text(alert, alert_add_user_texts) }
     };
 
     if (!is_admin) {
@@ -614,7 +617,7 @@ inline void server::add_user_get(const httplib::Request& req, httplib::Response&
         return;
 
     const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
-    set_add_user_content(res, env, client, is_admin, {});
+    set_add_user_content(res, env, client, is_admin, AlertAddUser::no_alert);
 }
 
 inline void server::add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
@@ -631,7 +634,7 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     const std::string creator_user_id{ connected_user_id(req, session) };
 
     if (username_exists(username, client)) {
-        set_add_user_content(res, env, client, is_admin, { .invalid_username = true });
+        set_add_user_content(res, env, client, is_admin, AlertAddUser::invalid_username);
     } else if (is_admin) {
         const std::string user_id{ client.add_admin(username) };
         res.set_redirect("/admin-list");
