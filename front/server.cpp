@@ -18,6 +18,10 @@ namespace server
     constexpr std::string_view footer();
     constexpr std::size_t video_chunk_size();
 
+    template <typename AlertType, std::size_t N>
+        requires(std::is_enum_v<AlertType>)
+    constexpr std::string_view alert_to_text(AlertType alert, const std::array<std::string_view, N>& alert_texts);
+
     void set_no_cache_headers(httplib::Response& res);
 
     void set_error_handler(httplib::Server& server, inja::Environment& env, const Client& client);
@@ -99,17 +103,25 @@ int server::start()
     httplib::Server server;
 
     std::string&& website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
-    env.add_callback("website_name", 0, [website_name](const inja::Arguments&) {
+    env.add_callback("website_name", 0, [website_name](const inja::Arguments&) -> std::string {
         return website_name;
     });
 
     std::string&& icon_path{ sc::get_env("ICON_PATH", "/static/img/icon.svg") };
-    env.add_callback("icon", 0, [icon_path](const inja::Arguments&) {
+    env.add_callback("icon", 0, [icon_path](const inja::Arguments&) -> std::string {
         return icon_path;
     });
 
-    env.add_callback("footer", 0, [](const inja::Arguments&) {
+    env.add_callback("footer", 0, [](const inja::Arguments&) -> std::string_view {
         return footer();
+    });
+
+    env.add_callback("empty", 1, [](const inja::Arguments& args) -> bool {
+        const inja::json* const val{ args.at(0) };
+        if (val->is_string()) {
+            return val->get_ref<const inja::json::string_t&>().empty();
+        }
+        return val->empty();
     });
 
     set_error_handler(server, env, client);
@@ -213,6 +225,13 @@ constexpr std::size_t server::video_chunk_size()
     constexpr unsigned long binary_prefix{ 1024UL };
     constexpr unsigned long chunk_factor{ 10UL };
     return static_cast<std::size_t>(chunk_factor * binary_prefix);
+}
+
+template <typename AlertType, std::size_t N>
+    requires(std::is_enum_v<AlertType>)
+constexpr std::string_view server::alert_to_text(AlertType alert, const std::array<std::string_view, N>& alert_texts)
+{
+    return alert_texts.at(std::to_underlying(alert));
 }
 
 inline void server::set_no_cache_headers(httplib::Response& res)
@@ -422,16 +441,22 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
 
 namespace server
 {
-    struct AlertLogin
+    enum class AlertLogin : std::uint8_t
     {
-        bool login_error{ false };
+        no_alert,
+        unknown_username,
+        invalid_password
     };
-    void set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertLogin& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_login_texts{ ""sv, "Unknown username"sv, "Invalid password"sv };
+    void set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert);
 }
 
-inline void server::set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertLogin& alert)
+inline void server::set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert)
 {
-    const inja::json data{ { "login_error", alert.login_error } };
+    const inja::json data{
+        { "alert", alert_to_text(alert, alert_login_texts) }
+    };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
@@ -445,7 +470,7 @@ inline void server::login_get(const httplib::Request& req, httplib::Response& re
         return;
     }
 
-    set_login_content(res, env, client, {});
+    set_login_content(res, env, client, AlertLogin::no_alert);
 }
 
 inline void server::login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
@@ -461,7 +486,7 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     }
 
     if (!username_exists(username, client)) {
-        set_login_content(res, env, client, { .login_error = true });
+        set_login_content(res, env, client, AlertLogin::unknown_username);
         return;
     }
 
@@ -474,13 +499,13 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
-        set_login_content(res, env, client, { .login_error = true });
+        set_login_content(res, env, client, AlertLogin::invalid_password);
         return;
     }
 
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
     if (!is_valid_user) {
-        set_login_content(res, env, client, { .login_error = true });
+        set_login_content(res, env, client, AlertLogin::invalid_password);
         return;
     }
 

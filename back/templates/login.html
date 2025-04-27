@@ -23,13 +23,13 @@
 
       <form class="pure-form pure-form-aligned" action="/login" method="post">
         <fieldset>
-          {% if login_error %}
+          {% if not empty(alert) %}
           <div class="alert pure-control-group">
             <svg class="close-button">
               <title>Close</title>
               <use href="/static/img/x.svg#x" />
             </svg>
-            <p>Invalid credentials</p>
+            <p>{{ alert }}</p>
           </div>
           {% endif %}
           <div class="pure-control-group">
