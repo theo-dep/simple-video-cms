@@ -649,20 +649,25 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
 
 namespace server
 {
-    struct AlertAddPassword
+    enum class AlertAddPassword : std::uint8_t
     {
-        bool login_error{ false };
-        bool invalid_password{ false };
+        no_alert,
+        unknown_username,
+        invalid_password,
+        password_not_match,
+        password_set,
+        invalid_user
     };
-    void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, const AlertAddPassword& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_add_password_texts{ ""sv, "Unknown username"sv, "Invalid password"sv, "Passwords do not match"sv, "Password already set"sv, "Invalid user"sv };
+    void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, AlertAddPassword alert);
 }
 
-inline void server::set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, const AlertAddPassword& alert)
+inline void server::set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, AlertAddPassword alert)
 {
     const inja::json data{
         { "username", username },
-        { "login_error", alert.login_error },
-        { "invalid_password", alert.invalid_password }
+        { "alert", alert_to_text(alert, alert_add_password_texts) }
     };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.add_password_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -679,9 +684,9 @@ inline void server::add_password_get(const httplib::Request& req, httplib::Respo
 
     if (req.path_params.contains("username")) {
         const std::string username{ req.path_params.at("username") };
-        set_add_password_content(res, env, client, username, {});
+        set_add_password_content(res, env, client, username, AlertAddPassword::no_alert);
     } else {
-        set_add_password_content(res, env, client, {}, {});
+        set_add_password_content(res, env, client, {}, AlertAddPassword::no_alert);
     }
 }
 
@@ -698,33 +703,33 @@ inline void server::add_password_post(const httplib::Request& req, httplib::Resp
     su::lower(username);
 
     if (!username_exists(username, client)) {
-        set_add_password_content(res, env, client, {}, { .login_error = true });
+        set_add_password_content(res, env, client, {}, AlertAddPassword::unknown_username);
         return;
     }
 
     const std::string user_id{ client.user_id(username) };
     const bool is_first_connection{ client.is_first_connection(user_id) };
     if (!is_first_connection) {
-        set_add_password_content(res, env, client, {}, { .login_error = true });
+        set_add_password_content(res, env, client, {}, AlertAddPassword::password_set);
         return;
     }
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
-        set_add_password_content(res, env, client, username, { .invalid_password = true });
+        set_add_password_content(res, env, client, username, AlertAddPassword::invalid_password);
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (confirm_password != password) {
-        set_add_password_content(res, env, client, username, { .invalid_password = true });
+        set_add_password_content(res, env, client, username, AlertAddPassword::password_not_match);
         return;
     }
 
     const std::string user_id_check{ client.add_password(user_id, password) };
     if (user_id != user_id_check) {
         logging::error{ "Trying to add password with an invalid user" };
-        set_add_password_content(res, env, client, {}, { .login_error = true });
+        set_add_password_content(res, env, client, {}, AlertAddPassword::invalid_user);
         return;
     }
 
