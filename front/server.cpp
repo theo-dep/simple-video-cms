@@ -954,33 +954,46 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 
 namespace server
 {
-    constexpr std::string_view changed_key{ "changed" };
-    constexpr std::string_view username_changed_value{ "username" };
-    constexpr std::string_view password_changed_value{ "password" };
-    struct AlertUpdateUser
+    static constexpr std::string_view changed_key{ "changed" };
+    static constexpr std::string_view username_changed_value{ "username" };
+    static constexpr std::string_view password_changed_value{ "password" };
+    enum class AlertUpdateLoginUser : std::uint8_t
     {
-        bool login_error_username{ false };
-        bool invalid_username{ false };
-        bool username_changed{ false };
-        bool login_error_password{ false };
-        bool update_password_error{ false };
-        bool password_changed{ false };
+        no_alert,
+        invalid_username,
+        invalid_password,
+        username_changed
     };
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_update_login_user_texts{ ""sv, "Username already taken"sv, "Confirm password does not match"sv, "Username changed!"sv };
+    enum class AlertUpdatePasswordUser : std::uint8_t
+    {
+        no_alert,
+        invalid_old_password,
+        invalid_new_password,
+        password_not_match,
+        password_changed
+    };
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_update_password_user_texts{ ""sv, "Old password does not match"sv, "Invalid new password"sv, "New passwords do not match"sv, "Password changed!"sv };
+    using AlertUpdateUser = std::variant<AlertUpdateLoginUser, AlertUpdatePasswordUser>;
     void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                 const std::string& user_id, const AlertUpdateUser& alert);
+                                 const std::string& user_id, AlertUpdateUser alert);
 }
 
 inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                            const std::string& user_id, const AlertUpdateUser& alert)
+                                            const std::string& user_id, AlertUpdateUser alert)
 {
+    const AlertUpdateLoginUser login_alert{
+        std::holds_alternative<AlertUpdateLoginUser>(alert) ? std::get<AlertUpdateLoginUser>(alert) : AlertUpdateLoginUser::no_alert
+    };
+    const AlertUpdatePasswordUser password_alert{
+        std::holds_alternative<AlertUpdatePasswordUser>(alert) ? std::get<AlertUpdatePasswordUser>(alert) : AlertUpdatePasswordUser::no_alert
+    };
     const inja::json data{
         { "username", client.user_name(user_id) },
-        { "login_error_username", alert.login_error_username },
-        { "invalid_username", alert.invalid_username },
-        { "username_changed", alert.username_changed },
-        { "login_error_password", alert.login_error_password },
-        { "update_password_error", alert.update_password_error },
-        { "password_changed", alert.password_changed }
+        { "login_alert", alert_to_text(login_alert, alert_update_login_user_texts) },
+        { "password_alert", alert_to_text(password_alert, alert_update_password_user_texts) }
     };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.update_user_self_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -995,9 +1008,9 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     AlertUpdateUser alert;
     if (const std::string changed_value{ req.get_param_value(std::string{ changed_key }) };
         changed_value == username_changed_value)
-        alert.username_changed = true;
+        alert = AlertUpdateLoginUser::username_changed;
     else if (changed_value == password_changed_value)
-        alert.password_changed = true;
+        alert = AlertUpdatePasswordUser::password_changed;
     const std::string user_id{ connected_user_id(req, session) };
     set_update_user_content(res, env, client, user_id, alert);
 }
@@ -1012,7 +1025,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
     if (!is_valid_user) {
-        set_update_user_content(res, env, client, user_id, { .login_error_username = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdateLoginUser::invalid_password);
         return;
     }
 
@@ -1021,7 +1034,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     su::lower(username);
 
     if (username_exists(username, client)) {
-        set_update_user_content(res, env, client, user_id, { .invalid_username = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdateLoginUser::invalid_username);
         return;
     }
 
@@ -1039,19 +1052,19 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
     if (!is_valid_user) {
-        set_update_user_content(res, env, client, user_id, { .login_error_password = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdatePasswordUser::invalid_old_password);
         return;
     }
 
     const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
     if (new_password.empty()) {
-        set_update_user_content(res, env, client, user_id, { .update_password_error = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdatePasswordUser::invalid_new_password);
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (new_password != confirm_password) {
-        set_update_user_content(res, env, client, user_id, { .update_password_error = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdatePasswordUser::password_not_match);
         return;
     }
 

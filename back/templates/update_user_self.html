@@ -25,19 +25,13 @@
 
       <form class="pure-form pure-form-aligned" action="/update-username" method="post">
         <fieldset>
-          {% if login_error_username or invalid_username or username_changed %}
+          {% if not empty(login_alert) %}
           <div class="alert pure-control-group">
             <svg class="close-button">
               <title>Close</title>
               <use href="/static/img/x.svg#x" />
             </svg>
-            {% if login_error_username %}
-            <p>Confirm password does not match</p>
-            {% else if invalid_username %}
-            <p>Username already taken</p>
-            {% else %} <!--username_changed-->
-            <p>Username changed!</p>
-            {% endif %}
+            <p>{{ login_alert }}</p>
           </div>
           {% endif %}
           <div class="pure-control-group">
@@ -58,19 +52,13 @@
 
       <form class="pure-form pure-form-aligned" action="/update-password" method="post">
         <fieldset>
-          {% if login_error_password or update_password_error or password_changed %}
+          {% if not empty(password_alert) %}
           <div class="alert pure-control-group">
             <svg class="close-button">
               <title>Close</title>
               <use href="/static/img/x.svg#x" />
             </svg>
-            {% if login_error_password %}
-            <p>Old password does not match</p>
-            {% else if update_password_error %}
-            <p>New passwords do not match</p>
-            {% else %} <!--password_changed-->
-            <p>Password changed!</p>
-            {% endif %}
+            <p>{{ password_alert }}</p>
           </div>
           {% endif %}
           <div class="pure-control-group">
