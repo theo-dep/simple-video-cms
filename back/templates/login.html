@@ -33,8 +33,7 @@
           </div>
           {% endif %}
           <div class="pure-control-group">
-            <input id="usernameValue" class="pure-input-1" type="text" name="username" placeholder="username" required
-              autofocus />
+            <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
           </div>
           <div class="pure-control-group">
             <input class="pure-input-1" type="password" name="password" placeholder="password" required />
@@ -45,26 +44,22 @@
         </fieldset>
       </form>
 
-      <form id="add-password-form" action="/login" method="post" style="display:none;">
-        <input id="usernameHidden" type="text" name="username" />
+      <br>
+      <h4 class="lined">Or</h4>
+
+      <h3>First connection?</h3>
+
+      <form class="pure-form pure-form-aligned" action="/login" method="post">
+        <div class="pure-control-group">
+          <input class="pure-input-1" type="text" name="username" placeholder="enter a valid username" />
+        </div>
+        <div class="pure-control-group">
+          <button id="add-password" class="pure-input-1 button pure-button">Create</button>
+        </div>
       </form>
-      <div class="add-user">
-        <a href="#" id="add-password">First connection?</a>
-      </div>
 
     </div>
   </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('add-password').addEventListener('click', function (e) {
-        e.preventDefault();
-        const username = document.getElementById('usernameValue').value;
-        document.getElementById('usernameHidden').value = username;
-        document.getElementById('add-password-form').submit();
-      });
-    });
-  </script>
 
 </body>
 
