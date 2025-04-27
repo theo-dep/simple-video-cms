@@ -1154,14 +1154,17 @@ inline void server::add_group_post(const httplib::Request& req, httplib::Respons
 
 namespace server
 {
-    struct AlertUpdateGroup
+    enum class AlertUpdateGroup : std::uint8_t
     {
-        bool invalid_group_name{ false };
+        no_alert,
+        invalid_group_name
     };
-    void set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, const AlertUpdateGroup& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_update_group_texts{ ""sv, "Group name already taken"sv };
+    void set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertUpdateGroup alert);
 }
 
-inline void server::set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, const AlertUpdateGroup& alert)
+inline void server::set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertUpdateGroup alert)
 {
     const std::string group_id{ req.path_params.at("group_id") };
 
@@ -1181,7 +1184,7 @@ inline void server::set_update_group_content(const httplib::Request& req, httpli
         { "group_id", group_id },
         { "group_name", group_name },
         { "user_dict", user_dict },
-        { "invalid_group_name", alert.invalid_group_name }
+        { "alert", alert_to_text(alert, alert_update_group_texts) }
     };
     logging::debug{ data.dump() };
 
@@ -1194,7 +1197,7 @@ inline void server::update_group_get(const httplib::Request& req, httplib::Respo
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    set_update_group_content(req, res, env, client, {});
+    set_update_group_content(req, res, env, client, AlertUpdateGroup::no_alert);
 }
 
 inline void server::update_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
@@ -1209,7 +1212,7 @@ inline void server::update_group_post(const httplib::Request& req, httplib::Resp
     su::lower(group_name);
 
     if (group_name != client.group_name(group_id) && client.group_exists(group_name)) {
-        set_update_group_content(req, res, env, client, { .invalid_group_name = true });
+        set_update_group_content(req, res, env, client, AlertUpdateGroup::invalid_group_name);
         return;
     }
 
