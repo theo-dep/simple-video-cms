@@ -1,5 +1,8 @@
 # Third Parties
 
+- [C++ third parties](../../../../common/third-party/Readme.md)
+- [CSS third parties](../../css/third-party/Readme.md)
+
 ## Video.js
 
 - v8.20.0

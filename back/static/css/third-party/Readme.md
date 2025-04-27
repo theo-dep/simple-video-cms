@@ -1,5 +1,8 @@
 # Third Parties
 
+- [C++ third parties](../../../../common/third-party/Readme.md)
+- [JavaScript third parties](../../js/third-party/Readme.md)
+
 ## Pure.css
 
 - v3.0.0

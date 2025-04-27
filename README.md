@@ -5,8 +5,12 @@ A back and front architecture video content management system with FFmpeg and SQ
 
 [![Latest Release](https://gitlab.devau.co/theo/simple-video-cms/-/badges/release.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/releases) [![pipeline status](https://gitlab.devau.co/theo/simple-video-cms/badges/develop/pipeline.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/commits/develop)
 
+### Third Parties
 
-###### All third party files are available offline.
+All third party files are available offline except for FFmpeg, zlib and libpng submodules.
+- [C++ third parties](common/third-party/Readme.md)
+- [CSS third parties](back/static/css/third-party/Readme.md)
+- [JavaScript third parties](back/static/js/third-party/Readme.md)
 
 ### Docker
 

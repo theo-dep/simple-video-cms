@@ -1,5 +1,8 @@
 # Third Parties
 
+- [CSS third parties](../../back/static/css/third-party/Readme.md)
+- [JavaScript third parties](../../back/static/js/third-party/Readme.md)
+
 ## cpp-httplib
 
 - v0.18.0
