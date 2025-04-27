@@ -774,21 +774,24 @@ inline void server::confirm(const httplib::Request& req, httplib::Response& res,
 
 namespace server
 {
-    struct AlertUpdateUserAdmin
+    enum class AlertUpdateUserAdmin : std::uint8_t
     {
-        bool invalid_username{ false };
+        no_alert,
+        invalid_username
     };
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_update_user_admin_texts{ ""sv, "Username already taken"sv };
     void set_update_user_admin_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                       const std::string& user_id, bool is_admin, const AlertUpdateUserAdmin& alert);
+                                       const std::string& user_id, bool is_admin, AlertUpdateUserAdmin alert);
 }
 
 inline void server::set_update_user_admin_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                                  const std::string& user_id, bool is_admin, const AlertUpdateUserAdmin& alert)
+                                                  const std::string& user_id, bool is_admin, AlertUpdateUserAdmin alert)
 {
     inja::json data{
         { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
         { "is_admin", is_admin },
-        { "invalid_username", alert.invalid_username }
+        { "alert", alert_to_text(alert, alert_update_user_admin_texts) }
     };
 
     if (!is_admin) {
@@ -817,7 +820,7 @@ inline void server::update_user_admin(const httplib::Request& req, httplib::Resp
 
     const std::string user_id{ req.path_params.at("user_id") };
     const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
-    set_update_user_admin_content(res, env, client, user_id, is_admin, {});
+    set_update_user_admin_content(res, env, client, user_id, is_admin, AlertUpdateUserAdmin::no_alert);
 }
 
 inline void server::update_username_admin(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
@@ -835,7 +838,7 @@ inline void server::update_username_admin(const httplib::Request& req, httplib::
     su::lower(username);
 
     if (username != client.user_name(user_id) && username_exists(username, client)) {
-        set_update_user_admin_content(res, env, client, user_id, is_admin, { .invalid_username = true });
+        set_update_user_admin_content(res, env, client, user_id, is_admin, AlertUpdateUserAdmin::invalid_username);
         return;
     }
 
