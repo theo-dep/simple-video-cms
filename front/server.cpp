@@ -1091,14 +1091,17 @@ inline void server::group_list(const httplib::Request& req, httplib::Response& r
 
 namespace server
 {
-    struct AlertAddGroup
+    enum class AlertAddGroup : std::uint8_t
     {
-        bool invalid_group_name{ false };
+        no_alert,
+        invalid_group_name
     };
-    void set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertAddGroup& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_add_group_texts{ ""sv, "Group name already taken"sv };
+    void set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertAddGroup alert);
 }
 
-inline void server::set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertAddGroup& alert)
+inline void server::set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertAddGroup alert)
 {
     const std::vector<std::string> user_list{ client.user_list() };
 
@@ -1110,7 +1113,7 @@ inline void server::set_add_group_content(httplib::Response& res, inja::Environm
 
     const inja::json data{
         { "user_dict", user_dict },
-        { "invalid_group_name", alert.invalid_group_name }
+        { "alert", alert_to_text(alert, alert_add_group_texts) }
     };
     logging::debug{ data.dump() };
 
@@ -1123,7 +1126,7 @@ inline void server::add_group_get(const httplib::Request& req, httplib::Response
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    set_add_group_content(res, env, client, {});
+    set_add_group_content(res, env, client, AlertAddGroup::no_alert);
 }
 
 inline void server::add_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
@@ -1136,7 +1139,7 @@ inline void server::add_group_post(const httplib::Request& req, httplib::Respons
     su::lower(group_name);
 
     if (client.group_exists(group_name)) {
-        set_add_group_content(res, env, client, { .invalid_group_name = true });
+        set_add_group_content(res, env, client, AlertAddGroup::invalid_group_name);
         return;
     }
 
