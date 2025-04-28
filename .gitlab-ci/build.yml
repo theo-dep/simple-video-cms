@@ -12,6 +12,7 @@ variables:
   script:
     - make DEBUG=${DEBUG} ${TARGET} -j
   artifacts:
+    expire_in: 3 days
     paths:
       - bin/${BUILD}/${TARGET}
   cache:
