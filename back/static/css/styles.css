@@ -23,6 +23,7 @@ body {
 a {
     color: #16A085;
     text-decoration: none;
+    cursor: pointer;
 }
 
 a:hover {
@@ -34,6 +35,32 @@ h2,
 h3 {
     color: #16A085;
     text-align: center;
+}
+
+h4 {
+    color: #c9c9c9;
+    text-align: center;
+}
+
+.lined {
+    display: flex;
+}
+
+.lined::before,
+.lined::after {
+    background-color: #c9c9c9;
+    content: '';
+    flex: 1;
+    border-bottom: groove 1px;
+    margin: auto;
+}
+
+.lined::before {
+    margin-right: 0.5em;
+}
+
+.lined::after {
+    margin-left: 0.5em;
 }
 
 hr {
