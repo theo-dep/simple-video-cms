@@ -449,6 +449,7 @@ namespace server
     };
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_login_texts{ ""sv, "Unknown username"sv, "Invalid password"sv };
+
     void set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert);
 }
 
@@ -585,6 +586,7 @@ namespace server
     };
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_add_user_texts{ ""sv, "Username already taken"sv };
+
     void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, AlertAddUser alert);
 }
 
@@ -660,6 +662,7 @@ namespace server
     };
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_add_password_texts{ ""sv, "Unknown username"sv, "Invalid password"sv, "Passwords do not match"sv, "Password already set"sv, "Invalid user"sv };
+
     void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, AlertAddPassword alert);
 }
 
@@ -781,6 +784,7 @@ namespace server
     };
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_update_user_admin_texts{ ""sv, "Username already taken"sv };
+
     void set_update_user_admin_content(httplib::Response& res, inja::Environment& env, const Client& client,
                                        const std::string& user_id, bool is_admin, AlertUpdateUserAdmin alert);
 }
@@ -957,6 +961,7 @@ namespace server
     static constexpr std::string_view changed_key{ "changed" };
     static constexpr std::string_view username_changed_value{ "username" };
     static constexpr std::string_view password_changed_value{ "password" };
+
     enum class AlertUpdateLoginUser : std::uint8_t
     {
         no_alert,
@@ -966,6 +971,7 @@ namespace server
     };
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_update_login_user_texts{ ""sv, "Username already taken"sv, "Confirm password does not match"sv, "Username changed!"sv };
+
     enum class AlertUpdatePasswordUser : std::uint8_t
     {
         no_alert,
@@ -976,7 +982,9 @@ namespace server
     };
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_update_password_user_texts{ ""sv, "Old password does not match"sv, "Invalid new password"sv, "New passwords do not match"sv, "Password changed!"sv };
+
     using AlertUpdateUser = std::variant<AlertUpdateLoginUser, AlertUpdatePasswordUser>;
+
     void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
                                  const std::string& user_id, AlertUpdateUser alert);
 }
@@ -1011,6 +1019,7 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
         alert = AlertUpdateLoginUser::username_changed;
     else if (changed_value == password_changed_value)
         alert = AlertUpdatePasswordUser::password_changed;
+
     const std::string user_id{ connected_user_id(req, session) };
     set_update_user_content(res, env, client, user_id, alert);
 }
@@ -1111,6 +1120,7 @@ namespace server
     };
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_add_group_texts{ ""sv, "Group name already taken"sv };
+
     void set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertAddGroup alert);
 }
 
@@ -1174,6 +1184,7 @@ namespace server
     };
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_update_group_texts{ ""sv, "Group name already taken"sv };
+
     void set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertUpdateGroup alert);
 }
 
