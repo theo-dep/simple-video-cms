@@ -25,13 +25,13 @@
 
       <form class="pure-form pure-form-aligned" action="/add-user?is_admin={{ is_admin }}" method="post">
         <fieldset>
-          {% if invalid_username %}
+          {% if not empty(alert) %}
           <div class="alert pure-control-group">
             <svg class="close-button">
               <title>Close</title>
               <use href="/static/img/x.svg#x" />
             </svg>
-            <p>Username already taken</p>
+            <p>{{ alert }}</p>
           </div>
           {% endif %}
           <div class="pure-control-group">

@@ -25,13 +25,13 @@
 
       <form class="pure-form pure-form-aligned" action="/update-group/{{ group_id }}" method="post">
         <fieldset>
-          {% if invalid_group_name %}
+          {% if not empty(alert) %}
           <div class="alert pure-control-group">
             <svg class="close-button">
               <title>Close</title>
               <use href="/static/img/x.svg#x" />
             </svg>
-            <p>Group name already taken</p>
+            <p>{{ alert }}</p>
           </div>
           {% endif %}
           <div class="pure-control-group">

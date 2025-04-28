@@ -18,6 +18,10 @@ namespace server
     constexpr std::string_view footer();
     constexpr std::size_t video_chunk_size();
 
+    template <typename AlertType, std::size_t N>
+        requires(std::is_enum_v<AlertType>)
+    constexpr std::string_view alert_to_text(AlertType alert, const std::array<std::string_view, N>& alert_texts);
+
     void set_no_cache_headers(httplib::Response& res);
 
     void set_error_handler(httplib::Server& server, inja::Environment& env, const Client& client);
@@ -99,17 +103,25 @@ int server::start()
     httplib::Server server;
 
     std::string&& website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
-    env.add_callback("website_name", 0, [website_name](const inja::Arguments&) {
+    env.add_callback("website_name", 0, [website_name](const inja::Arguments&) -> std::string {
         return website_name;
     });
 
     std::string&& icon_path{ sc::get_env("ICON_PATH", "/static/img/icon.svg") };
-    env.add_callback("icon", 0, [icon_path](const inja::Arguments&) {
+    env.add_callback("icon", 0, [icon_path](const inja::Arguments&) -> std::string {
         return icon_path;
     });
 
-    env.add_callback("footer", 0, [](const inja::Arguments&) {
+    env.add_callback("footer", 0, [](const inja::Arguments&) -> std::string_view {
         return footer();
+    });
+
+    env.add_callback("empty", 1, [](const inja::Arguments& args) -> bool {
+        const inja::json* const val{ args.at(0) };
+        if (val->is_string()) {
+            return val->get_ref<const inja::json::string_t&>().empty();
+        }
+        return val->empty();
     });
 
     set_error_handler(server, env, client);
@@ -213,6 +225,13 @@ constexpr std::size_t server::video_chunk_size()
     constexpr unsigned long binary_prefix{ 1024UL };
     constexpr unsigned long chunk_factor{ 10UL };
     return static_cast<std::size_t>(chunk_factor * binary_prefix);
+}
+
+template <typename AlertType, std::size_t N>
+    requires(std::is_enum_v<AlertType>)
+constexpr std::string_view server::alert_to_text(AlertType alert, const std::array<std::string_view, N>& alert_texts)
+{
+    return alert_texts.at(std::to_underlying(alert));
 }
 
 inline void server::set_no_cache_headers(httplib::Response& res)
@@ -422,16 +441,23 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
 
 namespace server
 {
-    struct AlertLogin
+    enum class AlertLogin : std::uint8_t
     {
-        bool login_error{ false };
+        no_alert,
+        unknown_username,
+        invalid_password
     };
-    void set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertLogin& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_login_texts{ ""sv, "Unknown username"sv, "Invalid password"sv };
+
+    void set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert);
 }
 
-inline void server::set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertLogin& alert)
+inline void server::set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert)
 {
-    const inja::json data{ { "login_error", alert.login_error } };
+    const inja::json data{
+        { "alert", alert_to_text(alert, alert_login_texts) }
+    };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
@@ -445,7 +471,7 @@ inline void server::login_get(const httplib::Request& req, httplib::Response& re
         return;
     }
 
-    set_login_content(res, env, client, {});
+    set_login_content(res, env, client, AlertLogin::no_alert);
 }
 
 inline void server::login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
@@ -461,7 +487,7 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     }
 
     if (!username_exists(username, client)) {
-        set_login_content(res, env, client, { .login_error = true });
+        set_login_content(res, env, client, AlertLogin::unknown_username);
         return;
     }
 
@@ -474,13 +500,13 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
-        set_login_content(res, env, client, { .login_error = true });
+        set_login_content(res, env, client, AlertLogin::invalid_password);
         return;
     }
 
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
     if (!is_valid_user) {
-        set_login_content(res, env, client, { .login_error = true });
+        set_login_content(res, env, client, AlertLogin::invalid_password);
         return;
     }
 
@@ -553,18 +579,22 @@ inline void server::user_list(const httplib::Request& req, httplib::Response& re
 
 namespace server
 {
-    struct AlertAddUser
+    enum class AlertAddUser : std::uint8_t
     {
-        bool invalid_username{ false };
+        no_alert,
+        invalid_username
     };
-    void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, const AlertAddUser& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_add_user_texts{ ""sv, "Username already taken"sv };
+
+    void set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, AlertAddUser alert);
 }
 
-inline void server::set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, const AlertAddUser& alert)
+inline void server::set_add_user_content(httplib::Response& res, inja::Environment& env, const Client& client, bool is_admin, AlertAddUser alert)
 {
     inja::json data{
         { "is_admin", is_admin },
-        { "invalid_username", alert.invalid_username }
+        { "alert", alert_to_text(alert, alert_add_user_texts) }
     };
 
     if (!is_admin) {
@@ -589,7 +619,7 @@ inline void server::add_user_get(const httplib::Request& req, httplib::Response&
         return;
 
     const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
-    set_add_user_content(res, env, client, is_admin, {});
+    set_add_user_content(res, env, client, is_admin, AlertAddUser::no_alert);
 }
 
 inline void server::add_user_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
@@ -606,7 +636,7 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
     const std::string creator_user_id{ connected_user_id(req, session) };
 
     if (username_exists(username, client)) {
-        set_add_user_content(res, env, client, is_admin, { .invalid_username = true });
+        set_add_user_content(res, env, client, is_admin, AlertAddUser::invalid_username);
     } else if (is_admin) {
         const std::string user_id{ client.add_admin(username) };
         res.set_redirect("/admin-list");
@@ -621,20 +651,26 @@ inline void server::add_user_post(const httplib::Request& req, httplib::Response
 
 namespace server
 {
-    struct AlertAddPassword
+    enum class AlertAddPassword : std::uint8_t
     {
-        bool login_error{ false };
-        bool invalid_password{ false };
+        no_alert,
+        unknown_username,
+        invalid_password,
+        password_not_match,
+        password_set,
+        invalid_user
     };
-    void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, const AlertAddPassword& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_add_password_texts{ ""sv, "Unknown username"sv, "Invalid password"sv, "Passwords do not match"sv, "Password already set"sv, "Invalid user"sv };
+
+    void set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, AlertAddPassword alert);
 }
 
-inline void server::set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, const AlertAddPassword& alert)
+inline void server::set_add_password_content(httplib::Response& res, inja::Environment& env, const Client& client, const std::string& username, AlertAddPassword alert)
 {
     const inja::json data{
         { "username", username },
-        { "login_error", alert.login_error },
-        { "invalid_password", alert.invalid_password }
+        { "alert", alert_to_text(alert, alert_add_password_texts) }
     };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.add_password_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -651,9 +687,9 @@ inline void server::add_password_get(const httplib::Request& req, httplib::Respo
 
     if (req.path_params.contains("username")) {
         const std::string username{ req.path_params.at("username") };
-        set_add_password_content(res, env, client, username, {});
+        set_add_password_content(res, env, client, username, AlertAddPassword::no_alert);
     } else {
-        set_add_password_content(res, env, client, {}, {});
+        set_add_password_content(res, env, client, {}, AlertAddPassword::no_alert);
     }
 }
 
@@ -670,33 +706,33 @@ inline void server::add_password_post(const httplib::Request& req, httplib::Resp
     su::lower(username);
 
     if (!username_exists(username, client)) {
-        set_add_password_content(res, env, client, {}, { .login_error = true });
+        set_add_password_content(res, env, client, {}, AlertAddPassword::unknown_username);
         return;
     }
 
     const std::string user_id{ client.user_id(username) };
     const bool is_first_connection{ client.is_first_connection(user_id) };
     if (!is_first_connection) {
-        set_add_password_content(res, env, client, {}, { .login_error = true });
+        set_add_password_content(res, env, client, {}, AlertAddPassword::password_set);
         return;
     }
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
-        set_add_password_content(res, env, client, username, { .invalid_password = true });
+        set_add_password_content(res, env, client, username, AlertAddPassword::invalid_password);
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (confirm_password != password) {
-        set_add_password_content(res, env, client, username, { .invalid_password = true });
+        set_add_password_content(res, env, client, username, AlertAddPassword::password_not_match);
         return;
     }
 
     const std::string user_id_check{ client.add_password(user_id, password) };
     if (user_id != user_id_check) {
         logging::error{ "Trying to add password with an invalid user" };
-        set_add_password_content(res, env, client, {}, { .login_error = true });
+        set_add_password_content(res, env, client, {}, AlertAddPassword::invalid_user);
         return;
     }
 
@@ -741,21 +777,25 @@ inline void server::confirm(const httplib::Request& req, httplib::Response& res,
 
 namespace server
 {
-    struct AlertUpdateUserAdmin
+    enum class AlertUpdateUserAdmin : std::uint8_t
     {
-        bool invalid_username{ false };
+        no_alert,
+        invalid_username
     };
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_update_user_admin_texts{ ""sv, "Username already taken"sv };
+
     void set_update_user_admin_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                       const std::string& user_id, bool is_admin, const AlertUpdateUserAdmin& alert);
+                                       const std::string& user_id, bool is_admin, AlertUpdateUserAdmin alert);
 }
 
 inline void server::set_update_user_admin_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                                  const std::string& user_id, bool is_admin, const AlertUpdateUserAdmin& alert)
+                                                  const std::string& user_id, bool is_admin, AlertUpdateUserAdmin alert)
 {
     inja::json data{
         { "user", { { "id", user_id }, { "name", client.user_name(user_id) } } },
         { "is_admin", is_admin },
-        { "invalid_username", alert.invalid_username }
+        { "alert", alert_to_text(alert, alert_update_user_admin_texts) }
     };
 
     if (!is_admin) {
@@ -784,7 +824,7 @@ inline void server::update_user_admin(const httplib::Request& req, httplib::Resp
 
     const std::string user_id{ req.path_params.at("user_id") };
     const bool is_admin{ su::string_to_bool(req.get_param_value("is_admin")) };
-    set_update_user_admin_content(res, env, client, user_id, is_admin, {});
+    set_update_user_admin_content(res, env, client, user_id, is_admin, AlertUpdateUserAdmin::no_alert);
 }
 
 inline void server::update_username_admin(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
@@ -802,7 +842,7 @@ inline void server::update_username_admin(const httplib::Request& req, httplib::
     su::lower(username);
 
     if (username != client.user_name(user_id) && username_exists(username, client)) {
-        set_update_user_admin_content(res, env, client, user_id, is_admin, { .invalid_username = true });
+        set_update_user_admin_content(res, env, client, user_id, is_admin, AlertUpdateUserAdmin::invalid_username);
         return;
     }
 
@@ -918,33 +958,50 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 
 namespace server
 {
-    constexpr std::string_view changed_key{ "changed" };
-    constexpr std::string_view username_changed_value{ "username" };
-    constexpr std::string_view password_changed_value{ "password" };
-    struct AlertUpdateUser
+    static constexpr std::string_view changed_key{ "changed" };
+    static constexpr std::string_view username_changed_value{ "username" };
+    static constexpr std::string_view password_changed_value{ "password" };
+
+    enum class AlertUpdateLoginUser : std::uint8_t
     {
-        bool login_error_username{ false };
-        bool invalid_username{ false };
-        bool username_changed{ false };
-        bool login_error_password{ false };
-        bool update_password_error{ false };
-        bool password_changed{ false };
+        no_alert,
+        invalid_username,
+        invalid_password,
+        username_changed
     };
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_update_login_user_texts{ ""sv, "Username already taken"sv, "Confirm password does not match"sv, "Username changed!"sv };
+
+    enum class AlertUpdatePasswordUser : std::uint8_t
+    {
+        no_alert,
+        invalid_old_password,
+        invalid_new_password,
+        password_not_match,
+        password_changed
+    };
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_update_password_user_texts{ ""sv, "Old password does not match"sv, "Invalid new password"sv, "New passwords do not match"sv, "Password changed!"sv };
+
+    using AlertUpdateUser = std::variant<AlertUpdateLoginUser, AlertUpdatePasswordUser>;
+
     void set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                 const std::string& user_id, const AlertUpdateUser& alert);
+                                 const std::string& user_id, AlertUpdateUser alert);
 }
 
 inline void server::set_update_user_content(httplib::Response& res, inja::Environment& env, const Client& client,
-                                            const std::string& user_id, const AlertUpdateUser& alert)
+                                            const std::string& user_id, AlertUpdateUser alert)
 {
+    const AlertUpdateLoginUser login_alert{
+        std::holds_alternative<AlertUpdateLoginUser>(alert) ? std::get<AlertUpdateLoginUser>(alert) : AlertUpdateLoginUser::no_alert
+    };
+    const AlertUpdatePasswordUser password_alert{
+        std::holds_alternative<AlertUpdatePasswordUser>(alert) ? std::get<AlertUpdatePasswordUser>(alert) : AlertUpdatePasswordUser::no_alert
+    };
     const inja::json data{
         { "username", client.user_name(user_id) },
-        { "login_error_username", alert.login_error_username },
-        { "invalid_username", alert.invalid_username },
-        { "username_changed", alert.username_changed },
-        { "login_error_password", alert.login_error_password },
-        { "update_password_error", alert.update_password_error },
-        { "password_changed", alert.password_changed }
+        { "login_alert", alert_to_text(login_alert, alert_update_login_user_texts) },
+        { "password_alert", alert_to_text(password_alert, alert_update_password_user_texts) }
     };
     logging::debug{ data.dump() };
     const std::string body{ env.render(client.update_user_self_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -959,9 +1016,10 @@ inline void server::update_user(const httplib::Request& req, httplib::Response& 
     AlertUpdateUser alert;
     if (const std::string changed_value{ req.get_param_value(std::string{ changed_key }) };
         changed_value == username_changed_value)
-        alert.username_changed = true;
+        alert = AlertUpdateLoginUser::username_changed;
     else if (changed_value == password_changed_value)
-        alert.password_changed = true;
+        alert = AlertUpdatePasswordUser::password_changed;
+
     const std::string user_id{ connected_user_id(req, session) };
     set_update_user_content(res, env, client, user_id, alert);
 }
@@ -976,7 +1034,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
     if (!is_valid_user) {
-        set_update_user_content(res, env, client, user_id, { .login_error_username = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdateLoginUser::invalid_password);
         return;
     }
 
@@ -985,7 +1043,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     su::lower(username);
 
     if (username_exists(username, client)) {
-        set_update_user_content(res, env, client, user_id, { .invalid_username = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdateLoginUser::invalid_username);
         return;
     }
 
@@ -1003,19 +1061,19 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     const std::string old_password{ crypto::sha512(req.get_param_value("old-password")) };
     const bool is_valid_user{ client.is_valid_user(user_id, old_password) };
     if (!is_valid_user) {
-        set_update_user_content(res, env, client, user_id, { .login_error_password = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdatePasswordUser::invalid_old_password);
         return;
     }
 
     const std::string new_password{ crypto::sha512(req.get_param_value("new-password")) };
     if (new_password.empty()) {
-        set_update_user_content(res, env, client, user_id, { .update_password_error = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdatePasswordUser::invalid_new_password);
         return;
     }
 
     const std::string confirm_password{ crypto::sha512(req.get_param_value("confirm-password")) };
     if (new_password != confirm_password) {
-        set_update_user_content(res, env, client, user_id, { .update_password_error = true });
+        set_update_user_content(res, env, client, user_id, AlertUpdatePasswordUser::password_not_match);
         return;
     }
 
@@ -1055,14 +1113,18 @@ inline void server::group_list(const httplib::Request& req, httplib::Response& r
 
 namespace server
 {
-    struct AlertAddGroup
+    enum class AlertAddGroup : std::uint8_t
     {
-        bool invalid_group_name{ false };
+        no_alert,
+        invalid_group_name
     };
-    void set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertAddGroup& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_add_group_texts{ ""sv, "Group name already taken"sv };
+
+    void set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertAddGroup alert);
 }
 
-inline void server::set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, const AlertAddGroup& alert)
+inline void server::set_add_group_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertAddGroup alert)
 {
     const std::vector<std::string> user_list{ client.user_list() };
 
@@ -1074,7 +1136,7 @@ inline void server::set_add_group_content(httplib::Response& res, inja::Environm
 
     const inja::json data{
         { "user_dict", user_dict },
-        { "invalid_group_name", alert.invalid_group_name }
+        { "alert", alert_to_text(alert, alert_add_group_texts) }
     };
     logging::debug{ data.dump() };
 
@@ -1087,7 +1149,7 @@ inline void server::add_group_get(const httplib::Request& req, httplib::Response
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    set_add_group_content(res, env, client, {});
+    set_add_group_content(res, env, client, AlertAddGroup::no_alert);
 }
 
 inline void server::add_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
@@ -1100,7 +1162,7 @@ inline void server::add_group_post(const httplib::Request& req, httplib::Respons
     su::lower(group_name);
 
     if (client.group_exists(group_name)) {
-        set_add_group_content(res, env, client, { .invalid_group_name = true });
+        set_add_group_content(res, env, client, AlertAddGroup::invalid_group_name);
         return;
     }
 
@@ -1115,14 +1177,18 @@ inline void server::add_group_post(const httplib::Request& req, httplib::Respons
 
 namespace server
 {
-    struct AlertUpdateGroup
+    enum class AlertUpdateGroup : std::uint8_t
     {
-        bool invalid_group_name{ false };
+        no_alert,
+        invalid_group_name
     };
-    void set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, const AlertUpdateGroup& alert);
+    using namespace std::literals::string_view_literals;
+    static constexpr std::array alert_update_group_texts{ ""sv, "Group name already taken"sv };
+
+    void set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertUpdateGroup alert);
 }
 
-inline void server::set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, const AlertUpdateGroup& alert)
+inline void server::set_update_group_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertUpdateGroup alert)
 {
     const std::string group_id{ req.path_params.at("group_id") };
 
@@ -1142,7 +1208,7 @@ inline void server::set_update_group_content(const httplib::Request& req, httpli
         { "group_id", group_id },
         { "group_name", group_name },
         { "user_dict", user_dict },
-        { "invalid_group_name", alert.invalid_group_name }
+        { "alert", alert_to_text(alert, alert_update_group_texts) }
     };
     logging::debug{ data.dump() };
 
@@ -1155,7 +1221,7 @@ inline void server::update_group_get(const httplib::Request& req, httplib::Respo
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    set_update_group_content(req, res, env, client, {});
+    set_update_group_content(req, res, env, client, AlertUpdateGroup::no_alert);
 }
 
 inline void server::update_group_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, ConfirmHandler& confirm_handler, Session& session, const Client& client)
@@ -1170,7 +1236,7 @@ inline void server::update_group_post(const httplib::Request& req, httplib::Resp
     su::lower(group_name);
 
     if (group_name != client.group_name(group_id) && client.group_exists(group_name)) {
-        set_update_group_content(req, res, env, client, { .invalid_group_name = true });
+        set_update_group_content(req, res, env, client, AlertUpdateGroup::invalid_group_name);
         return;
     }
 
