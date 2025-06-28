@@ -8,14 +8,16 @@
     - .base-tag
   before_script:
     - apt-get update
-    - apt-get -y install make g++
+    - apt-get -y install make g++ gcc
+  script:
+    - ./configure --zlib
 
 .back-base-job:
   before_script:
     - !reference [.base-job, before_script]
-    - apt-get -y install nasm gcc
+    - apt-get -y install nasm
   script:
-    - ./configure --zlib
+    - !reference [.base-job, script]
     - make -C back zlib -j
     - ./configure --libpng --ffmpeg
   tags: !reference [.base-job, tags]

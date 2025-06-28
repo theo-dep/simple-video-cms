@@ -9,6 +9,7 @@ include:
     - !reference [.base-job, before_script]
     - apt-get -y install clang-tidy
   script:
+    - !reference [.base-job, script]
     - make analyze-${TARGET} -j
 
 .back-analyze:
