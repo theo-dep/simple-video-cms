@@ -1,6 +1,9 @@
 # inspired from https://makefiletutorial.com/#makefile-cookbook
 # and https://downloads.haskell.org/ghc/5.02.2/docs/building/sec-makefile-arch.html
 
+ifndef INCLUDED
+INCLUDED = 1
+
 TOP := ..
 
 override RELEASE_FLAGS += -O3 -DNDEBUG
@@ -8,7 +11,7 @@ override DEBUG_FLAGS += -g -D_DEBUG -DDEBUG_LOG
 
 override INC_DIRS += $(TOP)/common $(TOP)/common/third-party
 override CFLAGS += -Wall -Wextra -Werror
-override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -DCPPHTTPLIB_USE_POLL
+override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -pedantic -DCPPHTTPLIB_USE_POLL
 override LDFLAGS += -static -lstdc++exp
 
 DEBUG ?= 1
@@ -34,3 +37,5 @@ BUILD_DIR := $(BASE_BUILD_DIR)/$(BUILD)
 
 BASE_BIN_DIR := $(TOP)/bin
 BIN_DIR := $(BASE_BIN_DIR)/$(BUILD)
+
+endif
