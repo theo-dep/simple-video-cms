@@ -1,7 +1,6 @@
 FROM alpine-common AS common
 
 RUN apk add --no-cache \
-    gcc \
     yasm
 
 ADD *.h *.cpp Makefile ${SOURCE_DIR}/back/

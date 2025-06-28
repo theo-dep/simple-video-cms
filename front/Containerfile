@@ -2,7 +2,7 @@ FROM alpine-common AS common
 
 ADD *.h *.cpp Makefile ${SOURCE_DIR}/front/
 
-RUN make -C ${SOURCE_DIR}/front DEBUG=0 -j all \
+RUN ${SOURCE_DIR}/configure --zlib && make -C ${SOURCE_DIR}/front DEBUG=0 -j all \
     && strip ${SOURCE_DIR}/bin/release/front/server
 
 # --------------------------------------------------------------------------------
