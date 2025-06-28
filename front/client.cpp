@@ -310,7 +310,7 @@ std::string Client::user_id(const std::string& username) const
 std::string Client::add_admin(const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "username", .content = username, .filename = "", .content_type = "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "", .headers = {} }
     };
     const httplib::Result res{ _client->Post("/add-admin", items) };
     return client::format_page(res);
@@ -319,8 +319,8 @@ std::string Client::add_admin(const std::string& username) const
 std::string Client::add_user(const std::string& username, const std::vector<std::string>& group_ids) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "username", .content = username, .filename = "", .content_type = "" },
-        { .name = "group_ids", .content = su::join(group_ids), .filename = "", .content_type = "" }
+        { .name = "username", .content = username, .filename = "", .content_type = "", .headers = {} },
+        { .name = "group_ids", .content = su::join(group_ids), .filename = "", .content_type = "", .headers = {} }
     };
     const httplib::Result res{ _client->Post("/add-user", items) };
     return client::format_page(res);
@@ -329,8 +329,8 @@ std::string Client::add_user(const std::string& username, const std::vector<std:
 std::string Client::add_password(const std::string& user_id, const std::string& password) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
-        { .name = "password", .content = password, .filename = "", .content_type = "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "", .headers = {} },
+        { .name = "password", .content = password, .filename = "", .content_type = "", .headers = {} }
     };
     const httplib::Result res{ _client->Post("/add-password", items) };
     return client::format_page(res);
@@ -339,8 +339,8 @@ std::string Client::add_password(const std::string& user_id, const std::string& 
 void Client::update_username(const std::string& user_id, const std::string& username) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
-        { .name = "username", .content = username, .filename = "", .content_type = "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "", .headers = {} },
+        { .name = "username", .content = username, .filename = "", .content_type = "", .headers = {} }
     };
     _client->Post("/update-username", items);
 }
@@ -348,8 +348,8 @@ void Client::update_username(const std::string& user_id, const std::string& user
 void Client::update_user_groups(const std::string& user_id, const std::vector<std::string>& group_ids) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
-        { .name = "group_ids", .content = su::join(group_ids), .filename = "", .content_type = "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "", .headers = {} },
+        { .name = "group_ids", .content = su::join(group_ids), .filename = "", .content_type = "", .headers = {} }
     };
     _client->Post("/update-user-groups", items);
 }
@@ -357,8 +357,8 @@ void Client::update_user_groups(const std::string& user_id, const std::vector<st
 void Client::update_password(const std::string& user_id, const std::string& password) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
-        { .name = "password", .content = password, .filename = "", .content_type = "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "", .headers = {} },
+        { .name = "password", .content = password, .filename = "", .content_type = "", .headers = {} }
     };
     _client->Post("/update-password", items);
 }
@@ -366,7 +366,7 @@ void Client::update_password(const std::string& user_id, const std::string& pass
 void Client::reset_user(const std::string& user_id) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "", .headers = {} }
     };
     _client->Post("/reset-user", items);
 }
@@ -374,7 +374,7 @@ void Client::reset_user(const std::string& user_id) const
 void Client::delete_user(const std::string& user_id) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "", .headers = {} }
     };
     _client->Post("/delete-user", items);
 }
@@ -382,7 +382,7 @@ void Client::delete_user(const std::string& user_id) const
 bool Client::is_first_connection(const std::string& user_id) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "", .headers = {} }
     };
     const httplib::Result res{ _client->Post("/is-first-connection", items) };
     return su::string_to_bool(client::format_page(res));
@@ -391,8 +391,8 @@ bool Client::is_first_connection(const std::string& user_id) const
 bool Client::is_valid_user(const std::string& user_id, const std::string& password) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "user_id", .content = user_id, .filename = "", .content_type = "" },
-        { .name = "password", .content = password, .filename = "", .content_type = "" }
+        { .name = "user_id", .content = user_id, .filename = "", .content_type = "", .headers = {} },
+        { .name = "password", .content = password, .filename = "", .content_type = "", .headers = {} }
     };
     const httplib::Result res{ _client->Post("/is-valid-user", items) };
     return su::string_to_bool(client::format_page(res));
@@ -464,8 +464,8 @@ bool Client::group_exists(const std::string& name) const
 std::string Client::add_group(const std::string& name, const std::vector<std::string>& group_user_ids) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "name", .content = name, .filename = "", .content_type = "" },
-        { .name = "user_ids", .content = su::join(group_user_ids), .filename = "", .content_type = "" }
+        { .name = "name", .content = name, .filename = "", .content_type = "", .headers = {} },
+        { .name = "user_ids", .content = su::join(group_user_ids), .filename = "", .content_type = "", .headers = {} }
     };
     const httplib::Result res{ _client->Post("/add-group", items) };
     return client::format_page(res);
@@ -474,8 +474,8 @@ std::string Client::add_group(const std::string& name, const std::vector<std::st
 void Client::update_group(const std::string& group_id, const std::string& name, const std::vector<std::string>& group_user_ids) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "name", .content = name, .filename = "", .content_type = "" },
-        { .name = "user_ids", .content = su::join(group_user_ids), .filename = "", .content_type = "" }
+        { .name = "name", .content = name, .filename = "", .content_type = "", .headers = {} },
+        { .name = "user_ids", .content = su::join(group_user_ids), .filename = "", .content_type = "", .headers = {} }
     };
     _client->Post("/update-group/" + group_id, items);
 }
@@ -502,10 +502,10 @@ std::vector<std::string> Client::user_group_list(const std::string& user_id) con
 std::string Client::add_video(const std::string& title, const std::string& content, const std::vector<std::string>& allowed_group_ids, const std::vector<std::string>& allowed_user_ids) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "title", .content = title, .filename = "", .content_type = "" },
-        { .name = "video", .content = content, .filename = "", .content_type = "" },
-        { .name = "group_ids", .content = su::join(allowed_group_ids), .filename = "", .content_type = "" },
-        { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "" }
+        { .name = "title", .content = title, .filename = "", .content_type = "", .headers = {} },
+        { .name = "video", .content = content, .filename = "", .content_type = "", .headers = {} },
+        { .name = "group_ids", .content = su::join(allowed_group_ids), .filename = "", .content_type = "", .headers = {} },
+        { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "", .headers = {} }
     };
     const httplib::Result res{ _client->Post("/add-video", items) };
     return client::format_page(res);
@@ -514,9 +514,9 @@ std::string Client::add_video(const std::string& title, const std::string& conte
 void Client::update_video(const std::string& video_id, const std::string& title, const std::vector<std::string>& allowed_group_ids, const std::vector<std::string>& allowed_user_ids) const
 {
     const httplib::MultipartFormDataItems items{
-        { .name = "title", .content = title, .filename = "", .content_type = "" },
-        { .name = "group_ids", .content = su::join(allowed_group_ids), .filename = "", .content_type = "" },
-        { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "" }
+        { .name = "title", .content = title, .filename = "", .content_type = "", .headers = {} },
+        { .name = "group_ids", .content = su::join(allowed_group_ids), .filename = "", .content_type = "", .headers = {} },
+        { .name = "user_ids", .content = su::join(allowed_user_ids), .filename = "", .content_type = "", .headers = {} }
     };
     _client->Post("/update-video/" + video_id, items);
 }
