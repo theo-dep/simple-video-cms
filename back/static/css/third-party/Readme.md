@@ -11,7 +11,7 @@
 
 ## Video.js
 
-- v8.20.0
+- v8.21.1
 - https://github.com/videojs/video.js
 - Apache License Version 2.0
 
