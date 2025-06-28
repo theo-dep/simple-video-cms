@@ -1,6 +1,9 @@
 # inspired from https://makefiletutorial.com/#makefile-cookbook
 # and https://downloads.haskell.org/ghc/5.02.2/docs/building/sec-makefile-arch.html
 
+ifndef INCLUDED
+INCLUDED = 1
+
 TOP := ..
 
 override RELEASE_FLAGS += -O3 -DNDEBUG
@@ -34,3 +37,5 @@ BUILD_DIR := $(BASE_BUILD_DIR)/$(BUILD)
 
 BASE_BIN_DIR := $(TOP)/bin
 BIN_DIR := $(BASE_BIN_DIR)/$(BUILD)
+
+endif
