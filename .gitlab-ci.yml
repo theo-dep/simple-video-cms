@@ -8,8 +8,6 @@ stages:
 variables:
   GIT_STRATEGY: clone
   FF_ENABLE_JOB_CLEANUP: true
-
-.back-variables: &back-variables
   GIT_SUBMODULE_STRATEGY: normal
   GIT_SUBMODULE_FORCE_HTTPS: true
   GIT_SUBMODULE_DEPTH: 0
@@ -28,7 +26,6 @@ debug_build_back:
   extends:
     - .back-local-build
   variables:
-    <<: *back-variables
     DEBUG: 1
     BUILD: debug
     TARGET: back
@@ -46,7 +43,6 @@ release_build_back:
     - .back-local-build
     - .merge-rules
   variables:
-    <<: *back-variables
     DEBUG: 0
     BUILD: release
     TARGET: back
@@ -69,7 +65,6 @@ docker_build:
     name: docker:28.0.2
   variables:
     DOCKER_DRIVER: overlay2
-    <<: *back-variables
   before_script:
     - apk add --no-cache docker-compose
   script:
@@ -94,5 +89,4 @@ analyze_back:
     - .back-analyze
     - .merge-rules
   variables:
-    <<: *back-variables
     TARGET: back

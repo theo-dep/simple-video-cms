@@ -10,6 +10,7 @@ variables:
   extends:
     - .base-job
   script:
+    - !reference [.base-job, script]
     - make DEBUG=${DEBUG} ${TARGET} -j
   artifacts:
     expire_in: 3 days
@@ -18,7 +19,8 @@ variables:
   cache:
     key: ${BUILD_CACHE_KEY}
     paths:
-      - $BUILD_CACHE_PATH
+      - ${BUILD_CACHE_PATH}
+      - common/third-party/zlib/**/*
 
 .back-local-build:
   extends:

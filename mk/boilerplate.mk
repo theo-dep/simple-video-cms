@@ -11,7 +11,7 @@ override DEBUG_FLAGS += -g -D_DEBUG -DDEBUG_LOG
 
 override INC_DIRS += $(TOP)/common $(TOP)/common/third-party
 override CFLAGS += -Wall -Wextra -Werror
-override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -pedantic -DCPPHTTPLIB_USE_POLL
+override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -pedantic -DCPPHTTPLIB_USE_POLL -DCPPHTTPLIB_ZLIB_SUPPORT
 override LDFLAGS += -static -lstdc++exp
 
 DEBUG ?= 1
