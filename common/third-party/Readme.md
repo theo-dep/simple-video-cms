@@ -5,13 +5,13 @@
 
 ## cpp-httplib
 
-- v0.22.0
+- v0.29.0
 - https://github.com/yhirose/cpp-httplib
 - MIT License
 
 ## inja
 
-- v3.4.0
+- v3.5.0
 - https://github.com/pantor/inja/
 - MIT License
 
@@ -23,19 +23,19 @@
 
 ## sqlite3
 
-- v3.50.1
+- v3.51.1
 - https://github.com/sqlite/sqlite
 - Public Domain
 
 ## sqlite_orm
 
 - v1.9.1
-- https://github.com/ fnc12/sqlite_orm
+- https://github.com/fnc12/sqlite_orm
 - AGPL License
 
 ## rapidfuzz-cpp
 
-- v3.3.2
+- v3.3.3
 - taken amalgamated header in "extras" folder
 - https://github.com/rapidfuzz/rapidfuzz-cpp
 - MIT License
@@ -48,7 +48,7 @@
 
 ## FFmpeg
 
-- v7.1.1
+- v7.1.3
 - https://git.ffmpeg.org/gitweb/ffmpeg
 - GNU LGPL v2 and GPL v2 for parts upgraded to v3
 
@@ -60,6 +60,6 @@
 
 ## libpng
 
-- v1.6.49
+- v1.6.53
 - https://github.com/pnggroup/libpng
 - PNG Reference Library License version 2
