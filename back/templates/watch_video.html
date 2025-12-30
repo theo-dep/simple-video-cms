@@ -59,7 +59,10 @@
 <script type="text/javascript" src="/static/js/third-party/videojs-mobile-ui-min.js"></script>
 <script type="text/javascript" src="/static/js/third-party/videojs-yt-style-min.js"></script>
 <script>
-  const player = videojs('video-player');
+  const player = videojs('video-player', {
+    fluid: true,
+    playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
+  });
   // player.mobileUi();
   player.ytStyle();
 
