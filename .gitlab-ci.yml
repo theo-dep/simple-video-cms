@@ -110,6 +110,7 @@ analyze_back:
 docker_release_image:
   stage: release
   extends:
+    - .base-tag
     - .deploy-rules
   script:
     - docker pull $CONTAINER_TEST_BACK_IMAGE
