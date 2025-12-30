@@ -11,13 +11,13 @@
 
 ## Video.js
 
-- v8.21.1
+- v8.23.4
 - https://github.com/videojs/video.js
 - Apache License Version 2.0
 
 ## videojs-mobile-ui
 
-- v1.1.1 (cd9c73dac63b834a94b94b90209ad98806b6a0ee)
+- v1.1.3
 - https://github.com/mister-ben/videojs-mobile-ui
 - MIT License
 
@@ -36,6 +36,6 @@
 
 ## MultiSelect
 
-- v1.0.1
+- v1.0.3
 - https://github.com/codeshackio/multi-select-dropdown-js
 - MIT License
