@@ -6,12 +6,21 @@ INCLUDED = 1
 
 TOP := ..
 
+CLANG_VERSION := $(shell which clang && clang --version | head -n1)
+ifneq (,$(findstring 21,$(CLANG_VERSION)))
+    override CC = clang
+    override CXX = clang++
+else
+    override CC = clang-21
+    override CXX = clang++-21
+endif
+
 override RELEASE_FLAGS += -O3 -DNDEBUG
 override DEBUG_FLAGS += -g -D_DEBUG -DDEBUG_LOG
 
 override INC_DIRS += $(TOP)/common $(TOP)/common/third-party
-override CFLAGS += -Wall -Wextra -Werror
-override CXXFLAGS += -std=c++23 -Wall -Wextra -Werror -pedantic -DCPPHTTPLIB_USE_POLL -DCPPHTTPLIB_ZLIB_SUPPORT
+override CFLAGS += -std=c2y -Wall -Wextra -Werror -pedantic
+override CXXFLAGS += -std=c++2c -Wall -Wextra -Werror -pedantic -DCPPHTTPLIB_USE_POLL -DCPPHTTPLIB_ZLIB_SUPPORT
 override LDFLAGS += -static -lstdc++exp
 
 DEBUG ?= 1
@@ -28,7 +37,12 @@ endif
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 CPPFLAGS := $(INC_FLAGS) -MMD -MP
 
-ANALYZER := clang-tidy
+CLANG_TIDY_VERSION := $(shell which clang-tidy && clang-tidy --version | head -n1)
+ifneq (,$(findstring 21,$(CLANG_VERSION)))
+    override ANALYZER = clang-tidy
+else
+    override ANALYZER = clang-tidy-21
+endif
 
 TARGET := server
 

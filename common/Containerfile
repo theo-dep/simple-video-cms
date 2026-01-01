@@ -1,8 +1,7 @@
 FROM alpine:3.23.2
 
 RUN apk add --no-cache \
-    gcc \
-    g++ \
+    clang \
     make
 
 ENV SOURCE_DIR=/sources

@@ -1,11 +1,13 @@
 #include "crypto.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#pragma GCC diagnostic ignored "-Wreorder"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#pragma clang diagnostic ignored "-Wmissing-braces"
+#pragma clang diagnostic ignored "-Wunused-private-field"
+#pragma clang diagnostic ignored "-Wreorder"
 #include <cstring>
 #include <hashpp.h>
-#pragma GCC diagnostic pop
+#pragma clang diagnostic pop
 
 #include <algorithm>
 #include <array>

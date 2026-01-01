@@ -7,7 +7,7 @@ include:
     - .base-job
   before_script:
     - !reference [.base-job, before_script]
-    - apt-get -y install clang-tidy
+    - apt-get -y install clang-tidy-21
   script:
     - !reference [.base-job, script]
     - make analyze-${TARGET} -j

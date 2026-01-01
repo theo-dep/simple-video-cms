@@ -14,7 +14,7 @@
                 "CPPHTTPLIB_USE_POLL",
                 "_DEBUG"
             ],
-            "compilerPath": "/usr/bin/gcc",
+            "compilerPath": "/usr/bin/clang-21",
             "compilerArgs": [
                 "-std=c++23",
                 "-Wall",
