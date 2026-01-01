@@ -17,7 +17,7 @@ const std::string& Session::create_session(const std::string& user_id)
     const std::string session_id{ generate_session_id(user_id) };
     insert_value_from_session(session_id, session::user_id_key(), user_id);
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     return _sessions.find(session_id)->first;
 }
 
@@ -38,7 +38,7 @@ const std::string& Session::value_from_session(const std::string& session_id, co
         return empty_string; // Session not found
     }
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     if (!_sessions.at(session_id).contains(key)) {
         return empty_string; // Key not found
     }
@@ -47,7 +47,7 @@ const std::string& Session::value_from_session(const std::string& session_id, co
 
 void Session::insert_value_from_session(const std::string& session_id, const std::string& key, const std::string& value)
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     _sessions[session_id][key] = value;
 }
 
@@ -57,19 +57,19 @@ void Session::remove_value_from_session(const std::string& session_id, const std
         return;
     }
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     _sessions[session_id].erase(key);
 }
 
 void Session::remove_session(const std::string& session_id)
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     _sessions.erase(session_id);
 }
 
 bool Session::is_valid_session(const std::string& session_id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     return _sessions.contains(session_id);
 }
 

@@ -88,7 +88,7 @@ Database::Database(std::filesystem::path path)
 
 bool Database::create_tables() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     storage.sync_schema();
     return true;
@@ -96,14 +96,14 @@ bool Database::create_tables() const
 
 std::vector<int> Database::admin_video_list() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(&Video::id);
 }
 
 std::vector<int> Database::user_video_list(int user_id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(
         union_(select(distinct(&VideoUserRight::video_id), where(c(&VideoUserRight::user_id) == user_id)),
@@ -114,7 +114,7 @@ std::vector<int> Database::user_video_list(int user_id) const
 
 std::vector<int> Database::no_user_video_list() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&Video::id), from<Video>(),
                           where(not_in(&Video::id, select(&VideoUserRight::video_id)) and
@@ -123,7 +123,7 @@ std::vector<int> Database::no_user_video_list() const
 
 std::string Database::video_title(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video_title{
         storage.get_optional<Video>(id)
@@ -140,7 +140,7 @@ std::string Database::video_title(int id) const
 
 int Database::video_views(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video_views{
         storage.get_optional<Video>(id)
@@ -157,7 +157,7 @@ int Database::video_views(int id) const
 
 int Database::video_size(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video_size{
         storage.get_optional<Video>(id)
@@ -178,7 +178,7 @@ int Database::video_size(int id) const
 
 std::string Database::video(int id, std::size_t offset, std::size_t length) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video{
         storage.get_optional<Video>(id)
@@ -195,7 +195,7 @@ std::string Database::video(int id, std::size_t offset, std::size_t length) cons
 
 std::string Database::thumbnail(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional thumbnail{
         storage.get_optional<Video>(id)
@@ -217,7 +217,7 @@ std::optional<int> Database::add_super_admin(const std::string& name, const std:
         .salt = salt
     };
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     user_super_admin.id = storage.insert(user_super_admin);
 
@@ -231,14 +231,14 @@ std::optional<int> Database::add_super_admin(const std::string& name, const std:
 
 bool Database::is_super_admin(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.get_all<SuperAdmin>(where(c(&SuperAdmin::id) == id)).size() == 1;
 }
 
 bool Database::is_admin(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.get_all<User>(
                       where(
@@ -250,7 +250,7 @@ bool Database::is_admin(int id) const
 
 bool Database::is_user(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.get_all<User>(
                       where(
@@ -267,7 +267,7 @@ std::optional<int> Database::add_admin(const std::string& name, const std::strin
         .salt = salt
     };
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     user_admin.id = storage.insert(user_admin);
 
@@ -286,7 +286,7 @@ std::optional<int> Database::add_user(const std::string& name, const std::string
         .salt = salt
     };
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     user.id = storage.insert(user);
     return user.id;
@@ -294,7 +294,7 @@ std::optional<int> Database::add_user(const std::string& name, const std::string
 
 std::optional<int> Database::add_password(int id, const std::string& password) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
         storage.get_optional<User>(id)
@@ -313,7 +313,7 @@ std::optional<int> Database::add_password(int id, const std::string& password) c
 
 std::optional<int> Database::update_username(int id, const std::string& name) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
         storage.get_optional<User>(id)
@@ -332,7 +332,7 @@ std::optional<int> Database::update_username(int id, const std::string& name) co
 
 std::optional<int> Database::update_password(int id, const std::string& password) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
         storage.get_optional<User>(id)
@@ -351,7 +351,7 @@ std::optional<int> Database::update_password(int id, const std::string& password
 
 std::optional<int> Database::clear_password(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_id{
         storage.get_optional<User>(id)
@@ -370,7 +370,7 @@ std::optional<int> Database::clear_password(int id) const
 
 bool Database::delete_user(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
         storage.get_optional<User>(id)
@@ -388,7 +388,7 @@ bool Database::delete_user(int id) const
 
 int Database::user_id(const std::string& name) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::vector users{ storage.select(&User::id, where(c(&User::name) == name)) };
     return users.empty() ? -1 : users[0];
@@ -396,7 +396,7 @@ int Database::user_id(const std::string& name) const
 
 std::string Database::user_name(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_name{
         storage.get_optional<User>(id)
@@ -413,7 +413,7 @@ std::string Database::user_name(int id) const
 
 std::optional<std::string> Database::user_password(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_password{
         storage.get_optional<User>(id)
@@ -431,7 +431,7 @@ std::optional<std::string> Database::user_password(int id) const
 
 std::string Database::user_salt(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_salt{
         storage.get_optional<User>(id)
@@ -448,28 +448,28 @@ std::string Database::user_salt(int id) const
 
 int Database::user_count() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.count<User>();
 }
 
 int Database::group_count() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.count<Group>();
 }
 
 int Database::video_count() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.count<Video>();
 }
 
 int Database::view_count() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::unique_ptr sum{ storage.sum(&Video::views) };
     return sum ? *sum : 0;
@@ -477,28 +477,28 @@ int Database::view_count() const
 
 std::vector<int> Database::user_list() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(except(select(&User::id), select(&Admin::id), select(&SuperAdmin::id)));
 }
 
 std::vector<int> Database::admin_list() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(union_all(select(&SuperAdmin::id), select(&Admin::id)));
 }
 
 std::vector<int> Database::group_list() const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(&Group::id);
 }
 
 std::string Database::group_name(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional group_name{
         storage.get_optional<Group>(id)
@@ -515,7 +515,7 @@ std::string Database::group_name(int id) const
 
 bool Database::group_exists(const std::string& name) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name)) };
     return !groups.empty();
@@ -527,7 +527,7 @@ std::optional<int> Database::add_group(const std::string& name) const
         .name = name,
     };
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     group.id = storage.insert(group);
     return group.id;
@@ -540,7 +540,7 @@ bool Database::add_group_users(int id, const std::vector<int>& user_ids) const
         return GroupUser{ .group_id = id, .user_id = user_id };
     });
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     storage.replace_range(group_users.cbegin(), group_users.cend());
     return true;
@@ -553,7 +553,7 @@ bool Database::add_user_groups(int user_id, const std::vector<int>& group_ids) c
         return GroupUser{ .group_id = group_id, .user_id = user_id };
     });
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     storage.replace_range(group_users.cbegin(), group_users.cend());
     return true;
@@ -561,7 +561,7 @@ bool Database::add_user_groups(int user_id, const std::vector<int>& group_ids) c
 
 std::optional<int> Database::update_group_name(int id, const std::string& name) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional group_id{
         storage.get_optional<Group>(id)
@@ -581,7 +581,7 @@ std::optional<int> Database::update_group_name(int id, const std::string& name) 
 bool Database::update_group_users(int id, const std::vector<int>& user_ids) const
 {
     {
-        const std::lock_guard<std::mutex> lock(_mutex);
+        const std::scoped_lock lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
         storage.remove_all<GroupUser>(where(c(&GroupUser::group_id) == id));
     }
@@ -591,7 +591,7 @@ bool Database::update_group_users(int id, const std::vector<int>& user_ids) cons
 bool Database::update_user_groups(int user_id, const std::vector<int>& group_ids) const
 {
     {
-        const std::lock_guard<std::mutex> lock(_mutex);
+        const std::scoped_lock lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
         storage.remove_all<GroupUser>(where(c(&GroupUser::user_id) == user_id));
     }
@@ -600,7 +600,7 @@ bool Database::update_user_groups(int user_id, const std::vector<int>& group_ids
 
 bool Database::delete_group(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
         storage.get_optional<Group>(id)
@@ -618,14 +618,14 @@ bool Database::delete_group(int id) const
 
 std::vector<int> Database::group_user_list(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&GroupUser::user_id), where(c(&GroupUser::group_id) == id));
 }
 
 std::vector<int> Database::user_group_list(int user_id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&GroupUser::group_id), where(c(&GroupUser::user_id) == user_id));
 }
@@ -640,7 +640,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
         .title = title
     };
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     video.id = storage.insert(video);
 
@@ -655,7 +655,7 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
         return std::nullopt;
     }
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video_id{
         storage.get_optional<Video>(id)
@@ -674,7 +674,7 @@ bool Database::add_video_group_rights(int id, const std::vector<int>& group_ids)
         return VideoGroupRight{ .video_id = id, .group_id = group_id };
     });
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     storage.replace_range(video_rights.cbegin(), video_rights.cend());
     return true;
@@ -687,7 +687,7 @@ bool Database::add_video_user_rights(int id, const std::vector<int>& user_ids) c
         return VideoUserRight{ .video_id = id, .user_id = user_id };
     });
 
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     storage.replace_range(video_rights.cbegin(), video_rights.cend());
     return true;
@@ -695,7 +695,7 @@ bool Database::add_video_user_rights(int id, const std::vector<int>& user_ids) c
 
 std::optional<int> Database::update_video_title(int id, const std::string& title) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video_id{
         storage.get_optional<Video>(id)
@@ -715,7 +715,7 @@ std::optional<int> Database::update_video_title(int id, const std::string& title
 bool Database::update_video_group_rights(int id, const std::vector<int>& group_ids) const
 {
     {
-        const std::lock_guard<std::mutex> lock(_mutex);
+        const std::scoped_lock lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
         storage.remove_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id));
     }
@@ -725,7 +725,7 @@ bool Database::update_video_group_rights(int id, const std::vector<int>& group_i
 bool Database::update_video_user_rights(int id, const std::vector<int>& user_ids) const
 {
     {
-        const std::lock_guard<std::mutex> lock(_mutex);
+        const std::scoped_lock lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
         storage.remove_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id));
     }
@@ -734,7 +734,7 @@ bool Database::update_video_user_rights(int id, const std::vector<int>& user_ids
 
 bool Database::delete_video(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
         storage.get_optional<Video>(id)
@@ -760,7 +760,7 @@ bool Database::delete_video(int id) const
 
 bool Database::increment_video_views(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
         storage.get_optional<Video>(id)
@@ -779,7 +779,7 @@ bool Database::increment_video_views(int id) const
 
 bool Database::has_video_right(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.get_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id)).empty() &&
            storage.get_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id)).empty();
@@ -787,7 +787,7 @@ bool Database::has_video_right(int id) const
 
 bool Database::has_video_right(int id, int user_id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return !storage.get_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id and c(&VideoUserRight::user_id) == user_id)).empty() ||
            !storage.get_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id and
@@ -798,14 +798,14 @@ bool Database::has_video_right(int id, int user_id) const
 
 std::vector<int> Database::video_group_right_list(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&VideoGroupRight::group_id), where(c(&VideoGroupRight::video_id) == id));
 }
 
 std::vector<int> Database::video_user_right_list(int id) const
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(distinct(&VideoUserRight::user_id), where(c(&VideoUserRight::video_id) == id));
 }
