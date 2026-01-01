@@ -423,7 +423,7 @@ inline std::string video::VideoProcessor::retrieve_filtered_frame(std::size_t wi
     }
 
     // Calculate aspect ratio of the source frame
-    if (filtered_frame->width != static_cast<int>(width) || filtered_frame->height != static_cast<int>(height)) {
+    if (std::cmp_not_equal(filtered_frame->width, width) || std::cmp_not_equal(filtered_frame->height, height)) {
         const AVFramePtr padded_frame{ av_frame_alloc() };
         if (padded_frame == nullptr) {
             logging::error{ "Could not allocate padded frame" };
@@ -450,7 +450,7 @@ inline std::string video::VideoProcessor::retrieve_filtered_frame(std::size_t wi
         // Copy image to center
         const std::size_t x_offset{ (width - static_cast<std::size_t>(filtered_frame->width)) / 2 };
         const std::size_t y_offset{ (height - static_cast<std::size_t>(filtered_frame->height)) / 2 };
-        for (std::size_t y{ 0 }; y < static_cast<std::size_t>(filtered_frame->height); y++) {
+        for (std::size_t y{ 0 }; std::cmp_less(y, filtered_frame->height); y++) {
             // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             std::memcpy(padded_frame->data[0] + ((y + y_offset) * padded_frame->linesize[0]) + (x_offset * 3),
                         filtered_frame->data[0] + (y * filtered_frame->linesize[0]),

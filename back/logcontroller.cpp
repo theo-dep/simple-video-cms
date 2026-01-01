@@ -16,7 +16,7 @@ LogController::LogController(std::string pattern)
 
 bool LogController::append(const std::string& log)
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
 
     if (log.contains(_pattern)) {
         const std::string no_date_log{ logcontroller::remove_log_date(log) };
@@ -35,7 +35,7 @@ bool LogController::append(const std::string& log)
 
 void LogController::flush()
 {
-    const std::lock_guard<std::mutex> lock(_mutex);
+    const std::scoped_lock lock(_mutex);
 
     if (_buffer.empty()) {
         return;

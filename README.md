@@ -22,11 +22,11 @@ docker compose up -d
 
 ### Local
 
-For development purpose, files can be compiled with `gcc` and `g++` minimum version 14.2.
+For development purpose, files can be compiled with `clang LLVM` version 21.
 
 Install development requirements:
 ```bash
-sudo apt install make gcc yasm g++
+sudo apt install make clang-21 yasm
 ```
 
 Then build (zlib, libpng, ffmpeg and servers):

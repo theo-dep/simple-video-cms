@@ -403,13 +403,13 @@ inline void server::user_id(const httplib::Request& req, httplib::Response& res,
 
 inline void server::add_admin(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("username")) {
+    if (!req.has_param("username")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_file_value("username").content };
+    const std::string username{ req.get_param_value("username") };
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
     const std::optional admin_id{ db.add_admin(username, salt) };
@@ -424,16 +424,16 @@ inline void server::add_admin(const httplib::Request& req, httplib::Response& re
 
 inline void server::add_user(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("username") || !req.has_file("group_ids")) {
+    if (!req.has_param("username") || !req.has_param("group_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string username{ req.get_file_value("username").content };
+    const std::string username{ req.get_param_value("username") };
     const std::string salt{ crypto::random_string() };
 
-    const std::vector group_ids{ su::split(req.get_file_value("group_ids").content) };
+    const std::vector group_ids{ su::split(req.get_param_value("group_ids")) };
 
     logging::debug{ "Salt: {}", salt };
     const std::optional user_id{
@@ -454,15 +454,15 @@ inline void server::add_user(const httplib::Request& req, httplib::Response& res
 
 inline void server::add_password(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("password") || !req.has_file("user_id")) {
+    if (!req.has_param("password") || !req.has_param("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
     const std::string salt{ db.user_salt(user_id) };
-    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
+    const std::string password{ crypto::password(req.get_param_value("password"), salt) };
 
     const std::optional success_user_id{ db.add_password(user_id, password) };
     if (!success_user_id.has_value()) {
@@ -476,14 +476,14 @@ inline void server::add_password(const httplib::Request& req, httplib::Response&
 
 inline void server::update_username(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("username") || !req.has_file("user_id")) {
+    if (!req.has_param("username") || !req.has_param("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
-    const std::string username{ req.get_file_value("username").content };
+    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
+    const std::string username{ req.get_param_value("username") };
 
     const std::optional success_user_id{ db.update_username(user_id, username) };
     if (!success_user_id.has_value()) {
@@ -494,14 +494,14 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
 
 inline void server::update_user_groups(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("group_ids") || !req.has_file("user_id")) {
+    if (!req.has_param("group_ids") || !req.has_param("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
-    const std::vector group_ids{ su::split(req.get_file_value("group_ids").content) };
+    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
+    const std::vector group_ids{ su::split(req.get_param_value("group_ids")) };
 
     if (!db.update_user_groups(user_id, transform(group_ids))) {
         logging::error{ R"(Fail to update user groups "{}")", user_id };
@@ -511,15 +511,15 @@ inline void server::update_user_groups(const httplib::Request& req, httplib::Res
 
 inline void server::update_password(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("password") || !req.has_file("user_id")) {
+    if (!req.has_param("password") || !req.has_param("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
     const std::string salt{ db.user_salt(user_id) };
-    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
+    const std::string password{ crypto::password(req.get_param_value("password"), salt) };
 
     const std::optional success_user_id{ db.update_password(user_id, password) };
     if (!success_user_id.has_value()) {
@@ -530,13 +530,13 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
 
 inline void server::reset_user(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("user_id")) {
+    if (!req.has_param("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
 
     const std::optional success_user_id{ db.clear_password(user_id) };
     if (!success_user_id.has_value()) {
@@ -547,13 +547,13 @@ inline void server::reset_user(const httplib::Request& req, httplib::Response& r
 
 inline void server::delete_user(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("user_id")) {
+    if (!req.has_param("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
     if (!db.delete_user(user_id)) {
         logging::error{ R"(Fail to delete user "{}")", user_id };
         return;
@@ -562,13 +562,13 @@ inline void server::delete_user(const httplib::Request& req, httplib::Response& 
 
 inline void server::is_first_connection(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("user_id")) {
+    if (!req.has_param("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
     const std::optional database_password{ db.user_password(user_id) };
     const bool is_first_connection{ !database_password.has_value() };
     res.set_content(su::bool_to_string(is_first_connection), "plain/text");
@@ -576,15 +576,15 @@ inline void server::is_first_connection(const httplib::Request& req, httplib::Re
 
 inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("password") || !req.has_file("user_id")) {
+    if (!req.has_param("password") || !req.has_param("user_id")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_file_value("user_id").content) };
+    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
     const std::string salt{ db.user_salt(user_id) };
-    const std::string password{ crypto::password(req.get_file_value("password").content, salt) };
+    const std::string password{ crypto::password(req.get_param_value("password"), salt) };
 
     const std::optional database_password{ db.user_password(user_id) };
     const bool is_valid_user{ database_password.has_value() && password == database_password.value() };
@@ -637,14 +637,14 @@ inline void server::group_exists(const httplib::Request& req, httplib::Response&
 
 inline void server::add_group(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("name") || !req.has_file("user_ids")) {
+    if (!req.has_param("name") || !req.has_param("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string group_name{ req.get_file_value("name").content };
-    const std::vector group_user_ids{ su::split(req.get_file_value("user_ids").content) };
+    const std::string group_name{ req.get_param_value("name") };
+    const std::vector group_user_ids{ su::split(req.get_param_value("user_ids")) };
 
     const std::optional group_id{
         db.add_group(group_name)
@@ -664,15 +664,15 @@ inline void server::add_group(const httplib::Request& req, httplib::Response& re
 
 inline void server::update_group(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("name") || !req.has_file("user_ids")) {
+    if (!req.has_param("name") || !req.has_param("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
     const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
-    const std::string group_name{ req.get_file_value("name").content };
-    const std::vector group_user_ids{ su::split(req.get_file_value("user_ids").content) };
+    const std::string group_name{ req.get_param_value("name") };
+    const std::vector group_user_ids{ su::split(req.get_param_value("user_ids")) };
 
     const std::optional success{
         db.update_group_name(group_id, group_name)
@@ -714,17 +714,17 @@ inline void server::user_group_list(const httplib::Request& req, httplib::Respon
 
 inline void server::add_video(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("title") || !req.has_file("video") || !req.has_file("group_ids") || !req.has_file("user_ids")) {
+    if (!req.has_param("title") || !req.has_param("video") || !req.has_param("group_ids") || !req.has_param("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
-    const std::string video_title{ req.get_file_value("title").content };
-    const std::string video_content{ req.get_file_value("video").content };
+    const std::string video_title{ req.get_param_value("title") };
+    const std::string video_content{ req.get_param_value("video") };
     const std::string thumbnail_content{ video::thumbnail(video_content) };
-    const std::vector allowed_group_ids{ su::split(req.get_file_value("group_ids").content) };
-    const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
+    const std::vector allowed_group_ids{ su::split(req.get_param_value("group_ids")) };
+    const std::vector allowed_user_ids{ su::split(req.get_param_value("user_ids")) };
 
     const std::optional video_id{
         db.add_video(video_title, video_content)
@@ -750,16 +750,16 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
 
 inline void server::update_video(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_file("title") || !req.has_file("group_ids") || !req.has_file("user_ids")) {
+    if (!req.has_param("title") || !req.has_param("group_ids") || !req.has_param("user_ids")) {
         logging::error{ "Missing multipart form data" };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string video_title{ req.get_file_value("title").content };
-    const std::vector allowed_group_ids{ su::split(req.get_file_value("group_ids").content) };
-    const std::vector allowed_user_ids{ su::split(req.get_file_value("user_ids").content) };
+    const std::string video_title{ req.get_param_value("title") };
+    const std::vector allowed_group_ids{ su::split(req.get_param_value("group_ids")) };
+    const std::vector allowed_user_ids{ su::split(req.get_param_value("user_ids")) };
 
     const std::optional success{
         db.update_video_title(video_id, video_title)

@@ -14,11 +14,8 @@ override LDFLAGS += \
 	$(addprefix -L,$(LIBPNG_DIR)/.libs $(addprefix $(FFMPEG_DIR)/lib,$(FFMPEG_LIBS))) \
 	$(addprefix -l,$(FFMPEG_LIBS) $(LIBPNG_LIBS))
 
-ifeq ($(DEBUG), 0)
-	# sqlite3.c:35252:28: error: 'strlen' reading 1 or more bytes from a region of size 0 [-Werror=stringop-overread]
-	#       return 0x3fffffff & (int)strlen(z);
-	override CFLAGS += -Wno-stringop-overread
-endif
+# sqlite3.c: error: octal literals without a '0o' prefix are deprecated
+override CFLAGS += -Wno-deprecated-octal-literals
 
 include $(TOP)/mk/zlib.mk
 include $(TOP)/mk/boilerplate.mk

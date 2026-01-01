@@ -5,10 +5,27 @@ ZLIB_DIR=${SOURCE_DIR}/common/third-party/zlib
 LIBPNG_DIR=${SOURCE_DIR}/common/third-party/libpng
 FFMPEG_DIR=${SOURCE_DIR}/common/third-party/ffmpeg
 
+function get_clang_version() {
+    local version
+    version=$(which clang && clang --version 2>/dev/null | head -n1)
+    echo "$version"
+}
+
+version="$(get_clang_version)"
+if [[ "$version" == *"21"* ]]; then
+    CC=clang
+    CXX=clang++
+else
+    CC=clang-21
+    CXX=clang++-21
+fi
+export CC CXX
+
 function configure_zlib() {
     echo --- Configuring zlib
     cd ${ZLIB_DIR}
-    ./configure --static
+    ./configure \
+        --static
 }
 
 function configure_libpng() {
@@ -19,13 +36,19 @@ function configure_libpng() {
     export LDFLAGS="-L${ZLIB_DIR}"
     export  LD_LIBRARY_PATH="${ZLIB_DIR}:$LD_LIBRARY_PATH"
     cd ${LIBPNG_DIR}
-    ./configure --disable-shared --enable-static
+    ./configure \
+        --disable-tests \
+        --disable-tools \
+        --disable-shared \
+        --enable-static
 }
 
 function configure_ffmpeg() {
     echo --- Configuring FFmpeg
     cd ${FFMPEG_DIR}
     ./configure \
+        --cc=${CC} \
+        --cxx=${CXX} \
         --enable-version3 \
         --enable-swscale \
         --enable-avformat \

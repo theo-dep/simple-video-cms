@@ -39,7 +39,7 @@ namespace server
     inja::json video_dict(const std::vector<std::string>& video_ids, const Client& client);
 
     std::vector<std::string> param_value_list(const httplib::Request& req, const std::string& param_name);
-    std::vector<std::string> file_value_list(const httplib::Request& req, const std::string& file_name);
+    std::vector<std::string> fields_list(const httplib::Request& req, const std::string& file_name);
 
     void static_file(const httplib::Request& req, httplib::Response& res, const Client& client);
 
@@ -368,14 +368,11 @@ inline std::vector<std::string> server::param_value_list(const httplib::Request&
     return param_list;
 }
 
-inline std::vector<std::string> server::file_value_list(const httplib::Request& req, const std::string& file_name)
+inline std::vector<std::string> server::fields_list(const httplib::Request& req, const std::string& file_name)
 {
     const std::string key{ file_name + "[]" };
-    const std::vector file_items{ req.get_file_values(key) };
-    std::vector<std::string> file_list(file_items.size());
-    std::ranges::transform(file_items, file_list.begin(),
-                           [](const httplib::MultipartFormData& item) -> std::string { return item.content; });
-    return file_list;
+    const std::vector file_items{ req.form.get_fields(key) };
+    return file_items;
 }
 
 inline void server::static_file(const httplib::Request& req, httplib::Response& res, const Client& client)
@@ -1378,25 +1375,25 @@ inline void server::add_video_post(const httplib::Request& req, httplib::Respons
     if (!is_logged_and_admin(req, res, session, client))
         return;
 
-    const std::string video_title{ req.get_file_value("title").content };
+    const std::string video_title{ req.form.get_field("title") };
     if (video_title.empty()) {
         set_add_video_content(res, env, client, default_button_video_text_helper(), default_video_text_helper(), "Enter a non-empty video title here");
         return;
     }
 
-    if (!req.has_file("file")) {
+    if (!req.form.has_file("file")) {
         set_add_video_content(res, env, client, default_button_video_text_helper(), default_video_text_helper(), default_video_title_placeholder());
         return;
     }
 
-    const httplib::MultipartFormData item{ req.get_file_value("file") };
+    const httplib::FormData item{ req.form.get_file("file") };
     if (item.content_type != "video/mp4") {
         set_add_video_content(res, env, client, "choose mp4 file", default_video_text_helper(), default_video_title_placeholder());
         return;
     }
 
-    const std::vector allowed_group_ids{ file_value_list(req, "group_ids") };
-    const std::vector allowed_user_ids{ file_value_list(req, "user_ids") };
+    const std::vector allowed_group_ids{ fields_list(req, "group_ids") };
+    const std::vector allowed_user_ids{ fields_list(req, "user_ids") };
     const std::string video_id{ client.add_video(video_title, item.content, allowed_group_ids, allowed_user_ids) };
     res.set_redirect("/video-list");
 

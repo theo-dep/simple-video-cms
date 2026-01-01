@@ -8,7 +8,7 @@
     - .base-tag
   before_script:
     - apt-get update
-    - apt-get -y install make g++ gcc
+    - apt-get -y install make clang-21
   script:
     - ./configure --zlib
 
