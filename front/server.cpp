@@ -2,6 +2,7 @@
 
 #include "client.h"
 #include "confirmhandler.h"
+#include "cookie.h"
 #include "crypto.h"
 #include "logging.h"
 #include "servercommon.h"
@@ -438,6 +439,34 @@ inline void server::dashboard(const httplib::Request& req, httplib::Response& re
 
 namespace server
 {
+    constexpr const char* video_cookie() { return "Video-ID"; }
+    std::string video_data_to_cookie(const std::unordered_map<std::string, std::string>& data);
+    std::unordered_map<std::string, std::string> cookie_to_video_data(const std::string& cookie);
+}
+
+inline std::string server::video_data_to_cookie(const std::unordered_map<std::string, std::string>& data)
+{
+    std::vector<std::string> cookie;
+    cookie.reserve(data.size());
+    for (const auto& [key, value] : data) {
+        cookie.push_back(su::join({ key, value }, '$'));
+    }
+    return su::join(cookie, '#');
+}
+
+inline std::unordered_map<std::string, std::string> server::cookie_to_video_data(const std::string& cookie)
+{
+    std::unordered_map<std::string, std::string> data;
+    for (const std::string& sub : su::split(cookie, '#')) {
+        const std::vector ssub{ su::split(sub, '$') };
+        assert(ssub.size() == 2);
+        data.emplace(ssub[0], ssub[1]);
+    }
+    return data;
+}
+
+namespace server
+{
     enum class AlertLogin : std::uint8_t
     {
         no_alert,
@@ -447,15 +476,32 @@ namespace server
     using namespace std::literals::string_view_literals;
     static constexpr std::array alert_login_texts{ ""sv, "Unknown username"sv, "Invalid password"sv };
 
-    void set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert);
+    void set_login_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert);
 }
 
-inline void server::set_login_content(httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert)
+inline void server::set_login_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert)
 {
-    const inja::json data{
+    inja::json data{
+        { "video_id", {} },
+        { "meta_video_title", {} },
+        { "meta_video_description", {} },
+        { "meta_video_url", {} },
+        { "meta_video_image", {} },
         { "alert", alert_to_text(alert, alert_login_texts) }
     };
+
+    // add video data for sharing link
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string video_cookie_value{ cookie::value_from_cookie(cookie, video_cookie()) };
+    if (!video_cookie_value.empty()) {
+        const std::unordered_map video_data{ cookie_to_video_data(video_cookie_value) };
+        for (const auto& [key, value] : video_data) {
+            data[key] = value;
+        }
+    }
+
     logging::debug{ data.dump() };
+
     const std::string body{ env.render(client.login_page(), data) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
     res.set_content(body, "text/html");
 }
@@ -468,7 +514,7 @@ inline void server::login_get(const httplib::Request& req, httplib::Response& re
         return;
     }
 
-    set_login_content(res, env, client, AlertLogin::no_alert);
+    set_login_content(req, res, env, client, AlertLogin::no_alert);
 }
 
 inline void server::login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
@@ -484,7 +530,7 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     }
 
     if (!username_exists(username, client)) {
-        set_login_content(res, env, client, AlertLogin::unknown_username);
+        set_login_content(req, res, env, client, AlertLogin::unknown_username);
         return;
     }
 
@@ -497,13 +543,13 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
 
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
     if (password.empty()) {
-        set_login_content(res, env, client, AlertLogin::invalid_password);
+        set_login_content(req, res, env, client, AlertLogin::invalid_password);
         return;
     }
 
     const bool is_valid_user{ client.is_valid_user(user_id, password) };
     if (!is_valid_user) {
-        set_login_content(res, env, client, AlertLogin::invalid_password);
+        set_login_content(req, res, env, client, AlertLogin::invalid_password);
         return;
     }
 
@@ -1543,6 +1589,10 @@ namespace server
 {
     bool has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
     constexpr std::string_view url_scheme();
+    std::string meta_video_title(const std::string& video_title);
+    std::string meta_video_description(const std::string& video_title);
+    std::string meta_video_url(const httplib::Request& req, const std::string& video_id);
+    std::string meta_video_image(const httplib::Request& req, const std::string& video_id);
 }
 
 inline bool server::has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
@@ -1560,6 +1610,15 @@ inline bool server::has_video_right(const httplib::Request& req, httplib::Respon
             return false;
         }
     } else if (!client.has_video_right(video_id)) {
+        const std::string video_title{ client.video_title(video_id) };
+        const std::unordered_map<std::string, std::string> video_data{
+            { "video_id", video_id },
+            { "meta_video_title", meta_video_title(video_title) },
+            { "meta_video_description", meta_video_description(video_title) },
+            { "meta_video_url", meta_video_url(req, video_id) },
+            { "meta_video_image", meta_video_image(req, video_id) }
+        };
+        res.set_header("Set-Cookie", cookie::insert_to_cookie(req.get_header_value("Host"), video_cookie(), video_data_to_cookie(video_data)));
         res.set_redirect("/login");
         return false;
     }
@@ -1576,6 +1635,26 @@ constexpr std::string_view server::url_scheme()
 #endif
 }
 
+inline std::string server::meta_video_title(const std::string& video_title)
+{
+    return video_title;
+}
+
+inline std::string server::meta_video_description(const std::string& video_title)
+{
+    return "Watch " + video_title + " video";
+}
+
+inline std::string server::meta_video_url(const httplib::Request& req, const std::string& video_id)
+{
+    return std::string(url_scheme()) + "://" + req.get_header_value("Host") + "/watch-video/" + video_id;
+}
+
+inline std::string server::meta_video_image(const httplib::Request& req, const std::string& video_id)
+{
+    return std::string(url_scheme()) + "://" + req.get_header_value("Host") + "/thumbnail/" + video_id;
+}
+
 inline void server::watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     if (!has_video_right(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -1590,9 +1669,11 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
     const int video_views{ client.video_views(video_id) };
 
     const inja::json data{
-        { "url_scheme", url_scheme() },
-        { "website_url", req.get_header_value("Host") },
         { "is_logged", is_logged },
+        { "meta_video_title", meta_video_title(video_title) },
+        { "meta_video_description", meta_video_description(video_title) },
+        { "meta_video_url", meta_video_url(req, video_id) },
+        { "meta_video_image", meta_video_image(req, video_id) },
         { "video_id", video_id },
         { "title", video_title },
         { "views", video_views }

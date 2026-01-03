@@ -1,5 +1,6 @@
 #include "session.h"
 
+#include "cookie.h"
 #include "crypto.h"
 #include "stringutils.h"
 
@@ -8,7 +9,7 @@
 
 namespace session
 {
-    constexpr const char* cookie_key() { return "Session-ID="; }
+    constexpr const char* cookie_key() { return "Session-ID"; }
     constexpr const char* user_id_key() { return "user_id"; }
 }
 
@@ -81,37 +82,14 @@ bool Session::is_valid_session_from_cookie(const std::string& cookie) const
 
 std::string Session::extract_session_id_from_cookie(const std::string& cookie)
 {
-    std::string session_id;
-
-    std::size_t start{ cookie.find(session::cookie_key()) };
-    if (start != std::string::npos) {
-        start += std::strlen(session::cookie_key());
-        std::size_t end{ cookie.find(';', start) };
-        if (end == std::string::npos) {
-            end = cookie.length();
-        }
-        session_id = cookie.substr(start, end - start);
-    }
-
-    return session_id;
+    return cookie::value_from_cookie(cookie, session::cookie_key());
 }
 
 std::string Session::insert_session_id_to_cookie([[maybe_unused]] const std::string& url, const std::string& session_id)
 {
     constexpr std::chrono::days thirty_days{ 30 };
     constexpr std::chrono::seconds thirty_days_seconds{ thirty_days };
-
-    const std::string same_site_secure{
-#ifdef _DEBUG
-        !url.contains("localhost") ? "SameSite=Strict;" :
-#endif
-                                   "SameSite=None; Secure;"
-    };
-    return {
-        session::cookie_key() + session_id + "; " +
-        "Max-Age=" + su::int_to_string(thirty_days_seconds.count()) +
-        "; HttpOnly; Path=/;" + same_site_secure
-    };
+    return cookie::insert_to_cookie(url, session::cookie_key(), session_id, thirty_days_seconds);
 }
 
 std::string Session::generate_session_id(const std::string& user_id)

@@ -16,6 +16,7 @@ BIN_MODULE_DIR := $(BIN_DIR)/$(MODULE)
 CXX_SRCS := \
 	client.cpp \
 	confirmhandler.cpp \
+	cookie.cpp \
 	main.cpp \
 	server.cpp \
 	session.cpp

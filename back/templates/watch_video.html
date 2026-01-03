@@ -4,9 +4,10 @@
 <head>
   <meta charset="utf-8">
   <title>{{ title }} - {{ website_name }}</title>
-  <meta property="og:title" content="{{ title }}" />
-  <meta property="og:description" content="Watch {{ title }} video" />
-  <meta property="og:image" content="{{ url_scheme }}://{{ website_url }}/thumbnail/{{ video_id }}" />
+  <meta property="og:title" content="{{ meta_video_title }}" />
+  <meta property="og:description" content="{{ meta_video_description }}" />
+  <meta property="og:url" content="{{ meta_video_url }}" />
+  <meta property="og:image" content="{{ meta_video_image }}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/third-party/grids-responsive-min.css" type="text/css">
