@@ -477,6 +477,7 @@ namespace server
     static constexpr std::array alert_login_texts{ ""sv, "Unknown username"sv, "Invalid password"sv };
 
     void set_login_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert);
+    void login_redirect(const httplib::Request& req, httplib::Response& res);
 }
 
 inline void server::set_login_content(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Client& client, AlertLogin alert)
@@ -506,11 +507,30 @@ inline void server::set_login_content(const httplib::Request& req, httplib::Resp
     res.set_content(body, "text/html");
 }
 
+inline void server::login_redirect(const httplib::Request& req, httplib::Response& res)
+{
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string video_cookie_value{ cookie::value_from_cookie(cookie, video_cookie()) };
+    if (video_cookie_value.empty()) {
+        res.set_redirect("/");
+        return;
+    }
+
+    const std::unordered_map video_data{ cookie_to_video_data(video_cookie_value) };
+    const auto it_video_id{ video_data.find("video_id") };
+    if (it_video_id == video_data.cend()) {
+        res.set_redirect("/");
+        return;
+    }
+
+    res.set_redirect("watch-video/" + it_video_id->second);
+}
+
 inline void server::login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     if (session.is_valid_session_from_cookie(cookie)) {
-        res.set_redirect("/");
+        login_redirect(req, res);
         return;
     }
 
@@ -554,7 +574,7 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     }
 
     register_session(req, res, session, user_id);
-    res.set_redirect("/");
+    login_redirect(req, res);
 }
 
 inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
