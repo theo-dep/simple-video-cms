@@ -1542,6 +1542,7 @@ inline void server::download_video(const httplib::Request& req, httplib::Respons
 namespace server
 {
     bool has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
+    constexpr std::string_view url_scheme();
 }
 
 inline bool server::has_video_right(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
@@ -1566,6 +1567,15 @@ inline bool server::has_video_right(const httplib::Request& req, httplib::Respon
     return true;
 }
 
+constexpr std::string_view server::url_scheme()
+{
+#ifdef _DEBUG
+    return "http";
+#else
+    return "https";
+#endif
+}
+
 inline void server::watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)
 {
     if (!has_video_right(req, res, session, client)) // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
@@ -1580,6 +1590,8 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
     const int video_views{ client.video_views(video_id) };
 
     const inja::json data{
+        { "url_scheme", url_scheme() },
+        { "website_url", req.get_header_value("Host") },
         { "is_logged", is_logged },
         { "video_id", video_id },
         { "title", video_title },
@@ -1644,10 +1656,11 @@ inline void server::increment_video_views(const httplib::Request& req, httplib::
     client.increment_video_views(video_id);
 }
 
-inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
+inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Session& /*session*/, const Client& client)
 {
-    if (!has_video_right(req, res, session, client))
-        return;
+    // don't test to share link image
+    // if (!has_video_right(req, res, session, client))
+    //    return;
 
     const std::string video_id{ req.path_params.at("video_id") };
     const std::string thumbnail_content{ client.thumbnail(video_id) };
