@@ -16,7 +16,7 @@ namespace session
 
 const std::string& Session::create_session(const std::string& user_id)
 {
-    const std::string session_id{ generate_crypt_session_id(user_id) };
+    const std::string session_id{ generate_session_id(user_id) };
     insert_value_from_session(session_id, session::user_id_key(), user_id);
 
     const std::scoped_lock lock(_mutex);
@@ -25,11 +25,7 @@ const std::string& Session::create_session(const std::string& user_id)
 
 const std::string& Session::create_not_logged_session()
 {
-    const std::string session_id{ generate_session_id(session::not_logged_user_id()) };
-    insert_value_from_session(session_id, session::user_id_key(), session::not_logged_user_id());
-
-    const std::scoped_lock lock(_mutex);
-    return _sessions.find(session_id)->first;
+    return create_session(session::not_logged_user_id());
 }
 
 const std::string& Session::user_from_session(const std::string& session_id) const
@@ -93,14 +89,14 @@ void Session::remove_session(const std::string& session_id)
 
 bool Session::is_valid_session(const std::string& session_id) const
 {
-    const std::scoped_lock lock(_mutex);
-    return _sessions.contains(session_id) && !session_id.contains(session::not_logged_user_id());
+    const std::string user_id{ user_from_session(session_id) };
+    return !user_id.empty() && user_id != session::not_logged_user_id();
 }
 
 bool Session::is_not_logged_session(const std::string& session_id) const
 {
-    const std::scoped_lock lock(_mutex);
-    return _sessions.contains(session_id) && session_id.contains(session::not_logged_user_id());
+    const std::string user_id{ user_from_session(session_id) };
+    return !user_id.empty() && user_id == session::not_logged_user_id();
 }
 
 bool Session::is_valid_session_from_cookie(const std::string& cookie) const
@@ -123,10 +119,5 @@ std::string Session::insert_session_id_to_cookie([[maybe_unused]] const std::str
 
 std::string Session::generate_session_id(const std::string& user_id)
 {
-    return ("sess_" + crypto::random_string() + "_" + user_id + "_ion");
-}
-
-std::string Session::generate_crypt_session_id(const std::string& user_id)
-{
-    return crypto::sha512(generate_session_id(user_id));
+    return crypto::sha512("sess_" + crypto::random_string() + "_" + user_id + "_ion");
 }

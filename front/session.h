@@ -42,7 +42,6 @@ public:
 private:
     // Generate a unique session ID (using a counter, a user_id and crypto sha512)
     static std::string generate_session_id(const std::string& user_id);
-    static std::string generate_crypt_session_id(const std::string& user_id);
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::string>> _sessions; // session_id -> key, value
     mutable std::mutex _mutex;
