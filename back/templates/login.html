@@ -4,6 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Login - {{ website_name }}</title>
+  {% if not empty(video_id) %}
+  <meta property="og:title" content="{{ meta_video_title }}" />
+  <meta property="og:description" content="{{ meta_video_description }}" />
+  <meta property="og:url" content="{{ meta_video_url }}" />
+  <meta property="og:image" content="{{ meta_video_image }}" />
+  {% endif %}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="/static/css/third-party/pure-min.css" type="text/css">
   <link rel="stylesheet" href="/static/css/styles.css" type="text/css">

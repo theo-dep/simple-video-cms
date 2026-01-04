@@ -18,6 +18,12 @@ variables:
   CONTAINER_RELEASE_BACK_IMAGE: $CI_REGISTRY/theo/simple-video-cms:back-latest
   CONTAINER_RELEASE_FRONT_IMAGE: $CI_REGISTRY/theo/simple-video-cms:front-latest
 
+.push-rules: &push-rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: never
+
 .merge-rules: &merge-rules
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
@@ -34,6 +40,7 @@ include:
 debug_build_back:
   extends:
     - .back-local-build
+    - .push-rules
   variables:
     DEBUG: 1
     BUILD: debug
@@ -42,6 +49,7 @@ debug_build_back:
 debug_build_front:
   extends:
     - .local-build
+    - .push-rules
   variables:
     DEBUG: 1
     BUILD: debug
