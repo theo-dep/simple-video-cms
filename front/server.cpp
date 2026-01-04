@@ -299,7 +299,7 @@ inline void server::set_logger(httplib::Server& server)
 inline void server::register_session(const httplib::Request& req, httplib::Response& res, Session& session, const std::string& user_id)
 {
     const std::string session_id{ session.create_session(user_id) };
-    res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(req.get_header_value("Host"), session_id));
+    res.set_header("Set-Cookie", session.insert_session_id_to_cookie(req.get_header_value("Host"), session_id));
 }
 
 inline bool server::is_logged(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& /*client*/)
@@ -1609,7 +1609,7 @@ inline bool server::has_video_right(const httplib::Request& req, httplib::Respon
             session.insert_value_from_session(session_id, "meta_video_description", meta_video_description(video_title));
             session.insert_value_from_session(session_id, "meta_video_url", meta_video_url(req, video_id));
             session.insert_value_from_session(session_id, "meta_video_image", meta_video_image(req, video_id));
-            res.set_header("Set-Cookie", Session::insert_session_id_to_cookie(req.get_header_value("Host"), session_id));
+            res.set_header("Set-Cookie", session.insert_session_id_to_cookie(req.get_header_value("Host"), session_id));
         }
         res.set_redirect("/login");
         return false;
