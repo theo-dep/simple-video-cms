@@ -9,6 +9,7 @@ FFMPEG_DIR := $(TOP)/common/third-party/ffmpeg
 LIBPNG_LIBS := png16
 FFMPEG_LIBS := avformat avcodec avdevice avfilter swresample swscale avutil
 
+override CXXFLAGS += -DCPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH=1610612736 # 1.5 GB
 override INC_DIRS += $(FFMPEG_DIR) $(LIBPNG_DIR)
 override LDFLAGS += \
 	$(addprefix -L,$(LIBPNG_DIR)/.libs $(addprefix $(FFMPEG_DIR)/lib,$(FFMPEG_LIBS))) \
