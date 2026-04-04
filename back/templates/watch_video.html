@@ -78,6 +78,39 @@
 <script type="text/javascript" src="/static/js/third-party/videojs-mobile-ui-min.js"></script>
 <script type="text/javascript" src="/static/js/third-party/videojs-yt-style-min.js"></script>
 <script>
+  {% if is_logged and not is_forbidden %}
+  // video cache service worker
+  
+  // Helper function which returns a promise which resolves once the service worker registration
+  // is past the "installing" state.
+  function waitUntilInstalled(registration) {
+    return new Promise(function(resolve, reject) {
+      if (registration.installing) {
+        // If the current registration represents the "installing" service worker, then wait
+        // until the installation step (during which the resources are pre-fetched) completes
+        // to display the file list.
+        registration.installing.addEventListener('statechange', function(e) {
+          if (e.target.state === 'installed') {
+            resolve();
+          } else if (e.target.state === 'redundant') {
+            reject();
+          }
+        });
+      } else {
+        // Otherwise, if this isn't the "installing" service worker, then installation must have been
+        // completed during a previous visit to this page, and the resources are already pre-fetched.
+        // So we can show the list of files right away.
+        resolve();
+      }
+    });
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/js/videoserviceworker.js', { scope: '/' })
+      .then(waitUntilInstalled);
+  }
+  {% endif %}
+
   const player = videojs('video-player', {
     fluid: true,
     playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
@@ -101,7 +134,10 @@
       method: 'POST',
       credentials: 'same-origin',
     })
-      .catch(error => console.error('Increment error:', error));
+      .catch(error => {
+        console.error('Increment error:', error);
+        throw error;
+      })
   });
 </script>
 
