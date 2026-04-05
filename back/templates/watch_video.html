@@ -80,7 +80,7 @@
 <script>
   {% if is_logged and not is_forbidden %}
   // video cache service worker
-  
+
   // Helper function which returns a promise which resolves once the service worker registration
   // is past the "installing" state.
   function waitUntilInstalled(registration) {
@@ -106,7 +106,7 @@
   }
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/js/videoserviceworker.js', { scope: '/' })
+    navigator.serviceWorker.register('/static/js/videoserviceworker.js', { scope: '/watch-video/' })
       .then(waitUntilInstalled);
   }
   {% endif %}
