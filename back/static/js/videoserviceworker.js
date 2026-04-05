@@ -243,18 +243,24 @@ self.addEventListener('fetch', (event) => {
   // Standard request => cache-first, then network
   } else {
     event.respondWith(
-      caches.match(request)
-        .then((cached) => {
-          if (cached) {
-            console.log('[SW] Serving from cache:', request.url);
-            return cached;
-          }
-          console.log('[SW] Cache miss: fetching from network:', request.url);
-          return fetch(request).catch((err) => {
-            console.error('[SW] Network fetch failed:', err);
-            throw err;
-          });
-        })
+      caches.open(CURRENT_CACHES.prefetch)
+        .then((cache) => cache.match(request.url)
+          .then((cached) => {
+            if (cached) {
+              console.log('[SW] Serving prefetch asset from cache:', request.url);
+              return cached;
+            }
+            console.log('[SW] Cache miss: fetching and caching prefetch asset:', request.url);
+            return fetch(request).then((response) => {
+              if (!response.ok) throw new Error(`Server returned ${response.status}`);
+              cache.put(request.url, response.clone());
+              return response;
+            }).catch((err) => {
+              console.error('[SW] Network fetch failed:', err);
+              throw err;
+            });
+          })
+        )
     );
   }
 });
