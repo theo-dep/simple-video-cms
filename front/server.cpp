@@ -41,6 +41,7 @@ namespace server
     std::vector<std::string> param_value_list(const httplib::Request& req, const std::string& param_name);
     std::vector<std::string> fields_list(const httplib::Request& req, const std::string& file_name);
 
+    void video_service_worker_file(const httplib::Request& req, httplib::Response& res, const Client& client);
     void static_file(const httplib::Request& req, httplib::Response& res, const Client& client);
 
     void home(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -135,6 +136,7 @@ int server::start()
     });
 
     server
+        .Get("/static/js/videoserviceworker.js", sc::serve(video_service_worker_file, std::cref(client)))
         .Get(sc::static_regexp_path(), sc::serve(static_file, std::cref(client)))
 
         .Get("/", sc::serve(home, std::ref(env), std::cref(session), std::cref(client)))
@@ -373,6 +375,14 @@ inline std::vector<std::string> server::fields_list(const httplib::Request& req,
     const std::string key{ file_name + "[]" };
     const std::vector file_items{ req.form.get_fields(key) };
     return file_items;
+}
+
+inline void server::video_service_worker_file(const httplib::Request& /*req*/, httplib::Response& res, const Client& client)
+{
+    static const std::string file{ "js/videoserviceworker.js" };
+    const auto [content, content_type]{ client.static_file(file) };
+    res.set_header("Service-Worker-Allowed", "/");
+    res.set_content(content, content_type);
 }
 
 inline void server::static_file(const httplib::Request& req, httplib::Response& res, const Client& client)
@@ -1661,12 +1671,12 @@ namespace server
 inline bool server::request_from_watch_video(const httplib::Request& req, httplib::Response& res, const std::string& video_id)
 {
     const std::string referrer{ req.get_header_value("Referer") };
-    if (!referrer.ends_with("/watch-video/" + video_id)) {
-        res.status = httplib::StatusCode::Forbidden_403;
-        return false;
+    if (referrer.ends_with("/watch-video/" + video_id) || referrer.ends_with("/static/js/videoserviceworker.js")) {
+        return true;
     }
 
-    return true;
+    res.status = httplib::StatusCode::Forbidden_403;
+    return false;
 }
 
 inline void server::video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
@@ -1692,6 +1702,12 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
             sink.write(chunk.data(), chunk.size());
             return true; // return 'false' if you want to cancel the process.
         });
+
+    // override httplib response status for service worker
+    const std::string range_header{ req.get_header_value("Range") };
+    if (range_header.empty()) {
+        res.status = httplib::StatusCode::OK_200;
+    }
 }
 
 inline void server::increment_video_views(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
