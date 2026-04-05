@@ -144,17 +144,19 @@ self.addEventListener('activate', (event) => {
   const expectedCacheNames = Object.values(CURRENT_CACHES);
 
   event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
-        cacheNames
-          .filter((name) => !expectedCacheNames.includes(name))
-          .map((name) => {
-            // If this cache name isn't present in the array of "expected" cache names, then delete it.
-            console.log('[SW] Deleting outdated cache:', name);
-            return caches.delete(name);
-          })
+    caches.keys()
+      .then((cacheNames) =>
+        Promise.all(
+          cacheNames
+            .filter((name) => !expectedCacheNames.includes(name))
+            .map((name) => {
+              // If this cache name isn't present in the array of "expected" cache names, then delete it.
+              console.log('[SW] Deleting outdated cache:', name);
+              return caches.delete(name);
+            })
+        )
       )
-    )
+      .then(() => self.clients.claim()) // Take control immediately
   );
 });
 
