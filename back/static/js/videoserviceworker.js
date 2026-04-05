@@ -13,7 +13,7 @@
 // cache, then increment the CACHE_VERSION value. It will kick off the service worker update
 // flow and the old cache(s) will be purged as part of the activate event handler when the
 // updated service worker is activated.
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const CURRENT_CACHES = {
   prefetch: `prefetch-cache-v${CACHE_VERSION}`,
   video: `video-cache-v${CACHE_VERSION}`,
@@ -74,9 +74,22 @@ const fetchAndCacheVideo = (request) => {
 
   console.log('[SW] Starting full video download for:', url);
 
-  const promise = fetch(request)
+  // Create a new request without the Range header to always get a full 200 response
+  const fullRequest = new Request(url, {
+    headers: (() => {
+      const headers = new Headers(request.headers);
+      headers.delete('range');
+      return headers;
+    })(),
+    credentials: request.credentials,
+    cache: request.cache,
+    mode: request.mode,
+    redirect: request.redirect,
+  });
+
+  const promise = fetch(fullRequest)
     .then((response) => {
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Server returned ${response.status} for ${url}`);
       }
       return caches.open(CURRENT_CACHES.video).then((cache) => {
