@@ -38,6 +38,9 @@ const INCREMENT_VIDEO_VIEWS_ROUTE_PATTERN = /^\/increment_video_views\/\d+$/;
 // In-progress video downloads, keyed by URL, to avoid duplicate fetches.
 const videoDownloadsInProgress = {};
 
+// Track URLs currently being served from network to avoid mixing sources
+const videoServingFromNetwork = new Set();
+
 // Returns true if the given URL matches a dynamic video route (/video/<id>).
 const isVideoRoute = (url) => VIDEO_ROUTE_PATTERN.test(new URL(url).pathname);
 
@@ -62,6 +65,8 @@ const buildPartialResponse = (buffer, start) => new Response(
     headers: {
       'Content-Type': 'video/mp4',
       'Content-Range': `bytes ${start}-${buffer.byteLength - 1}/${buffer.byteLength}`,
+      'Content-Length': String(buffer.byteLength - start),
+      'Accept-Ranges': 'bytes',
     },
   }
 );
@@ -72,7 +77,7 @@ const fetchAndCacheVideo = (request) => {
   const { url } = request;
 
   if (videoDownloadsInProgress[url]) {
-    console.log('[SW] Reusing in-progress download for:', url);
+    //console.log('[SW] Reusing in-progress download for:', url);
     return videoDownloadsInProgress[url];
   }
 
@@ -89,6 +94,7 @@ const fetchAndCacheVideo = (request) => {
     cache: request.cache,
     mode: request.mode,
     redirect: request.redirect,
+    priority: 'low',
   });
 
   const promise = fetch(fullRequest)
@@ -96,10 +102,17 @@ const fetchAndCacheVideo = (request) => {
       if (response.status !== 200) {
         throw new Error(`Server returned ${response.status} for ${url}`);
       }
-      return caches.open(CURRENT_CACHES.video).then((cache) => {
-        cache.put(url, response.clone());
-        console.log('[SW] Video successfully cached:', url);
-        return response.arrayBuffer();
+      // First read the full buffer, then store it in cache
+      return response.arrayBuffer().then((buffer) => {
+        const completeResponse = new Response(buffer, {
+          status:  response.status,
+          headers: response.headers,
+        });
+        return caches.open(CURRENT_CACHES.video).then((cache) => {
+          cache.put(url, completeResponse);
+          console.log('[SW] Video successfully cached:', url);
+          return buffer;
+        });
       });
     })
     .finally(() => {
@@ -145,6 +158,15 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'VIDEO_SESSION_END') {
+    const url = event.data.url;
+    if (videoServingFromNetwork.delete(url)) {
+      console.log('[SW] Video session ended, clearing network lock for:', url);
+    }
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const rangeHeader = request.headers.get('range');
@@ -165,20 +187,39 @@ self.addEventListener('fetch', (event) => {
       return; // Let the browser handle it natively
     }
 
-    console.log(`[SW] Video range request: ${request.url} (pos: ${pos})`);
+    //console.log(`[SW] Video range request: ${request.url} (pos: ${pos})`);
 
     event.respondWith(
       caches.open(CURRENT_CACHES.video)
         .then((cache) => cache.match(request.url))
         .then((cached) => {
-          if (cached) {
-            console.log('[SW] Serving video range from cache:', request.url);
-            return cached.arrayBuffer();
+          // From refresh page
+          if (cached && pos === 0 && videoServingFromNetwork.delete(request.url)) {
+            console.log('[SW] Video session refreshed, clearing network lock for:', request.url);
           }
-          console.log('[SW] Cache miss: fetching full video:', request.url);
-          return fetchAndCacheVideo(request);
+
+          // Already being served from network this session => keep going to network
+          if (videoServingFromNetwork.has(request.url)) {
+            //console.log('[SW] Keeping network session for:', request.url);
+            return fetch(request);
+          }
+
+          if (cached) {
+            //console.log('[SW] Serving video range from cache:', request.url);
+            return cached.arrayBuffer().then((buffer) => buildPartialResponse(buffer, pos));
+          }
+
+          videoServingFromNetwork.add(request.url);
+
+          // Cache miss: let the browser handle the range request natively,
+          // and fetch the full video in the background for future requests.
+          if (!videoDownloadsInProgress[request.url]) {
+            console.log('[SW] Cache miss: passing through and caching in background:', request.url);
+            fetchAndCacheVideo(request); // fire and forget
+          }
+
+          return fetch(request); // native range request, no blocking
         })
-        .then((buffer) => buildPartialResponse(buffer, pos))
         .catch((err) => {
           console.error('[SW] Failed to serve video range, falling back to network:', err);
           return fetch(request);
@@ -196,7 +237,7 @@ self.addEventListener('fetch', (event) => {
         .then((cache) => cache.match(request.url))
         .then((cached) => {
           if (cached) {
-            console.log('[SW] Serving video from cache:', request.url);
+            //console.log('[SW] Serving video from cache:', request.url);
             return cached;
           }
           // event.request will always have the proper mode set ('cors, 'no-cors', etc.) so we don't
@@ -247,7 +288,7 @@ self.addEventListener('fetch', (event) => {
         .then((cache) => cache.match(request.url)
           .then((cached) => {
             if (cached) {
-              console.log('[SW] Serving prefetch asset from cache:', request.url);
+              //console.log('[SW] Serving prefetch asset from cache:', request.url);
               return cached;
             }
             console.log('[SW] Cache miss: fetching and caching prefetch asset:', request.url);
