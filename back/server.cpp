@@ -71,6 +71,8 @@ namespace server
     void update_video(const httplib::Request& req, httplib::Response& res, const Database& db);
     void delete_video(const httplib::Request& req, httplib::Response& res, const Database& db);
     void increment_video_views(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void video(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void video_size(const httplib::Request& req, httplib::Response& res, const Database& db);
     void video_playlist(const httplib::Request& req, httplib::Response& res, const Database& db);
     void video_segment(const httplib::Request& req, httplib::Response& res, const Database& db);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -151,6 +153,8 @@ int server::start()
         .Post("/update-video/:video_id", sc::serve(update_video, std::cref(db)))
         .Post("/delete-video/:video_id", sc::serve(delete_video, std::cref(db)))
         .Post("/increment-video-views/:video_id", sc::serve(increment_video_views, std::cref(db)))
+        .Get("/video/:video_id", sc::serve(video, std::cref(db)))
+        .Get("/video-size/:video_id", sc::serve(video_size, std::cref(db)))
         .Get("/video/:video_id/playlist", sc::serve(video_playlist, std::cref(db)))
         .Get("/video/:video_id/:segment", sc::serve(video_segment, std::cref(db)))
         .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
@@ -727,10 +731,10 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::vector allowed_user_ids{ su::split(req.get_param_value("user_ids")) };
 
     const std::optional video_id{
-        db.add_video(video_title)
+        db.add_video(video_title, video_content)
             .and_then([&](int video_id) -> std::optional<int> {
-                const std::filesystem::path video_path{ db.video_path(video_id) };
-                const bool converted{ video::convert_to_hls(video_content, video_path.c_str(), Database::video_name()) };
+                const std::filesystem::path video_path{ db.hls_video_path(video_id) };
+                const bool converted{ video::convert_to_hls(video_content, video_path.c_str(), db.hls_video_name(video_id)) };
                 return converted ? std::optional(video_id) : std::nullopt;
             })
             .and_then([&](int video_id) -> std::optional<int> {
@@ -798,6 +802,33 @@ inline void server::increment_video_views(const httplib::Request& req, httplib::
         logging::error{ R"(Fail to increment video views "{}")", video_id };
         return;
     }
+}
+
+inline void server::video(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+
+    const std::size_t offset{
+        req.has_header("Offset")
+            ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Offset")))
+            : 0U
+    };
+
+    const std::size_t length{
+        req.has_header("Length")
+            ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Length")))
+            : static_cast<std::size_t>(db.video_size(video_id))
+    };
+
+    const std::string video{ db.video(video_id, offset, length) };
+    res.set_content(video, "video/mp4");
+}
+
+inline void server::video_size(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int video_size{ db.video_size(video_id) };
+    res.set_content(su::int_to_string(video_size), "plain/text");
 }
 
 inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Database& db)

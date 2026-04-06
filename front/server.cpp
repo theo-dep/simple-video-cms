@@ -1554,15 +1554,15 @@ inline void server::download_video(const httplib::Request& req, httplib::Respons
 
     const std::string video_id{ req.path_params.at("video_id") };
 
-    const std::size_t video_size{ 0 /*static_cast<std::size_t>(client.video_size(video_id))*/ };
+    const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
 
     const std::string downloader_user_id{ connected_user_id(req, session) };
 
     res.set_content_provider(
         video_size,  // Content length
         "video/mp4", // Content type
-        [/*video_id, &client*/](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) -> bool {
-            const std::string chunk{ /*client.video(video_id, offset, std::min(length, video_chunk_size()))*/ };
+        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) -> bool {
+            const std::string chunk{ client.video(video_id, offset, std::min(length, video_chunk_size())) };
             sink.write(chunk.data(), chunk.size());
             return true; // return 'false' if you want to cancel the process.
         },

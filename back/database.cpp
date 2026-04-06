@@ -75,6 +75,8 @@ namespace database
 {
     using StorageType = decltype(database::storage({}));
 
+    int file_size(const std::string& path);
+    std::string read_file(const std::string& path, std::size_t offset, std::size_t length);
     std::string read_file(const std::string& path);
     void write_file(const std::string& path, const std::string& content);
 }
@@ -153,9 +155,43 @@ int Database::video_views(int id) const
     return video_views.value_or(-1);
 }
 
+int Database::video_size(int id) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional video_size{
+        storage.get_optional<Video>(id)
+            .transform([&](const Video& video) -> int {
+                return database::file_size(video_path(video.id));
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to fetch video size "{}")", id };
+                return -1;
+            })
+    };
+    return video_size.value_or(-1);
+}
+
 // maybe https://www.sqlite.org/fasterthanfs.html
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/blob_binding.cpp
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/key_value.cpp
+
+std::string Database::video(int id, std::size_t offset, std::size_t length) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional video{
+        storage.get_optional<Video>(id)
+            .transform([&](const Video& video) -> std::string {
+                return database::read_file(video_path(video.id), offset, length);
+            })
+            .or_else([&] -> std::optional<std::string> {
+                logging::error{ R"(Fail to fetch video content "{}")", id };
+                return std::string{};
+            })
+    };
+    return video.value_or(std::string{});
+}
 
 std::string Database::video_playlist(int id) const
 {
@@ -164,8 +200,8 @@ std::string Database::video_playlist(int id) const
     const std::optional playlist{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> std::string {
-                const std::filesystem::path path{ video_path(video.id) };
-                const std::filesystem::path playlist_path{ path / (video_name() + ".m3u8") };
+                const std::filesystem::path path{ hls_video_path(video.id) };
+                const std::filesystem::path playlist_path{ path / (hls_video_name(id) + ".m3u8") };
                 return database::read_file(playlist_path);
             })
             .or_else([&] -> std::optional<std::string> {
@@ -182,7 +218,7 @@ std::string Database::video_segment(int id, const std::string& segment) const
     const std::optional segment_content{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> std::string {
-                const std::filesystem::path path{ video_path(video.id) };
+                const std::filesystem::path path{ hls_video_path(video.id) };
                 const std::filesystem::path segment_path{ path / segment };
                 return database::read_file(segment_path);
             })
@@ -631,7 +667,7 @@ std::vector<int> Database::user_group_list(int user_id) const
     return storage.select(distinct(&GroupUser::group_id), where(c(&GroupUser::user_id) == user_id));
 }
 
-std::optional<int> Database::add_video(const std::string& title) const
+std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const
 {
     if (!filesystem::create(video_path())) {
         return std::nullopt;
@@ -645,9 +681,11 @@ std::optional<int> Database::add_video(const std::string& title) const
     database::StorageType storage{ database::storage(_path) };
     video.id = storage.insert(video);
 
-    if (!filesystem::create(video_path(video.id))) {
+    if (!filesystem::create(hls_video_path(video.id))) {
         return std::nullopt;
     }
+
+    database::write_file(video_path(video.id), video_content);
 
     return video.id;
 }
@@ -741,6 +779,10 @@ bool Database::delete_video(int id) const
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
         storage.get_optional<Video>(id)
+            .and_then([&](const Video& video) -> std::optional<Video> {
+                // remove video file
+                return filesystem::remove(video_path(video.id)) ? std::optional(video) : std::nullopt;
+            })
             .and_then([&](const Video& video) -> std::optional<Video> {
                 // remove video directory
                 return filesystem::remove_directory(hls_video_path(video.id)) ? std::optional(video) : std::nullopt;
@@ -838,21 +880,41 @@ std::filesystem::path Database::thumbnail_path(int id) const
     return thumbnail_path() / su::int_to_string(id);
 }
 
-std::string Database::video_name()
+std::string Database::hls_video_name(int id) const
 {
-    return "video";
+    return su::int_to_string(id);
+}
+
+std::filesystem::path Database::hls_video_path(int id) const
+{
+    return video_path() / ("hls_" + su::int_to_string(id));
+}
+
+inline int database::file_size(const std::string& path)
+{
+    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
+    return static_cast<int>(file.tellg());
+}
+
+inline std::string database::read_file(const std::string& path, std::size_t offset, std::size_t length)
+{
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    file.seekg(static_cast<std::streamoff>(offset));
+
+    std::string file_content;
+    file_content.resize_and_overwrite(length, [&file](char* buffer, std::size_t buffer_size) -> std::size_t {
+        file.read(buffer, static_cast<std::streamoff>(buffer_size));
+        return file.gcount();
+    });
+    return file_content;
 }
 
 inline std::string database::read_file(const std::string& path)
 {
     // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
     std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
-    file.seekg(0, std::ios::end);
-    std::string file_content;
-    file_content.resize(file.tellg());
-    file.seekg(0, std::ios::beg);
-    file.read(&file_content[0], file_content.size());
-    return file_content;
+    const std::size_t file_length{ static_cast<std::size_t>(file.tellg()) };
+    return read_file(path, 0, file_length);
 }
 
 inline void database::write_file(const std::string& path, const std::string& content)

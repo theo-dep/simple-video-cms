@@ -531,6 +531,41 @@ void Client::increment_video_views(const std::string& video_id) const
     _client->Post("/increment-video-views/" + video_id);
 }
 
+std::string Client::video(const std::string& video_id, std::size_t offset, std::size_t length) const
+{
+    const httplib::Headers headers{
+        { "Offset", su::int_to_string(static_cast<int>(offset)) },
+        { "Length", su::int_to_string(static_cast<int>(length)) }
+    };
+    const httplib::Result res{ _client->Get("/video/" + video_id, headers) };
+    // logging::debug{ "Video length: {}", video_content.size() };
+
+    if (!res) {
+        if (res.error() == httplib::Error::Canceled) {
+            // The stream can be cancelled by the request or the user
+            logging::info{ "Video stream cancelled: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        } else {
+            logging::error{ "Fail to get the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        }
+        return {};
+    }
+
+    if (res->status != httplib::StatusCode::OK_200 && res->status != httplib::StatusCode::PartialContent_206) {
+        logging::error{ "Fail to get the video with error: {} ({})", httplib::status_message(res->status), res->status };
+        return {};
+    }
+
+    return res->body;
+}
+
+int Client::video_size(const std::string& video_id) const
+{
+    const httplib::Result res{ _client->Get("/video-size/" + video_id) };
+    const int video_size{ su::string_to_int(client::format_page(res)) };
+    logging::debug{ "Video length: {}", video_size };
+    return video_size;
+}
+
 std::string Client::video_playlist(const std::string& video_id) const
 {
     std::string playlist_content;
