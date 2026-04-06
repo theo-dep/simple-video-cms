@@ -96,16 +96,6 @@
   // video cache service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/static/js/videoserviceworker.js', { scope: '/watch-video/' });
-
-    const videoUrl = `${window.location.origin}/video/${videoId}`;
-    ['ended', 'error', 'dispose'].forEach((evt) => {
-      player.on(evt, () => {
-        navigator.serviceWorker.controller.postMessage({
-          type: 'VIDEO_SESSION_END',
-          url: videoUrl,
-        });
-      });
-    });
   }
   {% endif %}
 
