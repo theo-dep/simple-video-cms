@@ -531,39 +531,54 @@ void Client::increment_video_views(const std::string& video_id) const
     _client->Post("/increment-video-views/" + video_id);
 }
 
-std::string Client::video(const std::string& video_id, std::size_t offset, std::size_t length) const
+std::string Client::video_playlist(const std::string& video_id) const
 {
-    const httplib::Headers headers{
-        { "Offset", su::int_to_string(static_cast<int>(offset)) },
-        { "Length", su::int_to_string(static_cast<int>(length)) }
+    std::string playlist_content;
+    const httplib::Result res{
+        _client->Get("/video/" + video_id + "/playlist",
+                     [&playlist_content](const char* data, std::size_t data_length) -> bool {
+                         playlist_content.append(data, data_length);
+                         return true;
+                     })
     };
-    const httplib::Result res{ _client->Get("/video/" + video_id, headers) };
-    // logging::debug{ "Video length: {}", video_content.size() };
+    logging::debug{ "Playlist length: {}", playlist_content.size() };
 
     if (!res) {
-        if (res.error() == httplib::Error::Canceled) {
-            // The stream can be cancelled by the request or the user
-            logging::info{ "Video stream cancelled: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
-        } else {
-            logging::error{ "Fail to get the video with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
-        }
+        logging::error{ "Fail to get the playlist with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
         return {};
     }
 
     if (res->status != httplib::StatusCode::OK_200 && res->status != httplib::StatusCode::PartialContent_206) {
-        logging::error{ "Fail to get the video with error: {} ({})", httplib::status_message(res->status), res->status };
+        logging::error{ "Fail to get the playlist with error: {} ({})", httplib::status_message(res->status), res->status };
         return {};
     }
 
-    return res->body;
+    return playlist_content;
 }
 
-int Client::video_size(const std::string& video_id) const
+std::string Client::video_segment(const std::string& video_id, const std::string& segment) const
 {
-    const httplib::Result res{ _client->Get("/video-size/" + video_id) };
-    const int video_size{ su::string_to_int(client::format_page(res)) };
-    logging::debug{ "Video length: {}", video_size };
-    return video_size;
+    std::string segment_content;
+    const httplib::Result res{
+        _client->Get("/video/" + video_id + "/" + segment,
+                     [&segment_content](const char* data, std::size_t data_length) -> bool {
+                         segment_content.append(data, data_length);
+                         return true;
+                     })
+    };
+    logging::debug{ "Segment length: {}", segment_content.size() };
+
+    if (!res) {
+        logging::error{ "Fail to get the segment with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        return {};
+    }
+
+    if (res->status != httplib::StatusCode::OK_200 && res->status != httplib::StatusCode::PartialContent_206) {
+        logging::error{ "Fail to get the segment with error: {} ({})", httplib::status_message(res->status), res->status };
+        return {};
+    }
+
+    return segment_content;
 }
 
 std::string Client::thumbnail(const std::string& video_id) const

@@ -90,7 +90,8 @@ namespace server
     void download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 
     void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
-    void video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
+    void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
+    void video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
     void increment_video_views(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 }
@@ -188,7 +189,8 @@ int server::start()
         .Get("/download-video/:video_id", sc::serve(download_video, std::cref(session), std::cref(client)))
 
         .Get("/watch-video/:video_id", sc::serve(watch_video, std::ref(env), std::ref(session), std::cref(client)))
-        .Get("/video/:video_id", sc::serve(video, std::cref(session), std::cref(client)))
+        .Get("/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::cref(client)))
+        .Get("/video/:video_id/:segment", sc::serve(video_segment, std::cref(session), std::cref(client)))
         .Post("/increment_video_views/:video_id", sc::serve(increment_video_views, std::cref(session), std::cref(client)))
         .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(session), std::cref(client)));
 
@@ -1552,15 +1554,15 @@ inline void server::download_video(const httplib::Request& req, httplib::Respons
 
     const std::string video_id{ req.path_params.at("video_id") };
 
-    const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
+    const std::size_t video_size{ 0 /*static_cast<std::size_t>(client.video_size(video_id))*/ };
 
     const std::string downloader_user_id{ connected_user_id(req, session) };
 
     res.set_content_provider(
         video_size,  // Content length
         "video/mp4", // Content type
-        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) -> bool {
-            const std::string chunk{ client.video(video_id, offset, std::min(length, video_chunk_size())) };
+        [/*video_id, &client*/](std::size_t /*offset*/, std::size_t /*length*/, httplib::DataSink& sink) -> bool {
+            const std::string chunk{ /*client.video(video_id, offset, std::min(length, video_chunk_size()))*/ };
             sink.write(chunk.data(), chunk.size());
             return true; // return 'false' if you want to cancel the process.
         },
@@ -1679,7 +1681,7 @@ inline bool server::request_from_watch_video(const httplib::Request& req, httpli
     return false;
 }
 
-inline void server::video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
+inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
 {
     if (!has_video_right(req, session, client)) {
         res.status = httplib::StatusCode::Forbidden_403;
@@ -1692,22 +1694,26 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     if (!request_from_watch_video(req, res, video_id))
         return;
 
-    const std::size_t video_size{ static_cast<std::size_t>(client.video_size(video_id)) };
+    const std::string playlist_content{ client.video_playlist(video_id) };
+    res.set_content(playlist_content, "application/vnd.apple.mpegurl");
+}
 
-    res.set_content_provider(
-        video_size,  // Content length
-        "video/mp4", // Content type
-        [video_id, &client](std::size_t offset, std::size_t length, httplib::DataSink& sink) -> bool {
-            const std::string chunk{ client.video(video_id, offset, std::min(length, video_chunk_size())) };
-            sink.write(chunk.data(), chunk.size());
-            return true; // return 'false' if you want to cancel the process.
-        });
-
-    // override httplib response status for service worker
-    const std::string range_header{ req.get_header_value("Range") };
-    if (range_header.empty()) {
-        res.status = httplib::StatusCode::OK_200;
+inline void server::video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
+{
+    if (!has_video_right(req, session, client)) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
     }
+
+    const std::string video_id{ req.path_params.at("video_id") };
+    const std::string segment{ req.path_params.at("segment") };
+
+    // block video if not in watch-video page
+    if (!request_from_watch_video(req, res, video_id))
+        return;
+
+    const std::string segment_content{ client.video_segment(video_id, segment) };
+    res.set_content(segment_content, "video/mp2t");
 }
 
 inline void server::increment_video_views(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)

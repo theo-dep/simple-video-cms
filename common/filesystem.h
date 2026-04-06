@@ -9,4 +9,5 @@ namespace filesystem
 
     bool create(const std::filesystem::path& path);
     bool remove(const std::filesystem::path& path);
+    bool remove_directory(const std::filesystem::path& path);
 }
