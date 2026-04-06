@@ -7,6 +7,7 @@
 #include "servercommon.h"
 #include "session.h"
 #include "stringutils.h"
+#include "videosession.h"
 
 #include <httplib.h>
 #include <inja.hpp>
@@ -90,8 +91,10 @@ namespace server
     void download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 
     void watch_video(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
-    void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
-    void video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
+    void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, VideoSession& video_session, const Client& client);
+    void video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, VideoSession& video_session, const Client& client);
+    void start_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, VideoSession& video_session, const Client& client);
+    void reset_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, VideoSession& video_session, const Client& client);
     void increment_video_views(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client);
 }
@@ -101,6 +104,7 @@ int server::start()
     const Client client;
     inja::Environment env;
     Session session;
+    VideoSession video_session;
     ConfirmHandler confirm_handler;
     httplib::Server server;
 
@@ -189,9 +193,11 @@ int server::start()
         .Get("/download-video/:video_id", sc::serve(download_video, std::cref(session), std::cref(client)))
 
         .Get("/watch-video/:video_id", sc::serve(watch_video, std::ref(env), std::ref(session), std::cref(client)))
-        .Get("/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::cref(client)))
-        .Get("/video/:video_id/:segment", sc::serve(video_segment, std::cref(session), std::cref(client)))
-        .Post("/increment_video_views/:video_id", sc::serve(increment_video_views, std::cref(session), std::cref(client)))
+        .Get("/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::ref(video_session), std::cref(client)))
+        .Get("/video/:video_id/:segment", sc::serve(video_segment, std::cref(session), std::ref(video_session), std::cref(client)))
+        .Post("/start-video-session/:video_id", sc::serve(start_video_session, std::cref(session), std::ref(video_session), std::cref(client)))
+        .Post("/reset-video-session/:video_id", sc::serve(reset_video_session, std::cref(session), std::ref(video_session), std::cref(client)))
+        .Post("/increment-video-views/:video_id", sc::serve(increment_video_views, std::cref(session), std::cref(client)))
         .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(session), std::cref(client)));
 
     const std::string host{ sc::get_env("FRONT_HOST", "0.0.0.0") };
@@ -1681,7 +1687,7 @@ inline bool server::request_from_watch_video(const httplib::Request& req, httpli
     return false;
 }
 
-inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
+inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, VideoSession& video_session, const Client& client)
 {
     if (!has_video_right(req, session, client)) {
         res.status = httplib::StatusCode::Forbidden_403;
@@ -1694,11 +1700,15 @@ inline void server::video_playlist(const httplib::Request& req, httplib::Respons
     if (!request_from_watch_video(req, res, video_id))
         return;
 
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    video_session.add_session(session_id, video_id);
+
     const std::string playlist_content{ client.video_playlist(video_id) };
     res.set_content(playlist_content, "application/vnd.apple.mpegurl");
 }
 
-inline void server::video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)
+inline void server::video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, VideoSession& video_session, const Client& client)
 {
     if (!has_video_right(req, session, client)) {
         res.status = httplib::StatusCode::Forbidden_403;
@@ -1712,8 +1722,53 @@ inline void server::video_segment(const httplib::Request& req, httplib::Response
     if (!request_from_watch_video(req, res, video_id))
         return;
 
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+
+    // validate human behavior
+    if (!video_session.validate_segment_access(session_id, video_id, segment)) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
     const std::string segment_content{ client.video_segment(video_id, segment) };
     res.set_content(segment_content, "video/mp2t");
+}
+
+inline void server::start_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, VideoSession& video_session, const Client& client)
+{
+    if (!has_video_right(req, session, client)) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
+    const std::string video_id{ req.path_params.at("video_id") };
+
+    // block video if not in watch-video page
+    if (!request_from_watch_video(req, res, video_id))
+        return;
+
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    video_session.start_session(session_id, video_id);
+}
+
+inline void server::reset_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, VideoSession& video_session, const Client& client)
+{
+    if (!has_video_right(req, session, client)) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
+    const std::string video_id{ req.path_params.at("video_id") };
+
+    // block video if not in watch-video page
+    if (!request_from_watch_video(req, res, video_id))
+        return;
+
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    video_session.reset_session(session_id, video_id);
 }
 
 inline void server::increment_video_views(const httplib::Request& req, httplib::Response& res, const Session& session, const Client& client)

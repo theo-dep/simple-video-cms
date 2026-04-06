@@ -33,13 +33,17 @@ const ASSETS_TO_PREFETCH = [
 ];
 
 const VIDEO_ROUTE_PATTERN = /^\/video\/\d+$/;
-const INCREMENT_VIDEO_VIEWS_ROUTE_PATTERN = /^\/increment_video_views\/\d+$/;
+const EXCLUDED_ROUTE_PATTERN = [
+  /^\/start-video-session\/\d+$/,
+  /^\/reset-video-session\/\d+$/,
+  /^\/increment-video-views\/\d+$/
+];
 
 // Returns true if the given URL matches a dynamic video route (/video/<id>).
 const isVideoRoute = (url) => VIDEO_ROUTE_PATTERN.test(new URL(url).pathname);
 
-// Returns true if the given URL matches a dynamic increment video views route (/video/<id>).
-const isIncrementVideoViewsRoute = (url) => INCREMENT_VIDEO_VIEWS_ROUTE_PATTERN.test(new URL(url).pathname);
+// Returns true if the given URL matches a dynamic excluded route
+const isExcludedRoute = (url) => EXCLUDED_ROUTE_PATTERN.some(pattern => pattern.test(new URL(url).pathname));
 
 self.addEventListener('install', (event) => {
   console.log('[SW] Install: prefetching static assets');
@@ -82,7 +86,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const isVideo = isVideoRoute(request.url);
 
-  if (isIncrementVideoViewsRoute(request.url)) {
+  if (isExcludedRoute(request.url)) {
     return; // Let the browser handle it natively
   }
 

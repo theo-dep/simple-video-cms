@@ -99,7 +99,13 @@
   }
   {% endif %}
 
-  player.on('play', () => {
+  player.on('play', async () => {
+    // allow to continue to fetch segments
+    await fetch(`/start-video-session/${videoId}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+
     const pageAccessedByReload = (
       (window.performance.navigation && window.performance.navigation.type === 1) ||
       window.performance
@@ -111,14 +117,18 @@
     if (pageAccessedByReload)
       return;
 
-    fetch('/increment_video_views/{{ video_id }}', {
+    await fetch(`/increment-video-views/${videoId}`, {
       method: 'POST',
       credentials: 'same-origin',
-    })
-      .catch(error => {
-        console.error('Increment error:', error);
-        throw error;
-      })
+    });
+  });
+
+  // notify the server in seek to not block the user
+  player.on("seeking", async () => {
+    await fetch(`/reset-video-session/${videoId}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
   });
 </script>
 
