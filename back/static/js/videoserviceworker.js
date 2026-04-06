@@ -13,7 +13,7 @@
 // cache, then increment the CACHE_VERSION value. It will kick off the service worker update
 // flow and the old cache(s) will be purged as part of the activate event handler when the
 // updated service worker is activated.
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const CURRENT_CACHES = {
   prefetch: `prefetch-cache-v${CACHE_VERSION}`,
   video: `video-cache-v${CACHE_VERSION}`,
@@ -33,12 +33,19 @@ const ASSETS_TO_PREFETCH = [
 ];
 
 const VIDEO_ROUTE_PATTERN = /^\/video\/\d+$/;
+const INCREMENT_VIDEO_VIEWS_ROUTE_PATTERN = /^\/increment_video_views\/\d+$/;
 
 // In-progress video downloads, keyed by URL, to avoid duplicate fetches.
 const videoDownloadsInProgress = {};
 
+// Track URLs currently being served from network to avoid mixing sources
+const videoServingFromNetwork = new Set();
+
 // Returns true if the given URL matches a dynamic video route (/video/<id>).
 const isVideoRoute = (url) => VIDEO_ROUTE_PATTERN.test(new URL(url).pathname);
+
+// Returns true if the given URL matches a dynamic increment video views route (/video/<id>).
+const isIncrementVideoViewsRoute = (url) => INCREMENT_VIDEO_VIEWS_ROUTE_PATTERN.test(new URL(url).pathname);
 
 // Parses the starting byte position from a Range header value.
 // Supports the "bytes=<start>-" format emitted by most browsers.
@@ -58,6 +65,8 @@ const buildPartialResponse = (buffer, start) => new Response(
     headers: {
       'Content-Type': 'video/mp4',
       'Content-Range': `bytes ${start}-${buffer.byteLength - 1}/${buffer.byteLength}`,
+      'Content-Length': String(buffer.byteLength - start),
+      'Accept-Ranges': 'bytes',
     },
   }
 );
@@ -68,21 +77,42 @@ const fetchAndCacheVideo = (request) => {
   const { url } = request;
 
   if (videoDownloadsInProgress[url]) {
-    console.log('[SW] Reusing in-progress download for:', url);
+    //console.log('[SW] Reusing in-progress download for:', url);
     return videoDownloadsInProgress[url];
   }
 
   console.log('[SW] Starting full video download for:', url);
 
-  const promise = fetch(request)
+  // Create a new request without the Range header to always get a full 200 response
+  const fullRequest = new Request(url, {
+    headers: (() => {
+      const headers = new Headers(request.headers);
+      headers.delete('range');
+      return headers;
+    })(),
+    credentials: request.credentials,
+    cache: request.cache,
+    mode: request.mode,
+    redirect: request.redirect,
+    priority: 'low',
+  });
+
+  const promise = fetch(fullRequest)
     .then((response) => {
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Server returned ${response.status} for ${url}`);
       }
-      return caches.open(CURRENT_CACHES.video).then((cache) => {
-        cache.put(url, response.clone());
-        console.log('[SW] Video successfully cached:', url);
-        return response.arrayBuffer();
+      // First read the full buffer, then store it in cache
+      return response.arrayBuffer().then((buffer) => {
+        const completeResponse = new Response(buffer, {
+          status:  response.status,
+          headers: response.headers,
+        });
+        return caches.open(CURRENT_CACHES.video).then((cache) => {
+          cache.put(url, completeResponse);
+          console.log('[SW] Video successfully cached:', url);
+          return buffer;
+        });
       });
     })
     .finally(() => {
@@ -114,18 +144,29 @@ self.addEventListener('activate', (event) => {
   const expectedCacheNames = Object.values(CURRENT_CACHES);
 
   event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
-        cacheNames
-          .filter((name) => !expectedCacheNames.includes(name))
-          .map((name) => {
-            // If this cache name isn't present in the array of "expected" cache names, then delete it.
-            console.log('[SW] Deleting outdated cache:', name);
-            return caches.delete(name);
-          })
+    caches.keys()
+      .then((cacheNames) =>
+        Promise.all(
+          cacheNames
+            .filter((name) => !expectedCacheNames.includes(name))
+            .map((name) => {
+              // If this cache name isn't present in the array of "expected" cache names, then delete it.
+              console.log('[SW] Deleting outdated cache:', name);
+              return caches.delete(name);
+            })
+        )
       )
-    )
+      .then(() => self.clients.claim()) // Take control immediately
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'VIDEO_SESSION_END') {
+    const url = event.data.url;
+    if (videoServingFromNetwork.delete(url)) {
+      console.log('[SW] Video session ended, clearing network lock for:', url);
+    }
+  }
 });
 
 self.addEventListener('fetch', (event) => {
@@ -133,6 +174,10 @@ self.addEventListener('fetch', (event) => {
   const rangeHeader = request.headers.get('range');
   const isRange = !!rangeHeader;
   const isVideo = isVideoRoute(request.url);
+
+  if (isIncrementVideoViewsRoute(request.url)) {
+    return; // Let the browser handle it natively
+  }
 
   // Range request on a video route => serve from cache or fetch full video
   if (isRange && isVideo) {
@@ -144,20 +189,39 @@ self.addEventListener('fetch', (event) => {
       return; // Let the browser handle it natively
     }
 
-    console.log(`[SW] Video range request: ${request.url} (pos: ${pos})`);
+    //console.log(`[SW] Video range request: ${request.url} (pos: ${pos})`);
 
     event.respondWith(
       caches.open(CURRENT_CACHES.video)
         .then((cache) => cache.match(request.url))
         .then((cached) => {
-          if (cached) {
-            console.log('[SW] Serving video range from cache:', request.url);
-            return cached.arrayBuffer();
+          // From refresh page
+          if (cached && pos === 0 && videoServingFromNetwork.delete(request.url)) {
+            console.log('[SW] Video session refreshed, clearing network lock for:', request.url);
           }
-          console.log('[SW] Cache miss: fetching full video:', request.url);
-          return fetchAndCacheVideo(request);
+
+          // Already being served from network this session => keep going to network
+          if (videoServingFromNetwork.has(request.url)) {
+            //console.log('[SW] Keeping network session for:', request.url);
+            return fetch(request);
+          }
+
+          if (cached) {
+            //console.log('[SW] Serving video range from cache:', request.url);
+            return cached.arrayBuffer().then((buffer) => buildPartialResponse(buffer, pos));
+          }
+
+          videoServingFromNetwork.add(request.url);
+
+          // Cache miss: let the browser handle the range request natively,
+          // and fetch the full video in the background for future requests.
+          if (!videoDownloadsInProgress[request.url]) {
+            console.log('[SW] Cache miss: passing through and caching in background:', request.url);
+            fetchAndCacheVideo(request); // fire and forget
+          }
+
+          return fetch(request); // native range request, no blocking
         })
-        .then((buffer) => buildPartialResponse(buffer, pos))
         .catch((err) => {
           console.error('[SW] Failed to serve video range, falling back to network:', err);
           return fetch(request);
@@ -175,7 +239,7 @@ self.addEventListener('fetch', (event) => {
         .then((cache) => cache.match(request.url))
         .then((cached) => {
           if (cached) {
-            console.log('[SW] Serving video from cache:', request.url);
+            //console.log('[SW] Serving video from cache:', request.url);
             return cached;
           }
           // event.request will always have the proper mode set ('cors, 'no-cors', etc.) so we don't
@@ -222,18 +286,24 @@ self.addEventListener('fetch', (event) => {
   // Standard request => cache-first, then network
   } else {
     event.respondWith(
-      caches.match(request)
-        .then((cached) => {
-          if (cached) {
-            console.log('[SW] Serving from cache:', request.url);
-            return cached;
-          }
-          console.log('[SW] Cache miss: fetching from network:', request.url);
-          return fetch(request).catch((err) => {
-            console.error('[SW] Network fetch failed:', err);
-            throw err;
-          });
-        })
+      caches.open(CURRENT_CACHES.prefetch)
+        .then((cache) => cache.match(request.url)
+          .then((cached) => {
+            if (cached) {
+              //console.log('[SW] Serving prefetch asset from cache:', request.url);
+              return cached;
+            }
+            console.log('[SW] Cache miss: fetching and caching prefetch asset:', request.url);
+            return fetch(request).then((response) => {
+              if (!response.ok) throw new Error(`Server returned ${response.status}`);
+              cache.put(request.url, response.clone());
+              return response;
+            }).catch((err) => {
+              console.error('[SW] Network fetch failed:', err);
+              throw err;
+            });
+          })
+        )
     );
   }
 });
