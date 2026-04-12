@@ -734,7 +734,7 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
         db.add_video(video_title, video_content)
             .and_then([&](int video_id) -> std::optional<int> {
                 const std::filesystem::path video_path{ db.hls_video_path(video_id) };
-                const bool converted{ video::convert_to_hls(video_content, video_path.c_str(), db.hls_video_name(video_id)) };
+                const bool converted{ video::convert_to_hls(video_content, video_path.c_str(), Database::hls_video_name(video_id)) };
                 return converted ? std::optional(video_id) : std::nullopt;
             })
             .and_then([&](int video_id) -> std::optional<int> {

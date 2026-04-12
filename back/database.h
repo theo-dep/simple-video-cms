@@ -68,7 +68,7 @@ public:
     std::vector<int> user_group_list(int user_id) const;
 
     [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
-    std::string hls_video_name(int id) const;
+    static std::string hls_video_name(int id);
     std::filesystem::path hls_video_path(int id) const;
 
     [[nodiscard]] std::optional<int> add_video_thumbnail(int id, const std::string& thumbnail_content) const;

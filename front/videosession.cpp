@@ -30,7 +30,7 @@ void VideoSession::add_session(const std::string& session_id, const std::string&
     clean_expired_sessions({});
 
     const std::scoped_lock lock(_mutex);
-    const Key key{ session_id, video_id };
+    const Key key{ .session_id = session_id, .video_id = video_id };
     State& state{ _sessions[key] };
     state = State{}; // reset
 

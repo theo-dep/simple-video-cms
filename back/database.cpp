@@ -785,7 +785,7 @@ bool Database::delete_video(int id) const
             })
             .and_then([&](const Video& video) -> std::optional<Video> {
                 // remove video directory
-                return filesystem::remove_directory(hls_video_path(video.id)) ? std::optional(video) : std::nullopt;
+                return ::filesystem::remove_directory(hls_video_path(video.id)) ? std::optional(video) : std::nullopt;
             })
             .and_then([&](const Video& video) -> std::optional<Video> {
                 // remove thumbnail file
@@ -880,7 +880,7 @@ std::filesystem::path Database::thumbnail_path(int id) const
     return thumbnail_path() / su::int_to_string(id);
 }
 
-std::string Database::hls_video_name(int id) const
+std::string Database::hls_video_name(int id)
 {
     return su::int_to_string(id);
 }

@@ -589,7 +589,9 @@ bool video::VideoProcessor::remux_to_hls(const std::string& out_dir, const std::
         }
 
         const AVStream* const in_stream{ input_streams[stream_index] };
-        const AVStream* const out_stream{ output_format_context->streams[stream_index] };
+
+        const std::span output_streams(output_format_context->streams, output_format_context->nb_streams);
+        const AVStream* const out_stream{ output_streams[stream_index] };
 
         av_packet_rescale_ts(packet.get(), in_stream->time_base, out_stream->time_base);
         packet->pos = -1;
@@ -646,19 +648,17 @@ inline int video::hls_io_open(AVFormatContext* /*ctx*/, AVIOContext** pb, const 
     return 0;
 }
 
-inline int video::hls_io_close(AVFormatContext* /*ctx*/, AVIOContext* pb)
+inline int video::hls_io_close(AVFormatContext* /*ctx*/, AVIOContext* raw_pb)
 {
+    const AVIOContextPtr pb(raw_pb);
     if (pb == nullptr) {
         return AVERROR(ENOMEM);
     }
 
-    avio_flush(pb);
+    avio_flush(pb.get());
 
-    HlsIoContext* const hls_ctx{ static_cast<HlsIoContext*>(pb->opaque) };
-    delete hls_ctx; // NOLINT(cppcoreguidelines-owning-memory)
+    const std::unique_ptr<HlsIoContext> hls_ctx(static_cast<HlsIoContext*>(pb->opaque));
 
-    av_freep(&pb->buffer);
-    avio_context_free(&pb);
     return 0;
 }
 
