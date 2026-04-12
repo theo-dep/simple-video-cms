@@ -26,6 +26,7 @@ public:
     std::string dashboard_page() const;
 
     std::string login_page() const;
+    std::string logout_page() const;
 
     std::string confirm_action_page() const;
 

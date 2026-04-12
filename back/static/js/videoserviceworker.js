@@ -13,7 +13,7 @@
 // cache, then increment the CACHE_VERSION value. It will kick off the service worker update
 // flow and the old cache(s) will be purged as part of the activate event handler when the
 // updated service worker is activated.
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 1;
 const CURRENT_CACHES = {
   prefetch: `prefetch-cache-v${CACHE_VERSION}`,
   video: `video-cache-v${CACHE_VERSION}`,

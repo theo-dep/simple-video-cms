@@ -50,7 +50,7 @@ namespace server
 
     void login_get(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void login_post(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
-    void logout(const httplib::Request& req, httplib::Response& res, Session& session);
+    void logout(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client);
 
     void admin_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
     void user_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client);
@@ -150,7 +150,7 @@ int server::start()
         .Get("/login", sc::serve(login_get, std::ref(env), std::cref(session), std::cref(client)))
         .Post("/login", sc::serve(login_post, std::ref(env), std::ref(session), std::cref(client)))
 
-        .Get("/logout", sc::serve(logout, std::ref(session)))
+        .Get("/logout", sc::serve(logout, std::ref(env), std::ref(session), std::cref(client)))
 
         .Get("/admin-list", sc::serve(admin_list, std::ref(env), std::cref(session), std::cref(client)))
         .Get("/user-list", sc::serve(user_list, std::ref(env), std::cref(session), std::cref(client)))
@@ -549,12 +549,15 @@ inline void server::login_post(const httplib::Request& req, httplib::Response& r
     login_redirect(req, res, session);
 }
 
-inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
+inline void server::logout(const httplib::Request& req, httplib::Response& res, inja::Environment& env, Session& session, const Client& client)
 {
     const std::string cookie{ req.get_header_value("Cookie") };
     const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
     session.remove_session(session_id);
-    res.set_redirect("/");
+
+    const std::string body{ env.render(client.logout_page(), {}) }; // NOLINT(clang-analyzer-core.StackAddressEscape): in inja.hpp Parser::parse
+    res.set_header("Set-Cookie", {});
+    res.set_content(body, "text/html");
 }
 
 inline void server::admin_list(const httplib::Request& req, httplib::Response& res, inja::Environment& env, const Session& session, const Client& client)

@@ -95,6 +95,12 @@ std::string Client::login_page() const
     return client::format_page(res);
 }
 
+std::string Client::logout_page() const
+{
+    const httplib::Result res{ _client->Get("/html/logout.html") };
+    return client::format_page(res);
+}
+
 std::string Client::confirm_action_page() const
 {
     const httplib::Result res{ _client->Get("/html/confirm_action.html") };
