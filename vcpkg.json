@@ -1,0 +1,50 @@
+{
+  "dependencies": [
+    {
+      "name": "libpng",
+      "default-features": false
+    },
+    "zlib",
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": [
+        "aom",
+        "avcodec",
+        "avdevice",
+        "avfilter",
+        "avformat",
+        "dav1d",
+        "fdk-aac",
+        "gpl",
+        "ilbc",
+        "openh264",
+        "openjpeg",
+        "openmpt",
+        "opus",
+        "qsv",
+        "speex",
+        "swresample",
+        "swscale",
+        "version3",
+        "vorbis",
+        "vpx"
+      ]
+    }
+  ],
+  "builtin-baseline": "b83a134447208c35f740e4b6faf1263b0d6e860e",
+  "overrides": [
+    {
+      "name": "libpng",
+      "version": "1.6.53"
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.1"
+    },
+    {
+      "name": "ffmpeg",
+      "version": "7.1.2"
+    }
+  ]
+}
