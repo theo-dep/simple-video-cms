@@ -193,6 +193,43 @@ std::string Database::video(int id, std::size_t offset, std::size_t length) cons
     return video.value_or(std::string{});
 }
 
+std::string Database::video_playlist(int id) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional playlist{
+        storage.get_optional<Video>(id)
+            .transform([&](const Video& video) -> std::string {
+                const std::filesystem::path path{ hls_video_path(video.id) };
+                const std::filesystem::path playlist_path{ path / (hls_video_name(id) + ".m3u8") };
+                return database::read_file(playlist_path);
+            })
+            .or_else([&] -> std::optional<std::string> {
+                logging::error{ R"(Fail to fetch video playlist "{}")", id };
+                return std::string{};
+            })
+    };
+    return playlist.value_or(std::string{});
+}
+
+std::string Database::video_segment(int id, const std::string& segment) const
+{
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional segment_content{
+        storage.get_optional<Video>(id)
+            .transform([&](const Video& video) -> std::string {
+                const std::filesystem::path path{ hls_video_path(video.id) };
+                const std::filesystem::path segment_path{ path / segment };
+                return database::read_file(segment_path);
+            })
+            .or_else([&] -> std::optional<std::string> {
+                logging::error{ R"(Fail to fetch video segment "{}": "{}")", id, segment };
+                return std::string{};
+            })
+    };
+    return segment_content.value_or(std::string{});
+}
+
 std::string Database::thumbnail(int id) const
 {
     const std::scoped_lock lock(_mutex);
@@ -644,6 +681,10 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
     database::StorageType storage{ database::storage(_path) };
     video.id = storage.insert(video);
 
+    if (!filesystem::create(hls_video_path(video.id))) {
+        return std::nullopt;
+    }
+
     database::write_file(video_path(video.id), video_content);
 
     return video.id;
@@ -743,6 +784,10 @@ bool Database::delete_video(int id) const
                 return filesystem::remove(video_path(video.id)) ? std::optional(video) : std::nullopt;
             })
             .and_then([&](const Video& video) -> std::optional<Video> {
+                // remove video directory
+                return ::filesystem::remove_directory(hls_video_path(video.id)) ? std::optional(video) : std::nullopt;
+            })
+            .and_then([&](const Video& video) -> std::optional<Video> {
                 // remove thumbnail file
                 return filesystem::remove(thumbnail_path(video.id)) ? std::optional(video) : std::nullopt;
             })
@@ -833,6 +878,16 @@ std::filesystem::path Database::thumbnail_path() const
 std::filesystem::path Database::thumbnail_path(int id) const
 {
     return thumbnail_path() / su::int_to_string(id);
+}
+
+std::string Database::hls_video_name(int id)
+{
+    return su::int_to_string(id);
+}
+
+std::filesystem::path Database::hls_video_path(int id) const
+{
+    return video_path() / ("hls_" + su::int_to_string(id));
 }
 
 inline int database::file_size(const std::string& path)

@@ -95,6 +95,12 @@ std::string Client::login_page() const
     return client::format_page(res);
 }
 
+std::string Client::logout_page() const
+{
+    const httplib::Result res{ _client->Get("/html/logout.html") };
+    return client::format_page(res);
+}
+
 std::string Client::confirm_action_page() const
 {
     const httplib::Result res{ _client->Get("/html/confirm_action.html") };
@@ -564,6 +570,56 @@ int Client::video_size(const std::string& video_id) const
     const int video_size{ su::string_to_int(client::format_page(res)) };
     logging::debug{ "Video length: {}", video_size };
     return video_size;
+}
+
+std::string Client::video_playlist(const std::string& video_id) const
+{
+    std::string playlist_content;
+    const httplib::Result res{
+        _client->Get("/video/" + video_id + "/playlist",
+                     [&playlist_content](const char* data, std::size_t data_length) -> bool {
+                         playlist_content.append(data, data_length);
+                         return true;
+                     })
+    };
+    logging::debug{ "Playlist length: {}", playlist_content.size() };
+
+    if (!res) {
+        logging::error{ "Fail to get the playlist with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        return {};
+    }
+
+    if (res->status != httplib::StatusCode::OK_200 && res->status != httplib::StatusCode::PartialContent_206) {
+        logging::error{ "Fail to get the playlist with error: {} ({})", httplib::status_message(res->status), res->status };
+        return {};
+    }
+
+    return playlist_content;
+}
+
+std::string Client::video_segment(const std::string& video_id, const std::string& segment) const
+{
+    std::string segment_content;
+    const httplib::Result res{
+        _client->Get("/video/" + video_id + "/" + segment,
+                     [&segment_content](const char* data, std::size_t data_length) -> bool {
+                         segment_content.append(data, data_length);
+                         return true;
+                     })
+    };
+    logging::debug{ "Segment length: {}", segment_content.size() };
+
+    if (!res) {
+        logging::error{ "Fail to get the segment with error: {} ({})", httplib::to_string(res.error()), static_cast<int>(res.error()) };
+        return {};
+    }
+
+    if (res->status != httplib::StatusCode::OK_200 && res->status != httplib::StatusCode::PartialContent_206) {
+        logging::error{ "Fail to get the segment with error: {} ({})", httplib::status_message(res->status), res->status };
+        return {};
+    }
+
+    return segment_content;
 }
 
 std::string Client::thumbnail(const std::string& video_id) const

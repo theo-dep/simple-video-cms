@@ -19,7 +19,8 @@ CXX_SRCS := \
 	cookie.cpp \
 	main.cpp \
 	server.cpp \
-	session.cpp
+	session.cpp \
+	videosession.cpp
 
 include $(TOP)/mk/target.mk
 

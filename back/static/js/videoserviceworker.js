@@ -13,7 +13,7 @@
 // cache, then increment the CACHE_VERSION value. It will kick off the service worker update
 // flow and the old cache(s) will be purged as part of the activate event handler when the
 // updated service worker is activated.
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 1;
 const CURRENT_CACHES = {
   prefetch: `prefetch-cache-v${CACHE_VERSION}`,
   video: `video-cache-v${CACHE_VERSION}`,
@@ -33,95 +33,17 @@ const ASSETS_TO_PREFETCH = [
 ];
 
 const VIDEO_ROUTE_PATTERN = /^\/video\/\d+$/;
-const INCREMENT_VIDEO_VIEWS_ROUTE_PATTERN = /^\/increment_video_views\/\d+$/;
-
-// In-progress video downloads, keyed by URL, to avoid duplicate fetches.
-const videoDownloadsInProgress = {};
-
-// Track URLs currently being served from network to avoid mixing sources
-const videoServingFromNetwork = new Set();
+const EXCLUDED_ROUTE_PATTERN = [
+  /^\/start-video-session\/\d+$/,
+  /^\/reset-video-session\/\d+$/,
+  /^\/increment-video-views\/\d+$/
+];
 
 // Returns true if the given URL matches a dynamic video route (/video/<id>).
 const isVideoRoute = (url) => VIDEO_ROUTE_PATTERN.test(new URL(url).pathname);
 
-// Returns true if the given URL matches a dynamic increment video views route (/video/<id>).
-const isIncrementVideoViewsRoute = (url) => INCREMENT_VIDEO_VIEWS_ROUTE_PATTERN.test(new URL(url).pathname);
-
-// Parses the starting byte position from a Range header value.
-// Supports the "bytes=<start>-" format emitted by most browsers.
-const parseRangeStart = (rangeHeader) => {
-  const match = /^bytes=(\d+)-$/i.exec(rangeHeader);
-  if (!match) {
-    throw new Error(`Unsupported Range header format: ${rangeHeader}`);
-  }
-  return Number(match[1]);
-};
-
-// Builds a 206 Partial Content response from an ArrayBuffer and a start position.
-const buildPartialResponse = (buffer, start) => new Response(
-  buffer.slice(start), {
-    status: 206,
-    statusText: 'Partial Content',
-    headers: {
-      'Content-Type': 'video/mp4',
-      'Content-Range': `bytes ${start}-${buffer.byteLength - 1}/${buffer.byteLength}`,
-      'Content-Length': String(buffer.byteLength - start),
-      'Accept-Ranges': 'bytes',
-    },
-  }
-);
-
-// Fetches a video in full, stores it in the video cache, and resolves with its ArrayBuffer.
-// Deduplicates concurrent requests for the same URL.
-const fetchAndCacheVideo = (request) => {
-  const { url } = request;
-
-  if (videoDownloadsInProgress[url]) {
-    //console.log('[SW] Reusing in-progress download for:', url);
-    return videoDownloadsInProgress[url];
-  }
-
-  console.log('[SW] Starting full video download for:', url);
-
-  // Create a new request without the Range header to always get a full 200 response
-  const fullRequest = new Request(url, {
-    headers: (() => {
-      const headers = new Headers(request.headers);
-      headers.delete('range');
-      return headers;
-    })(),
-    credentials: request.credentials,
-    cache: request.cache,
-    mode: request.mode,
-    redirect: request.redirect,
-    priority: 'low',
-  });
-
-  const promise = fetch(fullRequest)
-    .then((response) => {
-      if (response.status !== 200) {
-        throw new Error(`Server returned ${response.status} for ${url}`);
-      }
-      // First read the full buffer, then store it in cache
-      return response.arrayBuffer().then((buffer) => {
-        const completeResponse = new Response(buffer, {
-          status:  response.status,
-          headers: response.headers,
-        });
-        return caches.open(CURRENT_CACHES.video).then((cache) => {
-          cache.put(url, completeResponse);
-          console.log('[SW] Video successfully cached:', url);
-          return buffer;
-        });
-      });
-    })
-    .finally(() => {
-      delete videoDownloadsInProgress[url];
-    });
-
-  videoDownloadsInProgress[url] = promise;
-  return promise;
-};
+// Returns true if the given URL matches a dynamic excluded route
+const isExcludedRoute = (url) => EXCLUDED_ROUTE_PATTERN.some(pattern => pattern.test(new URL(url).pathname));
 
 self.addEventListener('install', (event) => {
   console.log('[SW] Install: prefetching static assets');
@@ -160,150 +82,45 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'VIDEO_SESSION_END') {
-    const url = event.data.url;
-    if (videoServingFromNetwork.delete(url)) {
-      console.log('[SW] Video session ended, clearing network lock for:', url);
-    }
-  }
-});
-
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const rangeHeader = request.headers.get('range');
-  const isRange = !!rangeHeader;
   const isVideo = isVideoRoute(request.url);
 
-  if (isIncrementVideoViewsRoute(request.url)) {
+  if (isExcludedRoute(request.url)) {
     return; // Let the browser handle it natively
   }
 
-  // Range request on a video route => serve from cache or fetch full video
-  if (isRange && isVideo) {
-    let pos;
-    try {
-      pos = parseRangeStart(rangeHeader);
-    } catch (err) {
-      console.error('[SW] Invalid Range header:', err);
-      return; // Let the browser handle it natively
-    }
+  const currentCache = isVideo ? CURRENT_CACHES.video : CURRENT_CACHES.prefetch;
 
-    //console.log(`[SW] Video range request: ${request.url} (pos: ${pos})`);
-
-    event.respondWith(
-      caches.open(CURRENT_CACHES.video)
-        .then((cache) => cache.match(request.url))
-        .then((cached) => {
-          // From refresh page
-          if (cached && pos === 0 && videoServingFromNetwork.delete(request.url)) {
-            console.log('[SW] Video session refreshed, clearing network lock for:', request.url);
+  event.respondWith(
+    caches.open(currentCache)
+      // caches.match() will look for a cache entry in all of the caches available to the service worker.
+      // It's an alternative to first opening a specific named cache and then matching on that.
+      .then((cache) => cache.match(request.url))
+      .then((cached) => {
+        if (cached) {
+          //console.log('[SW] Serving from cache:', request.url);
+          return cached;
+        }
+        // event.request will always have the proper mode set ('cors, 'no-cors', etc.) so we don't
+        // have to hardcode 'no-cors' like we do when fetch()ing in the install handler.
+        return fetch(request).then((response) => {
+          if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`);
           }
-
-          // Already being served from network this session => keep going to network
-          if (videoServingFromNetwork.has(request.url)) {
-            //console.log('[SW] Keeping network session for:', request.url);
-            return fetch(request);
-          }
-
-          if (cached) {
-            //console.log('[SW] Serving video range from cache:', request.url);
-            return cached.arrayBuffer().then((buffer) => buildPartialResponse(buffer, pos));
-          }
-
-          videoServingFromNetwork.add(request.url);
-
-          // Cache miss: let the browser handle the range request natively,
-          // and fetch the full video in the background for future requests.
-          if (!videoDownloadsInProgress[request.url]) {
-            console.log('[SW] Cache miss: passing through and caching in background:', request.url);
-            fetchAndCacheVideo(request); // fire and forget
-          }
-
-          return fetch(request); // native range request, no blocking
-        })
-        .catch((err) => {
-          console.error('[SW] Failed to serve video range, falling back to network:', err);
-          return fetch(request);
-        })
-    );
-
-  // Non-range request on a video route => cache-first, then network
-  } else if (isVideo) {
-    console.log('[SW] Non-range video request:', request.url);
-
-    event.respondWith(
-      caches.open(CURRENT_CACHES.video)
-        // caches.match() will look for a cache entry in all of the caches available to the service worker.
-        // It's an alternative to first opening a specific named cache and then matching on that.
-        .then((cache) => cache.match(request.url))
-        .then((cached) => {
-          if (cached) {
-            //console.log('[SW] Serving video from cache:', request.url);
-            return cached;
-          }
-          // event.request will always have the proper mode set ('cors, 'no-cors', etc.) so we don't
-          // have to hardcode 'no-cors' like we do when fetch()ing in the install handler.
-          return fetch(request).then((response) => {
-            if (!response.ok) {
-              throw new Error(`Server returned ${response.status}`);
-            }
-            return caches.open(CURRENT_CACHES.video).then((cache) => {
-              cache.put(request.url, response.clone());
-              return response;
-            });
+          return caches.open(currentCache).then((cache) => {
+            console.log('[SW] Caching: ', request.url);
+            cache.put(request.url, response.clone());
+            return response;
           });
-        })
-        .catch((err) => {
-          // This catch() will handle exceptions thrown from the fetch() operation.
-          // Note that a HTTP error response (e.g. 404) will NOT trigger an exception.
-          // It will return a normal response object that has the appropriate error code set.
-          console.error('[SW] Failed to serve video:', err);
-          throw err;
-        })
-    );
-
-  // Range request on a prefetched static asset
-  } else if (isRange) {
-    let pos;
-    try {
-      pos = parseRangeStart(rangeHeader);
-    } catch (err) {
-      console.error('[SW] Invalid Range header:', err);
-      return;
-    }
-
-    event.respondWith(
-      caches.open(CURRENT_CACHES.prefetch)
-        .then((cache) => cache.match(request.url))
-        .then((cached) => cached
-          ? cached.arrayBuffer()
-          : fetch(request).then((r) => r.arrayBuffer())
-        )
-        .then((buffer) => buildPartialResponse(buffer, pos))
-    );
-
-  // Standard request => cache-first, then network
-  } else {
-    event.respondWith(
-      caches.open(CURRENT_CACHES.prefetch)
-        .then((cache) => cache.match(request.url)
-          .then((cached) => {
-            if (cached) {
-              //console.log('[SW] Serving prefetch asset from cache:', request.url);
-              return cached;
-            }
-            console.log('[SW] Cache miss: fetching and caching prefetch asset:', request.url);
-            return fetch(request).then((response) => {
-              if (!response.ok) throw new Error(`Server returned ${response.status}`);
-              cache.put(request.url, response.clone());
-              return response;
-            }).catch((err) => {
-              console.error('[SW] Network fetch failed:', err);
-              throw err;
-            });
-          })
-        )
-    );
-  }
+        });
+      })
+      .catch((err) => {
+        // This catch() will handle exceptions thrown from the fetch() operation.
+        // Note that a HTTP error response (e.g. 404) will NOT trigger an exception.
+        // It will return a normal response object that has the appropriate error code set.
+        console.error('[SW] Failed to serve:', err);
+        throw err;
+      })
+  );
 });

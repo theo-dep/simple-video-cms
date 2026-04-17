@@ -39,3 +39,13 @@ bool filesystem::remove(const std::filesystem::path& path)
     }
     return true;
 }
+
+bool filesystem::remove_directory(const std::filesystem::path& path)
+{
+    std::error_code error_code;
+    if (std::filesystem::remove_all(path, error_code) < 0 || error_code) {
+        logging::error{ R"(Fail to remove "{}" directories: {} ({}))", path.string(), error_code.message(), error_code.value() };
+        return false;
+    }
+    return true;
+}

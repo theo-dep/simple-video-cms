@@ -22,6 +22,8 @@ public:
     int video_views(int id) const;
     int video_size(int id) const;
     std::string video(int id, std::size_t offset, std::size_t length) const;
+    std::string video_playlist(int id) const;
+    std::string video_segment(int id, const std::string& segment) const;
     std::string thumbnail(int id) const;
 
     [[nodiscard]] std::optional<int> add_super_admin(const std::string& name, const std::string& salt) const;
@@ -66,6 +68,9 @@ public:
     std::vector<int> user_group_list(int user_id) const;
 
     [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
+    static std::string hls_video_name(int id);
+    std::filesystem::path hls_video_path(int id) const;
+
     [[nodiscard]] std::optional<int> add_video_thumbnail(int id, const std::string& thumbnail_content) const;
     [[nodiscard]] bool add_video_group_rights(int id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool add_video_user_rights(int id, const std::vector<int>& user_ids) const;

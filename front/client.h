@@ -26,6 +26,7 @@ public:
     std::string dashboard_page() const;
 
     std::string login_page() const;
+    std::string logout_page() const;
 
     std::string confirm_action_page() const;
 
@@ -97,6 +98,8 @@ public:
     void increment_video_views(const std::string& video_id) const;
     std::string video(const std::string& video_id, std::size_t offset, std::size_t length) const;
     int video_size(const std::string& video_id) const;
+    std::string video_playlist(const std::string& video_id) const;
+    std::string video_segment(const std::string& video_id, const std::string& segment) const;
     std::string thumbnail(const std::string& video_id) const;
     bool has_video_right(const std::string& video_id) const;
     bool has_video_right(const std::string& video_id, const std::string& user_id) const;

@@ -17,6 +17,7 @@ extern "C" {
 
 #include <algorithm>
 #include <cstring>
+#include <fstream>
 #include <memory>
 #include <ranges>
 #include <span>
@@ -25,6 +26,13 @@ extern "C" {
 
 namespace video
 {
+    struct AVOutputFormatDeleter
+    {
+        void operator()(AVFormatContext* format_context) const;
+    };
+
+    using AVOutputFormatContextPtr = std::unique_ptr<AVFormatContext, AVOutputFormatDeleter>;
+
     struct AVDeleter
     {
         void operator()(AVFormatContext* format_context) const;
@@ -34,6 +42,7 @@ namespace video
         void operator()(AVFilterGraph* filter_graph) const;
         void operator()(AVFilterContext* filter_context) const;
         void operator()(AVPacket* packet) const;
+        void operator()(AVDictionary* opts) const;
     };
 
     using AVFormatContextPtr = std::unique_ptr<AVFormatContext, AVDeleter>;
@@ -43,6 +52,7 @@ namespace video
     using AVFilterGraphPtr = std::unique_ptr<AVFilterGraph, AVDeleter>;
     using AVFilterContextPtr = std::unique_ptr<AVFilterContext, AVDeleter>;
     using AVPacketPtr = std::unique_ptr<AVPacket, AVDeleter>;
+    using AVDictionaryPtr = std::unique_ptr<AVDictionary, AVDeleter>;
 
     constexpr const char* frame_id_key() { return "id"; }
     const char* err2str(int error_numero);
@@ -58,18 +68,33 @@ namespace video
     std::string frame_to_png(const AVFrame* frame);
     void write_data(png_structp png_ptr, png_bytep data, png_size_t length);
 
+    // Custom IO context for HLS output — owns the ofstream for each file opened by the muxer
+    struct HlsIoContext
+    {
+        std::ofstream stream;
+    };
+
+    int hls_io_write_packet(void* opaque, const std::uint8_t* buf, int buf_size);
+    int hls_io_open(AVFormatContext* ctx, AVIOContext** pb, const char* url, int flags, AVDictionary** options);
+    int hls_io_close(AVFormatContext* ctx, AVIOContext* pb);
+
     class VideoProcessor
     {
     public:
         std::string generate_thumbnail(const std::string& video_content, const std::string& format,
                                        std::size_t width, std::size_t height, std::size_t n_images);
 
+        bool convert_to_hls(const std::string& video_content, const std::string& out_dir, const std::string& name,
+                            const std::string& format, int hls_time);
+
     protected:
         bool initialize(const std::string& video_content, const std::string& format);
+        bool open_input_stream();
         bool setup_video_decoder();
         bool create_filter_graph(std::size_t width, std::size_t height, std::size_t n_images);
         std::string process_frames(std::size_t width, std::size_t height);
         std::string retrieve_filtered_frame(std::size_t width, std::size_t height);
+        bool remux_to_hls(const std::string& out_dir, const std::string& name, int hls_time);
 
     private:
         BufferData _buffer_data;
@@ -93,6 +118,31 @@ std::string video::thumbnail(const std::string& video_content, const std::string
     return processor.generate_thumbnail(video_content, format, width, height, n_images);
 }
 
+bool video::convert_to_hls(const std::string& video_content, const std::string& out_dir, const std::string& name,
+                           const std::string& format, int hls_time)
+{
+    VideoProcessor processor;
+    return processor.convert_to_hls(video_content, out_dir, name, format, hls_time);
+}
+
+bool video::VideoProcessor::convert_to_hls(const std::string& video_content, const std::string& out_dir, const std::string& name,
+                                           const std::string& format, int hls_time)
+{
+#ifndef NDEBUG
+    av_log_set_level(AV_LOG_DEBUG);
+#endif
+
+    if (!initialize(video_content, format)) {
+        return false;
+    }
+
+    if (!open_input_stream()) {
+        return false;
+    }
+
+    return remux_to_hls(out_dir, name, hls_time);
+}
+
 inline std::string video::VideoProcessor::generate_thumbnail(const std::string& video_content, const std::string& format,
                                                              std::size_t width, std::size_t height, std::size_t n_images)
 {
@@ -101,6 +151,10 @@ inline std::string video::VideoProcessor::generate_thumbnail(const std::string& 
 #endif
 
     if (!initialize(video_content, format)) {
+        return {};
+    }
+
+    if (!open_input_stream()) {
         return {};
     }
 
@@ -149,7 +203,7 @@ inline bool video::VideoProcessor::initialize(const std::string& video_content, 
     return true;
 }
 
-inline bool video::VideoProcessor::setup_video_decoder()
+inline bool video::VideoProcessor::open_input_stream()
 {
     // Open the input video
     if (const int ret{ avformat_open_input(std::inout_ptr(_format_context), nullptr, nullptr, nullptr) }; ret < 0) {
@@ -174,6 +228,11 @@ inline bool video::VideoProcessor::setup_video_decoder()
         return false;
     }
 
+    return true;
+}
+
+inline bool video::VideoProcessor::setup_video_decoder()
+{
     const AVCodec* input_codec{ nullptr };
     _video_stream_index = av_find_best_stream(_format_context.get(), AVMEDIA_TYPE_VIDEO, -1, -1, &input_codec, 0);
     if (_video_stream_index < 0) {
@@ -464,6 +523,150 @@ inline std::string video::VideoProcessor::retrieve_filtered_frame(std::size_t wi
     return frame_to_png(filtered_frame.get());
 }
 
+bool video::VideoProcessor::remux_to_hls(const std::string& out_dir, const std::string& name, int hls_time)
+{
+    const std::string playlist_path{ std::format("{}/{}.m3u8", out_dir, name) };
+    const std::string segment_pattern{ std::format("{}/{}_%03d.ts", out_dir, name) };
+
+    AVOutputFormatContextPtr output_format_context;
+    if (const int ret{ avformat_alloc_output_context2(std::inout_ptr(output_format_context), nullptr, "hls", playlist_path.c_str()) }; ret < 0) {
+        logging::error{ "Could not create HLS output context: {}", err2str(ret) };
+        return false;
+    }
+
+    // Map all input streams to output
+    const std::span input_streams(_format_context->streams, _format_context->nb_streams);
+    for (const AVStream* const in_stream : input_streams) {
+        AVStream* const out_stream{ avformat_new_stream(output_format_context.get(), nullptr) };
+        if (out_stream == nullptr) {
+            logging::error{ "Could not allocate output stream" };
+            return false;
+        }
+
+        if (const int ret{ avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar) }; ret < 0) {
+            logging::error{ "Could not copy codec parameters: {}", err2str(ret) };
+            return false;
+        }
+
+        out_stream->codecpar->codec_tag = 0;
+    }
+
+    // Set HLS muxer options
+    AVDictionaryPtr hls_opts{ nullptr };
+    av_dict_set_int(std::out_ptr(hls_opts), "hls_time", hls_time, 0);
+    av_dict_set_int(std::inout_ptr(hls_opts), "hls_list_size", 0, 0);
+    av_dict_set(std::inout_ptr(hls_opts), "hls_flags", "independent_segments", 0);
+    av_dict_set(std::inout_ptr(hls_opts), "hls_segment_type", "mpegts", 0);
+    av_dict_set(std::inout_ptr(hls_opts), "hls_segment_filename", segment_pattern.c_str(), 0);
+
+    // Custom IO
+    output_format_context->flags |= AVFMT_FLAG_CUSTOM_IO;
+    output_format_context->io_open = hls_io_open;
+    output_format_context->io_close2 = hls_io_close;
+
+    if (const int ret{ avformat_write_header(output_format_context.get(), std::inout_ptr(hls_opts)) }; ret < 0) {
+        logging::error{ "Could not write HLS header: {}", err2str(ret) };
+        return false;
+    }
+
+    const AVPacketPtr packet{ av_packet_alloc() };
+    if (packet == nullptr) {
+        logging::error{ "Could not allocate packet" };
+        return false;
+    }
+
+    int ret{ 0 };
+    while ((ret = av_read_frame(_format_context.get(), packet.get())) != AVERROR_EOF) {
+        if (ret < 0) {
+            logging::error{ "Error reading frame: {}", err2str(ret) };
+            return false;
+        }
+
+        const unsigned int stream_index{ static_cast<unsigned int>(packet->stream_index) };
+        if (stream_index >= _format_context->nb_streams) {
+            av_packet_unref(packet.get());
+            continue;
+        }
+
+        const AVStream* const in_stream{ input_streams[stream_index] };
+
+        const std::span output_streams(output_format_context->streams, output_format_context->nb_streams);
+        const AVStream* const out_stream{ output_streams[stream_index] };
+
+        av_packet_rescale_ts(packet.get(), in_stream->time_base, out_stream->time_base);
+        packet->pos = -1;
+
+        if (const int write_ret{ av_interleaved_write_frame(output_format_context.get(), packet.get()) }; write_ret < 0) {
+            logging::error{ "Error writing frame: {}", err2str(write_ret) };
+            return false;
+        }
+    }
+
+    if (const int ret{ av_write_trailer(output_format_context.get()) }; ret < 0) {
+        logging::error{ "Could not write trailer: {}", err2str(ret) };
+        return false;
+    }
+
+    logging::info{ "Conversion complete: {}", playlist_path };
+    return true;
+}
+
+inline int video::hls_io_write_packet(void* opaque, const std::uint8_t* buf, int buf_size)
+{
+    auto* ctx{ static_cast<HlsIoContext*>(opaque) };
+    ctx->stream.write(reinterpret_cast<const char*>(buf), buf_size); // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    return ctx->stream ? buf_size : AVERROR(EIO);
+}
+
+inline int video::hls_io_open(AVFormatContext* /*ctx*/, AVIOContext** pb, const char* url, int /*flags*/, AVDictionary** /*options*/)
+{
+    std::unique_ptr hls_ctx{ std::make_unique<HlsIoContext>() };
+    if (hls_ctx == nullptr)
+        return AVERROR(ENOMEM);
+
+    hls_ctx->stream.open(url, std::ios::binary | std::ios::trunc);
+    if (!hls_ctx->stream.is_open()) {
+        logging::error{ "Could not open output file '{}'", url };
+        return AVERROR(EIO);
+    }
+
+    constexpr std::size_t avio_buffer_size{ 4096 };
+    std::uint8_t* const avio_buf{ static_cast<std::uint8_t*>(av_malloc(avio_buffer_size)) };
+    if (avio_buf == nullptr) {
+        return AVERROR(ENOMEM);
+    }
+
+    *pb = avio_alloc_context(avio_buf, avio_buffer_size, 1, hls_ctx.get(), nullptr, hls_io_write_packet, nullptr);
+    if (*pb == nullptr) {
+        av_free(avio_buf);
+        return AVERROR(ENOMEM);
+    }
+
+    std::ignore = hls_ctx.release(); // freed in hls_io_close
+
+    logging::debug{ "Opened '{}'", url };
+    return 0;
+}
+
+inline int video::hls_io_close(AVFormatContext* /*ctx*/, AVIOContext* raw_pb)
+{
+    const AVIOContextPtr pb(raw_pb);
+    if (pb == nullptr) {
+        return AVERROR(ENOMEM);
+    }
+
+    avio_flush(pb.get());
+
+    const std::unique_ptr<HlsIoContext> hls_ctx(static_cast<HlsIoContext*>(pb->opaque));
+
+    return 0;
+}
+
+inline void video::AVOutputFormatDeleter::operator()(AVFormatContext* format_context) const
+{
+    avformat_free_context(format_context);
+}
+
 inline void video::AVDeleter::operator()(AVFormatContext* format_context) const
 {
     avformat_close_input(&format_context);
@@ -502,6 +705,11 @@ inline void video::AVDeleter::operator()(AVPacket* packet) const
     if (packet != nullptr)
         av_packet_unref(packet);
     av_packet_free(&packet);
+}
+
+inline void video::AVDeleter::operator()(AVDictionary* opts) const
+{
+    av_dict_free(&opts);
 }
 
 inline const char* video::err2str(int error_numero)

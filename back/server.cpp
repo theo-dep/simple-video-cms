@@ -73,6 +73,8 @@ namespace server
     void increment_video_views(const httplib::Request& req, httplib::Response& res, const Database& db);
     void video(const httplib::Request& req, httplib::Response& res, const Database& db);
     void video_size(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void video_playlist(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void video_segment(const httplib::Request& req, httplib::Response& res, const Database& db);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db);
     void has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db);
 
@@ -153,6 +155,8 @@ int server::start()
         .Post("/increment-video-views/:video_id", sc::serve(increment_video_views, std::cref(db)))
         .Get("/video/:video_id", sc::serve(video, std::cref(db)))
         .Get("/video-size/:video_id", sc::serve(video_size, std::cref(db)))
+        .Get("/video/:video_id/playlist", sc::serve(video_playlist, std::cref(db)))
+        .Get("/video/:video_id/:segment", sc::serve(video_segment, std::cref(db)))
         .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
         .Get("/has-video-right/:video_id", sc::serve(has_video_right, std::cref(db)))
 
@@ -729,6 +733,11 @@ inline void server::add_video(const httplib::Request& req, httplib::Response& re
     const std::optional video_id{
         db.add_video(video_title, video_content)
             .and_then([&](int video_id) -> std::optional<int> {
+                const std::filesystem::path video_path{ db.hls_video_path(video_id) };
+                const bool converted{ video::convert_to_hls(video_content, video_path.c_str(), Database::hls_video_name(video_id)) };
+                return converted ? std::optional(video_id) : std::nullopt;
+            })
+            .and_then([&](int video_id) -> std::optional<int> {
                 return db.add_video_thumbnail(video_id, thumbnail_content);
             })
             .and_then([&](int video_id) -> std::optional<int> {
@@ -820,6 +829,21 @@ inline void server::video_size(const httplib::Request& req, httplib::Response& r
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const int video_size{ db.video_size(video_id) };
     res.set_content(su::int_to_string(video_size), "plain/text");
+}
+
+inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_playlist{ db.video_playlist(video_id) };
+    res.set_content(video_playlist, "application/vnd.apple.mpegurl");
+}
+
+inline void server::video_segment(const httplib::Request& req, httplib::Response& res, const Database& db)
+{
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string segment{ req.path_params.at("segment") };
+    const std::string video_segment{ db.video_segment(video_id, segment) };
+    res.set_content(video_segment, "video/mp2t");
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db)
