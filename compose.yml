@@ -1,20 +1,11 @@
 volumes:
   data:
 
-
 services:
-
-  common:
-    image: alpine-common
-    build:
-      context: .
-      dockerfile: common/Containerfile
-    command: /bin/true
-
   front:
     build:
-      context: ./front
-      dockerfile: Containerfile
+      context: dist
+      dockerfile: docker/front.containerfile
     environment:
       BACK_SERVER_URL: back:5000
     restart: unless-stopped
@@ -22,15 +13,11 @@ services:
       - data:/data
     ports:
       - 8080:8080
-    depends_on:
-      - common
 
   back:
     build:
-      context: ./back
-      dockerfile: Containerfile
+      context: dist
+      dockerfile: docker/back.containerfile
     restart: unless-stopped
     volumes:
       - data:/data
-    depends_on:
-      - common
