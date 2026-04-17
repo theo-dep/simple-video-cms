@@ -14,7 +14,8 @@
     "yaml.schemas": {
         "https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json": [
             "**/.gitlab-ci.yml",
-            "**/.gitlab-ci/analyze.yml",
+            "**/.gitlab-ci/docker.yml",
+            "**/.gitlab-ci/lint.yml",
             "**/.gitlab-ci/build.yml",
             "**/.gitlab-ci/common.yml",
         ]

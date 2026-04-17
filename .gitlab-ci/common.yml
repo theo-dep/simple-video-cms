@@ -1,23 +1,23 @@
-.base-tag:
+.all-tag:
   tags:
     - linux
     - docker
 
-.base-job:
+.install-job:
   extends:
-    - .base-tag
+    - .all-tag
+  variables:
+    VCPKG_DEFAULT_BINARY_CACHE: $CI_PROJECT_DIR/vcpkg_cache
+    VCPKG_ROOT: $CI_PROJECT_DIR/vcpkg
+    CACHE_POLICY: pull
+  cache:
+    - key:
+        files:
+          - vcpkg.json
+      paths:
+        - vcpkg_cache/
+      policy: $CACHE_POLICY
   before_script:
-    - apt-get update
-    - apt-get -y install make clang-21
-  script:
-    - ./configure --zlib
-
-.back-base-job:
-  before_script:
-    - !reference [.base-job, before_script]
-    - apt-get -y install nasm
-  script:
-    - !reference [.base-job, script]
-    - make -C back zlib -j
-    - ./configure --libpng --ffmpeg
-  tags: !reference [.base-job, tags]
+    - git clone https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+    - $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
+    - mkdir -p $VCPKG_DEFAULT_BINARY_CACHE

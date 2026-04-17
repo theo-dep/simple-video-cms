@@ -1,38 +1,15 @@
 include:
   - local: /.gitlab-ci/common.yml
 
-variables:
-  BUILD_CACHE_KEY: ${BUILD}-${TARGET}
-  BUILD_CACHE_PATH: build/${BUILD}/${TARGET}/**/*
-
-.local-build:
+.build-job:
   stage: build
   extends:
-    - .base-job
+    - .install-job
   script:
-    - !reference [.base-job, script]
-    - make DEBUG=${DEBUG} ${TARGET} -j
+    - cmake --preset vcpkg -DCMAKE_INSTALL_PREFIX=dist
+    - cmake --build --preset vcpkg-${BUILD} --parallel --target install
   artifacts:
     expire_in: 3 days
+    name: dist
     paths:
-      - bin/${BUILD}/${TARGET}
-  cache:
-    key: ${BUILD_CACHE_KEY}
-    paths:
-      - ${BUILD_CACHE_PATH}
-      - common/third-party/zlib/**/*
-
-.back-local-build:
-  extends:
-    - .local-build
-    - .back-base-job
-  script:
-    - !reference [.back-base-job, script]
-    - !reference [.local-build, script]
-  cache:
-    key: ${BUILD_CACHE_KEY}
-    paths:
-      - ${BUILD_CACHE_PATH}
-      - common/third-party/ffmpeg/**/*
-      - common/third-party/libpng/**/*
-      - common/third-party/zlib/**/*
+      - dist

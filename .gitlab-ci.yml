@@ -2,115 +2,100 @@ default:
   image: ubuntu:25.10
 
 stages:
+  - .pre
   - build
-  - analyze
+  - lint
   - release
 
 variables:
-  GIT_STRATEGY: clone
-  FF_ENABLE_JOB_CLEANUP: true
-  GIT_SUBMODULE_STRATEGY: normal
-  GIT_SUBMODULE_FORCE_HTTPS: true
-  GIT_SUBMODULE_DEPTH: 0
-  GIT_SUBMODULE_UPDATE_FLAGS: --jobs 3
+  CONTAINER_CI_IMAGE: $CI_REGISTRY/theo/simple-video-cms/ci:latest
   CONTAINER_TEST_BACK_IMAGE: $CI_REGISTRY/theo/simple-video-cms:back-$CI_COMMIT_REF_SLUG
   CONTAINER_TEST_FRONT_IMAGE: $CI_REGISTRY/theo/simple-video-cms:front-$CI_COMMIT_REF_SLUG
   CONTAINER_RELEASE_BACK_IMAGE: $CI_REGISTRY/theo/simple-video-cms:back-latest
   CONTAINER_RELEASE_FRONT_IMAGE: $CI_REGISTRY/theo/simple-video-cms:front-latest
 
-.push-rules: &push-rules
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      when: never
-    - if: $CI_PIPELINE_SOURCE == "push"
-      when: on_success
-
-.merge-rules: &merge-rules
+.merge-rules:
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
 
-.deploy-rules: &deploy-rules
+.deploy-rules:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 include:
   - local: /.gitlab-ci/build.yml
   - local: /.gitlab-ci/docker.yml
-  - local: /.gitlab-ci/analyze.yml
+  - local: /.gitlab-ci/lint.yml
 
-debug_build_back:
+build ci image:
+  stage: .pre
   extends:
-    - .back-local-build
-    - .push-rules
-  variables:
-    DEBUG: 1
-    BUILD: debug
-    TARGET: back
+    - .docker-job
+  script:
+    - docker build -f docker/ci.containerfile -t $CONTAINER_CI_IMAGE .
+    - docker push $CONTAINER_CI_IMAGE
+  rules:
+    - changes:
+        - docker/ci.containerfile
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-debug_build_front:
+build vcpkg deps:
+  stage: .pre
+  image: $CONTAINER_CI_IMAGE
+  dependencies:
+    - build ci image
+  timeout: 2h
   extends:
-    - .local-build
-    - .push-rules
-  variables:
-    DEBUG: 1
-    BUILD: debug
-    TARGET: front
-
-release_build_back:
-  extends:
-    - .back-local-build
+    - .install-job
     - .merge-rules
   variables:
-    DEBUG: 0
-    BUILD: release
-    TARGET: back
+    CACHE_POLICY: pull-push
+  script:
+    - cmake --preset vcpkg
 
-release_build_front:
+debug build:
+  image: $CONTAINER_CI_IMAGE
   extends:
-    - .local-build
+    - .build-job
     - .merge-rules
   variables:
-    DEBUG: 0
-    BUILD: release
-    TARGET: front
+    BUILD: debug
 
-docker_build:
+release build:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .build-job
+  rules:
+    - !reference [.merge-rules, rules]
+    - !reference [.deploy-rules, rules]
+  variables:
+    BUILD: release
+
+docker build:
   stage: build
   extends:
     - .docker-job
+  needs:
+    - job: release build
+      artifacts: true
   rules:
     - !reference [.merge-rules, rules]
     - !reference [.deploy-rules, rules]
   script:
-    - docker-compose build
-    - docker tag simple-video-cms-back:latest $CONTAINER_TEST_BACK_IMAGE
-    - docker tag simple-video-cms-front:latest $CONTAINER_TEST_FRONT_IMAGE
+    - docker build -f docker/back.containerfile -t $CONTAINER_TEST_BACK_IMAGE dist
+    - docker build -f docker/front.containerfile -t $CONTAINER_TEST_FRONT_IMAGE dist
     - docker push $CONTAINER_TEST_BACK_IMAGE
     - docker push $CONTAINER_TEST_FRONT_IMAGE
 
-analyze_common:
+lint:
+  image: $CONTAINER_CI_IMAGE
   extends:
-    - .analyze
+    - .lint-job
     - .merge-rules
-  variables:
-    TARGET: common
 
-analyze_front:
-  extends:
-    - .analyze
-    - .merge-rules
-  variables:
-    TARGET: front
-
-analyze_back:
-  extends:
-    - .back-analyze
-    - .merge-rules
-  variables:
-    TARGET: back
-
-docker_release_image:
+docker release image:
   stage: release
+  dependencies: []
   extends:
     - .docker-job
     - .deploy-rules
