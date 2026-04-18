@@ -12,6 +12,7 @@ RUN apt-get update && \
         curl \
         git \
         libtool \
+        linux-libc-dev \
         nasm \
         ninja-build \
         pkg-config \

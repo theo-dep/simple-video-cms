@@ -12,6 +12,7 @@ find_package(rapidfuzz REQUIRED)
 find_package(unofficial-sqlite3 REQUIRED)
 find_package(SqliteOrm REQUIRED)
 
+find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(PNG REQUIRED)
 find_package(FFMPEG REQUIRED COMPONENTS avformat avdevice avcodec avfilter avutil swresample swscale)

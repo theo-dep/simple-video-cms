@@ -22,6 +22,10 @@
     },
     "rapidfuzz-cpp",
     {
+      "name": "openssl",
+      "default-features": false
+    },
+    {
       "name": "libpng",
       "default-features": false
     },
@@ -78,6 +82,10 @@
     {
       "name": "rapidfuzz-cpp",
       "version": "3.3.3"
+    },
+    {
+      "name": "openssl",
+      "version": "3.6.2"
     },
     {
       "name": "libpng",
