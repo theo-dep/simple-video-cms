@@ -1,7 +1,4 @@
-**/data/
-
-backup.tar.gz
-
-**/build/
-**/bin/
+data/
+build/
+dist/
 *.log*
