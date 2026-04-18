@@ -1,6 +1,27 @@
 {
   "dependencies": [
     {
+      "name": "cpp-httplib",
+      "default-features": false,
+      "features": [
+        "zlib"
+      ]
+    },
+    "inja",
+    {
+      "name": "nlohmann-json",
+      "default-features": false
+    },
+    {
+      "name": "sqlite3",
+      "default-features": false
+    },
+    {
+      "name": "sqlite-orm",
+      "default-features": false
+    },
+    "rapidfuzz-cpp",
+    {
       "name": "libpng",
       "default-features": false
     },
@@ -35,8 +56,32 @@
   "builtin-baseline": "b83a134447208c35f740e4b6faf1263b0d6e860e",
   "overrides": [
     {
+      "name": "cpp-httplib",
+      "version": "0.41.0"
+    },
+    {
+      "name": "inja",
+      "version": "3.5.0"
+    },
+    {
+      "name": "nlohmann-json",
+      "version": "3.12.0"
+    },
+    {
+      "name": "sqlite3",
+      "version": "3.53.0"
+    },
+    {
+      "name": "sqlite-orm",
+      "version": "1.9.1"
+    },
+    {
+      "name": "rapidfuzz-cpp",
+      "version": "3.3.3"
+    },
+    {
       "name": "libpng",
-      "version": "1.6.53"
+      "version": "1.6.57"
     },
     {
       "name": "zlib",
@@ -44,7 +89,7 @@
     },
     {
       "name": "ffmpeg",
-      "version": "7.1.2"
+      "version": "8.1"
     }
   ]
 }

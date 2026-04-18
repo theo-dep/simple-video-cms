@@ -9,7 +9,7 @@ A back and front architecture video content management system with FFmpeg and SQ
 
 All third party files are available offline except for FFmpeg, zlib and libpng submodules.
 
-- [C++ third parties](common/third-party/Readme.md)
+- [C++ third parties](third-party/Readme.md)
 - [CSS third parties](back/static/css/third-party/Readme.md)
 - [JavaScript third parties](back/static/js/third-party/Readme.md)
 

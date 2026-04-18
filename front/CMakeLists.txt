@@ -9,6 +9,8 @@ add_executable(${target_name}
     videosession.cpp
 )
 
-target_link_libraries(${target_name} PRIVATE common)
+target_link_libraries(${target_name} PRIVATE
+    common nlohmann_json::nlohmann_json pantor::inja
+)
 
 install(TARGETS ${target_name} DESTINATION ${CMAKE_INSTALL_PREFIX})

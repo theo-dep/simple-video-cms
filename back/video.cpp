@@ -295,15 +295,20 @@ inline bool video::VideoProcessor::create_filter_graph(std::size_t width, std::s
         return false;
     }
 
-    if (const int ret{ avfilter_graph_create_filter(std::out_ptr(_buffer_sink_context), buffer_sink, "out", nullptr, nullptr, _filter_graph.get()) }; ret < 0) {
-        logging::error{ "Cannot create buffer sink: {}", err2str(ret) };
+    _buffer_sink_context.reset(avfilter_graph_alloc_filter(_filter_graph.get(), buffer_sink, "out"));
+    if (_buffer_sink_context == nullptr) {
+        logging::error{ "Cannot create buffer sink" };
         return false;
     }
 
-    constexpr std::array pixel_formats{ AV_PIX_FMT_RGB24, AV_PIX_FMT_NONE };
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast): c-style cast inside av_opt_set_int_list macro
-    if (const int ret{ av_opt_set_int_list(_buffer_sink_context.get(), "pix_fmts", pixel_formats.data(), AV_PIX_FMT_NONE, AV_OPT_SEARCH_CHILDREN) }; ret < 0) {
+    constexpr std::array pixel_formats{ AV_PIX_FMT_RGB24 };
+    if (const int ret{ av_opt_set_array(_buffer_sink_context.get(), "pixel_formats", AV_OPT_SEARCH_CHILDREN, 0, pixel_formats.size(), AV_OPT_TYPE_PIXEL_FMT, pixel_formats.data()) }; ret < 0) {
         logging::error{ "Cannot set output pixel format: {}", err2str(ret) };
+        return false;
+    }
+
+    if (const int ret{ avfilter_init_dict(_buffer_sink_context.get(), nullptr) }; ret < 0) {
+        logging::error{ "Cannot initialize buffer sink: {}", err2str(ret) };
         return false;
     }
 
