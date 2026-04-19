@@ -1,22 +1,36 @@
 #include "crypto.h"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-field-initializers"
-#pragma clang diagnostic ignored "-Wmissing-braces"
-#pragma clang diagnostic ignored "-Wunused-private-field"
-#pragma clang diagnostic ignored "-Wreorder"
-#include <cstring>
-#include <hashpp.h>
-#pragma clang diagnostic pop
+#include <openssl/evp.h>
 
 #include <algorithm>
 #include <array>
+#include <format>
+#include <memory>
 #include <random>
 
 std::string crypto::sha512(const std::string& str)
 {
-    const hashpp::hash hash{ hashpp::get::getHash(hashpp::ALGORITHMS::SHA2_512_256, str) };
-    return hash.getString();
+    const auto ctx{ std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>(EVP_MD_CTX_new(), EVP_MD_CTX_free) };
+    if (EVP_DigestInit_ex(ctx.get(), EVP_sha512_256(), nullptr) != 1)
+        return {};
+    if (EVP_DigestUpdate(ctx.get(), str.data(), str.size()) != 1)
+        return {};
+
+    std::array<unsigned char, EVP_MAX_MD_SIZE> digest{};
+    unsigned int digest_len_raw{};
+    if (EVP_DigestFinal_ex(ctx.get(), digest.data(), &digest_len_raw) != 1)
+        return {};
+
+    const std::size_t digest_len{ digest_len_raw };
+    std::string result;
+    result.resize_and_overwrite(digest_len * 2, [&digest, &digest_len](char* buffer, std::size_t) {
+        for (std::size_t i{ 0 }; i < digest_len; ++i) {
+            std::format_to(std::next(buffer, static_cast<std::ptrdiff_t>(i * 2)), "{:02x}", digest.at(i));
+        }
+        return digest_len * 2;
+    });
+
+    return result;
 }
 
 std::string crypto::random_string(std::string::size_type length)

@@ -47,11 +47,14 @@ build vcpkg deps:
   timeout: 2h
   extends:
     - .install-job
-    - .merge-rules
   variables:
     CACHE_POLICY: pull-push
   script:
     - cmake --preset vcpkg
+  rules:
+    - changes:
+        - vcpkg.json
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 debug build:
   image: $CONTAINER_CI_IMAGE

@@ -1,6 +1,6 @@
 # Third Parties
 
-- [C++ third parties](../../../../common/third-party/Readme.md)
+- [C++ third parties](../../../../third-party/Readme.md)
 - [CSS third parties](../../css/third-party/Readme.md)
 
 ## Video.js

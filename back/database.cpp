@@ -13,7 +13,7 @@
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #pragma clang diagnostic ignored "-Wdeprecated-literal-operator"
 #pragma clang diagnostic ignored "-Wc++26-extensions"
-#include <sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm.h>
 #pragma clang diagnostic pop
 
 #include <algorithm>

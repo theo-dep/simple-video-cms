@@ -1,5 +1,3 @@
-add_library(sqlite3-lib OBJECT ${CMAKE_SOURCE_DIR}/common/third-party/sqlite3.c)
-
 set(target_name back)
 add_executable(${target_name}
     database.cpp
@@ -11,8 +9,8 @@ add_executable(${target_name}
 )
 
 target_link_libraries(${target_name} PRIVATE
-    $<TARGET_OBJECTS:sqlite3-lib>
-    common PNG::PNG ${FFMPEG_LIBRARIES}
+    common rapidfuzz::rapidfuzz PNG::PNG ${FFMPEG_LIBRARIES}
+    unofficial::sqlite3::sqlite3 sqlite_orm::sqlite_orm
 )
 
 add_custom_target(copy_back_assets

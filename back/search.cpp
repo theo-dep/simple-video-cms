@@ -3,7 +3,7 @@
 #include "logging.h"
 #include "stringutils.h"
 
-#include <rapidfuzz.hpp>
+#include <rapidfuzz/fuzz.hpp>
 
 #include <execution>
 #include <map>

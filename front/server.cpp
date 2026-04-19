@@ -10,7 +10,7 @@
 #include "videosession.h"
 
 #include <httplib.h>
-#include <inja.hpp>
+#include <inja/inja.hpp>
 
 #include <stacktrace>
 

@@ -7,10 +7,7 @@ add_library(${target_name}
     stringutils.cpp
 )
 
-target_include_directories(${target_name} PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/third-party
-)
+target_include_directories(${target_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(payload_max_length 1610612736) # 1.5 GB
 
@@ -21,4 +18,5 @@ target_compile_definitions(${target_name} PUBLIC
     CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH=${payload_max_length}
 )
 
-target_link_libraries(${target_name} PUBLIC ZLIB::ZLIB)
+target_link_libraries(${target_name} PUBLIC httplib::httplib ZLIB::ZLIB)
+target_link_libraries(${target_name} PRIVATE OpenSSL::Crypto)
