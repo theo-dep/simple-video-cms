@@ -18,3 +18,12 @@ build: configure
 
 configure:
 	@cmake --preset vcpkg
+
+cpplint: cpplint-configure
+	@cmake --build build/lint --parallel 1
+
+cpplint-configure:
+	@cmake --preset lint
+
+eslint:
+	@npx eslint "front/**/*.js"

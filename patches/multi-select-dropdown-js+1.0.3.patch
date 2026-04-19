@@ -1,0 +1,9 @@
+diff --git a/node_modules/multi-select-dropdown-js/MultiSelect.js b/node_modules/multi-select-dropdown-js/MultiSelect.js
+index 390ac78..cbf79d2 100644
+--- a/node_modules/multi-select-dropdown-js/MultiSelect.js
++++ b/node_modules/multi-select-dropdown-js/MultiSelect.js
+@@ -672,3 +672,4 @@ class MultiSelect {
+ }
+ 
+ document.querySelectorAll('[data-multi-select]').forEach(select => new MultiSelect(select));
++export default MultiSelect;

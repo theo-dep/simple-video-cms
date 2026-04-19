@@ -1,26 +1,34 @@
 {
-    "editor.formatOnSave": true,
-    "files.associations": {
-        "*docker*.yaml": "dockercompose",
-        "*docker*.yml": "dockercompose",
-        "*compose*.yaml": "dockercompose",
-        "*compose*.yml": "dockercompose",
-        "*gitlab*.yml": "yaml",
-        "**/.gitlab-ci/*.yml": "yaml",
-        "*.containerignore": "ignore",
-        "*.dockerignore": "ignore",
-        "Justfile": "makefile"
-    },
-    "yaml.schemas": {
-        "https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json": [
-            "**/.gitlab-ci.yml",
-            "**/.gitlab-ci/docker.yml",
-            "**/.gitlab-ci/lint.yml",
-            "**/.gitlab-ci/build.yml",
-            "**/.gitlab-ci/common.yml",
-        ]
-    },
-    "yaml.customTags": [
-        "!reference sequence"
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[cpp]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
+  "files.associations": {
+    "*docker*.yaml": "dockercompose",
+    "*docker*.yml": "dockercompose",
+    "*compose*.yaml": "dockercompose",
+    "*compose*.yml": "dockercompose",
+    "*gitlab*.yml": "yaml",
+    "**/.gitlab-ci/*.yml": "yaml",
+    "*.containerignore": "ignore",
+    "*.dockerignore": "ignore",
+    "Justfile": "makefile"
+  },
+  "yaml.schemas": {
+    "https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json": [
+      "**/.gitlab-ci.yml",
+      "**/.gitlab-ci/docker.yml",
+      "**/.gitlab-ci/lint.yml",
+      "**/.gitlab-ci/build.yml",
+      "**/.gitlab-ci/common.yml"
     ]
+  },
+  "yaml.customTags": ["!reference sequence"],
+  "prettier.configPath": "prettier.config.js",
+  "prettier.requireConfig": true,
+  "prettier.useEditorConfig": false
 }

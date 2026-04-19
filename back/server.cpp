@@ -1,5 +1,6 @@
 #include "server.h"
 
+#include "apimodel.h"
 #include "crypto.h"
 #include "database.h"
 #include "filesystem.h"
@@ -7,10 +8,13 @@
 #include "logging.h"
 #include "search.h"
 #include "servercommon.h"
+#include "session.h"
 #include "stringutils.h"
 #include "video.h"
+#include "videosession.h"
 
 #include <httplib.h>
+#include <nlohmann/json.hpp>
 
 #include <stacktrace>
 
@@ -21,65 +25,49 @@ namespace server
     void set_logger(httplib::Server& server, LogController& video_log_controller);
     void set_exception_handler(httplib::Server& server);
 
-    void template_page(const httplib::Request& req, httplib::Response& res);
-    void static_file(const httplib::Request& req, httplib::Response& res);
+    void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
 
-    void admin_video_list(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void user_video_list(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void video_title(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void video_views(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void user_count(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void group_count(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void video_count(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void view_count(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void is_admin(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void is_super_admin(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void is_user(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void add_admin(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void add_user(const httplib::Request& req, httplib::Response& res, const Database& db);
+    // Auth
+    void refresh(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void login(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db);
+    void logout(const httplib::Request& req, httplib::Response& res, Session& session);
     void add_password(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_username(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_user_groups(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_password(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void delete_user(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void reset_user(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void is_first_connection(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void update_username(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void update_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
-    void user_name(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void user_id(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void user_list(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void admin_list(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void group_list(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void group_name(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void group_exists(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void add_group(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_group(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void delete_group(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void group_user_list(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void user_group_list(const httplib::Request& req, httplib::Response& res, const Database& db);
-
-    void add_video(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void update_video(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void delete_video(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void increment_video_views(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void video(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void video_size(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void video_playlist(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void video_segment(const httplib::Request& req, httplib::Response& res, const Database& db);
+    // Video (user)
+    void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
+    void video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void start_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
+    void reset_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
 
-    void video_group_right_list(const httplib::Request& req, httplib::Response& res, const Database& db);
-    void video_user_right_list(const httplib::Request& req, httplib::Response& res, const Database& db);
+    // Admin - stats
+    void admin_stats(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+
+    // Admin - videos
+    void admin_video_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_add_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_update_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_delete_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+
+    // Admin - admins
+    void admin_admin_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_add_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+
+    // Admin - users
+    void admin_user_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_add_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_update_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_reset_user_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_delete_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+
+    // Admin - groups
+    void admin_group_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_add_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_update_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_delete_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 }
 
 int server::start()
@@ -97,75 +85,71 @@ int server::start()
     }
 
     httplib::Server server;
+    Session session;
+    VideoSession video_session;
+
+#ifdef _DEBUG
+    server.set_post_routing_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
+        res.set_header("Last-Modified", logging::time_local());
+        res.set_header("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0");
+        res.set_header("Pragma", "no-cache");
+        res.set_header("Expires", "-1");
+    });
+
+    const std::filesystem::path source_dir{ std::filesystem::current_path() / "../../../" };
+    server.set_mount_point("/build", (source_dir / "build/").string());
+    server.set_mount_point("/node_modules", (source_dir / "node_modules/").string());
+    const std::filesystem::path bundle_dir{ source_dir / "front/" };
+#else
+    const std::filesystem::path bundle_dir{ std::filesystem::current_path() };
+#endif
+    server.set_mount_point("/", bundle_dir.string());
 
     LogController video_log_controller("/video/");
     set_logger(server, video_log_controller);
     set_exception_handler(server);
 
     server
-        .Get("/html/:html", sc::serve(template_page))
-        .Get(sc::static_regexp_path(), sc::serve(static_file))
+        .Get(R"((?!\/api\/).*)", sc::serve(index, std::cref(bundle_dir)))
 
-        .Get("/admin-video-list", sc::serve(admin_video_list, std::cref(db)))
-        .Get("/user-video-list", sc::serve(user_video_list, std::cref(db)))
+        .Get("/api/refresh", sc::serve(refresh, std::cref(session), std::cref(db)))
+        .Post("/api/login", sc::serve(login, std::ref(session), std::cref(db)))
+        .Post("/api/logout", sc::serve(logout, std::ref(session)))
+        .Post("/api/add-password", sc::serve(add_password, std::cref(db)))
+        .Post("/api/update-username", sc::serve(update_username, std::cref(session), std::cref(db)))
+        .Post("/api/update-password", sc::serve(update_password, std::cref(session), std::cref(db)))
 
-        .Get("/title/:video_id", sc::serve(video_title, std::cref(db)))
-        .Get("/views/:video_id", sc::serve(video_views, std::cref(db)))
+        .Get("/api/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
+        .Get("/api/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::cref(db), std::ref(video_session)))
+        .Get("/api/video/:video_id/:segment", sc::serve(video_segment, std::cref(session), std::cref(db), std::ref(video_session)))
+        .Post("/api/start-video-session/:video_id", sc::serve(start_video_session, std::cref(session), std::cref(db), std::ref(video_session)))
+        .Post("/api/reset-video-session/:video_id", sc::serve(reset_video_session, std::cref(session), std::cref(db), std::ref(video_session)))
 
-        .Get("/user-count", sc::serve(user_count, std::cref(db)))
-        .Get("/group-count", sc::serve(group_count, std::cref(db)))
-        .Get("/video-count", sc::serve(video_count, std::cref(db)))
-        .Get("/view-count", sc::serve(view_count, std::cref(db)))
+        .Get("/api/admin/stats", sc::serve(admin_stats, std::cref(session), std::cref(db)))
 
-        .Get("/is-admin", sc::serve(is_admin, std::cref(db)))
-        .Get("/is-super-admin", sc::serve(is_super_admin, std::cref(db)))
-        .Get("/is-user", sc::serve(is_user, std::cref(db)))
+        .Get("/api/admin/video-list", sc::serve(admin_video_list, std::cref(session), std::cref(db)))
+        .Post("/api/admin/add-video", sc::serve(admin_add_video, std::cref(session), std::cref(db)))
+        .Post("/api/admin/update-video/:video_id", sc::serve(admin_update_video, std::cref(session), std::cref(db)))
+        .Post("/api/admin/delete-video/:video_id", sc::serve(admin_delete_video, std::cref(session), std::cref(db)))
+        .Get("/api/admin/download-video/:video_id", sc::serve(admin_download_video, std::cref(session), std::cref(db)))
 
-        .Get("/user-name", sc::serve(user_name, std::cref(db)))
-        .Get("/user-id", sc::serve(user_id, std::cref(db)))
+        .Get("/api/admin/admin-list", sc::serve(admin_admin_list, std::cref(session), std::cref(db)))
+        .Post("/api/admin/add-admin", sc::serve(admin_add_admin, std::cref(session), std::cref(db)))
 
-        .Post("/add-admin", sc::serve(add_admin, std::cref(db)))
-        .Post("/add-user", sc::serve(add_user, std::cref(db)))
-        .Post("/add-password", sc::serve(add_password, std::cref(db)))
-        .Post("/update-username", sc::serve(update_username, std::cref(db)))
-        .Post("/update-user-groups", sc::serve(update_user_groups, std::cref(db)))
-        .Post("/update-password", sc::serve(update_password, std::cref(db)))
-        .Post("/reset-user", sc::serve(reset_user, std::cref(db)))
-        .Post("/delete-user", sc::serve(delete_user, std::cref(db)))
-        .Post("/is-first-connection", sc::serve(is_first_connection, std::cref(db)))
-        .Post("/is-valid-user", sc::serve(is_valid_user, std::cref(db)))
+        .Get("/api/admin/user-list", sc::serve(admin_user_list, std::cref(session), std::cref(db)))
+        .Post("/api/admin/add-user", sc::serve(admin_add_user, std::cref(session), std::cref(db)))
+        .Post("/api/admin/update-user/:user_id", sc::serve(admin_update_user, std::cref(session), std::cref(db)))
+        .Post("/api/admin/reset-user-password/:user_id", sc::serve(admin_reset_user_password, std::cref(session), std::cref(db)))
+        .Post("/api/admin/delete-user/:user_id", sc::serve(admin_delete_user, std::cref(session), std::cref(db)))
 
-        .Get("/user-list", sc::serve(user_list, std::cref(db)))
-        .Get("/admin-list", sc::serve(admin_list, std::cref(db)))
-
-        .Get("/group-list", sc::serve(group_list, std::cref(db)))
-
-        .Get("/group-name", sc::serve(group_name, std::cref(db)))
-        .Get("/group-exists", sc::serve(group_exists, std::cref(db)))
-        .Post("/add-group", sc::serve(add_group, std::cref(db)))
-        .Post("/update-group/:group_id", sc::serve(update_group, std::cref(db)))
-        .Post("/delete-group/:group_id", sc::serve(delete_group, std::cref(db)))
-
-        .Get("/group-user-list/:group_id", sc::serve(group_user_list, std::cref(db)))
-        .Get("/user-group-list/:user_id", sc::serve(user_group_list, std::cref(db)))
-
-        .Post("/add-video", sc::serve(add_video, std::cref(db)))
-        .Post("/update-video/:video_id", sc::serve(update_video, std::cref(db)))
-        .Post("/delete-video/:video_id", sc::serve(delete_video, std::cref(db)))
-        .Post("/increment-video-views/:video_id", sc::serve(increment_video_views, std::cref(db)))
-        .Get("/video/:video_id", sc::serve(video, std::cref(db)))
-        .Get("/video-size/:video_id", sc::serve(video_size, std::cref(db)))
-        .Get("/video/:video_id/playlist", sc::serve(video_playlist, std::cref(db)))
-        .Get("/video/:video_id/:segment", sc::serve(video_segment, std::cref(db)))
-        .Get("/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
-        .Get("/has-video-right/:video_id", sc::serve(has_video_right, std::cref(db)))
-
-        .Get("/video-group-right-list/:video_id", sc::serve(video_group_right_list, std::cref(db)))
-        .Get("/video-user-right-list/:video_id", sc::serve(video_user_right_list, std::cref(db)));
+        .Get("/api/admin/group-list", sc::serve(admin_group_list, std::cref(session), std::cref(db)))
+        .Post("/api/admin/add-group", sc::serve(admin_add_group, std::cref(session), std::cref(db)))
+        .Post("/api/admin/update-group/:group_id", sc::serve(admin_update_group, std::cref(session), std::cref(db)))
+        .Post("/api/admin/delete-group/:group_id", sc::serve(admin_delete_group, std::cref(session), std::cref(db)));
 
     const std::string host{ sc::get_env("BACK_HOST", "0.0.0.0") };
-    const int port{ su::string_to_int(sc::get_env("BACK_PORT", "5000")) };
-    logging::info{ "Serving HTTP on {0} port {1} ...", host, port };
+    const int port{ su::string_to_int(sc::get_env("BACK_PORT", "8080")) };
+    logging::info{ "Serving HTTP on http://{0}:{1} ...", host, port };
     return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
@@ -221,664 +205,834 @@ inline void server::set_exception_handler(httplib::Server& server)
     });
 }
 
-inline void server::template_page(const httplib::Request& req, httplib::Response& res)
+inline void server::index(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
-    const std::string html{ req.path_params.at("html") };
-    const std::filesystem::path html_path{ std::filesystem::current_path() / "templates" / html };
-    res.set_file_content(html_path.string(), "text/html");
+    static const std::string index_file{ (bundle_dir / "index.html").string() };
+    res.set_file_content(index_file);
 }
 
-inline void server::static_file(const httplib::Request& req, httplib::Response& res)
+inline void server::refresh(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    const std::string file{ req.matches[1] };
-    const std::filesystem::path file_path{ std::filesystem::current_path() / "static" / file };
-    res.set_file_content(file_path.string()); // let content_type empty, httplib will find the right type
-    // if supported in https://github.com/yhirose/cpp-httplib?tab=readme-ov-file#static-file-server
+    ConnectedUser user;
+
+    const std::string cookie{ req.get_header_value("Cookie") };
+    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
+    if (session.is_valid_session(session_id)) {
+        const int user_id{ su::string_to_int(session.user_from_session(session_id)) };
+        const bool is_admin{ db.is_admin(user_id) };
+        user.id = user_id;
+        user.name = db.user_name(user_id);
+        user.is_admin = is_admin;
+        if (is_admin) {
+            user.videos = db.admin_video_list();
+        } else {
+            user.videos = db.user_video_list(user_id);
+        }
+    } else {
+        user.videos = db.no_user_video_list();
+    }
+
+    res.set_content(nlohmann::json(user).dump(), "application/json");
 }
 
 namespace server
 {
-    std::vector<std::string> transform(const std::vector<int>& list);
-    std::vector<int> transform(const std::vector<std::string>& list);
-    std::vector<int> extract(const Database& db, const std::string& search, const std::vector<int>& ids);
-}
-
-inline std::vector<std::string> server::transform(const std::vector<int>& list)
-{
-    std::vector<std::string> str_list(list.size());
-    std::ranges::transform(list, str_list.begin(), su::int_to_string);
-    return str_list;
-}
-
-inline std::vector<int> server::transform(const std::vector<std::string>& list)
-{
-    std::vector<int> int_list(list.size());
-    std::ranges::transform(list, int_list.begin(), su::string_to_int);
-    return int_list;
-}
-
-inline std::vector<int> server::extract(const Database& db, const std::string& search, const std::vector<int>& ids)
-{
-    std::unordered_map<std::string, int> title_ids;
-    title_ids.reserve(ids.size());
-    std::ranges::transform(ids, std::inserter(title_ids, title_ids.end()),
-                           [&db](int id) -> decltype(title_ids)::value_type {
-                               return std::make_pair(db.video_title(id), id);
-                           });
-    return search::extract(search, title_ids);
-}
-
-inline void server::admin_video_list(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    std::vector ids{ db.admin_video_list() };
-    if (req.has_param("search")) {
-        const std::string search{ req.get_param_value("search") };
-        ids = extract(db, search, ids);
+    inline void register_session(const httplib::Request& req, httplib::Response& res, Session& session, int user_id)
+    {
+        const std::string session_id{ session.create_session(su::int_to_string(user_id)) };
+        res.set_header("Set-Cookie", session.insert_session_id_to_cookie(req.get_header_value("Host"), session_id));
     }
 
-    const std::vector str_ids{ transform(ids) };
-    res.set_content(su::join(str_ids), "plain/text");
-}
-
-inline void server::user_video_list(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    std::vector ids{ db.no_user_video_list() };
-    if (req.has_header("user_id")) {
-        const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
-        const std::vector user_ids{ db.user_video_list(user_id) };
-#ifdef __cpp_lib_containers_ranges
-        ids.append_range(user_ids);
-#else
-        ids.insert(ids.end(), user_ids.cbegin(), user_ids.cend());
-#endif
+    // Returns session_id from cookie, or empty string if not present/valid
+    inline std::string session_id_from_req(const httplib::Request& req)
+    {
+        return Session::extract_session_id_from_cookie(req.get_header_value("Cookie"));
     }
 
-    if (req.has_param("search")) {
-        const std::string search{ req.get_param_value("search") };
-        ids = extract(db, search, ids);
+    // Returns user_id or -1 if not authenticated
+    inline int authenticated_user(const httplib::Request& req, const Session& session)
+    {
+        const std::string session_id{ session_id_from_req(req) };
+        if (!session.is_valid_session(session_id)) {
+            return -1;
+        }
+        return su::string_to_int(session.user_from_session(session_id));
     }
 
-    const std::vector str_ids{ transform(ids) };
-    res.set_content(su::join(str_ids), "plain/text");
+    // Returns user_id if authenticated and admin, else -1
+    inline int authenticated_admin(const httplib::Request& req, const Session& session, const Database& db)
+    {
+        const int user_id{ authenticated_user(req, session) };
+        if (user_id == -1 || !db.is_admin(user_id)) {
+            return -1;
+        }
+        return user_id;
+    }
+
+    // Extracts all values for a given url search param form key
+    // Extracts all values for a given form data key
+    // Conversion [].toString => [].join(',')
+    inline std::vector<int> extract_ids(const std::string& value)
+    {
+        return su::split(value, ',') |
+               std::views::transform(su::string_to_int) |
+               std::views::filter([](int i) { return i > 0; }) |
+               std::ranges::to<std::vector<int>>();
+    }
 }
 
-inline void server::video_title(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::login(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db)
 {
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string video_title{ db.video_title(video_id) };
-    res.set_content(video_title, "plain/text");
-}
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
 
-inline void server::video_views(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const int video_views{ db.video_views(video_id) };
-    res.set_content(su::int_to_string(video_views), "plain/text");
-}
-
-inline void server::user_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
-{
-    const int count{ db.user_count() };
-    res.set_content(su::int_to_string(count), "plain/text");
-}
-
-inline void server::group_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
-{
-    const int count{ db.group_count() };
-    res.set_content(su::int_to_string(count), "plain/text");
-}
-
-inline void server::video_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
-{
-    const int count{ db.video_count() };
-    res.set_content(su::int_to_string(count), "plain/text");
-}
-
-inline void server::view_count(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
-{
-    const int count{ db.view_count() };
-    res.set_content(su::int_to_string(count), "plain/text");
-}
-
-inline void server::is_admin(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_header("user_id")) {
-        logging::error{ "Missing header data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    if (username.empty()) {
+        res.status = httplib::StatusCode::NotFound_404;
+        res.set_content("Empty username", "plain/text");
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
-    const bool is_admin{ db.is_admin(user_id) };
-    res.set_content(su::bool_to_string(is_admin), "plain/text");
-}
-
-inline void server::is_super_admin(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_header("user_id")) {
-        logging::error{ "Missing header data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
-    const bool is_super_admin{ db.is_super_admin(user_id) };
-    res.set_content(su::bool_to_string(is_super_admin), "plain/text");
-}
-
-inline void server::is_user(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_header("user_id")) {
-        logging::error{ "Missing header data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
-    const bool is_user{ db.is_user(user_id) };
-    res.set_content(su::bool_to_string(is_user), "plain/text");
-}
-
-inline void server::user_name(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_header("user_id")) {
-        logging::error{ "Missing header data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
-    const std::string username{ db.user_name(user_id) };
-    res.set_content(username, "plain/text");
-}
-
-inline void server::user_id(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_header("username")) {
-        logging::error{ "Missing header data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const std::string username{ req.get_header_value("username") };
     const int user_id{ db.user_id(username) };
-    res.set_content(su::int_to_string(user_id), "plain/text");
-}
-
-inline void server::add_admin(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("username")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    if (user_id == -1) {
+        res.status = httplib::StatusCode::NotFound_404;
+        res.set_content("Unknown username", "plain/text");
         return;
     }
 
-    const std::string username{ req.get_param_value("username") };
-    const std::string salt{ crypto::random_string() };
-    logging::debug{ "Salt: {}", salt };
-    const std::optional admin_id{ db.add_admin(username, salt) };
-    if (!admin_id.has_value()) {
-        logging::error{ R"(Fail to add admin "{}")", username };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    const std::optional db_password{ db.user_password(user_id) };
+    const bool is_first_connection{ !db_password || db_password->empty() };
+    if (is_first_connection) {
+        res.status = httplib::StatusCode::NoContent_204;
         return;
     }
 
-    res.set_content(su::int_to_string(admin_id.value()), "plan/text");
-}
-
-inline void server::add_user(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("username") || !req.has_param("group_ids")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    const std::string salt{ db.user_salt(user_id) };
+    const std::string password{ crypto::sha512(req.get_param_value("password")) };
+    if (password.empty() || crypto::password(password, salt) != *db_password) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Invalid password", "plain/text");
         return;
     }
 
-    const std::string username{ req.get_param_value("username") };
-    const std::string salt{ crypto::random_string() };
-
-    const std::vector group_ids{ su::split(req.get_param_value("group_ids")) };
-
-    logging::debug{ "Salt: {}", salt };
-    const std::optional user_id{
-        db.add_user(username, salt)
-            .and_then([&](int user_id) -> std::optional<int> {
-                return db.add_user_groups(user_id, transform(group_ids)) ? std::optional(user_id) : std::nullopt;
-            })
-    };
-
-    if (!user_id.has_value()) {
-        logging::error{ R"(Fail to add user "{}")", username };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    res.set_content(su::int_to_string(user_id.value()), "plan/text");
+    register_session(req, res, session, user_id);
+    res.status = httplib::StatusCode::OK_200;
 }
 
 inline void server::add_password(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    if (!req.has_param("password") || !req.has_param("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    const int user_id{ db.user_id(username) };
+    if (user_id == -1) {
+        res.status = httplib::StatusCode::NotFound_404;
+        res.set_content("Unknown username", "plain/text");
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
+    const std::optional db_password{ db.user_password(user_id) };
+    const bool is_first_connection{ !db_password || db_password->empty() };
+    if (!is_first_connection) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        res.set_content("Password already set", "plain/text");
+        return;
+    }
+
+    const std::string password{ crypto::sha512(req.get_param_value("password")) };
+    if (password.empty()) {
+        res.status = httplib::StatusCode::NotAcceptable_406;
+        res.set_content("Invalid password", "plain/text");
+        return;
+    }
+
+    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirmPassword")) };
+    if (confirm_password != password) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Passwords do not match", "plain/text");
+        return;
+    }
+
     const std::string salt{ db.user_salt(user_id) };
-    const std::string password{ crypto::password(req.get_param_value("password"), salt) };
-
-    const std::optional success_user_id{ db.add_password(user_id, password) };
+    const std::string new_db_password{ crypto::password(password, salt) };
+    const std::optional success_user_id{ db.add_password(user_id, new_db_password) };
     if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to add password "{}")", user_id };
-        res.status = httplib::StatusCode::InternalServerError_500;
+        res.status = httplib::StatusCode::Locked_423;
+        res.set_content("Fail to set new password", "plain/text");
         return;
     }
 
-    res.set_content(su::int_to_string(success_user_id.value()), "plan/text");
+    logging::info{ "User password updated by {}", user_id };
+    res.status = httplib::StatusCode::OK_200;
 }
 
-inline void server::update_username(const httplib::Request& req, httplib::Response& res, const Database& db)
+// Auth
+
+inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
 {
-    if (!req.has_param("username") || !req.has_param("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
-    const std::string username{ req.get_param_value("username") };
-
-    const std::optional success_user_id{ db.update_username(user_id, username) };
-    if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to update username "{}")", user_id };
-        return;
-    }
+    const std::string session_id{ session_id_from_req(req) };
+    session.remove_session(session_id);
+    res.status = httplib::StatusCode::OK_200;
 }
 
-inline void server::update_user_groups(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::update_username(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (!req.has_param("group_ids") || !req.has_param("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    const int user_id{ authenticated_user(req, session) };
+    if (user_id == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
-    const std::vector group_ids{ su::split(req.get_param_value("group_ids")) };
+    const std::string new_username{ req.get_param_value("username") };
+    const std::string password{ crypto::sha512(req.get_param_value("password")) };
 
-    if (!db.update_user_groups(user_id, transform(group_ids))) {
-        logging::error{ R"(Fail to update user groups "{}")", user_id };
-        return;
-    }
-}
-
-inline void server::update_password(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("password") || !req.has_param("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    if (new_username.empty() || password.empty()) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing fields", "plain/text");
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
+    const std::optional db_password{ db.user_password(user_id) };
     const std::string salt{ db.user_salt(user_id) };
-    const std::string password{ crypto::password(req.get_param_value("password"), salt) };
-
-    const std::optional success_user_id{ db.update_password(user_id, password) };
-    if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to update password "{}")", user_id };
+    if (!db_password || crypto::password(password, salt) != *db_password) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        res.set_content("Invalid password", "plain/text");
         return;
     }
+
+    const std::optional success{ db.update_username(user_id, new_username) };
+    if (!success) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update username", "plain/text");
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
 }
 
-inline void server::reset_user(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::update_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (!req.has_param("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    const int user_id{ authenticated_user(req, session) };
+    if (user_id == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
+    const std::string old_password{ crypto::sha512(req.get_param_value("oldPassword")) };
+    const std::string new_password{ crypto::sha512(req.get_param_value("newPassword")) };
+    const std::string confirm_password{ crypto::sha512(req.get_param_value("confirmPassword")) };
 
-    const std::optional success_user_id{ db.clear_password(user_id) };
-    if (!success_user_id.has_value()) {
-        logging::error{ R"(Fail to clear password "{}")", user_id };
-        return;
-    }
-}
-
-inline void server::delete_user(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    if (old_password.empty() || new_password.empty() || confirm_password.empty()) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing fields", "plain/text");
         return;
     }
 
-    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
-    if (!db.delete_user(user_id)) {
-        logging::error{ R"(Fail to delete user "{}")", user_id };
-        return;
-    }
-}
-
-inline void server::is_first_connection(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
-    const std::optional database_password{ db.user_password(user_id) };
-    const bool is_first_connection{ !database_password.has_value() };
-    res.set_content(su::bool_to_string(is_first_connection), "plain/text");
-}
-
-inline void server::is_valid_user(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("password") || !req.has_param("user_id")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const int user_id{ su::string_to_int(req.get_param_value("user_id")) };
     const std::string salt{ db.user_salt(user_id) };
-    const std::string password{ crypto::password(req.get_param_value("password"), salt) };
+    const std::optional db_password{ db.user_password(user_id) };
+    if (!db_password || crypto::password(old_password, salt) != *db_password) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        res.set_content("Invalid old password", "plain/text");
+        return;
+    }
 
-    const std::optional database_password{ db.user_password(user_id) };
-    const bool is_valid_user{ database_password.has_value() && password == database_password.value() };
-    res.set_content(su::bool_to_string(is_valid_user), "plain/text");
-}
+    if (new_password != confirm_password) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Passwords do not match", "plain/text");
+        return;
+    }
 
-inline void server::user_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
-{
-    const std::vector user_ids{ transform(db.user_list()) };
-    res.set_content(su::join(user_ids), "plain/text");
-}
-
-inline void server::admin_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
-{
-    const std::vector user_ids{ transform(db.admin_list()) };
-    res.set_content(su::join(user_ids), "plain/text");
-}
-
-inline void server::group_list(const httplib::Request& /*req*/, httplib::Response& res, const Database& db)
-{
-    const std::vector group_ids{ transform(db.group_list()) };
-    res.set_content(su::join(group_ids), "plain/text");
-}
-
-inline void server::group_name(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_header("group_id")) {
-        logging::error{ "Missing header data" };
+    const std::string new_db_password{ crypto::password(new_password, salt) };
+    const std::optional success{ db.update_password(user_id, new_db_password) };
+    if (!success) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update password", "plain/text");
         return;
     }
 
-    const int group_id{ su::string_to_int(req.get_header_value("group_id")) };
-    const std::string name{ db.group_name(group_id) };
-    res.set_content(name, "plain/text");
+    res.status = httplib::StatusCode::OK_200;
 }
 
-inline void server::group_exists(const httplib::Request& req, httplib::Response& res, const Database& db)
+// Video (user)
+
+namespace server
 {
-    if (!req.has_header("name")) {
-        logging::error{ "Missing header data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
+    // Check access rights
+    inline bool has_video_right(const httplib::Request& req, const Session& session, const Database& db)
+    {
+        const std::string session_id{ session_id_from_req(req) };
+
+        const bool is_logged{ session.is_valid_session(session_id) };
+        const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+
+        if (is_logged) {
+            const int user_id{ su::string_to_int(session.user_from_session(session_id)) };
+            return db.is_admin(user_id) || db.has_video_right(video_id, user_id);
+        }
+
+        return db.has_video_right(video_id);
     }
 
-    const std::string group_name{ req.get_header_value("name") };
-    const bool group_exists{ db.group_exists(group_name) };
-    res.set_content(su::bool_to_string(group_exists), "plain/text");
-}
-
-inline void server::add_group(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("name") || !req.has_param("user_ids")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const std::string group_name{ req.get_param_value("name") };
-    const std::vector group_user_ids{ su::split(req.get_param_value("user_ids")) };
-
-    const std::optional group_id{
-        db.add_group(group_name)
-            .and_then([&](int group_id) -> std::optional<int> {
-                return db.add_group_users(group_id, transform(group_user_ids)) ? std::optional(group_id) : std::nullopt;
-            })
-    };
-
-    if (!group_id.has_value()) {
-        logging::error{ R"(Fail to add group "{}")", group_name };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    res.set_content(su::int_to_string(group_id.value()), "plain/text");
-}
-
-inline void server::update_group(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("name") || !req.has_param("user_ids")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
-    const std::string group_name{ req.get_param_value("name") };
-    const std::vector group_user_ids{ su::split(req.get_param_value("user_ids")) };
-
-    const std::optional success{
-        db.update_group_name(group_id, group_name)
-            .transform([&](int group_id) -> bool {
-                return db.update_group_users(group_id, transform(group_user_ids));
-            })
-    };
-
-    if (!success.value_or(false)) {
-        logging::error{ R"(Fail to update group "{}")", group_id };
-        return;
+    // block video if not in watch-video page
+    inline bool request_from_watch_video(const httplib::Request& req, int video_id)
+    {
+        const std::string referrer{ req.get_header_value("Referer") };
+        return referrer.ends_with("/watch-video/" + su::int_to_string(video_id)) || referrer.ends_with("/videoserviceworker.js");
     }
 }
 
-inline void server::delete_group(const httplib::Request& req, httplib::Response& /*res*/, const Database& db)
+inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session)
 {
-    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
-    if (!db.delete_group(group_id)) {
-        logging::error{ R"(Fail to delete group "{}")", group_id };
-        return;
-    }
-}
-
-inline void server::group_user_list(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
-
-    const std::vector users{ transform(db.group_user_list(group_id)) };
-    res.set_content(su::join(users), "plain/text");
-}
-
-inline void server::user_group_list(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
-
-    const std::vector groups{ transform(db.user_group_list(user_id)) };
-    res.set_content(su::join(groups), "plain/text");
-}
-
-inline void server::add_video(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("title") || !req.has_param("video") || !req.has_param("group_ids") || !req.has_param("user_ids")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    const std::string video_title{ req.get_param_value("title") };
-    const std::string video_content{ req.get_param_value("video") };
-    const std::string thumbnail_content{ video::thumbnail(video_content) };
-    const std::vector allowed_group_ids{ su::split(req.get_param_value("group_ids")) };
-    const std::vector allowed_user_ids{ su::split(req.get_param_value("user_ids")) };
-
-    const std::optional video_id{
-        db.add_video(video_title, video_content)
-            .and_then([&](int video_id) -> std::optional<int> {
-                const std::filesystem::path video_path{ db.hls_video_path(video_id) };
-                const bool converted{ video::convert_to_hls(video_content, video_path.c_str(), Database::hls_video_name(video_id)) };
-                return converted ? std::optional(video_id) : std::nullopt;
-            })
-            .and_then([&](int video_id) -> std::optional<int> {
-                return db.add_video_thumbnail(video_id, thumbnail_content);
-            })
-            .and_then([&](int video_id) -> std::optional<int> {
-                return db.add_video_group_rights(video_id, transform(allowed_group_ids)) ? std::optional(video_id) : std::nullopt;
-            })
-            .and_then([&](int video_id) -> std::optional<int> {
-                return db.add_video_user_rights(video_id, transform(allowed_user_ids)) ? std::optional(video_id) : std::nullopt;
-            })
-    };
-
-    if (!video_id.has_value()) {
-        logging::error{ R"(Fail to add video "{}")", video_title };
-        res.status = httplib::StatusCode::InternalServerError_500;
-        return;
-    }
-
-    res.set_content(su::int_to_string(video_id.value()), "plain/text");
-}
-
-inline void server::update_video(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    if (!req.has_param("title") || !req.has_param("group_ids") || !req.has_param("user_ids")) {
-        logging::error{ "Missing multipart form data" };
-        res.status = httplib::StatusCode::InternalServerError_500;
+    if (!has_video_right(req, session, db)) {
+        res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string video_title{ req.get_param_value("title") };
-    const std::vector allowed_group_ids{ su::split(req.get_param_value("group_ids")) };
-    const std::vector allowed_user_ids{ su::split(req.get_param_value("user_ids")) };
-
-    const std::optional success{
-        db.update_video_title(video_id, video_title)
-            .and_then([&](int video_id) -> std::optional<int> {
-                return db.update_video_group_rights(video_id, transform(allowed_group_ids)) ? std::optional(video_id) : std::nullopt;
-            })
-            .transform([&](int video_id) -> bool {
-                return db.update_video_user_rights(video_id, transform(allowed_user_ids));
-            })
-    };
-
-    if (!success.value_or(false)) {
-        logging::error{ R"(Fail to update video "{}")", video_id };
+    if (!request_from_watch_video(req, video_id)) {
+        res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
-}
 
-inline void server::delete_video(const httplib::Request& req, httplib::Response& /*res*/, const Database& db)
-{
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!db.delete_video(video_id)) {
-        logging::error{ R"(Fail to delete video "{}")", video_id };
+    const std::string playlist{ db.video_playlist(video_id) };
+    if (playlist.empty()) {
+        res.status = httplib::StatusCode::NotFound_404;
         return;
     }
-}
 
-inline void server::increment_video_views(const httplib::Request& req, httplib::Response& /*res*/, const Database& db)
-{
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!db.increment_video_views(video_id)) {
-        logging::error{ R"(Fail to increment video views "{}")", video_id };
-        return;
-    }
-}
-
-inline void server::video(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-
-    const std::size_t offset{
-        req.has_header("Offset")
-            ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Offset")))
-            : 0U
-    };
-
-    const std::size_t length{
-        req.has_header("Length")
-            ? static_cast<std::size_t>(su::string_to_int(req.get_header_value("Length")))
-            : static_cast<std::size_t>(db.video_size(video_id))
-    };
-
-    const std::string video{ db.video(video_id, offset, length) };
-    res.set_content(video, "video/mp4");
-}
-
-inline void server::video_size(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const int video_size{ db.video_size(video_id) };
-    res.set_content(su::int_to_string(video_size), "plain/text");
-}
-
-inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string video_playlist{ db.video_playlist(video_id) };
-    res.set_content(video_playlist, "application/vnd.apple.mpegurl");
-}
-
-inline void server::video_segment(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string segment{ req.path_params.at("segment") };
-    const std::string video_segment{ db.video_segment(video_id, segment) };
-    res.set_content(video_segment, "video/mp2t");
+    const std::string session_id{ session_id_from_req(req) };
+    video_session.add_session(session_id, su::int_to_string(video_id));
+    res.set_content(playlist, "application/vnd.apple.mpegurl");
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string thumbnail{ db.thumbnail(video_id) };
-    res.set_content(thumbnail, "image/png");
-}
-
-inline void server::has_video_right(const httplib::Request& req, httplib::Response& res, const Database& db)
-{
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-
-    bool has_video_right{ db.has_video_right(video_id) };
-    if (!has_video_right && req.has_header("user_id")) {
-        const int user_id{ su::string_to_int(req.get_header_value("user_id")) };
-        // check if user is admin
-        has_video_right = db.is_admin(user_id) || db.has_video_right(video_id, user_id);
+    const std::string content{ db.thumbnail(video_id) };
+    if (content.empty()) {
+        res.status = httplib::StatusCode::NotFound_404;
+        return;
     }
 
-    res.set_content(su::bool_to_string(has_video_right), "plain/text");
+    res.set_content(content, "image/jpeg");
 }
 
-inline void server::video_group_right_list(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session)
 {
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    if (!has_video_right(req, session, db)) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
 
-    const std::vector rights{ transform(db.video_group_right_list(video_id)) };
-    res.set_content(su::join(rights), "plain/text");
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    if (!request_from_watch_video(req, video_id)) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
+    const std::string segment{ req.path_params.at("segment") };
+    const std::string session_id{ session_id_from_req(req) };
+
+    if (!video_session.validate_segment_access(session_id, su::int_to_string(video_id), segment)) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const std::string content{ db.video_segment(video_id, segment) };
+    if (content.empty()) {
+        res.status = httplib::StatusCode::NotFound_404;
+        return;
+    }
+
+    res.set_content(content, "video/mp2t");
 }
 
-inline void server::video_user_right_list(const httplib::Request& req, httplib::Response& res, const Database& db)
+inline void server::start_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session)
 {
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    if (!has_video_right(req, session, db)) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
 
-    const std::vector rights{ transform(db.video_user_right_list(video_id)) };
-    res.set_content(su::join(rights), "plain/text");
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    if (!request_from_watch_video(req, video_id)) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
+    const std::string session_id{ session_id_from_req(req) };
+
+    video_session.start_session(session_id, su::int_to_string(video_id));
+    [[maybe_unused]] const bool views_incremented{ db.increment_video_views(video_id) };
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::reset_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session)
+{
+    if (!has_video_right(req, session, db)) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    if (!request_from_watch_video(req, video_id)) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
+    const std::string session_id{ session_id_from_req(req) };
+
+    video_session.reset_session(session_id, su::int_to_string(video_id));
+    res.status = httplib::StatusCode::OK_200;
+}
+
+// Admin - Stats
+
+inline void server::admin_stats(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const nlohmann::json stats{
+        { "userCount", db.user_count() },
+        { "videoCount", db.video_count() },
+        { "groupCount", db.group_count() },
+        { "viewCount", db.view_count() },
+    };
+    res.set_content(stats.dump(), "application/json");
+}
+
+// Admin - Videos
+
+inline void server::admin_video_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    std::vector<Video> videos{ db.admin_video_list() };
+    std::vector<AdminVideoInfo> admin_videos(videos.size());
+    std::ranges::transform(videos, admin_videos.begin(), [&db](const Video& video) {
+        return AdminVideoInfo{
+            .id = video.id,
+            .title = video.title,
+            .views = video.views,
+            .groups = db.video_group_right_list(video.id),
+            .users = db.video_user_right_list(video.id)
+        };
+    });
+
+    res.set_content(nlohmann::json(admin_videos).dump(), "application/json");
+}
+
+inline void server::admin_add_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.form.has_field("title") || !req.form.has_file("video")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing fields", "plain/text");
+        return;
+    }
+
+    const std::string video_title{ req.form.get_field("title") };
+    const std::string video_content{ req.form.get_file("video").content };
+    const std::string thumbnail_content{ video::thumbnail(video_content) };
+    const std::vector<int> group_ids{ extract_ids(req.form.get_field("groupIds")) };
+    const std::vector<int> user_ids{ extract_ids(req.form.get_field("userIds")) };
+
+    const std::optional video_id{
+        db.add_video(video_title, video_content)
+            .and_then([&](int video_id) -> std::optional<int> {
+                const std::filesystem::path video_path{ db.hls_video_path(video_id) };
+                const bool converted{ video::convert_to_hls(video_content, video_path.string(), Database::hls_video_name(video_id)) };
+                return converted ? std::optional(video_id) : std::nullopt;
+            })
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_video_thumbnail(id, thumbnail_content);
+            })
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_video_group_rights(id, group_ids) ? std::optional(id) : std::nullopt;
+            })
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_video_user_rights(id, user_ids) ? std::optional(id) : std::nullopt;
+            })
+    };
+
+    if (!video_id) {
+        logging::error{ R"(Fail to add video "{}")", video_title };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.set_content(nlohmann::json({ { "id", *video_id } }).dump(), "application/json");
+}
+
+inline void server::admin_update_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("title")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing fields", "plain/text");
+        return;
+    }
+
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_title{ req.get_param_value("title") };
+    const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
+    const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
+
+    const std::optional success{
+        db.update_video_title(video_id, video_title)
+            .and_then([&](int id) -> std::optional<int> {
+                return db.update_video_group_rights(id, group_ids) ? std::optional(id) : std::nullopt;
+            })
+            .transform([&](int id) -> bool {
+                return db.update_video_user_rights(id, user_ids);
+            })
+    };
+
+    if (!success.value_or(false)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::admin_delete_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    if (!db.delete_video(video_id)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::admin_download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const int size{ db.video_size(video_id) };
+    if (size <= 0) {
+        res.status = httplib::StatusCode::NotFound_404;
+        return;
+    }
+
+    const std::string content{ db.video(video_id, 0, static_cast<std::size_t>(size)) };
+    const std::string filename{ "video_" + su::int_to_string(video_id) + ".mp4" };
+    res.set_header("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+    res.set_content(content, "video/mp4");
+}
+
+// Admin - Admins
+
+inline void server::admin_admin_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    std::vector<User> admins{ db.admin_list() };
+    std::vector<AdminAdminInfo> admin_admins(admins.size());
+    std::ranges::transform(admins, admin_admins.begin(), [&db](const User& admin) {
+        return AdminAdminInfo{
+            .id = admin.id,
+            .name = admin.name,
+            .is_super_admin = db.is_super_admin(admin.id),
+            .is_logged_once = db.user_password(admin.id).has_value()
+        };
+    });
+
+    res.set_content(nlohmann::json(admin_admins).dump(), "application/json");
+}
+
+inline void server::admin_add_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("username")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing username", "plain/text");
+        return;
+    }
+
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    // User must already exist — promote them
+    const int user_id{ db.user_id(username) };
+    if (user_id == -1) {
+        res.status = httplib::StatusCode::NotFound_404;
+        res.set_content("Unknown username", "plain/text");
+        return;
+    }
+
+    if (db.is_admin(user_id)) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Already admin", "plain/text");
+        return;
+    }
+
+    // promote_to_admin: insert into admins table
+    const std::string salt{ crypto::random_string() };
+    const std::optional admin_id{ db.add_admin(username, salt) };
+    if (!admin_id) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.set_content(nlohmann::json({ { "id", *admin_id } }).dump(), "application/json");
+}
+
+// Admin - Users
+
+inline void server::admin_user_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    std::vector<User> users{ db.user_list() };
+    std::vector<AdminUserInfo> admin_users(users.size());
+    std::ranges::transform(users, admin_users.begin(), [&db](const User& user) {
+        return AdminUserInfo{
+            .id = user.id,
+            .name = user.name,
+            .groups = db.user_group_list(user.id),
+            .is_logged_once = db.user_password(user.id).has_value()
+        };
+    });
+
+    res.set_content(nlohmann::json(admin_users).dump(), "application/json");
+}
+
+inline void server::admin_add_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("username")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing username", "plain/text");
+        return;
+    }
+
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    const std::string salt{ crypto::random_string() };
+    const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
+
+    const std::optional user_id{
+        db.add_user(username, salt)
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_user_groups(id, group_ids) ? std::optional(id) : std::nullopt;
+            })
+    };
+
+    if (!user_id) {
+        logging::error{ R"(Fail to add user "{}")", username };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.set_content(nlohmann::json({ { "id", *user_id } }).dump(), "application/json");
+}
+
+inline void server::admin_update_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("username")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing username", "plain/text");
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+    const std::string username{ req.get_param_value("username") };
+
+    if (!db.update_username(user_id, username)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
+
+    if (!group_ids.empty() && !db.update_user_groups(user_id, group_ids)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::admin_reset_user_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+
+    if (!db.clear_password(user_id)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::admin_delete_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+    if (!db.delete_user(user_id)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+// Admin - Groups
+
+inline void server::admin_group_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    std::vector<Group> groups{ db.group_list() };
+    std::vector<AdminGroupInfo> admin_groups(groups.size());
+    std::ranges::transform(groups, admin_groups.begin(), [&db](const Group& group) {
+        return AdminGroupInfo{
+            .id = group.id,
+            .name = group.name,
+            .users = db.group_user_list(group.id)
+        };
+    });
+
+    res.set_content(nlohmann::json(admin_groups).dump(), "application/json");
+}
+
+inline void server::admin_add_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("name")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing name", "plain/text");
+        return;
+    }
+
+    const std::string group_name{ req.get_param_value("name") };
+    const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
+
+    const std::optional group_id{
+        db.add_group(group_name)
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_group_users(id, user_ids) ? std::optional(id) : std::nullopt;
+            })
+    };
+
+    if (!group_id) {
+        logging::error{ R"(Fail to add group "{}")", group_name };
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.set_content(nlohmann::json({ { "id", *group_id } }).dump(), "application/json");
+}
+
+inline void server::admin_update_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("name")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing name", "plain/text");
+        return;
+    }
+
+    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
+    const std::string group_name{ req.get_param_value("name") };
+    const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
+
+    const std::optional success{
+        db.update_group_name(group_id, group_name)
+            .transform([&](int id) -> bool {
+                return db.update_group_users(id, user_ids);
+            })
+    };
+
+    if (!success.value_or(false)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::admin_delete_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
+    if (!db.delete_group(group_id)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
 }

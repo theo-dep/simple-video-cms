@@ -4,6 +4,8 @@ project(simple-video-cms LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
+
 find_package(httplib REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(inja REQUIRED)
@@ -23,4 +25,3 @@ link_libraries(stdc++exp)
 
 add_subdirectory(common)
 add_subdirectory(back)
-add_subdirectory(front)

@@ -75,38 +75,38 @@ To personalize front and backends, there is few environment variables to know:
 
 #### Homepage
 
-![Homepage](./images/homepage.png "Homepage")
+![Homepage](./images/homepage.png 'Homepage')
 
 #### Login / Signup Page
 
-![Login Page](./images/login.png "Login Page")
+![Login Page](./images/login.png 'Login Page')
 
 #### Video Search Page
 
-![Search Page](./images/search.png "Search Page")
+![Search Page](./images/search.png 'Search Page')
 
 #### Upload Page
 
-![Upload Page](./images/upload.png "Upload Page")
+![Upload Page](./images/upload.png 'Upload Page')
 
 #### Video Page
 
-![Video Page](./images/video.jpg "Video Page")
+![Video Page](./images/video.jpg 'Video Page')
 
 #### Video Page Full Screen
 
-![Video Page Full Screen](./images/video_full.jpg "Video Page Full Screen")
+![Video Page Full Screen](./images/video_full.jpg 'Video Page Full Screen')
 
 #### Dashboard
 
-![Dashboard](./images/user_dash.png "Dashboard")
+![Dashboard](./images/user_dash.png 'Dashboard')
 
 ### Administrator
 
 #### Flagged Video List
 
-![Flagged Page](./images/flagged.png "Flagged Video List")
+![Flagged Page](./images/flagged.png 'Flagged Video List')
 
 #### Users List
 
-![Users page](./images/user_list.png "Login Page")
+![Users page](./images/user_list.png 'Login Page')

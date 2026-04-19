@@ -1,55 +1,41 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "(gdb) Launch Back",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/vcpkg/Debug/back",
+      "args": [],
+      "cwd": "${workspaceFolder}/build/vcpkg/Debug",
+      "preLaunchTask": "CMake: build",
+      "stopAtEntry": false,
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
         {
-            "name": "(gdb) Launch Front",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/vcpkg/front/Debug/front",
-            "args": [],
-            "cwd": "${workspaceFolder}/build/vcpkg/front/Debug",
-            "preLaunchTask": "CMake: build",
-            "stopAtEntry": false,
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
-        },
-        {
-            "name": "(gdb) Launch Back",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/vcpkg/back/Debug/back",
-            "args": [],
-            "cwd": "${workspaceFolder}/build/vcpkg/back/Debug",
-            "preLaunchTask": "CMake: build",
-            "stopAtEntry": false,
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-                {
-                    "description": "Enable pretty-printing for gdb",
-                    "text": "-enable-pretty-printing",
-                    "ignoreFailures": true
-                }
-            ]
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
         }
-    ],
-    "compounds": [
-        {
-            "name": "(gdb) Launch Back and Front",
-            "configurations": [
-                "(gdb) Launch Front",
-                "(gdb) Launch Back"
-            ]
-        }
-    ]
+      ]
+    },
+    {
+      "name": "(linux/chrome) Launch Front",
+      "type": "chrome",
+      "runtimeExecutable": "/usr/bin/brave-browser",
+      "request": "launch",
+      "url": "http://localhost:8080",
+      "webRoot": "${workspaceFolder}/front"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "(linux) Back/Front",
+      "configurations": ["(gdb) Launch Back", "(linux/chrome) Launch Front"]
+    }
+  ]
 }

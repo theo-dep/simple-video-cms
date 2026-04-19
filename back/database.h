@@ -1,5 +1,7 @@
 #pragma once
 
+#include "databasemodel.h"
+
 #include <filesystem>
 #include <functional>
 #include <mutex>
@@ -14,9 +16,9 @@ public:
 
     [[nodiscard]] bool create_tables() const;
 
-    std::vector<int> admin_video_list() const;
-    std::vector<int> user_video_list(int user_id) const;
-    std::vector<int> no_user_video_list() const;
+    std::vector<Video> admin_video_list() const;
+    std::vector<Video> user_video_list(int user_id) const;
+    std::vector<Video> no_user_video_list() const;
 
     std::string video_title(int id) const;
     int video_views(int id) const;
@@ -49,10 +51,10 @@ public:
     int video_count() const;
     int view_count() const;
 
-    std::vector<int> user_list() const;
-    std::vector<int> admin_list() const;
+    std::vector<User> user_list() const;
+    std::vector<User> admin_list() const;
 
-    std::vector<int> group_list() const;
+    std::vector<Group> group_list() const;
 
     std::string group_name(int id) const;
     bool group_exists(const std::string& name) const;
@@ -64,8 +66,8 @@ public:
     [[nodiscard]] bool update_user_groups(int user_id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool delete_group(int id) const;
 
-    std::vector<int> group_user_list(int id) const;
-    std::vector<int> user_group_list(int user_id) const;
+    std::vector<User> group_user_list(int id) const;
+    std::vector<Group> user_group_list(int user_id) const;
 
     [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
     static std::string hls_video_name(int id);
@@ -82,8 +84,8 @@ public:
     bool has_video_right(int id) const;
     bool has_video_right(int id, int user_id) const;
 
-    std::vector<int> video_group_right_list(int id) const;
-    std::vector<int> video_user_right_list(int id) const;
+    std::vector<Group> video_group_right_list(int id) const;
+    std::vector<User> video_user_right_list(int id) const;
 
 protected:
     std::filesystem::path base_path() const;

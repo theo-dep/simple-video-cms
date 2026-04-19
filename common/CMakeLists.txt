@@ -1,5 +1,6 @@
 set(target_name common)
 add_library(${target_name}
+    cookie.cpp
     crypto.cpp
     filesystem.cpp
     logging.cpp
