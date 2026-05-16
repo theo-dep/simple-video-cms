@@ -39,13 +39,13 @@ export function UserNav({ children, videoId = null }) {
 
   return html`
     <div class=${'header' + (hasChildren ? ' pure-g' : '')}>
-      <div class=${(hasChildren ? 'pure-u-1 pure-u-md-2-3 ' : '') + 'pure-menu pure-menu-horizontal'}>
+      <div class=${(hasChildren ? 'pure-u-1 pure-u-md-3-4 ' : '') + 'pure-menu pure-menu-horizontal'}>
         <a href="/" class="menu-link pure-menu-heading pure-menu-link">${websiteName}</a>
         <ul class="menu-list pure-menu-list">
           <${NavLinks} pages=${pages} />
         </ul>
       </div>
-      ${hasChildren && html`<div class="pure-u-1 pure-u-md-1-3">${children}</div>`}
+      ${hasChildren && html`<div class="pure-u-1 pure-u-md-1-4">${children}</div>`}
     </div>
   `;
 }
