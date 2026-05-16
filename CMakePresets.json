@@ -6,6 +6,7 @@
       "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "dist",
         "CMAKE_C_COMPILER": "clang-21",
         "CMAKE_CXX_COMPILER": "clang++-21",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"

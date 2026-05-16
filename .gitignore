@@ -1,5 +1,6 @@
 data/
 build/
 dist/
+front/index-prod.html
 node_modules/
 *.log*

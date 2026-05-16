@@ -9,9 +9,12 @@ import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
 import { Footer } from '../component/Footer.js';
 
-import VideoJSStyleSheet from 'video.js/video-js.css' with { type: 'css' };
-import VideoJSMobileUIStyleSheet from 'videojs-mobile-ui/videojs-mobile-ui.css' with { type: 'css' };
-import VideoJSYtStyleSheet from 'videojs-yt-style/videojs-yt-style.css' with { type: 'css' };
+import 'videojs-yt-style';
+import 'videojs-mobile-ui';
+
+import VideoJSStyleSheet from 'video.js/dist/video-js.css' with { type: 'css' };
+import VideoJSMobileUIStyleSheet from 'videojs-mobile-ui/dist/videojs-mobile-ui.css' with { type: 'css' };
+import VideoJSYtStyleSheet from 'videojs-yt-style/dist/videojs-yt-style.css' with { type: 'css' };
 
 const additionalVideoJSStyle = new CSSStyleSheet();
 additionalVideoJSStyle.replaceSync(`

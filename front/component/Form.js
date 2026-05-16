@@ -1,10 +1,10 @@
 import { html } from 'htm/preact';
 import { useState, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
+import MultiSelect from 'multi-select-dropdown-js/MultiSelect.js';
 import { InfoContent } from './InfoContent.js';
 import { SubmitButton } from './SubmitButton.js';
 import { Alert } from './Alert.js';
 
-import MultiSelect from 'multi-select-dropdown-js/MultiSelect.js';
 import MultiSelectStyleSheet from 'multi-select-dropdown-js/MultiSelect.css' with { type: 'css' };
 
 const additionalMultiSelectStyle = new CSSStyleSheet();
