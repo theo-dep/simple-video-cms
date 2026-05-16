@@ -1,7 +1,8 @@
 import { html } from 'htm/preact';
 import { useLocation } from 'preact-iso';
-import { user, websiteName } from '../store/auth.js';
+import { user } from '../store/auth.js';
 import { videoIdRedirected } from '../store/redirect.js';
+import { websiteName } from '../store/env.js';
 
 function NavLinks({ pages }) {
   return pages.map(

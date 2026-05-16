@@ -3,7 +3,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
-import { websiteName } from '../store/auth.js';
+import { websiteName } from '../store/env.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 

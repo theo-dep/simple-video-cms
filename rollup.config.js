@@ -48,6 +48,7 @@ export default [
       html({
         minify: true,
         minifyCss: true,
+        externalAssets: '/env.js',
         transformHtml: (html) => {
           return (
             html

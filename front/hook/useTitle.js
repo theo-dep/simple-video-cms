@@ -1,5 +1,5 @@
 import { useEffect } from 'preact/hooks';
-import { websiteName } from '../store/auth.js';
+import { websiteName } from '../store/env.js';
 
 export function useTitle(title) {
   useEffect(() => {

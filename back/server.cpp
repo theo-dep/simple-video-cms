@@ -147,6 +147,18 @@ int server::start()
         .Post("/api/admin/update-group/:group_id", sc::serve(admin_update_group, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-group/:group_id", sc::serve(admin_delete_group, std::cref(session), std::cref(db)));
 
+    { // runtime frontend environnement
+        const std::string website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
+        const std::string icon_path{ sc::get_env("ICON_PATH", {}) }; // bundled from front/assets
+        const nlohmann::json env_json{
+            { "websiteName", website_name },
+            { "iconPath", icon_path }
+        };
+        const std::string env_content{ "window.__ENV__ = " + env_json.dump() + ";" };
+        std::ofstream file(bundle_dir / "env.js", std::ios::out | std::ios::binary | std::ios::trunc);
+        file.write(env_content.data(), static_cast<std::streamoff>(env_content.size()));
+    }
+
     const std::string host{ sc::get_env("BACK_HOST", "0.0.0.0") };
     const int port{ su::string_to_int(sc::get_env("BACK_PORT", "8080")) };
     logging::info{ "Serving HTTP on http://{0}:{1} ...", host, port };

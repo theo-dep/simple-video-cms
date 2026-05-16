@@ -1,8 +1,6 @@
 import { signal } from '@preact/signals';
 import { api } from '../api.js';
 
-export const websiteName = signal('Simple Video CMS');
-
 const userId = signal(null);
 const userName = signal('');
 const isLogged = signal(false);

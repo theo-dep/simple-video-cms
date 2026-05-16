@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/node_modules/purecss/build/grids-responsive-min.css" />
     <link rel="stylesheet" href="/assets/styles.css" />
     <link rel="icon" href="/assets/img/icon.svg" type="image/png" />
+    <script src="/env.js"></script>
     <script type="importmap">
       {
         "imports": {
@@ -165,6 +166,14 @@
       </div>
     </div>
 
+    <script>
+      const env = window.__ENV__ ?? { websiteName: 'Simple Video CMS' };
+      document.title = `${document.title} - ${env.websiteName}`;
+
+      if (env.iconPath) {
+        document.querySelector('link[rel="icon"]').href = env.iconPath;
+      }
+    </script>
     <script type="module" src="/index.js"></script>
   </body>
 </html>
