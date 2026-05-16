@@ -2,14 +2,17 @@ import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 
-export default function AdminAddUser() {
+export default function AdminNewUser() {
   const { query, route } = useLocation();
   const isAdmin = query.isAdmin === 'true';
   const [groups, setGroups] = useState([]);
   const selectRef = useMultiSelect([groups]);
+
+  useTitle('New User');
 
   useEffect(() => {
     if (!isAdmin) {

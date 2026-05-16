@@ -1,11 +1,14 @@
 import { html } from 'htm/preact';
-import { user } from '../store/auth.js';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
+import { user } from '../store/auth.js';
 import { UserNav } from '../component/UserNav.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { FormContent } from '../component/Form.js';
 
-export default function UpdateUser() {
+export default function UserAccount() {
+  useTitle(`${user.name.value} Account`);
+
   async function onUsernameSubmit(e) {
     const form = e.target;
     const username = form.elements['username'].value.trim();

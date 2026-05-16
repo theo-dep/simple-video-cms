@@ -2,16 +2,19 @@ import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { selectedItem } from '../store/selection.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 
-export default function AdminUpdateGroup({ groupId }) {
+export default function AdminGroupSettings({ groupId }) {
   groupId = Number(groupId);
   const { route } = useLocation();
   const [group, setGroup] = useState(selectedItem.value);
   const [users, setUsers] = useState([]);
   const selectRef = useMultiSelect([group, users]);
+
+  useTitle(group ? `${group.name} Settings` : 'Group Settings');
 
   useEffect(() => {
     if (!group || group.id !== groupId) {

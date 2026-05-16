@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { selectedItem } from '../store/selection.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
@@ -14,6 +15,8 @@ export default function AdminUpdateVideo({ videoId }) {
   const [users, setUsers] = useState([]);
   const selectGroupsRef = useMultiSelect([video, groups]);
   const selectUsersRef = useMultiSelect([video, users]);
+
+  useTitle(video ? `${video.title} Settings` : 'Video Settings');
 
   useEffect(() => {
     if (!video || video.id !== videoId) {

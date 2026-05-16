@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { selectedItem } from '../store/selection.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
@@ -12,6 +13,8 @@ import { CloudArrowDownIcon } from '../svg/CloudArrowDownIcon.js';
 export default function AdminVideoList() {
   const { route } = useLocation();
   const [videos, setVideos] = useState(null);
+
+  useTitle('Video List');
 
   function load() {
     api
@@ -26,7 +29,7 @@ export default function AdminVideoList() {
 
   function updateVideo(video) {
     selectedItem.value = video;
-    route('/admin/update-video/' + video.id);
+    route('/admin/video-settings/' + video.id);
   }
 
   async function deleteVideo(id) {
@@ -43,18 +46,18 @@ export default function AdminVideoList() {
       (videos.length === 0
         ? html`
             <h1>Nothing uploaded yet</h1>
-            <h3><a href="/admin/add-video">Upload a new video</a></h3>
+            <h3><a href="/admin/new-video">Upload a new video</a></h3>
           `
         : html`
             <h1>Uploaded videos</h1>
-            <h3><a href="/admin/add-video">Upload a new video</a></h3>
+            <h3><a href="/admin/new-video">Upload a new video</a></h3>
             <table id="table" class="table pure-table pure-table-horizontal">
               <thead>
                 <tr>
                   <th></th>
                   <th>Video Name</th>
                   <th class="add-user">
-                    <a href="/admin/add-video">
+                    <a href="/admin/new-video">
                       <svg class="svg-button">
                         <title>Add</title>
                         <${CloudPlusIcon} />

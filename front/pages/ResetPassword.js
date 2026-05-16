@@ -2,16 +2,19 @@ import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
 import { PasswordInput } from '../component/PasswordInput.js';
 import { SubmitButton } from '../component/SubmitButton.js';
 import { Alert } from '../component/Alert.js';
 
-export default function AddPassword({ username = '' }) {
+export default function ResetPassword({ username = '' }) {
   const { route } = useLocation();
   const [alert, setAlert] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useTitle(`Reset ${username} Password`);
 
   async function onSubmit(e) {
     e.preventDefault();

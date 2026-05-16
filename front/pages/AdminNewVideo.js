@@ -2,11 +2,12 @@ import { html } from 'htm/preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { refreshAuth } from '../store/auth.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 
-export default function AdminAddVideo() {
+export default function AdminNewVideo() {
   const { route } = useLocation();
   const [fileName, setFileName] = useState('');
   const [groups, setGroups] = useState([]);
@@ -14,6 +15,8 @@ export default function AdminAddVideo() {
   const titleRef = useRef(null);
   const selectGroupsRef = useMultiSelect([groups]);
   const selectUsersRef = useMultiSelect([users]);
+
+  useTitle('New Video');
 
   useEffect(() => {
     api

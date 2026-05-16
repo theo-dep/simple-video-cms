@@ -2,9 +2,10 @@ import { html } from 'htm/preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import videojs from 'video.js';
+import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { user } from '../store/auth.js';
 import { videoIdRedirected } from '../store/redirect.js';
-import { api } from '../api.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
 import { Footer } from '../component/Footer.js';
@@ -47,6 +48,8 @@ export default function WatchVideo({ videoId }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const video = user.videos.value.find((v) => v.id === Number(videoId));
+
+  useTitle(video ? video.title : 'Watch Video');
 
   useEffect(() => {
     document.adoptedStyleSheets = [VideoJSStyleSheet, VideoJSMobileUIStyleSheet, VideoJSYtStyleSheet, additionalVideoJSStyle];

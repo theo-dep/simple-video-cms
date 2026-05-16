@@ -2,17 +2,20 @@ import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { selectedItem } from '../store/selection.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 
-export default function AdminUpdateUser({ userId }) {
+export default function AdminUserSettings({ userId }) {
   userId = Number(userId);
   const { query, route } = useLocation();
   const isAdmin = query.isAdmin === 'true';
   const [user, setUser] = useState(selectedItem.value);
   const [groups, setGroups] = useState([]);
   const selectRef = useMultiSelect([user, groups]);
+
+  useTitle(user ? `${user.name} Settings` : 'User Settings');
 
   useEffect(() => {
     if (!user || user.id !== userId) {

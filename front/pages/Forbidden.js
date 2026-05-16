@@ -1,8 +1,11 @@
 import { html } from 'htm/preact';
+import { useTitle } from '../hook/useTitle.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
 
 export default function Forbidden() {
+  useTitle('Forbidden');
+
   return html`
     <${UserNav} />
 

@@ -1,9 +1,10 @@
 import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
+import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { refreshAuth } from '../store/auth.js';
 import { videoIdRedirected } from '../store/redirect.js';
-import { api } from '../api.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
 import { PasswordInput } from '../component/PasswordInput.js';
@@ -16,6 +17,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
 
+  useTitle('Login');
+
   async function onLogin(e) {
     e.preventDefault();
     const form = e.target;
@@ -27,7 +30,7 @@ export default function Login() {
     try {
       const { status } = await api.login(username, password);
       if (status === 204) {
-        route('/add-password/' + encodeURIComponent(username));
+        route('/reset-password/' + encodeURIComponent(username));
         return;
       }
       await refreshAuth();
@@ -48,7 +51,7 @@ export default function Login() {
     e.preventDefault();
     const form = e.target;
     const username = form.elements['username'].value;
-    route('/add-password' + (username ? '/' + encodeURIComponent(username) : ''));
+    route('/reset-password' + (username ? '/' + encodeURIComponent(username) : ''));
   }
 
   return html`

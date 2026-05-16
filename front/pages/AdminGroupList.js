@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { selectedItem } from '../store/selection.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
@@ -11,6 +12,8 @@ import { GroupAddIcon } from '../svg/GroupAddIcon.js';
 export default function AdminGroupList() {
   const { route } = useLocation();
   const [groups, setGroups] = useState(null);
+
+  useTitle('Group List');
 
   function load() {
     api
@@ -25,7 +28,7 @@ export default function AdminGroupList() {
 
   function updateGroup(group) {
     selectedItem.value = group;
-    route('/admin/update-group/' + group.id);
+    route('/admin/group-settings/' + group.id);
   }
 
   async function deleteGroup(id) {
@@ -46,7 +49,7 @@ export default function AdminGroupList() {
             <tr>
               <th>Name</th>
               <th class="add-user">
-                <a href="/admin/add-group">
+                <a href="/admin/new-group">
                   <svg class="svg-button">
                     <title>Add group</title>
                     <${GroupAddIcon} />

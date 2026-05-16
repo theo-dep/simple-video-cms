@@ -1,8 +1,11 @@
 import { useEffect } from 'preact/hooks';
-import { user } from '../store/auth.js';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
+import { user } from '../store/auth.js';
 
 export default function Logout() {
+  useTitle('Logout');
+
   useEffect(() => {
     async function cleanup() {
       if ('serviceWorker' in navigator) {

@@ -1,14 +1,17 @@
 import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
-import { websiteName } from '../store/auth.js';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
+import { websiteName } from '../store/auth.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 
 export default function AdminDashboard() {
   const { route } = useLocation();
   const [stats, setStats] = useState(null);
+
+  useTitle('Admin Dashboard');
 
   useEffect(() => {
     api

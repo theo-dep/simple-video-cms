@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
 import { selectedItem } from '../store/selection.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
@@ -10,6 +11,8 @@ import { PersonAddIcon } from '../svg/PersonAddIcon.js';
 export default function AdminAdminList() {
   const { route } = useLocation();
   const [admins, setAdmins] = useState(null);
+
+  useTitle('Admin List');
 
   function load() {
     api
@@ -24,7 +27,7 @@ export default function AdminAdminList() {
 
   function updateAdmin(admin) {
     selectedItem.value = admin;
-    route('/admin/update-user/' + admin.id + '?isAdmin=true');
+    route('/admin/user-settings/' + admin.id + '?isAdmin=true');
   }
 
   async function resetUser(id) {
@@ -51,7 +54,7 @@ export default function AdminAdminList() {
             <tr>
               <th>Username</th>
               <th class="add-user">
-                <a href="/admin/add-user?isAdmin=true">
+                <a href="/admin/new-user?isAdmin=true">
                   <svg class="svg-button">
                     <title>Add admin</title>
                     <${PersonAddIcon} />
