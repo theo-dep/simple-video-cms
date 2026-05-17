@@ -1,19 +1,11 @@
 # Simple Video CMS
 
 A managed video sharing platform inspired by [VideoHub](https://github.com/sharadbhat/VideoHub).
-A back and front architecture video content management system with FFmpeg and SQLite.
+A web application video content management system with preact, cpp-httplib, FFmpeg and SQLite.
 
 [![Latest Release](https://gitlab.devau.co/theo/simple-video-cms/-/badges/release.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/releases) [![pipeline status](https://gitlab.devau.co/theo/simple-video-cms/badges/develop/pipeline.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/commits/develop)
 
-### Third Parties
-
-All third party files are available offline except for FFmpeg, zlib and libpng submodules.
-
-- [C++ third parties](third-party/Readme.md)
-- [CSS third parties](back/static/css/third-party/Readme.md)
-- [JavaScript third parties](back/static/js/third-party/Readme.md)
-
-### Local
+## Local
 
 For development purpose, files can be compiled with `clang LLVM` version 21.
 
@@ -22,21 +14,27 @@ Install [vcpkg](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started?
 Install development requirements:
 
 ```bash
-sudo apt install cmake clang-21 yasm ninja-build
+sudo apt install nodejs cmake clang-21 yasm ninja-build
 ```
 
-Then build (zlib, libpng, ffmpeg and servers):
+And Node.js dependencies:
+
+```bash
+npm install
+```
+
+Then build (zlib, libpng, ffmpeg and back server):
 
 ```bash
 cmake --preset vcpkg
 cmake --build --preset vcpkg-release --parallel
 ```
 
-This will generates server binaries in `build/vcpkg/front/Release/front` and `build/vcpkg/back/Release/back`. Build with `vcpkg-debug` preset to make debug binaries.
+This will generates server binary in `build/vcpkg/Release/back`. Build with `vcpkg-debug` preset to make debug binaries.
 
-Servers can be run using VS Code and CMake extension or with both commands `just start-front` and `just start-back`.
+Server can be run using VS Code and CMake extension or with commands `just start-dev` or `just start-prod`.
 
-### Docker
+## Docker
 
 To build docker images, install a release build in `dist`:
 
@@ -48,11 +46,10 @@ cmake --build --preset vcpkg-release --parallel --target install
 Then build images:
 
 ```bash
-docker build -f docker/front.containerfile -t simple-video-cms:front-latest dist
-docker build -f docker/back.containerfile -t simple-video-cms:back-latest dist
+docker build -f docker/Containerfile -t simple-video-cms:latest dist
 ```
 
-### Environment
+## Environment
 
 To personalize front and backends, there is few environment variables to know:
 
@@ -60,53 +57,105 @@ To personalize front and backends, there is few environment variables to know:
   - SUPER_ADMIN_USERNAME (default admin)
 - Server addresses:
   - BACK_HOST (default 0.0.0.0)
-  - BACK_PORT (default 5000)
-  - FRONT_HOST (default 0.0.0.0)
-  - FRONT_PORT (default 8080)
-  - BACK_SERVER_URL (default localhost:5000)
+  - BACK_PORT (default 8080)
 - Name of your hosted website:
   - WEBSITE_NAME (default Simple Video CMS)
 - Browser icon:
-  - ICON_PATH (default /static/img/icon.svg), mount a volume with your custom icon and set this variable to the path
+  - ICON_PATH (default /front/assets/img/icon.svg), mount a volume with your custom icon and set this variable to the path
 
-# Screenshots
+## Screenshots
 
-## Normal user
+TODO
 
-#### Homepage
+## Third Parties
 
-![Homepage](./images/homepage.png 'Homepage')
+All third party files are available offline.
 
-#### Login / Signup Page
+### C++
 
-![Login Page](./images/login.png 'Login Page')
+#### cpp-httplib
 
-#### Video Search Page
+- https://github.com/yhirose/cpp-httplib
+- MIT License
 
-![Search Page](./images/search.png 'Search Page')
+#### nlohmann/json
 
-#### Upload Page
+- https://github.com/nlohmann/json
+- MIT License
 
-![Upload Page](./images/upload.png 'Upload Page')
+#### sqlite3
 
-#### Video Page
+- https://github.com/sqlite/sqlite
+- Public Domain
 
-![Video Page](./images/video.jpg 'Video Page')
+#### sqlite_orm
 
-#### Video Page Full Screen
+- https://github.com/fnc12/sqlite_orm
+- AGPL License
 
-![Video Page Full Screen](./images/video_full.jpg 'Video Page Full Screen')
+#### FFmpeg
 
-#### Dashboard
+- https://git.ffmpeg.org/gitweb/ffmpeg
+- GNU LGPL v2 and GPL v2 for parts upgraded to v3
 
-![Dashboard](./images/user_dash.png 'Dashboard')
+#### zlib
 
-### Administrator
+- https://github.com/madler/zlib/
+- Copyright
 
-#### Flagged Video List
+#### libpng
 
-![Flagged Page](./images/flagged.png 'Flagged Video List')
+- https://github.com/pnggroup/libpng
+- PNG Reference Library License version 2
 
-#### Users List
+#### OpenSSL
 
-![Users page](./images/user_list.png 'Login Page')
+- https://www.openssl.org/
+- Apache-2.0
+
+### Javascript and CSS
+
+### preact
+
+- https://github.com/preactjs/preact
+- MIT License
+
+### Fuse.js
+
+- https://github.com/krisk/fuse
+- Apache License Version 2.0
+
+#### Pure.css
+
+- https://github.com/pure-css/pure
+- BSD Yahoo! Inc. License
+
+#### Video.js
+
+- https://github.com/videojs/video.js
+- Apache License Version 2.0
+
+#### videojs-mobile-ui
+
+- https://github.com/mister-ben/videojs-mobile-ui
+- MIT License
+
+#### videojs-yt-style
+
+- https://github.com/paidless/videojs-yt-style
+- Unlicensed
+
+#### Bootstrap Icons
+
+- https://github.com/twbs/icons
+- MIT License
+
+#### MultiSelect
+
+- https://github.com/codeshackio/multi-select-dropdown-js
+- MIT License
+
+#### SVG-Spinners
+
+- https://github.com/n3r4zzurr0/svg-spinners/blob/main/svg-css/blocks-shuffle-3.svg
+- MIT License

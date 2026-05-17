@@ -2,22 +2,12 @@ volumes:
   data:
 
 services:
-  front:
+  server:
     build:
       context: dist
-      dockerfile: docker/front.containerfile
-    environment:
-      BACK_SERVER_URL: back:5000
+      dockerfile: ../docker/Containerfile
     restart: unless-stopped
     volumes:
       - data:/data
     ports:
       - 8080:8080
-
-  back:
-    build:
-      context: dist
-      dockerfile: docker/back.containerfile
-    restart: unless-stopped
-    volumes:
-      - data:/data

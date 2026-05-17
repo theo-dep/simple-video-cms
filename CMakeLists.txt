@@ -8,8 +8,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
 
 find_package(httplib REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(inja REQUIRED)
-find_package(rapidfuzz REQUIRED)
 
 find_package(unofficial-sqlite3 REQUIRED)
 find_package(SqliteOrm REQUIRED)

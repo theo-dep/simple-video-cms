@@ -4,9 +4,7 @@
 #include "crypto.h"
 #include "database.h"
 #include "filesystem.h"
-#include "logcontroller.h"
 #include "logging.h"
-#include "search.h"
 #include "servercommon.h"
 #include "session.h"
 #include "stringutils.h"
@@ -22,7 +20,7 @@ namespace server
 {
     bool create_super_admin(const Database& db);
 
-    void set_logger(httplib::Server& server, LogController& video_log_controller);
+    void set_logger(httplib::Server& server);
     void set_exception_handler(httplib::Server& server);
 
     // Routes
@@ -107,8 +105,7 @@ int server::start()
 #endif
     server.set_mount_point("/", bundle_dir.string());
 
-    LogController video_log_controller("/video/");
-    set_logger(server, video_log_controller);
+    set_logger(server);
     set_exception_handler(server);
 
     server
@@ -187,18 +184,10 @@ inline bool server::create_super_admin(const Database& db)
     return true;
 }
 
-inline void server::set_logger(httplib::Server& server, LogController& video_log_controller)
+inline void server::set_logger(httplib::Server& server)
 {
-    server.set_logger([&video_log_controller](const httplib::Request& req, const httplib::Response& res) {
+    server.set_logger([](const httplib::Request& req, const httplib::Response& res) {
         const std::string log{ sc::log(req, res) };
-        if (video_log_controller.append(log)) {
-            return;
-        }
-
-        // flush video logs
-        video_log_controller.flush();
-
-        // log next log
         logging::raw_log(log);
     });
 }

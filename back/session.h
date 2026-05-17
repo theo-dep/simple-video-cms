@@ -13,26 +13,15 @@ public:
 
     // Create a new session for a user
     const std::string& create_session(const std::string& user_id, std::chrono::seconds max_age = std::chrono::days{ 30 });
-    const std::string& create_not_logged_session(std::chrono::seconds max_age = std::chrono::minutes{ 5 });
 
     // Get the user_id associated with a session ID
     const std::string& user_from_session(const std::string& session_id) const;
-
-    // Access to key, value map for a session_id
-    const std::string& value_from_session(const std::string& session_id, const std::string& key) const;
-    void insert_value_from_session(const std::string& session_id, const std::string& key, const std::string& value);
-    void remove_value_from_session(const std::string& session_id, const std::string& key);
-    const std::unordered_map<std::string, std::string>& values_from_session(const std::string& session_id) const;
 
     // Remove a session
     void remove_session(const std::string& session_id);
 
     // Check if a session is valid
     bool is_valid_session(const std::string& session_id) const;
-    bool is_not_logged_session(const std::string& session_id) const;
-
-    // Check if a session is valid from cookie header
-    bool is_valid_session_from_cookie(const std::string& cookie) const;
 
     // res.set_header("Set-Cookie", "Session-ID=" + session_id + "; HttpOnly");
     static std::string extract_session_id_from_cookie(const std::string& cookie);
@@ -48,7 +37,7 @@ private:
 
     struct Data
     {
-        std::unordered_map<std::string, std::string> store;
+        std::string user_id;
         std::chrono::system_clock::time_point creation;
         std::chrono::seconds max_age;
     };

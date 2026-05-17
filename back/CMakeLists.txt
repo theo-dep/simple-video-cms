@@ -1,9 +1,7 @@
 set(target_name back)
 add_executable(${target_name}
     database.cpp
-    logcontroller.cpp
     main.cpp
-    search.cpp
     server.cpp
     session.cpp
     video.cpp
@@ -11,7 +9,7 @@ add_executable(${target_name}
 )
 
 target_link_libraries(${target_name} PRIVATE
-    common rapidfuzz::rapidfuzz PNG::PNG ${FFMPEG_LIBRARIES}
+    common PNG::PNG ${FFMPEG_LIBRARIES}
     unofficial::sqlite3::sqlite3 sqlite_orm::sqlite_orm
 )
 
