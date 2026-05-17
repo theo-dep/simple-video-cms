@@ -25,6 +25,8 @@ namespace server
     void set_logger(httplib::Server& server, LogController& video_log_controller);
     void set_exception_handler(httplib::Server& server);
 
+    // Routes
+    void watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
     void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
 
     // Auth
@@ -110,6 +112,7 @@ int server::start()
     set_exception_handler(server);
 
     server
+        .Get("/watch-video/:id", sc::serve(watch_video, std::cref(bundle_dir), std::cref(db)))
         .Get(R"((?!\/api\/).*)", sc::serve(index, std::cref(bundle_dir)))
 
         .Get("/api/refresh", sc::serve(refresh, std::cref(session), std::cref(db)))
@@ -217,11 +220,73 @@ inline void server::set_exception_handler(httplib::Server& server)
     });
 }
 
+// Routes
+
+namespace server
+{
+    // Social media bots
+    inline bool is_bot(std::string user_agent)
+    {
+        static const std::vector<std::string> bots{
+            "facebookexternalhit", "twitterbot", "linkedinbot",
+            "whatsapp", "slackbot", "telegrambot", "discordbot"
+        };
+
+        su::lower(user_agent);
+
+        return std::ranges::find_if(bots, [&user_agent](const std::string& bot) {
+                   return user_agent.find(bot) != std::string::npos;
+               }) != bots.cend();
+    }
+}
+
+inline void server::watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db)
+{
+    const std::string user_agent{ req.get_header_value("User-Agent") };
+
+    if (is_bot(user_agent)) {
+        const std::string video_id{ req.path_params.at("id") };
+        const std::string host{ req.get_header_value("Host") };
+        const std::string title{ db.video_title(su::string_to_int(video_id)) };
+        static const std::string url_scheme{
+#ifdef _DEBUG
+            "http"
+#else
+            "https"
+#endif
+        };
+        const std::string description{ "Watch " + title + " video" };
+        const std::string thumbnail_url{ url_scheme + "://" + host + "/thumbnail/" + video_id };
+        const std::string website_url{ url_scheme + "://" + host + "/watch-video/" + video_id };
+        const std::string html{
+            // clang-format off
+            "<!DOCTYPE html>"
+            "<html>"
+            "<head>"
+            "<meta property=\"og:title\" content=\"" + title + "\" />"
+            "<meta property=\"og:description\" content=\"" + description + "\" />"
+            "<meta property=\"og:image\" content=\"" + thumbnail_url + "\" />"
+            "<meta property=\"og:url\" content=\"" + website_url + "\" />"
+            "</head>"
+            "<body>"
+            "</body>"
+            "</html>"
+            // clang-format on
+        };
+        res.set_content(html, "text/html");
+    } else {
+        // normal user
+        index(req, res, bundle_dir);
+    }
+}
+
 inline void server::index(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
     static const std::string index_file{ (bundle_dir / "index.html").string() };
     res.set_file_content(index_file);
 }
+
+// Auth
 
 inline void server::refresh(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
@@ -378,8 +443,6 @@ inline void server::add_password(const httplib::Request& req, httplib::Response&
     logging::info{ "User password updated by {}", user_id };
     res.status = httplib::StatusCode::OK_200;
 }
-
-// Auth
 
 inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
 {
