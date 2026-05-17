@@ -1,7 +1,7 @@
 # Simple Video CMS
 
 A managed video sharing platform inspired by [VideoHub](https://github.com/sharadbhat/VideoHub).
-A web application video content management system with preact, cpp-httplib, FFmpeg and SQLite.
+A preact web application video content management system and cpp-httplib, FFmpeg, SQLite backend server.
 
 [![Latest Release](https://gitlab.devau.co/theo/simple-video-cms/-/badges/release.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/releases) [![pipeline status](https://gitlab.devau.co/theo/simple-video-cms/badges/develop/pipeline.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/commits/develop)
 
@@ -14,7 +14,7 @@ Install [vcpkg](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started?
 Install development requirements:
 
 ```bash
-sudo apt install nodejs cmake clang-21 yasm ninja-build
+sudo apt install npm cmake clang-21 yasm ninja-build
 ```
 
 And Node.js dependencies:
@@ -51,11 +51,11 @@ docker build -f docker/Containerfile -t simple-video-cms:latest dist
 
 ## Environment
 
-To personalize front and backends, there is few environment variables to know:
+To personalize front and backend, there is few environment variables to know:
 
 - Super administrator (cannot be deleted):
   - SUPER_ADMIN_USERNAME (default admin)
-- Server addresses:
+- Back server address:
   - BACK_HOST (default 0.0.0.0)
   - BACK_PORT (default 8080)
 - Name of your hosted website:
@@ -157,5 +157,5 @@ All third party files are available offline.
 
 #### SVG-Spinners
 
-- https://github.com/n3r4zzurr0/svg-spinners/blob/main/svg-css/blocks-shuffle-3.svg
+- https://github.com/n3r4zzurr0/svg-spinners
 - MIT License
