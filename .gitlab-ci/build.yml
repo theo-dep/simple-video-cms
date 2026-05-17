@@ -8,6 +8,7 @@ include:
   script:
     - cmake --preset vcpkg -DCMAKE_INSTALL_PREFIX=dist
     - cmake --build --preset vcpkg-${BUILD} --parallel --target install
+    - if [ "$BUILD" = "release" ]; then npx rollup -c rollup.config.js; fi
   artifacts:
     expire_in: 3 days
     name: dist

@@ -1,0 +1,109 @@
+import { html } from 'htm/preact';
+import { useState, useEffect, useRef } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
+import { api } from '../api.js';
+import { useTitle } from '../hook/useTitle.js';
+import { refreshAuth } from '../store/auth.js';
+import { AdminNav } from '../component/UserNav.js';
+import { Form, useMultiSelect } from '../component/Form.js';
+
+export default function AdminNewVideo() {
+  const { route } = useLocation();
+  const [fileName, setFileName] = useState('');
+  const [groups, setGroups] = useState([]);
+  const [users, setUsers] = useState([]);
+  const titleRef = useRef(null);
+  const selectGroupsRef = useMultiSelect([groups]);
+  const selectUsersRef = useMultiSelect([users]);
+
+  useTitle('New Video');
+
+  useEffect(() => {
+    api
+      .adminGroupList()
+      .then((g) => setGroups(g.json ?? g))
+      .catch(() => route('/403'));
+
+    api
+      .adminUserList()
+      .then((u) => setUsers(u.json ?? u))
+      .catch(() => route('/403'));
+  }, []);
+
+  function onFileChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFileName(file.name);
+    if (titleRef.current && !titleRef.current.value) {
+      titleRef.current.value = file.name.replace(/\.[^/.]+$/, '');
+    }
+    e.target.closest('.file-drop-area')?.classList.remove('is-active');
+  }
+
+  async function onVideoSubmit(e) {
+    const form = e.target;
+    const fileInput = form.elements['file'];
+    if (!fileInput.files.length) {
+      throw 'Please select a video file';
+    }
+
+    const video = fileInput.files[0];
+    const title = form.elements['title'].value.trim();
+    const groupSelect = form.elements['group-ids'];
+    const userSelect = form.elements['user-ids'];
+    const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];
+    const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
+    await api.adminAddVideo(video, title, groupIds, userIds);
+    // add this video to the admin video list (current user)
+    await refreshAuth();
+    route('/admin/video-list');
+  }
+
+  return html`
+    <${AdminNav} />
+
+    ${groups &&
+    users &&
+    html`
+      <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
+        <div
+          class="pure-control-group file-drop-area"
+          onDragEnter=${(e) => e.currentTarget.classList.add('is-active')}
+          onDragLeave=${(e) => e.currentTarget.classList.remove('is-active')}
+          onDrop=${(e) => e.currentTarget.classList.remove('is-active')}
+        >
+          <span class="fake-button">Choose file</span>
+          <span class="file-message">${fileName || 'or drag a video here'}</span>
+          <input class="pure-input-1 file-input" type="file" accept="video/mp4" name="file" onChange=${onFileChange} />
+        </div>
+        <div class="pure-control-group">
+          <input ref=${titleRef} class="pure-input-1" type="text" name="title" id="title" placeholder="Video title" required />
+        </div>
+
+        ${!!groups.length &&
+        html`
+          <div class="pure-control-group">
+            <select
+              ref=${selectGroupsRef}
+              name="group-ids"
+              class="pure-input-1"
+              data-placeholder="Select groups (optional)"
+              multiple
+              data-multi-select
+            >
+              ${groups.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
+            </select>
+          </div>
+        `}
+        ${!!users.length &&
+        html`
+          <div class="pure-control-group">
+            <select ref=${selectUsersRef} name="user-ids" class="pure-input-1" data-placeholder="Select users (optional)" multiple data-multi-select>
+              ${users.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
+            </select>
+          </div>
+        `}
+      <//>
+    `}
+  `;
+}

@@ -1,5 +1,4 @@
 #include "database.h"
-#include "databaseschema.h"
 
 #include "filesystem.h"
 #include "logging.h"
@@ -29,7 +28,7 @@ namespace database
 inline auto database::storage(const std::filesystem::path& path)
 {
     return make_storage(
-        path,
+        path.string(),
         make_table("users",
                    make_column("id", &User::id, primary_key().autoincrement()),
                    make_column("name", &User::name, unique()),
@@ -75,6 +74,10 @@ namespace database
 {
     using StorageType = decltype(database::storage({}));
 
+    constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title, &Video::views);
+    constexpr auto group_struct = struct_<Group>(&Group::id, &Group::name);
+    constexpr auto user_struct = struct_<User>(&User::id, &User::name);
+
     int file_size(const std::string& path);
     std::string read_file(const std::string& path, std::size_t offset, std::size_t length);
     std::string read_file(const std::string& path);
@@ -94,31 +97,44 @@ bool Database::create_tables() const
     return true;
 }
 
-std::vector<int> Database::admin_video_list() const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    return storage.select(&Video::id);
-}
-
-std::vector<int> Database::user_video_list(int user_id) const
+std::vector<Video> Database::admin_video_list() const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(
-        union_(select(distinct(&VideoUserRight::video_id), where(c(&VideoUserRight::user_id) == user_id)),
-               select(distinct(&VideoGroupRight::video_id),
-                      where(in(&VideoGroupRight::group_id,
-                               select(distinct(&GroupUser::group_id), where(c(&GroupUser::user_id) == user_id)))))));
+        distinct(database::video_struct), from<Video>(),
+        order_by(&Video::title).asc());
 }
 
-std::vector<int> Database::no_user_video_list() const
+std::vector<Video> Database::user_video_list(int user_id) const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(distinct(&Video::id), from<Video>(),
-                          where(not_in(&Video::id, select(&VideoUserRight::video_id)) and
-                                not_in(&Video::id, select(&VideoGroupRight::video_id))));
+    return storage.select(
+        distinct(database::video_struct), from<Video>(),
+        where(
+            not_in(&Video::id, select(&VideoUserRight::video_id)) and
+            not_in(&Video::id, select(&VideoGroupRight::video_id)) and
+            in(&Video::id, union_(
+                               select(distinct(&VideoUserRight::video_id), where(c(&VideoUserRight::user_id) == user_id)),
+                               select(
+                                   distinct(&VideoGroupRight::video_id),
+                                   where(
+                                       in(&VideoGroupRight::group_id,
+                                          select(distinct(&GroupUser::group_id), where(c(&GroupUser::user_id) == user_id)))))))),
+        order_by(&Video::title).asc());
+}
+
+std::vector<Video> Database::no_user_video_list() const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(
+        distinct(database::video_struct), from<Video>(),
+        where(
+            not_in(&Video::id, select(&VideoUserRight::video_id)) and
+            not_in(&Video::id, select(&VideoGroupRight::video_id))),
+        order_by(&Video::title).asc());
 }
 
 std::string Database::video_title(int id) const
@@ -162,7 +178,7 @@ int Database::video_size(int id) const
     const std::optional video_size{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> int {
-                return database::file_size(video_path(video.id));
+                return database::file_size(video_path(video.id).string());
             })
             .or_else([&] -> std::optional<int> {
                 logging::error{ R"(Fail to fetch video size "{}")", id };
@@ -183,7 +199,7 @@ std::string Database::video(int id, std::size_t offset, std::size_t length) cons
     const std::optional video{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> std::string {
-                return database::read_file(video_path(video.id), offset, length);
+                return database::read_file(video_path(video.id).string(), offset, length);
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video content "{}")", id };
@@ -202,7 +218,7 @@ std::string Database::video_playlist(int id) const
             .transform([&](const Video& video) -> std::string {
                 const std::filesystem::path path{ hls_video_path(video.id) };
                 const std::filesystem::path playlist_path{ path / (hls_video_name(id) + ".m3u8") };
-                return database::read_file(playlist_path);
+                return database::read_file(playlist_path.string());
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video playlist "{}")", id };
@@ -220,7 +236,7 @@ std::string Database::video_segment(int id, const std::string& segment) const
             .transform([&](const Video& video) -> std::string {
                 const std::filesystem::path path{ hls_video_path(video.id) };
                 const std::filesystem::path segment_path{ path / segment };
-                return database::read_file(segment_path);
+                return database::read_file(segment_path.string());
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video segment "{}": "{}")", id, segment };
@@ -237,7 +253,7 @@ std::string Database::thumbnail(int id) const
     const std::optional thumbnail{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> std::string {
-                return database::read_file(thumbnail_path(video.id));
+                return database::read_file(thumbnail_path(video.id).string());
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video thumbnail "{}")", id };
@@ -512,25 +528,35 @@ int Database::view_count() const
     return sum ? *sum : 0;
 }
 
-std::vector<int> Database::user_list() const
+std::vector<User> Database::user_list() const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(except(select(&User::id), select(&Admin::id), select(&SuperAdmin::id)));
+    return storage.select(
+        distinct(database::user_struct), from<User>(),
+        where(
+            not_in(&User::id, select(&Admin::id)) and
+            not_in(&User::id, select(&SuperAdmin::id))),
+        order_by(&User::name).asc());
 }
 
-std::vector<int> Database::admin_list() const
+std::vector<User> Database::admin_list() const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(union_all(select(&SuperAdmin::id), select(&Admin::id)));
+    return storage.select(
+        distinct(database::user_struct), from<User>(),
+        where(in(&User::id, union_(select(&Admin::id), select(&SuperAdmin::id)))),
+        order_by(&User::name).asc());
 }
 
-std::vector<int> Database::group_list() const
+std::vector<Group> Database::group_list() const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(&Group::id);
+    return storage.select(
+        distinct(database::group_struct), from<Group>(),
+        order_by(&Group::name).asc());
 }
 
 std::string Database::group_name(int id) const
@@ -653,18 +679,26 @@ bool Database::delete_group(int id) const
     return success.value_or(false);
 }
 
-std::vector<int> Database::group_user_list(int id) const
+std::vector<User> Database::group_user_list(int id) const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(distinct(&GroupUser::user_id), where(c(&GroupUser::group_id) == id));
+    return storage.select(
+        distinct(database::user_struct), from<User>(),
+        where(
+            in(&User::id, select(distinct(&GroupUser::user_id), where(c(&GroupUser::group_id) == id)))),
+        order_by(&User::name).asc());
 }
 
-std::vector<int> Database::user_group_list(int user_id) const
+std::vector<Group> Database::user_group_list(int user_id) const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(distinct(&GroupUser::group_id), where(c(&GroupUser::user_id) == user_id));
+    return storage.select(
+        distinct(database::group_struct), from<Group>(),
+        where(
+            in(&Group::id, select(distinct(&GroupUser::group_id), where(c(&GroupUser::user_id) == user_id)))),
+        order_by(&Group::name).asc());
 }
 
 std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const
@@ -685,7 +719,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
         return std::nullopt;
     }
 
-    database::write_file(video_path(video.id), video_content);
+    database::write_file(video_path(video.id).string(), video_content);
 
     return video.id;
 }
@@ -701,7 +735,7 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
     const std::optional video_id{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> int {
-                database::write_file(thumbnail_path(video.id), thumbnail_content);
+                database::write_file(thumbnail_path(video.id).string(), thumbnail_content);
                 return video.id;
             })
     };
@@ -841,18 +875,26 @@ bool Database::has_video_right(int id, int user_id) const
                 .empty();
 }
 
-std::vector<int> Database::video_group_right_list(int id) const
+std::vector<Group> Database::video_group_right_list(int id) const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(distinct(&VideoGroupRight::group_id), where(c(&VideoGroupRight::video_id) == id));
+    return storage.select(
+        distinct(database::group_struct), from<Group>(),
+        where(
+            in(&Group::id, select(distinct(&VideoGroupRight::group_id), where(c(&VideoGroupRight::video_id) == id)))),
+        order_by(&Group::name).asc());
 }
 
-std::vector<int> Database::video_user_right_list(int id) const
+std::vector<User> Database::video_user_right_list(int id) const
 {
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.select(distinct(&VideoUserRight::user_id), where(c(&VideoUserRight::video_id) == id));
+    return storage.select(
+        distinct(database::user_struct), from<User>(),
+        where(
+            in(&User::id, select(distinct(&VideoUserRight::user_id), where(c(&VideoUserRight::video_id) == id)))),
+        order_by(&User::name).asc());
 }
 
 std::filesystem::path Database::base_path() const

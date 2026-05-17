@@ -1,4 +1,4 @@
-Checks: "-*,
+Checks: '-*,
   clang-analyzer-*,
   cppcoreguidelines-*,
   llvm-*,
@@ -12,31 +12,31 @@ Checks: "-*,
   readability-*,
   readability-identifier-naming,
   -readability-identifier-length,
-  -readability-braces-around-statements"
+  -readability-braces-around-statements'
 
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
-    value: "CamelCase"
+    value: 'CamelCase'
   - key: readability-identifier-naming.FunctionCase
-    value: "lower_case"
+    value: 'lower_case'
   - key: readability-identifier-naming.MemberCase
-    value: "lower_case"
+    value: 'lower_case'
   - key: readability-identifier-naming.VariableCase
-    value: "lower_case"
+    value: 'lower_case'
   - key: readability-identifier-naming.MacroDefinitionCase
-    value: "UPPER_CASE"
+    value: 'UPPER_CASE'
   - key: readability-identifier-naming.EnumCase
-    value: "CamelCase"
+    value: 'CamelCase'
   - key: readability-identifier-naming.UsePrefix
-    value: "true"
+    value: 'true'
   - key: readability-identifier-naming.ProtectedMemberPrefix
-    value: "_"
+    value: '_'
   - key: readability-identifier-naming.PrivateMemberPrefix
-    value: "_"
+    value: '_'
 
-WarningsAsErrors: "*"
+WarningsAsErrors: '*'
 
-FormatStyle: "file"
+FormatStyle: 'file'
 
 # not <>, only ""
 HeaderFilterRegex: "^\"[:lower:]*\\.h\"$"

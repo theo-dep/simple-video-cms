@@ -12,3 +12,4 @@ include:
   script:
     - cmake --preset lint
     - cmake --build build/lint --parallel 1
+    - npx eslint "front/**/*.js"

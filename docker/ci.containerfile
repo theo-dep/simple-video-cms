@@ -15,6 +15,7 @@ RUN apt-get update && \
         linux-libc-dev \
         nasm \
         ninja-build \
+        npm \
         pkg-config \
         python3 \
         tar \

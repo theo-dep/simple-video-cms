@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loading</title>
+    <link rel="stylesheet" href="/node_modules/purecss/build/pure-min.css" />
+    <link rel="stylesheet" href="/node_modules/purecss/build/grids-responsive-min.css" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <link rel="icon" href="/assets/img/icon.svg" type="image/png" />
+    <script src="/env.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "preact": "/node_modules/preact/dist/preact.mjs",
+          "preact/hooks": "/node_modules/preact/hooks/dist/hooks.mjs",
+          "preact/compat": "/node_modules/preact/compat/dist/compat.mjs",
+          "htm": "/node_modules/htm/dist/htm.mjs",
+          "htm/preact": "/node_modules/htm/preact/index.mjs",
+          "preact-iso": "/node_modules/preact-iso/src/index.js",
+          "preact-iso/router": "/node_modules/preact-iso/src/router.js",
+          "preact-iso/lazy": "/node_modules/preact-iso/src/lazy.js",
+          "@preact/signals": "/node_modules/@preact/signals/dist/signals.mjs",
+          "@preact/signals-core": "/node_modules/@preact/signals-core/dist/signals-core.mjs",
+          "fuse.js": "/node_modules/fuse.js/dist/fuse.mjs",
+          "multi-select-dropdown-js/MultiSelect.css": "/node_modules/multi-select-dropdown-js/MultiSelect.css",
+          "multi-select-dropdown-js/MultiSelect.js": "/node_modules/multi-select-dropdown-js/MultiSelect.js",
+          "video.js/dist/video-js.css": "/node_modules/video.js/dist/video-js.css",
+          "videojs-mobile-ui/dist/videojs-mobile-ui.css": "/node_modules/videojs-mobile-ui/dist/videojs-mobile-ui.css",
+          "videojs-yt-style/dist/videojs-yt-style.css": "/node_modules/videojs-yt-style/dist/videojs-yt-style.css",
+          "video.js": "/build/video.es.js",
+          "videojs-yt-style": "/build/videojs-yt-style.js",
+          "videojs-mobile-ui": "/build/videojs-mobile-ui.js"
+        }
+      }
+    </script>
+    <style id="head-root">
+      .svg-wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .svg-container {
+        width: 25vw;
+        height: 25vh;
+      }
+
+      .svg-container svg {
+        width: 100%;
+        height: 100%;
+        fill: #16a085;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="svg-wrapper">
+        <div class="svg-container">
+          <!-- https://github.com/n3r4zzurr0/svg-spinners/blob/main/svg-css/blocks-scale.svg -->
+          <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <style>
+              .spinner_LWk7 {
+                animation:
+                  spinner_GWy6 1.2s linear infinite,
+                  spinner_BNNO 1.2s linear infinite;
+              }
+
+              .spinner_yOMU {
+                animation:
+                  spinner_GWy6 1.2s linear infinite,
+                  spinner_pVqn 1.2s linear infinite;
+                animation-delay: 0.15s;
+              }
+
+              .spinner_KS4S {
+                animation:
+                  spinner_GWy6 1.2s linear infinite,
+                  spinner_6uKB 1.2s linear infinite;
+                animation-delay: 0.3s;
+              }
+
+              .spinner_zVee {
+                animation:
+                  spinner_GWy6 1.2s linear infinite,
+                  spinner_Qw4x 1.2s linear infinite;
+                animation-delay: 0.45s;
+              }
+
+              @keyframes spinner_GWy6 {
+                0%,
+                50% {
+                  width: 9px;
+                  height: 9px;
+                }
+
+                10% {
+                  width: 11px;
+                  height: 11px;
+                }
+              }
+
+              @keyframes spinner_BNNO {
+                0%,
+                50% {
+                  x: 1.5px;
+                  y: 1.5px;
+                }
+
+                10% {
+                  x: 0.5px;
+                  y: 0.5px;
+                }
+              }
+
+              @keyframes spinner_pVqn {
+                0%,
+                50% {
+                  x: 13.5px;
+                  y: 1.5px;
+                }
+
+                10% {
+                  x: 12.5px;
+                  y: 0.5px;
+                }
+              }
+
+              @keyframes spinner_6uKB {
+                0%,
+                50% {
+                  x: 13.5px;
+                  y: 13.5px;
+                }
+
+                10% {
+                  x: 12.5px;
+                  y: 12.5px;
+                }
+              }
+
+              @keyframes spinner_Qw4x {
+                0%,
+                50% {
+                  x: 1.5px;
+                  y: 13.5px;
+                }
+
+                10% {
+                  x: 0.5px;
+                  y: 12.5px;
+                }
+              }
+            </style>
+            <rect class="spinner_LWk7" x="1.5" y="1.5" rx="1" width="9" height="9" />
+            <rect class="spinner_yOMU" x="13.5" y="1.5" rx="1" width="9" height="9" />
+            <rect class="spinner_KS4S" x="13.5" y="13.5" rx="1" width="9" height="9" />
+            <rect class="spinner_zVee" x="1.5" y="13.5" rx="1" width="9" height="9" />
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const env = window.__ENV__ ?? { websiteName: 'Simple Video CMS' };
+      document.title = `${document.title} - ${env.websiteName}`;
+
+      if (env.iconPath) {
+        document.querySelector('link[rel="icon"]').href = env.iconPath;
+      }
+    </script>
+    <script type="module" src="/index.js"></script>
+  </body>
+</html>

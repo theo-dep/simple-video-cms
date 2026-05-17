@@ -21,3 +21,4 @@
     - git clone https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
     - $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
     - mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
+    - npm ci

@@ -1,0 +1,85 @@
+#pragma once
+
+#include "databasemodel.h"
+
+#include <nlohmann/json.hpp>
+
+#include <string>
+#include <vector>
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Video, id, title, views)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Group, id, name)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(User, id, name)
+
+struct ConnectedUser
+{
+    int id{ 0 };
+    std::string name;
+    bool is_admin{ false };
+    bool is_first_connection{ false };
+    std::vector<Video> videos;
+};
+
+template <typename BasicJsonType>
+void to_json(BasicJsonType& json, const ConnectedUser& user)
+{
+    json["id"] = user.id;
+    json["name"] = user.name;
+    json["isAdmin"] = user.is_admin;
+    json["isFirstConnection"] = user.is_first_connection;
+    json["videos"] = user.videos;
+}
+
+struct AdminUserInfo
+{
+    int id{ 0 };
+    std::string name;
+    std::vector<Group> groups;
+    bool is_logged_once{ false };
+};
+
+template <typename BasicJsonType>
+void to_json(BasicJsonType& json, const AdminUserInfo& user)
+{
+    json["id"] = user.id;
+    json["name"] = user.name;
+    json["groups"] = user.groups;
+    json["isLoggedOnce"] = user.is_logged_once;
+}
+
+struct AdminAdminInfo
+{
+    int id{ 0 };
+    std::string name;
+    bool is_super_admin{ false };
+    bool is_logged_once{ false };
+};
+
+template <typename BasicJsonType>
+void to_json(BasicJsonType& json, const AdminAdminInfo& user)
+{
+    json["id"] = user.id;
+    json["name"] = user.name;
+    json["isSuperAdmin"] = user.is_super_admin;
+    json["isLoggedOnce"] = user.is_logged_once;
+}
+
+struct AdminGroupInfo
+{
+    int id{ 0 };
+    std::string name;
+    std::vector<User> users;
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminGroupInfo, id, name, users)
+
+struct AdminVideoInfo
+{
+    int id{ 0 };
+    std::string title;
+    int views{ 0 };
+    std::vector<Group> groups;
+    std::vector<User> users;
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminVideoInfo, id, title, views, groups, users)
