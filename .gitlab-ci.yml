@@ -9,10 +9,8 @@ stages:
 
 variables:
   CONTAINER_CI_IMAGE: $CI_REGISTRY/theo/simple-video-cms/ci:latest
-  CONTAINER_TEST_BACK_IMAGE: $CI_REGISTRY/theo/simple-video-cms:back-$CI_COMMIT_REF_SLUG
-  CONTAINER_TEST_FRONT_IMAGE: $CI_REGISTRY/theo/simple-video-cms:front-$CI_COMMIT_REF_SLUG
-  CONTAINER_RELEASE_BACK_IMAGE: $CI_REGISTRY/theo/simple-video-cms:back-latest
-  CONTAINER_RELEASE_FRONT_IMAGE: $CI_REGISTRY/theo/simple-video-cms:front-latest
+  CONTAINER_TEST_IMAGE: $CI_REGISTRY/theo/simple-video-cms:$CI_COMMIT_REF_SLUG
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY/theo/simple-video-cms:latest
 
 .merge-rules:
   rules:
@@ -85,10 +83,8 @@ docker build:
     - !reference [.merge-rules, rules]
     - !reference [.deploy-rules, rules]
   script:
-    - docker build -f docker/back.containerfile -t $CONTAINER_TEST_BACK_IMAGE dist
-    - docker build -f docker/front.containerfile -t $CONTAINER_TEST_FRONT_IMAGE dist
-    - docker push $CONTAINER_TEST_BACK_IMAGE
-    - docker push $CONTAINER_TEST_FRONT_IMAGE
+    - docker build -f docker/Containerfile -t $CONTAINER_TEST_IMAGE dist
+    - docker push $CONTAINER_TEST_IMAGE
 
 lint:
   image: $CONTAINER_CI_IMAGE
@@ -103,9 +99,6 @@ docker release image:
     - .docker-job
     - .deploy-rules
   script:
-    - docker pull $CONTAINER_TEST_BACK_IMAGE
-    - docker pull $CONTAINER_TEST_FRONT_IMAGE
-    - docker tag $CONTAINER_TEST_BACK_IMAGE $CONTAINER_RELEASE_BACK_IMAGE
-    - docker tag $CONTAINER_TEST_FRONT_IMAGE $CONTAINER_RELEASE_FRONT_IMAGE
-    - docker push $CONTAINER_RELEASE_BACK_IMAGE
-    - docker push $CONTAINER_RELEASE_FRONT_IMAGE
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
+    - docker push $CONTAINER_RELEASE_IMAGE

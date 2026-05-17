@@ -18,7 +18,7 @@ const CURRENT_CACHES = {
   video: `video-cache-v${CACHE_VERSION}`,
 };
 
-const INCLUDED_ROUTE_PATTERN = [/^\/api\/video\/\d+\/playlist$/, /^\/api\/video\/\d+\/\d+\_\d+\.ts$/];
+const INCLUDED_ROUTE_PATTERN = [/^\/api\/video\/\d+\/playlist$/, /^\/api\/video\/\d+\/\d+_\d+\.ts$/];
 
 // Returns true if the given URL matches a dynamic included route
 const isIncludedRoute = (url) => INCLUDED_ROUTE_PATTERN.some((pattern) => pattern.test(new URL(url).pathname));
