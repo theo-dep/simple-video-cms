@@ -5,7 +5,7 @@ services:
   server:
     build:
       context: dist
-      dockerfile: ../docker/Containerfile
+      dockerfile: ../container/Containerfile
     restart: unless-stopped
     volumes:
       - data:/data

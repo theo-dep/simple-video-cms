@@ -34,9 +34,9 @@ This will generates server binary in `build/vcpkg/Release/back`. Build with `vcp
 
 Server can be run using VS Code and CMake extension or with commands `just start-dev` or `just start-prod`.
 
-## Docker
+## Container
 
-To build docker images, install a release build in `dist`:
+To build container images, install a release build in `dist`:
 
 ```bash
 cmake --preset vcpkg -DCMAKE_INSTALL_PREFIX=dist
@@ -46,7 +46,7 @@ cmake --build --preset vcpkg-release --parallel --target install
 Then build images:
 
 ```bash
-docker build -f docker/Containerfile -t simple-video-cms:latest dist
+docker build -f container/Containerfile -t simple-video-cms:latest dist
 ```
 
 ## Environment

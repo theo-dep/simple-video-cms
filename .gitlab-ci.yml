@@ -30,11 +30,11 @@ build ci image:
   extends:
     - .docker-job
   script:
-    - docker build -f docker/ci.containerfile -t $CONTAINER_CI_IMAGE .
+    - docker build -f container/ci.containerfile -t $CONTAINER_CI_IMAGE .
     - docker push $CONTAINER_CI_IMAGE
   rules:
     - changes:
-        - docker/ci.containerfile
+        - container/ci.containerfile
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 build vcpkg deps:
@@ -83,7 +83,7 @@ docker build:
     - !reference [.merge-rules, rules]
     - !reference [.deploy-rules, rules]
   script:
-    - docker build -f docker/Containerfile -t $CONTAINER_TEST_IMAGE dist
+    - docker build -f container/Containerfile -t $CONTAINER_TEST_IMAGE dist
     - docker push $CONTAINER_TEST_IMAGE
 
 lint:

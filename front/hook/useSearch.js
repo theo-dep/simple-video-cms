@@ -2,7 +2,7 @@ import { useState, useMemo } from 'preact/hooks';
 import Fuse from 'fuse.js';
 
 export function useSearch(items, keys) {
-  const [results, setResults] = useState(items);
+  const [query, setQuery] = useState('');
 
   const fuse = useMemo(() => {
     return new Fuse(items, {
@@ -17,8 +17,13 @@ export function useSearch(items, keys) {
     });
   }, [items]);
 
+  // don't break the reactivity chain from items to results
+  const results = useMemo(() => {
+    return query.trim() ? fuse.search(query).map((r) => r.item) : items;
+  }, [fuse, query, items]);
+
   function search(query) {
-    setResults(query.trim() ? fuse.search(query).map((r) => r.item) : items);
+    setQuery(query);
   }
 
   return { results, search };
