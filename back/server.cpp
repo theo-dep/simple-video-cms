@@ -216,14 +216,15 @@ namespace server
     // Social media bots
     inline bool is_bot(std::string user_agent)
     {
-        static const std::vector<std::string> bots{
+        static constexpr std::array bots{
             "facebookexternalhit", "twitterbot", "linkedinbot",
-            "whatsapp", "slackbot", "telegrambot", "discordbot"
+            "whatsapp", "slackbot", "telegrambot", "discordbot",
+            "skype", "redditbot", "mastodon", "friendica", "bluesky"
         };
 
         su::lower(user_agent);
 
-        return std::ranges::find_if(bots, [&user_agent](const std::string& bot) {
+        return std::ranges::find_if(bots, [&user_agent](const auto& bot) {
                    return user_agent.find(bot) != std::string::npos;
                }) != bots.cend();
     }
@@ -245,7 +246,7 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
 #endif
         };
         const std::string description{ "Watch " + title + " video" };
-        const std::string thumbnail_url{ url_scheme + "://" + host + "/thumbnail/" + video_id };
+        const std::string thumbnail_url{ url_scheme + "://" + host + "/api/thumbnail/" + video_id };
         const std::string website_url{ url_scheme + "://" + host + "/watch-video/" + video_id };
         const std::string html{
             // clang-format off
