@@ -168,7 +168,7 @@
 
     <script>
       const env = window.__ENV__ ?? { websiteName: 'Simple Video CMS' };
-      document.title = `${document.title} - ${env.websiteName}`;
+      document.title = `${document.title} | ${env.websiteName}`;
 
       if (env.iconPath) {
         document.querySelector('link[rel="icon"]').href = env.iconPath;
