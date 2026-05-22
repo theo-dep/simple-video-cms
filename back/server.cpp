@@ -3,6 +3,7 @@
 #include "apimodel.h"
 #include "crypto.h"
 #include "database.h"
+#include "env.h"
 #include "filesystem.h"
 #include "logging.h"
 #include "servercommon.h"
@@ -22,6 +23,8 @@ namespace server
 
     void set_logger(httplib::Server& server);
     void set_exception_handler(httplib::Server& server);
+
+    void generate_front_env_file(const std::filesystem::path& bundle_dir);
 
     // Routes
     void watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
@@ -147,28 +150,16 @@ int server::start()
         .Post("/api/admin/update-group/:group_id", sc::serve(admin_update_group, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-group/:group_id", sc::serve(admin_delete_group, std::cref(session), std::cref(db)));
 
-    { // runtime frontend environnement
-        const std::string website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
-        const std::string icon_path{ sc::get_env("ICON_PATH", {}) }; // bundled from front/assets
-        const nlohmann::json env_json{
-            { "websiteName", website_name },
-            { "iconPath", icon_path }
-        };
-        const std::string env_content{ "window.__ENV__ = " + env_json.dump() + ";" };
-        std::ofstream file(bundle_dir / "env.js", std::ios::out | std::ios::binary | std::ios::trunc);
-        file.write(env_content.data(), static_cast<std::streamoff>(env_content.size()));
-    }
+    generate_front_env_file(bundle_dir);
 
-    const std::string host{ sc::get_env("BACK_HOST", "0.0.0.0") };
-    const int port{ su::string_to_int(sc::get_env("BACK_PORT", "8080")) };
-    logging::info{ "Serving HTTP on http://{0}:{1} ...", host, port };
-    return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
+    static const int port{ su::string_to_int(env::back_port) };
+    logging::info{ "Serving HTTP on http://{0}:{1} ...", env::back_host, port };
+    return (server.listen(env::back_host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 inline bool server::create_super_admin(const Database& db)
 {
-    const std::string username{ sc::get_env("SUPER_ADMIN_USERNAME", "admin") };
-    const int user_id{ db.user_id(username) };
+    const int user_id{ db.user_id(env::super_admin_username) };
     if (db.is_admin(user_id)) {
         // already created
         return true;
@@ -176,8 +167,8 @@ inline bool server::create_super_admin(const Database& db)
 
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
-    if (!db.add_super_admin(username, salt)) {
-        logging::error{ R"(Fail to add super admin "{}")", username };
+    if (!db.add_super_admin(env::super_admin_username, salt)) {
+        logging::error{ R"(Fail to add super admin "{}")", env::super_admin_username };
         return false;
     }
 
@@ -207,6 +198,28 @@ inline void server::set_exception_handler(httplib::Server& server)
         logging::error{ std::to_string(std::stacktrace::current()) };
         logging::error{ message };
     });
+}
+
+inline void server::generate_front_env_file(const std::filesystem::path& bundle_dir)
+{
+    static const nlohmann::json env_json{
+        { "websiteName", env::website_name },
+        { "iconPath", env::icon_path }
+    };
+    static const std::string env_content{ "window.__ENV__ = " + env_json.dump() + ";" };
+
+    // rollup hash the file
+    std::filesystem::directory_iterator bundle_dir_iterator(bundle_dir);
+    const auto env_file_it{
+        std::ranges::find_if(bundle_dir_iterator, [](const std::filesystem::directory_entry& dir_entry) {
+            const std::string filename{ dir_entry.path().filename().string() };
+            return filename.starts_with("env") && filename.ends_with(".js");
+        })
+    };
+    const std::filesystem::path env_file{ env_file_it == std::filesystem::end(bundle_dir_iterator) ? bundle_dir / "env.js" : *env_file_it };
+
+    std::ofstream file(env_file, std::ios::out | std::ios::trunc);
+    file.write(env_content.data(), static_cast<std::streamoff>(env_content.size()));
 }
 
 // Routes
