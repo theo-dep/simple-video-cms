@@ -3,6 +3,7 @@
 #include "apimodel.h"
 #include "crypto.h"
 #include "database.h"
+#include "env.h"
 #include "filesystem.h"
 #include "logging.h"
 #include "servercommon.h"
@@ -151,16 +152,14 @@ int server::start()
 
     generate_front_env_file(bundle_dir);
 
-    const std::string host{ sc::get_env("BACK_HOST", "0.0.0.0") };
-    const int port{ su::string_to_int(sc::get_env("BACK_PORT", "8080")) };
-    logging::info{ "Serving HTTP on http://{0}:{1} ...", host, port };
-    return (server.listen(host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
+    static const int port{ su::string_to_int(env::back_port) };
+    logging::info{ "Serving HTTP on http://{0}:{1} ...", env::back_host, port };
+    return (server.listen(env::back_host, port) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
 
 inline bool server::create_super_admin(const Database& db)
 {
-    const std::string username{ sc::get_env("SUPER_ADMIN_USERNAME", "admin") };
-    const int user_id{ db.user_id(username) };
+    const int user_id{ db.user_id(env::super_admin_username) };
     if (db.is_admin(user_id)) {
         // already created
         return true;
@@ -168,8 +167,8 @@ inline bool server::create_super_admin(const Database& db)
 
     const std::string salt{ crypto::random_string() };
     logging::debug{ "Salt: {}", salt };
-    if (!db.add_super_admin(username, salt)) {
-        logging::error{ R"(Fail to add super admin "{}")", username };
+    if (!db.add_super_admin(env::super_admin_username, salt)) {
+        logging::error{ R"(Fail to add super admin "{}")", env::super_admin_username };
         return false;
     }
 
@@ -203,11 +202,9 @@ inline void server::set_exception_handler(httplib::Server& server)
 
 inline void server::generate_front_env_file(const std::filesystem::path& bundle_dir)
 {
-    static const std::string website_name{ sc::get_env("WEBSITE_NAME", "Simple Video CMS") };
-    static const std::string icon_path{ sc::get_env("ICON_PATH", {}) }; // bundled from front/assets
     static const nlohmann::json env_json{
-        { "websiteName", website_name },
-        { "iconPath", icon_path }
+        { "websiteName", env::website_name },
+        { "iconPath", env::icon_path }
     };
     static const std::string env_content{ "window.__ENV__ = " + env_json.dump() + ";" };
 
