@@ -113,8 +113,8 @@ std::vector<Video> Database::user_video_list(int user_id) const
     return storage.select(
         distinct(database::video_struct), from<Video>(),
         where(
-            not_in(&Video::id, select(&VideoUserRight::video_id)) and
-            not_in(&Video::id, select(&VideoGroupRight::video_id)) and
+            (not_in(&Video::id, select(&VideoUserRight::video_id)) and
+             not_in(&Video::id, select(&VideoGroupRight::video_id))) or
             in(&Video::id, union_(
                                select(distinct(&VideoUserRight::video_id), where(c(&VideoUserRight::user_id) == user_id)),
                                select(
