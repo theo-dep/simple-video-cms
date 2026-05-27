@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "postinstall": "patch-package && npx rollup -c rollup-dev.config.js"
+    "postinstall": "patch-package && npx rollup -c front/rollup-dev.config.js"
   },
   "devDependencies": {
     "@eslint/css": "^1.1.0",

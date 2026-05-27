@@ -25,51 +25,23 @@ const fixNativeClassInheritance = {
   },
 };
 
+const videojsPlugins = [nodeResolve({ browser: true }), commonjs({ requireReturnsDefault: 'preferred' })];
+
 // a lot of video.js dependencies does not have a default export
 // build them with rollup to fix import
-export default [
+export const videojsEntries = [
   {
     input: 'video.js',
-    output: {
-      dir: 'build/',
-      format: 'es',
-    },
-    plugins: [
-      nodeResolve({
-        browser: true,
-      }),
-      commonjs({
-        requireReturnsDefault: 'preferred',
-      }),
-    ],
+    plugins: videojsPlugins,
   },
   {
     input: 'videojs-yt-style',
-    output: {
-      dir: 'build/',
-      format: 'es',
-    },
-    plugins: [
-      nodeResolve({
-        browser: true,
-      }),
-      commonjs(),
-      fixNativeClassInheritance,
-    ],
+    plugins: [...videojsPlugins, fixNativeClassInheritance],
     external: ['video.js'],
   },
   {
     input: 'videojs-mobile-ui',
-    output: {
-      dir: 'build/',
-      format: 'es',
-    },
-    plugins: [
-      nodeResolve({
-        browser: true,
-      }),
-      commonjs(),
-    ],
+    plugins: videojsPlugins,
     external: ['video.js'],
   },
 ];
