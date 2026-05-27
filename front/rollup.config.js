@@ -5,6 +5,7 @@ import terser from '@rollup/plugin-terser';
 import { rollupPluginHTML as html } from '@web/rollup-plugin-html';
 import css from 'rollup-plugin-import-css';
 import babel from '@rollup/plugin-babel';
+import del from 'rollup-plugin-delete';
 import { videojsEntries } from './rollup.shared.js';
 
 const SRC_HTML_FILE = 'index.html';
@@ -81,6 +82,10 @@ export default [
     },
     external: ['video.js', 'videojs-yt-style', 'videojs-mobile-ui'],
     plugins: [
+      del({
+        // remove previous env.js
+        targets: `${DIST_DIR}/env-*.js`,
+      }),
       html({
         minify: true,
         minifyCss: true,
