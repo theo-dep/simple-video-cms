@@ -18,12 +18,13 @@ public:
     const std::string& user_from_session(const std::string& session_id) const;
 
     // Remove a session
-    void remove_session(const std::string& session_id);
+    // res.set_header("Set-Cookie", "Session-ID=; HttpOnly");
+    std::string remove_session([[maybe_unused]] const std::string& url, const std::string& session_id);
 
     // Check if a session is valid
     bool is_valid_session(const std::string& session_id) const;
 
-    // res.set_header("Set-Cookie", "Session-ID=" + session_id + "; HttpOnly");
+    // res.set_header("Cookie", "Session-ID=" + session_id);
     static std::string extract_session_id_from_cookie(const std::string& cookie);
 
     // res.set_header("Set-Cookie", "Session-ID=" + session_id + "; HttpOnly");

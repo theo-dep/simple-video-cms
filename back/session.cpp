@@ -33,12 +33,14 @@ const std::string& Session::user_from_session(const std::string& session_id) con
     return it_session->second.user_id;
 }
 
-void Session::remove_session(const std::string& session_id)
+std::string Session::remove_session([[maybe_unused]] const std::string& url, const std::string& session_id)
 {
     clean_expired_sessions();
 
     const std::scoped_lock lock(_mutex);
     _sessions.erase(session_id);
+
+    return cookie::insert_to_cookie(url, session::cookie_key(), std::string{}, std::chrono::seconds{ 0 });
 }
 
 bool Session::is_valid_session(const std::string& session_id) const

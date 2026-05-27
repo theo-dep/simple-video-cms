@@ -31,7 +31,7 @@ namespace server
     void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
 
     // Auth
-    void refresh(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void refresh(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db);
     void login(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db);
     void logout(const httplib::Request& req, httplib::Response& res, Session& session);
     void add_password(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -115,7 +115,7 @@ int server::start()
         .Get("/watch-video/:id", sc::serve(watch_video, std::cref(bundle_dir), std::cref(db)))
         .Get(R"((?!\/api\/).*)", sc::serve(index, std::cref(bundle_dir)))
 
-        .Get("/api/refresh", sc::serve(refresh, std::cref(session), std::cref(db)))
+        .Get("/api/refresh", sc::serve(refresh, std::ref(session), std::cref(db)))
         .Post("/api/login", sc::serve(login, std::ref(session), std::cref(db)))
         .Post("/api/logout", sc::serve(logout, std::ref(session)))
         .Post("/api/add-password", sc::serve(add_password, std::cref(db)))
@@ -291,30 +291,6 @@ inline void server::index(const httplib::Request& /*req*/, httplib::Response& re
 
 // Auth
 
-inline void server::refresh(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
-{
-    ConnectedUser user;
-
-    const std::string cookie{ req.get_header_value("Cookie") };
-    const std::string session_id{ Session::extract_session_id_from_cookie(cookie) };
-    if (session.is_valid_session(session_id)) {
-        const int user_id{ su::string_to_int(session.user_from_session(session_id)) };
-        const bool is_admin{ db.is_admin(user_id) };
-        user.id = user_id;
-        user.name = db.user_name(user_id);
-        user.is_admin = is_admin;
-        if (is_admin) {
-            user.videos = db.admin_video_list();
-        } else {
-            user.videos = db.user_video_list(user_id);
-        }
-    } else {
-        user.videos = db.no_user_video_list();
-    }
-
-    res.set_content(nlohmann::json(user).dump(), "application/json");
-}
-
 namespace server
 {
     inline void register_session(const httplib::Request& req, httplib::Response& res, Session& session, int user_id)
@@ -359,6 +335,34 @@ namespace server
                std::views::filter([](int i) { return i > 0; }) |
                std::ranges::to<std::vector<int>>();
     }
+}
+
+inline void server::refresh(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db)
+{
+    ConnectedUser user;
+
+    const std::string session_id{ session_id_from_req(req) };
+    if (session.is_valid_session(session_id)) {
+        const int user_id{ su::string_to_int(session.user_from_session(session_id)) };
+
+        // reset session
+        session.remove_session(req.get_header_value("Host"), session_id);
+        register_session(req, res, session, user_id);
+
+        const bool is_admin{ db.is_admin(user_id) };
+        user.id = user_id;
+        user.name = db.user_name(user_id);
+        user.is_admin = is_admin;
+        if (is_admin) {
+            user.videos = db.admin_video_list();
+        } else {
+            user.videos = db.user_video_list(user_id);
+        }
+    } else {
+        user.videos = db.no_user_video_list();
+    }
+
+    res.set_content(nlohmann::json(user).dump(), "application/json");
 }
 
 inline void server::login(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db)
@@ -450,7 +454,7 @@ inline void server::add_password(const httplib::Request& req, httplib::Response&
 inline void server::logout(const httplib::Request& req, httplib::Response& res, Session& session)
 {
     const std::string session_id{ session_id_from_req(req) };
-    session.remove_session(session_id);
+    res.set_header("Set-Cookie", session.remove_session(req.get_header_value("Host"), session_id));
     res.status = httplib::StatusCode::OK_200;
 }
 
