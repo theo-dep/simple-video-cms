@@ -5,7 +5,7 @@
 
 namespace session
 {
-    constexpr const char* cookie_key() { return "Session-ID"; }
+    constexpr const char* cookie_key() { return "id"; }
 }
 
 const std::string& Session::create_session(const std::string& user_id, std::chrono::seconds max_age)
