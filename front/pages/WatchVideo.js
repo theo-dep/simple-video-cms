@@ -90,7 +90,8 @@ export default function WatchVideo({ videoId }) {
 
     const player = playerRef.current;
 
-    if (player.ytStyle) player.ytStyle();
+    // player.mobileUi();
+    player.ytStyle();
 
     player.src({
       src: api.videoPlaylistPath(videoId),
