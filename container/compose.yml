@@ -4,10 +4,10 @@ volumes:
 services:
   server:
     build:
-      context: dist
-      dockerfile: ../container/Containerfile
+      context: ../dist
+      dockerfile: ./Containerfile
     restart: unless-stopped
     volumes:
-      - data:/data
+      - data:/server/data
     ports:
       - 8080:8080
