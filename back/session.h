@@ -19,7 +19,7 @@ public:
 
     // Remove a session
     // res.set_header("Set-Cookie", "Session-ID=; HttpOnly");
-    std::string remove_session([[maybe_unused]] const std::string& url, const std::string& session_id);
+    std::string remove_session_reset_cookie(const std::string& session_id);
 
     // Check if a session is valid
     bool is_valid_session(const std::string& session_id) const;
@@ -28,7 +28,7 @@ public:
     static std::string extract_session_id_from_cookie(const std::string& cookie);
 
     // res.set_header("Set-Cookie", "Session-ID=" + session_id + "; HttpOnly");
-    std::string insert_session_id_to_cookie([[maybe_unused]] const std::string& url, const std::string& session_id);
+    std::string insert_session_id_to_cookie(const std::string& session_id);
 
 private:
     void clean_expired_sessions();

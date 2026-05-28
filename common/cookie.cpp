@@ -16,7 +16,7 @@ namespace cookie
     }
 }
 
-std::string cookie::insert_to_cookie([[maybe_unused]] const std::string& url, const std::string& key, const std::string& value, std::chrono::seconds max_age)
+std::string cookie::insert_to_cookie(const std::string& key, const std::string& value, std::chrono::seconds max_age)
 {
     return {
         cookie_key(key) + "=" + value + "; " +
