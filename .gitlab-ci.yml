@@ -29,13 +29,12 @@ build ci image:
   stage: .pre
   extends:
     - .docker-job
+  rules:
+    - !reference [.merge-rules, rules]
+    - !reference [.deploy-rules, rules]
   script:
     - docker build -f container/ci.containerfile -t $CONTAINER_CI_IMAGE .
     - docker push $CONTAINER_CI_IMAGE
-  rules:
-    - changes:
-        - container/ci.containerfile
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 build vcpkg deps:
   stage: .pre
@@ -45,14 +44,13 @@ build vcpkg deps:
   timeout: 2h
   extends:
     - .install-job
+  rules:
+    - !reference [.merge-rules, rules]
+    - !reference [.deploy-rules, rules]
   variables:
     CACHE_POLICY: pull-push
   script:
     - cmake --preset vcpkg
-  rules:
-    - changes:
-        - vcpkg.json
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 debug build:
   image: $CONTAINER_CI_IMAGE

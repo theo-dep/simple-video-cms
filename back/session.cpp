@@ -5,7 +5,7 @@
 
 namespace session
 {
-    constexpr const char* cookie_key() { return "Session-ID"; }
+    constexpr const char* cookie_key() { return "id"; }
 }
 
 const std::string& Session::create_session(const std::string& user_id, std::chrono::seconds max_age)
@@ -33,12 +33,14 @@ const std::string& Session::user_from_session(const std::string& session_id) con
     return it_session->second.user_id;
 }
 
-void Session::remove_session(const std::string& session_id)
+std::string Session::remove_session_reset_cookie(const std::string& session_id)
 {
     clean_expired_sessions();
 
     const std::scoped_lock lock(_mutex);
     _sessions.erase(session_id);
+
+    return cookie::insert_to_cookie(session::cookie_key(), std::string{}, std::chrono::seconds{ 0 });
 }
 
 bool Session::is_valid_session(const std::string& session_id) const
@@ -52,7 +54,7 @@ std::string Session::extract_session_id_from_cookie(const std::string& cookie)
     return cookie::value_from_cookie(cookie, session::cookie_key());
 }
 
-std::string Session::insert_session_id_to_cookie([[maybe_unused]] const std::string& url, const std::string& session_id)
+std::string Session::insert_session_id_to_cookie(const std::string& session_id)
 {
     const std::scoped_lock lock(_mutex);
 
@@ -62,7 +64,7 @@ std::string Session::insert_session_id_to_cookie([[maybe_unused]] const std::str
     }
 
     it_session_data->second.creation = std::chrono::system_clock::now();
-    return cookie::insert_to_cookie(url, session::cookie_key(), session_id, it_session_data->second.max_age);
+    return cookie::insert_to_cookie(session::cookie_key(), session_id, it_session_data->second.max_age);
 }
 
 void Session::clean_expired_sessions()
