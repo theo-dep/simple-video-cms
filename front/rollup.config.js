@@ -5,6 +5,8 @@ import terser from '@rollup/plugin-terser';
 import { rollupPluginHTML as html } from '@web/rollup-plugin-html';
 import css from 'rollup-plugin-import-css';
 import babel from '@rollup/plugin-babel';
+import del from 'rollup-plugin-delete';
+import { videojsEntries } from './rollup.shared.js';
 
 const SRC_HTML_FILE = 'index.html';
 const SRC_HTML = `front/${SRC_HTML_FILE}`;
@@ -44,7 +46,24 @@ const terserOptions = {
   compress: { passes: 2 },
 };
 
+const withTerser = (entry) => ({
+  ...entry,
+  plugins: [...entry.plugins, terser({ ...terserOptions, module: true })],
+});
+
 export default [
+  ...videojsEntries.map((entry) => ({
+    ...withTerser(entry),
+    output: {
+      dir: `${DIST_DIR}`,
+      format: 'es',
+      entryFileNames: entry.input.endsWith('.js') ? entry.input : `${entry.input}.js`,
+      paths: {
+        'video.js': './video.js',
+      },
+    },
+  })),
+
   // Main Bundle
   {
     input: PROD_HTML,
@@ -55,8 +74,18 @@ export default [
       assetFileNames: '[name]-[hash][extname]',
       entryFileNames: '[name]-[hash].js',
       chunkFileNames: '[name]-[hash].js',
+      paths: {
+        'video.js': './video.js',
+        'videojs-yt-style': './videojs-yt-style.js',
+        'videojs-mobile-ui': './videojs-mobile-ui.js',
+      },
     },
+    external: ['video.js', 'videojs-yt-style', 'videojs-mobile-ui'],
     plugins: [
+      del({
+        // remove previous env.js
+        targets: `${DIST_DIR}/env-*.js`,
+      }),
       html({
         minify: true,
         minifyCss: true,
@@ -90,9 +119,7 @@ export default [
         browser: true,
         extensions: ['.js', '.mjs'],
       }),
-      commonjs({
-        requireReturnsDefault: 'preferred',
-      }),
+      commonjs(),
       css({
         minify: true,
       }),

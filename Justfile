@@ -20,7 +20,7 @@ cpplint-configure:
 	@cmake --preset lint
 
 build-front:
-	@npx rollup -c rollup.config.js
+	@npx rollup -c front/rollup.config.js
 
 eslint:
 	@npx eslint "front/**/*.js"
