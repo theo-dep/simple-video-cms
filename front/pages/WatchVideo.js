@@ -115,8 +115,47 @@ export default function WatchVideo({ videoId }) {
       }
     });
 
-    player.on('seeking', async () => {
+    // patch video.js to stop fetching a hls segment during seeking
+    // this is made to synchronise the reset session api with seeking
+
+    let isSeeking = false;
+    let debounce = null;
+    let lastBlocked = null;
+
+    let originalVhsXhr = null;
+
+    player.on('xhr-hooks-ready', () => {
+      originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
+
+      player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
+        if (isSeeking && options.uri?.endsWith('.ts')) {
+          lastBlocked = { options, callback };
+          return {
+            abort: () => {},
+            addEventListener: () => {},
+          };
+        }
+
+        return originalVhsXhr(options, callback);
+      };
+    });
+
+    async function onSeekEnd() {
       await api.resetVideoSession(videoId).catch(() => route('/403'));
+      isSeeking = false;
+
+      if (lastBlocked && originalVhsXhr) {
+        originalVhsXhr(lastBlocked.options, lastBlocked.callback);
+        lastBlocked = null;
+      }
+    }
+
+    player.on('seeking', () => {
+      if (videojs.browser.IS_IOS) api.resetVideoSession(videoId).catch(() => route('/403'));
+
+      isSeeking = true;
+      clearTimeout(debounce);
+      debounce = setTimeout(onSeekEnd, 300);
     });
 
     return () => {
@@ -124,6 +163,7 @@ export default function WatchVideo({ videoId }) {
         playerRef.current.dispose();
         playerRef.current = null;
       }
+      clearTimeout(debounce);
     };
   }, [video, videoId]);
 
