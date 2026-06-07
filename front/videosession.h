@@ -25,12 +25,14 @@ private:
     static constexpr int not_started_segment_number{ 3 };
     static constexpr int max_segment_number{ 3 };
     static constexpr int min_segment_number{ 2 };
+    static constexpr int max_sink_number{ 1 };
 
     struct State
     {
         bool started{ false };                                                                // player started
         bool banned{ false };                                                                 // played banned
         int last_segment{ -1 };                                                               // last segment served (-1 = none)
+        int sink_count{ 0 };                                                                  // number of sink for this session
         std::chrono::system_clock::time_point created_at{ std::chrono::system_clock::now() }; // creation session timestamp
     };
     friend struct std::formatter<State, char>;
