@@ -45,8 +45,7 @@
 
       {% if not is_forbidden %}
 
-      <video oncontextmenu="return false;" id="video-player" class="video-js vjs-default-skin" controls
-        data-setup='{"fluid": true}' preload="auto">
+      <video oncontextmenu="return false;" id="video-player" class="video-js vjs-default-skin" controls playsinline>
         <p class="vjs-no-js">
           To view this video please enable JavaScript, and consider upgrading to a web browser that
           <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
@@ -79,13 +78,17 @@
 <script>
   const videoId = "{{ video_id }}";
   const player = videojs('video-player', {
-    fluid: true,
     html5: {
-      vhs: {
-        overrideNative: true,
+        vhs: {
+          overrideNative: true,
+          withCredentials: false,
+        },
+        nativeVideoTracks: false,
+        nativeAudioTracks: false,
       },
-    },
-    playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
+      fluid: true,
+      preload: 'metadata',
+      playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
   });
   // player.mobileUi();
   player.ytStyle();
@@ -99,12 +102,17 @@
   }
   {% endif %}
 
+  let isSessionStarted = false;
+
   player.on('play', async () => {
-    // allow to continue to fetch segments
-    await fetch(`/start-video-session/${videoId}`, {
-      method: 'POST',
-      credentials: 'same-origin',
-    });
+    if (!isSessionStarted) {
+      isSessionStarted = true;
+      // allow to continue to fetch segments
+      await fetch(`/start-video-session/${videoId}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+    }
 
     const pageAccessedByReload = (
       (window.performance.navigation && window.performance.navigation.type === 1) ||
