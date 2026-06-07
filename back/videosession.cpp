@@ -20,8 +20,8 @@ struct std::formatter<VideoSession::State> : std::formatter<std::string>
     FmtContext::iterator format(const VideoSession::State& state, FmtContext& ctx) const
     {
         return std::format_to(ctx.out(),
-                              "[ started={}, banned={}, last_segment={}, create_at={} ]",
-                              state.started, state.banned, state.last_segment, state.created_at);
+                              "[ started={}, banned={}, last_segment={}, sink_count={}, create_at={} ]",
+                              state.started, state.banned, state.last_segment, state.sink_count, state.created_at);
     }
 };
 
@@ -63,6 +63,7 @@ void VideoSession::reset_session(const std::string& session_id, const std::strin
         return;
     }
 
+    session->second.sink_count = 0;
     session->second.last_segment = -1;
 }
 
@@ -108,16 +109,24 @@ bool VideoSession::validate_segment_access(const std::string& session_id, const 
 
     // no jump forward
     if (session->second.last_segment >= 0 && segment_number > session->second.last_segment + max_segment_number) {
-        session->second.banned = true;
-        logging::info{ "suspicious jump (requested={}) {} <=> {}", segment_number, session->first, session->second };
-        return false;
+        if (session->second.sink_count > max_sink_number) {
+            session->second.banned = true;
+            logging::info{ "suspicious jump (requested={}) {} <=> {}", segment_number, session->first, session->second };
+            return false;
+        }
+
+        ++(session->second.sink_count);
     }
 
     // no return back
     if (session->second.last_segment >= 0 && segment_number < session->second.last_segment - min_segment_number) {
-        session->second.banned = true;
-        logging::info{ "suspicious back return (requested={}) {} <=> {}", segment_number, session->first, session->second };
-        return false;
+        if (session->second.sink_count > max_sink_number) {
+            session->second.banned = true;
+            logging::info{ "suspicious back return (requested={}) {} <=> {}", segment_number, session->first, session->second };
+            return false;
+        }
+
+        ++(session->second.sink_count);
     }
 
     session->second.last_segment = segment_number;
