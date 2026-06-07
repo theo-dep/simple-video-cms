@@ -22,9 +22,9 @@ private:
     void clean_expired_sessions(const std::string& except_session_id);
 
     static constexpr std::chrono::seconds duration{ 300 };
-    static constexpr int not_started_segment_number{ 1 };
-    static constexpr int max_segment_number{ 1 };
-    static constexpr int min_segment_number{ 0 };
+    static constexpr int not_started_segment_number{ 3 };
+    static constexpr int max_segment_number{ 3 };
+    static constexpr int min_segment_number{ 2 };
 
     struct State
     {
