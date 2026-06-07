@@ -83,8 +83,16 @@ export default function WatchVideo({ videoId }) {
     }
 
     playerRef.current = videojs(videoRef.current, {
+      html5: {
+        vhs: {
+          overrideNative: true,
+          withCredentials: false,
+        },
+        nativeVideoTracks: false,
+        nativeAudioTracks: false,
+      },
       fluid: true,
-      html5: { vhs: { overrideNative: true } },
+      preload: 'metadata',
       playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
     });
 
@@ -98,8 +106,13 @@ export default function WatchVideo({ videoId }) {
       type: 'application/x-mpegURL',
     });
 
+    let isSessionStarted = false;
+
     player.on('play', async () => {
-      await api.startVideoSession(videoId).catch(() => route('/403'));
+      if (!isSessionStarted) {
+        isSessionStarted = true;
+        await api.startVideoSession(videoId).catch(() => route('/403'));
+      }
     });
 
     player.on('seeking', async () => {
@@ -127,7 +140,7 @@ export default function WatchVideo({ videoId }) {
               id="video-player"
               class="video-js vjs-default-skin"
               controls
-              preload="auto"
+              playsinline
             >
               <p class="vjs-no-js">
                 To view this video please enable JavaScript and upgrade to a browser that
