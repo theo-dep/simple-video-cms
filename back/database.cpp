@@ -785,7 +785,8 @@ bool Database::delete_video(int id) const
             })
             .and_then([&](const Video& video) -> std::optional<Video> {
                 // remove video directory
-                return ::filesystem::remove_directory(hls_video_path(video.id)) ? std::optional(video) : std::nullopt;
+                const std::filesystem::path path{ hls_video_path(video.id) };
+                return ::filesystem::remove_directory(path) ? std::optional(video) : std::nullopt;
             })
             .and_then([&](const Video& video) -> std::optional<Video> {
                 // remove thumbnail file
