@@ -83,8 +83,16 @@ export default function WatchVideo({ videoId }) {
     }
 
     playerRef.current = videojs(videoRef.current, {
+      html5: {
+        vhs: {
+          overrideNative: true,
+          withCredentials: false,
+        },
+        nativeVideoTracks: false,
+        nativeAudioTracks: false,
+      },
       fluid: true,
-      html5: { vhs: { overrideNative: true } },
+      preload: 'metadata',
       playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
     });
 
@@ -98,12 +106,56 @@ export default function WatchVideo({ videoId }) {
       type: 'application/x-mpegURL',
     });
 
+    let isSessionStarted = false;
+
     player.on('play', async () => {
-      await api.startVideoSession(videoId).catch(() => route('/403'));
+      if (!isSessionStarted) {
+        isSessionStarted = true;
+        await api.startVideoSession(videoId).catch(() => route('/403'));
+      }
     });
 
-    player.on('seeking', async () => {
+    // patch video.js to stop fetching a hls segment during seeking
+    // this is made to synchronise the reset session api with seeking
+
+    let isSeeking = false;
+    let debounce = null;
+    let lastBlocked = null;
+
+    let originalVhsXhr = null;
+
+    player.on('xhr-hooks-ready', () => {
+      originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
+
+      player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
+        if (isSeeking && options.uri?.endsWith('.ts')) {
+          lastBlocked = { options, callback };
+          return {
+            abort: () => {},
+            addEventListener: () => {},
+          };
+        }
+
+        return originalVhsXhr(options, callback);
+      };
+    });
+
+    async function onSeekEnd() {
       await api.resetVideoSession(videoId).catch(() => route('/403'));
+      isSeeking = false;
+
+      if (lastBlocked && originalVhsXhr) {
+        originalVhsXhr(lastBlocked.options, lastBlocked.callback);
+        lastBlocked = null;
+      }
+    }
+
+    player.on('seeking', () => {
+      if (videojs.browser.IS_IOS) api.resetVideoSession(videoId).catch(() => route('/403'));
+
+      isSeeking = true;
+      clearTimeout(debounce);
+      debounce = setTimeout(onSeekEnd, 300);
     });
 
     return () => {
@@ -111,6 +163,7 @@ export default function WatchVideo({ videoId }) {
         playerRef.current.dispose();
         playerRef.current = null;
       }
+      clearTimeout(debounce);
     };
   }, [video, videoId]);
 
@@ -127,7 +180,7 @@ export default function WatchVideo({ videoId }) {
               id="video-player"
               class="video-js vjs-default-skin"
               controls
-              preload="auto"
+              playsinline
             >
               <p class="vjs-no-js">
                 To view this video please enable JavaScript and upgrade to a browser that
