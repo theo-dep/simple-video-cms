@@ -45,8 +45,7 @@
 
       {% if not is_forbidden %}
 
-      <video oncontextmenu="return false;" id="video-player" class="video-js vjs-default-skin" controls
-        data-setup='{"fluid": true}' preload="auto">
+      <video oncontextmenu="return false;" id="video-player" class="video-js vjs-default-skin" controls playsinline>
         <p class="vjs-no-js">
           To view this video please enable JavaScript, and consider upgrading to a web browser that
           <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
@@ -79,13 +78,17 @@
 <script>
   const videoId = "{{ video_id }}";
   const player = videojs('video-player', {
-    fluid: true,
     html5: {
-      vhs: {
-        overrideNative: true,
+        vhs: {
+          overrideNative: true,
+          withCredentials: false,
+        },
+        nativeVideoTracks: false,
+        nativeAudioTracks: false,
       },
-    },
-    playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
+      fluid: true,
+      preload: 'metadata',
+      playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
   });
   // player.mobileUi();
   player.ytStyle();
@@ -99,12 +102,17 @@
   }
   {% endif %}
 
+  let isSessionStarted = false;
+
   player.on('play', async () => {
-    // allow to continue to fetch segments
-    await fetch(`/start-video-session/${videoId}`, {
-      method: 'POST',
-      credentials: 'same-origin',
-    });
+    if (!isSessionStarted) {
+      isSessionStarted = true;
+      // allow to continue to fetch segments
+      await fetch(`/start-video-session/${videoId}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+    }
 
     const pageAccessedByReload = (
       (window.performance.navigation && window.performance.navigation.type === 1) ||
@@ -123,12 +131,56 @@
     });
   });
 
-  // notify the server in seek to not block the user
-  player.on("seeking", async () => {
+  // patch video.js to stop fetching a hls segment during seeking
+  // this is made to synchronise the reset session api with seeking
+
+  let isSeeking = false;
+  let debounce = null;
+  let lastBlocked = null;
+
+  let originalVhsXhr = null;
+
+  player.on('xhr-hooks-ready', () => {
+    originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
+
+    player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
+      if (isSeeking && options.uri?.endsWith('.ts')) {
+        lastBlocked = { options, callback };
+        return {
+          abort: () => {},
+          addEventListener: () => {},
+        };
+      }
+
+      return originalVhsXhr(options, callback);
+    };
+  });
+
+  async function onSeekEnd() {
     await fetch(`/reset-video-session/${videoId}`, {
       method: 'POST',
       credentials: 'same-origin',
     });
+    isSeeking = false;
+
+    if (lastBlocked && originalVhsXhr) {
+      originalVhsXhr(lastBlocked.options, lastBlocked.callback);
+      lastBlocked = null;
+    }
+  }
+
+  // notify the server in seek to not block the user
+  player.on('seeking', () => {
+    if (videojs.browser.IS_IOS) {
+      fetch(`/reset-video-session/${videoId}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+    }
+
+    isSeeking = true;
+    clearTimeout(debounce);
+    debounce = setTimeout(onSeekEnd, 300);
   });
 </script>
 
