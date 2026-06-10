@@ -69,6 +69,7 @@ export const api = {
   thumbnailPath: (videoId) => BASE + `/thumbnail/${videoId}`,
   adminDownloadVideoPath: (videoId) => BASE + `/admin/download-video/${videoId}`,
 
+  addVideoSession: (videoId) => fetchApi('POST', `/add-video-session/${videoId}`),
   startVideoSession: (videoId) => fetchApi('POST', `/start-video-session/${videoId}`),
   resetVideoSession: (videoId) => fetchApi('POST', `/reset-video-session/${videoId}`),
 
