@@ -30,6 +30,9 @@ namespace server
     void watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
     void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
 
+    // Logs
+    void logs(const httplib::Request& req, httplib::Response& res, logging::Logger& logger);
+
     // Auth
     void refresh(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db);
     void login(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db);
@@ -92,6 +95,10 @@ int server::start()
     Session session;
     VideoSession video_session;
 
+    const std::filesystem::path logs_path{ filesystem::logs_path() / "front.log" };
+    logging::Logger front_logger;
+    front_logger.open(logs_path);
+
 #ifdef _DEBUG
     server.set_post_routing_handler([](const httplib::Request& /*req*/, httplib::Response& res) {
         res.set_header("Last-Modified", logging::time_local());
@@ -115,6 +122,8 @@ int server::start()
     server
         .Get("/watch-video/:id", sc::serve(watch_video, std::cref(bundle_dir), std::cref(db)))
         .Get(R"((?!\/api\/).*)", sc::serve(index, std::cref(bundle_dir)))
+
+        .Post("/api/logs", sc::serve(logs, std::ref(front_logger)))
 
         .Get("/api/refresh", sc::serve(refresh, std::ref(session), std::cref(db)))
         .Post("/api/login", sc::serve(login, std::ref(session), std::cref(db)))
@@ -289,6 +298,21 @@ inline void server::index(const httplib::Request& /*req*/, httplib::Response& re
 {
     static const std::string index_file{ (bundle_dir / "index.html").string() };
     res.set_file_content(index_file);
+}
+
+// Logs
+
+inline void server::logs(const httplib::Request& req, httplib::Response& /*res*/, logging::Logger& logger)
+{
+    const nlohmann::json json = nlohmann::json::parse(req.body);
+    const std::string level{ json.value("level", "log") };
+    const std::string message{ json.value("message", "") };
+    const std::string timestamp{ json.value("timestamp", "") };
+    const std::string host{ json.value("host", "?") };
+    const std::string user_agent{ json.value("userAgent", "?") };
+    const std::string path{ json.value("path", "/") };
+
+    logger << level << " - " << timestamp << " - " << host << " - " << path << " - " << message << " - " << user_agent << '\n';
 }
 
 // Auth
