@@ -106,6 +106,10 @@ export default function WatchVideo({ videoId }) {
       type: 'application/x-mpegURL',
     });
 
+    player.on('ready', async () => {
+      await api.addVideoSession(videoId).catch(() => route('/403'));
+    });
+
     let isSessionStarted = false;
 
     player.on('play', async () => {

@@ -39,9 +39,10 @@ namespace server
     void update_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
     // Video (user)
-    void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
+    void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db);
+    void add_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
     void start_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
     void reset_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
 
@@ -123,8 +124,9 @@ int server::start()
         .Post("/api/update-password", sc::serve(update_password, std::cref(session), std::cref(db)))
 
         .Get("/api/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
-        .Get("/api/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::cref(db), std::ref(video_session)))
+        .Get("/api/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::cref(db)))
         .Get("/api/video/:video_id/:segment", sc::serve(video_segment, std::cref(session), std::cref(db), std::ref(video_session)))
+        .Post("/api/add-video-session/:video_id", sc::serve(add_video_session, std::cref(session), std::cref(db), std::ref(video_session)))
         .Post("/api/start-video-session/:video_id", sc::serve(start_video_session, std::cref(session), std::cref(db), std::ref(video_session)))
         .Post("/api/reset-video-session/:video_id", sc::serve(reset_video_session, std::cref(session), std::cref(db), std::ref(video_session)))
 
@@ -564,7 +566,7 @@ namespace server
     }
 }
 
-inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session)
+inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     if (!has_video_right(req, session, db)) {
         res.status = httplib::StatusCode::Unauthorized_401;
@@ -583,8 +585,6 @@ inline void server::video_playlist(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    const std::string session_id{ session_id_from_req(req) };
-    video_session.add_session(session_id, su::int_to_string(video_id));
     res.set_content(playlist, "application/vnd.apple.mpegurl");
 }
 
@@ -628,6 +628,25 @@ inline void server::video_segment(const httplib::Request& req, httplib::Response
     }
 
     res.set_content(content, "video/mp2t");
+}
+
+inline void server::add_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session)
+{
+    if (!has_video_right(req, session, db)) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    if (!request_from_watch_video(req, video_id)) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
+    const std::string session_id{ session_id_from_req(req) };
+
+    video_session.add_session(session_id, su::int_to_string(video_id));
+    res.status = httplib::StatusCode::OK_200;
 }
 
 inline void server::start_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session)
