@@ -75,6 +75,7 @@ bool VideoSession::validate_segment_access(const std::string& session_id, const 
     const std::size_t underscore{ segment.rfind('_') };
     const std::size_t dot{ segment.rfind('.') };
     if (underscore == std::string::npos || dot == std::string::npos) {
+        logging::error{ "fail to find segment number in {} for video {}", segment, video_id };
         return false;
     }
 
@@ -84,6 +85,7 @@ bool VideoSession::validate_segment_access(const std::string& session_id, const 
 
     const auto session{ _sessions.find({ session_id, video_id }) };
     if (session == _sessions.end()) {
+        logging::error{ "session not found {} for {}", session_id, video_id };
         return false;
     }
 

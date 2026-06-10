@@ -102,6 +102,13 @@
   }
   {% endif %}
 
+  player.on('ready', async () => {
+    await fetch(`/add-video-session/${videoId}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+  });
+
   let isSessionStarted = false;
 
   player.on('play', async () => {
