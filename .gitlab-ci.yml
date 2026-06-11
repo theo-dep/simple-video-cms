@@ -85,9 +85,9 @@ docker_build:
     - !reference [.merge-rules, rules]
     - !reference [.deploy-rules, rules]
   script:
-    - docker-compose build
-    - docker tag simple-video-cms-back:latest $CONTAINER_TEST_BACK_IMAGE
-    - docker tag simple-video-cms-front:latest $CONTAINER_TEST_FRONT_IMAGE
+    - docker build -t alpine-common -f common/Containerfile .
+    - docker build -t $CONTAINER_TEST_BACK_IMAGE -f back/Containerfile back
+    - docker build -t $CONTAINER_TEST_FRONT_IMAGE -f front/Containerfile front
     - docker push $CONTAINER_TEST_BACK_IMAGE
     - docker push $CONTAINER_TEST_FRONT_IMAGE
 
