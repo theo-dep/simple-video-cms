@@ -23,8 +23,19 @@ const INCLUDED_ROUTE_PATTERN = [/^\/api\/video\/\d+\/playlist$/, /^\/api\/video\
 // Returns true if the given URL matches a dynamic included route
 const isIncludedRoute = (url) => INCLUDED_ROUTE_PATTERN.some((pattern) => pattern.test(new URL(url).pathname));
 
+async function log(level, ...message) {
+  const clients = await self.clients.matchAll();
+  clients.forEach((client) =>
+    client.postMessage({
+      type: 'SW_LOG',
+      level,
+      message,
+    })
+  );
+}
+
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activate: purging outdated caches');
+  log('log', 'Activate: purging outdated caches');
 
   // Delete all caches that aren't named in CURRENT_CACHES.
   // While there is only one cache in this example, the same logic will handle the case where
@@ -40,7 +51,7 @@ self.addEventListener('activate', (event) => {
             .filter((name) => !expectedCacheNames.includes(name))
             .map((name) => {
               // If this cache name isn't present in the array of "expected" cache names, then delete it.
-              console.log('[SW] Deleting outdated cache:', name);
+              log('log', 'Deleting outdated cache:', name);
               return caches.delete(name);
             })
         )
@@ -66,7 +77,7 @@ self.addEventListener('fetch', (event) => {
       .then((cache) => cache.match(request.url))
       .then((cached) => {
         if (cached) {
-          //console.log('[SW] Serving from cache:', request.url);
+          log('log', 'Serving from cache:', request.url);
           return cached;
         }
         // event.request will always have the proper mode set ('cors, 'no-cors', etc.) so we don't
@@ -76,7 +87,7 @@ self.addEventListener('fetch', (event) => {
             throw new Error(`Server returned ${response.status}`);
           }
           return caches.open(currentCache).then((cache) => {
-            console.log('[SW] Caching: ', request.url);
+            log('log', 'Caching: ', request.url);
             cache.put(request.url, response.clone());
             return response;
           });
@@ -86,7 +97,7 @@ self.addEventListener('fetch', (event) => {
         // This catch() will handle exceptions thrown from the fetch() operation.
         // Note that a HTTP error response (e.g. 404) will NOT trigger an exception.
         // It will return a normal response object that has the appropriate error code set.
-        console.error('[SW] Failed to serve:', err);
+        log('error', 'Failed to serve:', err);
         throw err;
       })
   );

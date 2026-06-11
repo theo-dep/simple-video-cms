@@ -2,8 +2,11 @@
 
 #include <filesystem>
 #include <format>
+#include <fstream>
+#include <iostream>
 #include <source_location>
 #include <string>
+#include <thread>
 
 namespace logging
 {
@@ -59,6 +62,39 @@ namespace logging
         debug(const std::string& message, const std::source_location& location = std::source_location::current());
     };
     debug(const std::string& message) -> debug<std::string>;
+
+    class Logger
+    {
+    public:
+        Logger();
+        ~Logger();
+
+        void open(const std::filesystem::path& log_file_path);
+
+        template <typename T>
+        Logger& operator<<(const T& message);
+
+    protected:
+        std::filesystem::path log_id_file_path() const;
+        void flush();
+        bool is_max_log_reached();
+
+    private:
+        std::filesystem::path _log_file_path;
+        std::size_t _log_file_id{ 0 };
+        std::filesystem::file_time_type _latest_time_check;
+
+        std::ofstream _log_file;
+        bool _is_running{ true };
+        std::thread _flush_thread;
+
+    public:
+        // prevent copy/move
+        Logger(const Logger&) = delete;
+        Logger& operator=(const Logger&) = delete;
+        Logger(Logger&&) = delete;
+        Logger& operator=(Logger&&) = delete;
+    };
 }
 
 template <class... Args>
@@ -77,4 +113,12 @@ template <class... Args>
 logging::debug<Args...>::debug(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location)
 {
     debug<std::string>{ std::format(fmt, std::forward<Args>(args)...), location };
+}
+
+template <typename T>
+logging::Logger& logging::Logger::operator<<(const T& message)
+{
+    _log_file << message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    std::clog << message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
+    return *this;
 }
