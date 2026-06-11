@@ -34,6 +34,7 @@ const ASSETS_TO_PREFETCH = [
 
 const VIDEO_ROUTE_PATTERN = /^\/video\/\d+$/;
 const EXCLUDED_ROUTE_PATTERN = [
+  /^\/add-video-session\/\d+$/,
   /^\/start-video-session\/\d+$/,
   /^\/reset-video-session\/\d+$/,
   /^\/increment-video-views\/\d+$/
