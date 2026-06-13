@@ -54,6 +54,7 @@ namespace server
 
     // Admin - videos
     void admin_video_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_update_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_delete_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
@@ -61,10 +62,12 @@ namespace server
 
     // Admin - admins
     void admin_admin_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
     // Admin - users
     void admin_user_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_update_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_reset_user_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
@@ -72,6 +75,7 @@ namespace server
 
     // Admin - groups
     void admin_group_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_update_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_delete_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
@@ -142,21 +146,25 @@ int server::start()
         .Get("/api/admin/stats", sc::serve(admin_stats, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/video-list", sc::serve(admin_video_list, std::cref(session), std::cref(db)))
+        .Get("/api/admin/video/:video_id", sc::serve(admin_video, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-video", sc::serve(admin_add_video, std::cref(session), std::cref(db)))
         .Post("/api/admin/update-video/:video_id", sc::serve(admin_update_video, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-video/:video_id", sc::serve(admin_delete_video, std::cref(session), std::cref(db)))
         .Get("/api/admin/download-video/:video_id", sc::serve(admin_download_video, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/admin-list", sc::serve(admin_admin_list, std::cref(session), std::cref(db)))
+        .Get("/api/admin/admin/:admin_id", sc::serve(admin_admin, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-admin", sc::serve(admin_add_admin, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/user-list", sc::serve(admin_user_list, std::cref(session), std::cref(db)))
+        .Get("/api/admin/user/:user_id", sc::serve(admin_user, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-user", sc::serve(admin_add_user, std::cref(session), std::cref(db)))
         .Post("/api/admin/update-user/:user_id", sc::serve(admin_update_user, std::cref(session), std::cref(db)))
         .Post("/api/admin/reset-user-password/:user_id", sc::serve(admin_reset_user_password, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-user/:user_id", sc::serve(admin_delete_user, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/group-list", sc::serve(admin_group_list, std::cref(session), std::cref(db)))
+        .Get("/api/admin/group/:group_id", sc::serve(admin_group, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-group", sc::serve(admin_add_group, std::cref(session), std::cref(db)))
         .Post("/api/admin/update-group/:group_id", sc::serve(admin_update_group, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-group/:group_id", sc::serve(admin_delete_group, std::cref(session), std::cref(db)));
@@ -751,6 +759,24 @@ inline void server::admin_video_list(const httplib::Request& req, httplib::Respo
     res.set_content(nlohmann::json(admin_videos).dump(), "application/json");
 }
 
+inline void server::admin_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const AdminVideoInfo admin_video{
+        .id = video_id,
+        .title = db.video_title(video_id),
+        .groups = db.video_group_right_list(video_id),
+        .users = db.video_user_right_list(video_id)
+    };
+
+    res.set_content(nlohmann::json(admin_video).dump(), "application/json");
+}
+
 inline void server::admin_add_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     if (authenticated_admin(req, session, db) == -1) {
@@ -892,6 +918,24 @@ inline void server::admin_admin_list(const httplib::Request& req, httplib::Respo
     res.set_content(nlohmann::json(admin_admins).dump(), "application/json");
 }
 
+inline void server::admin_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int admin_id{ su::string_to_int(req.path_params.at("admin_id")) };
+    const AdminAdminInfo admin_admin{
+        .id = admin_id,
+        .name = db.user_name(admin_id),
+        .is_super_admin = db.is_super_admin(admin_id),
+        .is_logged_once = db.user_password(admin_id).has_value()
+    };
+
+    res.set_content(nlohmann::json(admin_admin).dump(), "application/json");
+}
+
 inline void server::admin_add_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     if (authenticated_admin(req, session, db) == -1) {
@@ -955,6 +999,24 @@ inline void server::admin_user_list(const httplib::Request& req, httplib::Respon
     });
 
     res.set_content(nlohmann::json(admin_users).dump(), "application/json");
+}
+
+inline void server::admin_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+    const AdminUserInfo admin_user{
+        .id = user_id,
+        .name = db.user_name(user_id),
+        .groups = db.user_group_list(user_id),
+        .is_logged_once = db.user_password(user_id).has_value()
+    };
+
+    res.set_content(nlohmann::json(admin_user).dump(), "application/json");
 }
 
 inline void server::admin_add_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
@@ -1077,6 +1139,23 @@ inline void server::admin_group_list(const httplib::Request& req, httplib::Respo
     });
 
     res.set_content(nlohmann::json(admin_groups).dump(), "application/json");
+}
+
+inline void server::admin_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
+    const AdminGroupInfo admin_group{
+        .id = group_id,
+        .name = db.group_name(group_id),
+        .users = db.group_user_list(group_id)
+    };
+
+    res.set_content(nlohmann::json(admin_group).dump(), "application/json");
 }
 
 inline void server::admin_add_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)

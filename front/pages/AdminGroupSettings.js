@@ -19,12 +19,8 @@ export default function AdminGroupSettings({ groupId }) {
   useEffect(() => {
     if (!group || group.id !== groupId) {
       api
-        .adminGroupList()
-        .then((allGroups) => {
-          const ag = allGroups.json ?? allGroups;
-          const group = ag.find((g) => g.id === groupId) ?? { name: '', users: [] };
-          setGroup(group);
-        })
+        .adminGroup(groupId)
+        .then((r) => setGroup(r.json ?? r))
         .catch(() => route('/403'));
     }
 

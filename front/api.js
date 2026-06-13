@@ -78,6 +78,7 @@ export const api = {
   adminStats: () => fetchApi('GET', '/admin/stats'),
 
   adminVideoList: () => fetchApi('GET', '/admin/video-list'),
+  adminVideo: (videoId) => fetchApi('GET', `/admin/video/${videoId}`),
   adminAddVideo: (video, title, groupIds, userIds) => {
     const form = new FormData();
     form.append('title', title);
@@ -99,6 +100,7 @@ export const api = {
   adminDeleteVideo: (videoId) => fetchApi('POST', `/admin/delete-video/${videoId}`),
 
   adminAdminList: () => fetchApi('GET', '/admin/admin-list'),
+  adminAdmin: (adminId) => fetchApi('GET', `/admin/admin/${adminId}`),
   adminAddAdmin: (username) =>
     fetchApi(
       'POST',
@@ -109,6 +111,7 @@ export const api = {
     ),
 
   adminUserList: () => fetchApi('GET', '/admin/user-list'),
+  adminUser: (userId) => fetchApi('GET', `/admin/user/${userId}`),
   adminAddUser: (username, groupIds) =>
     fetchApi(
       'POST',
@@ -132,6 +135,7 @@ export const api = {
   adminDeleteUser: (userId) => fetchApi('POST', `/admin/delete-user/${userId}`),
 
   adminGroupList: () => fetchApi('GET', '/admin/group-list'),
+  adminGroup: (groupId) => fetchApi('GET', `/admin/group/${groupId}`),
   adminAddGroup: (name, userIds) =>
     fetchApi(
       'POST',

@@ -19,14 +19,8 @@ export default function AdminUserSettings({ userId }) {
 
   useEffect(() => {
     if (!user || user.id !== userId) {
-      api
-        .adminUserList()
-        .then((allUsers) => {
-          const au = allUsers.json ?? allUsers;
-          const user = au.find((u) => u.id === userId) ?? { name: '', groups: [] };
-          setUser(user);
-        })
-        .catch(() => route('/403'));
+      const fetchUser = isAdmin ? api.adminAdmin(userId) : api.adminUser(userId);
+      fetchUser.then((r) => setUser(r.json ?? r)).catch(() => route('/403'));
     }
 
     if (!isAdmin) {
