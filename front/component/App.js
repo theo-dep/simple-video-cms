@@ -23,8 +23,10 @@ export function App() {
         <${lazy(() => import('../pages/AdminNewVideo.js'))} path="/admin/new-video" />
         <${lazy(() => import('../pages/AdminVideoSettings.js'))} path="/admin/video-settings/:videoId" />
         <${lazy(() => import('../pages/AdminUserList.js'))} path="/admin/user-list" />
-        <${lazy(() => import('../pages/AdminNewUser.js'))} path="/admin/new-user" />
-        <${lazy(() => import('../pages/AdminUserSettings.js'))} path="/admin/user-settings/:userId" />
+        <${lazy(() => import('../pages/AdminNewUser.js').then((m) => m.AdminNewUser))} path="/admin/new-user" />
+        <${lazy(() => import('../pages/AdminNewUser.js').then((m) => m.AdminNewAdmin))} path="/admin/new-admin" />
+        <${lazy(() => import('../pages/AdminUserSettings.js').then((m) => m.AdminUserSettings))} path="/admin/user-settings/:userId" />
+        <${lazy(() => import('../pages/AdminUserSettings.js').then((m) => m.AdminAdminSettings))} path="/admin/admin-settings/:adminId" />
         <${lazy(() => import('../pages/AdminAdminList.js'))} path="/admin/admin-list" />
         <${lazy(() => import('../pages/AdminGroupList.js'))} path="/admin/group-list" />
         <${lazy(() => import('../pages/AdminNewGroup.js'))} path="/admin/new-group" />

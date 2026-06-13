@@ -7,10 +7,9 @@ import { selectedItem } from '../store/selection.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 
-export default function AdminUserSettings({ userId }) {
+function AdminUserSettingsBase({ userId, isAdmin }) {
   userId = Number(userId);
-  const { query, route } = useLocation();
-  const isAdmin = query.isAdmin === 'true';
+  const { route } = useLocation();
   const [user, setUser] = useState(selectedItem.value);
   const [groups, setGroups] = useState([]);
   const selectRef = useMultiSelect([user, groups]);
@@ -29,7 +28,7 @@ export default function AdminUserSettings({ userId }) {
         .then((r) => setGroups(r.json ?? r))
         .catch(() => route('/403'));
     }
-  }, [isAdmin, userId]);
+  }, [userId, user?.id]);
 
   function isSelected(groupId) {
     return user.groups.find((g) => g.id === groupId);
@@ -69,4 +68,12 @@ export default function AdminUserSettings({ userId }) {
       <//>
     `}
   `;
+}
+
+export function AdminUserSettings({ userId }) {
+  return html`<${AdminUserSettingsBase} userId=${userId} isAdmin=${false} />`;
+}
+
+export function AdminAdminSettings({ adminId }) {
+  return html`<${AdminUserSettingsBase} userId=${adminId} isAdmin=${true} />`;
 }

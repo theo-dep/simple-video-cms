@@ -28,7 +28,7 @@ export default function AdminUserList() {
 
   function updateUser(user) {
     selectedItem.value = user;
-    route('/admin/user-settings/' + user.id + '?isAdmin=false');
+    route('/admin/user-settings/' + user.id);
   }
 
   async function resetUser(id) {
@@ -55,7 +55,7 @@ export default function AdminUserList() {
             <tr>
               <th>Username</th>
               <th class="add-user">
-                <a href="/admin/new-user?isAdmin=false">
+                <a href="/admin/new-user">
                   <svg class="svg-button">
                     <title>Add user</title>
                     <${PersonAddIcon} />
