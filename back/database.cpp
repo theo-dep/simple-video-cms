@@ -283,18 +283,6 @@ bool Database::is_admin(int id) const
                .size() == 1;
 }
 
-bool Database::is_user(int id) const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    return storage.get_all<User>(
-                      where(
-                          c(&User::id) == id and
-                          not_in(id, select(&Admin::id)) and
-                          not_in(id, select(&SuperAdmin::id))))
-               .size() == 1;
-}
-
 std::optional<int> Database::add_admin(const std::string& name, const std::string& salt) const
 {
     User user_admin{
@@ -531,31 +519,6 @@ std::vector<Group> Database::group_list() const
     return storage.select(
         distinct(database::group_struct), from<Group>(),
         order_by(&Group::name).asc());
-}
-
-std::string Database::group_name(int id) const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::optional group_name{
-        storage.get_optional<Group>(id)
-            .transform([](const Group& group) -> std::string {
-                return group.name;
-            })
-            .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch group name "{}")", id };
-                return std::string{};
-            })
-    };
-    return group_name.value_or(std::string{});
-}
-
-bool Database::group_exists(const std::string& name) const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name)) };
-    return !groups.empty();
 }
 
 std::optional<int> Database::add_group(const std::string& name) const
