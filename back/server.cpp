@@ -767,9 +767,15 @@ inline void server::admin_video(const httplib::Request& req, httplib::Response& 
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_title{ db.video_title(video_id) };
+    if (video_title.empty()) {
+        res.status = httplib::StatusCode::NotFound_404;
+        return;
+    }
+
     const AdminVideoInfo admin_video{
         .id = video_id,
-        .title = db.video_title(video_id),
+        .title = video_title,
         .groups = db.video_group_right_list(video_id),
         .users = db.video_user_right_list(video_id)
     };
@@ -926,9 +932,15 @@ inline void server::admin_admin(const httplib::Request& req, httplib::Response& 
     }
 
     const int admin_id{ su::string_to_int(req.path_params.at("admin_id")) };
+    const std::string admin_name{ db.user_name(admin_id) };
+    if (admin_name.empty()) {
+        res.status = httplib::StatusCode::NotFound_404;
+        return;
+    }
+
     const AdminAdminInfo admin_admin{
         .id = admin_id,
-        .name = db.user_name(admin_id),
+        .name = admin_name,
         .is_super_admin = db.is_super_admin(admin_id),
         .is_logged_once = db.user_password(admin_id).has_value()
     };
@@ -1009,9 +1021,15 @@ inline void server::admin_user(const httplib::Request& req, httplib::Response& r
     }
 
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+    const std::string user_name{ db.user_name(user_id) };
+    if (user_name.empty()) {
+        res.status = httplib::StatusCode::NotFound_404;
+        return;
+    }
+
     const AdminUserInfo admin_user{
         .id = user_id,
-        .name = db.user_name(user_id),
+        .name = user_name,
         .groups = db.user_group_list(user_id),
         .is_logged_once = db.user_password(user_id).has_value()
     };
@@ -1149,9 +1167,15 @@ inline void server::admin_group(const httplib::Request& req, httplib::Response& 
     }
 
     const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
+    const std::string group_name{ db.group_name(group_id) };
+    if (group_name.empty()) {
+        res.status = httplib::StatusCode::NotFound_404;
+        return;
+    }
+
     const AdminGroupInfo admin_group{
         .id = group_id,
-        .name = db.group_name(group_id),
+        .name = group_name,
         .users = db.group_user_list(group_id)
     };
 
