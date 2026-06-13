@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Video, id, title, views)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Video, id, title)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Group, id, name)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(User, id, name)
 
@@ -77,9 +77,8 @@ struct AdminVideoInfo
 {
     int id{ 0 };
     std::string title;
-    int views{ 0 };
     std::vector<Group> groups;
     std::vector<User> users;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminVideoInfo, id, title, views, groups, users)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminVideoInfo, id, title, groups, users)
