@@ -689,7 +689,6 @@ inline void server::start_video_session(const httplib::Request& req, httplib::Re
     const std::string session_id{ session_id_from_req(req) };
 
     video_session.start_session(session_id, su::int_to_string(video_id));
-    [[maybe_unused]] const bool views_incremented{ db.increment_video_views(video_id) };
     res.status = httplib::StatusCode::OK_200;
 }
 
@@ -725,7 +724,6 @@ inline void server::admin_stats(const httplib::Request& req, httplib::Response& 
         { "userCount", db.user_count() },
         { "videoCount", db.video_count() },
         { "groupCount", db.group_count() },
-        { "viewCount", db.view_count() },
     };
     res.set_content(stats.dump(), "application/json");
 }
@@ -745,7 +743,6 @@ inline void server::admin_video_list(const httplib::Request& req, httplib::Respo
         return AdminVideoInfo{
             .id = video.id,
             .title = video.title,
-            .views = video.views,
             .groups = db.video_group_right_list(video.id),
             .users = db.video_user_right_list(video.id)
         };

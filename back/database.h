@@ -21,7 +21,6 @@ public:
     std::vector<Video> no_user_video_list() const;
 
     std::string video_title(int id) const;
-    int video_views(int id) const;
     int video_size(int id) const;
     std::string video(int id, std::size_t offset, std::size_t length) const;
     std::string video_playlist(int id) const;
@@ -32,7 +31,6 @@ public:
     bool is_super_admin(int id) const;
 
     bool is_admin(int id) const;
-    bool is_user(int id) const;
     [[nodiscard]] std::optional<int> add_admin(const std::string& name, const std::string& salt) const;
     [[nodiscard]] std::optional<int> add_user(const std::string& name, const std::string& salt) const;
     [[nodiscard]] std::optional<int> add_password(int id, const std::string& password) const;
@@ -49,15 +47,12 @@ public:
     int user_count() const;
     int group_count() const;
     int video_count() const;
-    int view_count() const;
 
     std::vector<User> user_list() const;
     std::vector<User> admin_list() const;
 
     std::vector<Group> group_list() const;
 
-    std::string group_name(int id) const;
-    bool group_exists(const std::string& name) const;
     [[nodiscard]] std::optional<int> add_group(const std::string& name) const;
     [[nodiscard]] bool add_group_users(int id, const std::vector<int>& user_ids) const;
     [[nodiscard]] bool add_user_groups(int user_id, const std::vector<int>& group_ids) const;
@@ -80,7 +75,6 @@ public:
     [[nodiscard]] bool update_video_group_rights(int id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool update_video_user_rights(int id, const std::vector<int>& user_ids) const;
     [[nodiscard]] bool delete_video(int id) const;
-    [[nodiscard]] bool increment_video_views(int id) const;
     bool has_video_right(int id) const;
     bool has_video_right(int id, int user_id) const;
 

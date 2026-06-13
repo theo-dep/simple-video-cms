@@ -46,8 +46,7 @@ inline auto database::storage(const std::filesystem::path& path)
                    make_column("name", &Group::name, unique())),
         make_table("videos",
                    make_column("id", &Video::id, primary_key().autoincrement()),
-                   make_column("title", &Video::title),
-                   make_column("views", &Video::views)),
+                   make_column("title", &Video::title)),
         make_table("user_groups",
                    make_column("group_id", &GroupUser::group_id),
                    make_column("user_id", &GroupUser::user_id),
@@ -74,7 +73,7 @@ namespace database
 {
     using StorageType = decltype(database::storage({}));
 
-    constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title, &Video::views);
+    constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title);
     constexpr auto group_struct = struct_<Group>(&Group::id, &Group::name);
     constexpr auto user_struct = struct_<User>(&User::id, &User::name);
 
@@ -152,23 +151,6 @@ std::string Database::video_title(int id) const
             })
     };
     return video_title.value_or(std::string{});
-}
-
-int Database::video_views(int id) const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::optional video_views{
-        storage.get_optional<Video>(id)
-            .transform([](const Video& video) -> int {
-                return video.views;
-            })
-            .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to fetch video views "{}")", id };
-                return -1;
-            })
-    };
-    return video_views.value_or(-1);
 }
 
 int Database::video_size(int id) const
@@ -298,18 +280,6 @@ bool Database::is_admin(int id) const
                           c(&User::id) == id and
                           (in(id, select(&Admin::id)) or
                            in(id, select(&SuperAdmin::id)))))
-               .size() == 1;
-}
-
-bool Database::is_user(int id) const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    return storage.get_all<User>(
-                      where(
-                          c(&User::id) == id and
-                          not_in(id, select(&Admin::id)) and
-                          not_in(id, select(&SuperAdmin::id))))
                .size() == 1;
 }
 
@@ -520,14 +490,6 @@ int Database::video_count() const
     return storage.count<Video>();
 }
 
-int Database::view_count() const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::unique_ptr sum{ storage.sum(&Video::views) };
-    return sum ? *sum : 0;
-}
-
 std::vector<User> Database::user_list() const
 {
     const std::scoped_lock lock(_mutex);
@@ -557,31 +519,6 @@ std::vector<Group> Database::group_list() const
     return storage.select(
         distinct(database::group_struct), from<Group>(),
         order_by(&Group::name).asc());
-}
-
-std::string Database::group_name(int id) const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::optional group_name{
-        storage.get_optional<Group>(id)
-            .transform([](const Group& group) -> std::string {
-                return group.name;
-            })
-            .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch group name "{}")", id };
-                return std::string{};
-            })
-    };
-    return group_name.value_or(std::string{});
-}
-
-bool Database::group_exists(const std::string& name) const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name)) };
-    return !groups.empty();
 }
 
 std::optional<int> Database::add_group(const std::string& name) const
@@ -831,25 +768,6 @@ bool Database::delete_video(int id) const
             })
             .or_else([&] -> std::optional<bool> {
                 logging::error{ R"(Fail to delete video "{}")", id };
-                return false;
-            })
-    };
-    return success.value_or(false);
-}
-
-bool Database::increment_video_views(int id) const
-{
-    const std::scoped_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::optional success{
-        storage.get_optional<Video>(id)
-            .transform([&](Video video) -> bool {
-                video.views += 1;
-                storage.update(video);
-                return true;
-            })
-            .or_else([&] -> std::optional<bool> {
-                logging::error{ R"(Fail to increment video views "{}")", id };
                 return false;
             })
     };

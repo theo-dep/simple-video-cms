@@ -31,7 +31,6 @@ struct Video
 {
     int id{ 0 };
     std::string title;
-    int views{ 0 };
 };
 
 struct GroupUser
