@@ -310,17 +310,24 @@ inline void server::index(const httplib::Request& /*req*/, httplib::Response& re
 
 // Logs
 
-inline void server::logs(const httplib::Request& req, httplib::Response& /*res*/, logging::Logger& logger)
+inline void server::logs(const httplib::Request& req, httplib::Response& res, logging::Logger& logger)
 {
     const nlohmann::json json = nlohmann::json::parse(req.body);
-    const std::string level{ json.value("level", "log") };
-    const std::string message{ json.value("message", "") };
-    const std::string timestamp{ json.value("timestamp", "") };
-    const std::string host{ json.value("host", "?") };
-    const std::string user_agent{ json.value("userAgent", "?") };
-    const std::string path{ json.value("path", "/") };
+    if (!json.is_array()) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        return;
+    }
 
-    logger << level << " - " << timestamp << " - " << host << " - " << path << " - " << message << " - " << user_agent << '\n';
+    for (const auto& log_entry : json) {
+        const std::string level{ log_entry.value("level", "log") };
+        const std::string message{ log_entry.value("message", "") };
+        const std::string timestamp{ log_entry.value("timestamp", "") };
+        const std::string host{ log_entry.value("host", "?") };
+        const std::string user_agent{ log_entry.value("userAgent", "?") };
+        const std::string path{ log_entry.value("path", "/") };
+
+        logger << level << " - " << timestamp << " - " << host << " - " << path << " - " << message << " - " << user_agent << '\n';
+    }
 }
 
 // Auth

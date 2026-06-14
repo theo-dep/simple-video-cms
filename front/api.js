@@ -20,6 +20,7 @@ async function fetchApi(method, path, body = undefined) {
 }
 
 export const api = {
+  logsPath: () => BASE + `/logs`,
   logs: (logData) => fetchApi('POST', '/logs', JSON.stringify(logData)),
 
   login: (username, password) => {
