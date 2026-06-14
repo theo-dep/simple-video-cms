@@ -43,6 +43,29 @@ additionalVideoJSStyle.replaceSync(`
 }
 `);
 
+function waitForServiceWorkerController(timeoutMs = 1500) {
+  if (navigator.serviceWorker.controller) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const resolveOnce = (value) => {
+      if (settled) return;
+      settled = true;
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      clearTimeout(timeoutId);
+      resolve(value);
+    };
+
+    const onControllerChange = () => resolveOnce(true);
+    const timeoutId = setTimeout(() => resolveOnce(false), timeoutMs);
+
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+  });
+}
+
 export default function WatchVideo({ videoId }) {
   const { route } = useLocation();
   const videoRef = useRef(null);
@@ -74,16 +97,28 @@ export default function WatchVideo({ videoId }) {
       if (!(user.isLogged.value && 'serviceWorker' in navigator)) return;
 
       try {
-        const registration = await navigator.serviceWorker.register('/videoserviceworker.js', { scope: '/watch-video/' });
+        const waitForController = waitForServiceWorkerController();
 
-        if (!navigator.serviceWorker.controller && confirm('Do you want to reload this page to enable video caching?')) {
-          window.location.reload();
+        // Scope must be "/" for clients.claim() to work without a reload:
+        // clients.claim() matches the registration scope against the client's
+        // CREATION URL (the initial navigation that loaded the document), not
+        // the current SPA route (pushState). Since this app is always loaded
+        // from "/", only scope="/" can match and grant immediate control.
+        const registration = await navigator.serviceWorker.register('/videoserviceworker.js', { scope: '/' });
+        await navigator.serviceWorker.ready;
+
+        const hasController = navigator.serviceWorker.controller ? true : await waitForController;
+
+        const SW_PROMPT_KEY = 'video-sw-prompt-shown';
+        if (!hasController && !sessionStorage.getItem(SW_PROMPT_KEY)) {
+          sessionStorage.setItem(SW_PROMPT_KEY, '1');
+          if (confirm('Do you want to reload this page to enable video caching?')) {
+            window.location.reload();
+          }
         }
 
         const sw = registration.installing || registration.waiting || registration.active;
-        if (sw) {
-          sw.postMessage('enableCaching');
-        }
+        sw?.postMessage('enableCaching');
       } catch (err) {
         console.error('Video service worker registration failed', err);
       }

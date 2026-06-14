@@ -1,10 +1,13 @@
 import { useEffect } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
-import { user } from '../store/auth.js';
+import { user, refreshAuth } from '../store/auth.js';
 import clearSW from '../clearsw.js';
 
 export default function Logout() {
+  const { route } = useLocation();
+
   useTitle('Logout');
 
   useEffect(() => {
@@ -19,7 +22,8 @@ export default function Logout() {
       user.name.value = '';
       user.id.value = null;
 
-      window.location.href = '/';
+      await refreshAuth();
+      route('/');
     }
     cleanup();
   }, []);
