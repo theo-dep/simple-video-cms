@@ -327,12 +327,6 @@ inline void server::logs(const httplib::Request& req, httplib::Response& /*res*/
 
 namespace server
 {
-    inline void register_session(httplib::Response& res, Session& session, int user_id)
-    {
-        const std::string session_id{ session.create_session(su::int_to_string(user_id)) };
-        res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
-    }
-
     // Returns session_id from cookie, or empty string if not present/valid
     inline std::string session_id_from_req(const httplib::Request& req)
     {
@@ -380,8 +374,7 @@ inline void server::refresh(const httplib::Request& req, httplib::Response& res,
         const int user_id{ su::string_to_int(session.user_from_session(session_id)) };
 
         // reset session
-        session.remove_session_reset_cookie(session_id);
-        register_session(res, session, user_id);
+        res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
 
         const bool is_admin{ db.is_admin(user_id) };
         user.id = user_id;
@@ -433,7 +426,10 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
         return;
     }
 
-    register_session(res, session, user_id);
+    // create session
+    const std::string session_id{ session.create_session(su::int_to_string(user_id)) };
+    res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
+
     res.status = httplib::StatusCode::OK_200;
 }
 
