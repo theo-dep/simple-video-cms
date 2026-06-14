@@ -2,10 +2,16 @@ import { html } from 'htm/preact';
 import { useEffect } from 'preact/hooks';
 import { LocationProvider, Router, lazy } from 'preact-iso';
 import { refreshAuth } from '../store/auth.js';
+import { user } from '../store/auth.js';
+import clearSW from '../clearsw.js';
 
 export function App() {
-  useEffect(() => {
-    refreshAuth();
+  useEffect(async () => {
+    await refreshAuth();
+
+    if (!user.isLogged.value) {
+      await clearSW();
+    }
   }, []);
 
   return html`
