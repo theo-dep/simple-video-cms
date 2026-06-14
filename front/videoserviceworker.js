@@ -34,6 +34,23 @@ async function log(level, ...message) {
   );
 }
 
+let cachingEnabled = true;
+
+self.addEventListener('message', (event) => {
+  log('log', 'Message received:', event.data);
+
+  if (event.data === 'disableCaching') {
+    cachingEnabled = false;
+  } else if (event.data === 'enableCaching') {
+    cachingEnabled = true;
+  }
+});
+
+self.addEventListener('install', (event) => {
+  log('log', 'Install: skip waiting state');
+  event.waitUntil(self.skipWaiting());
+});
+
 self.addEventListener('activate', (event) => {
   log('log', 'Activate: purging outdated caches');
 
@@ -65,6 +82,11 @@ self.addEventListener('fetch', (event) => {
 
   if (!isIncludedRoute(request.url)) {
     return; // Let the browser handle it natively
+  }
+
+  if (!cachingEnabled) {
+    log('log', 'Caching disabled, fetch:', request.url);
+    return;
   }
 
   const currentCache = CURRENT_CACHES.video;

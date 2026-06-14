@@ -60,14 +60,6 @@ export default function WatchVideo({ videoId }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (user.isLogged.value && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/videoserviceworker.js', {
-        scope: '/watch-video/',
-      });
-    }
-  }, []);
-
   function onLoginClicked() {
     videoIdRedirected.value = videoId;
     route('/login');
@@ -76,91 +68,116 @@ export default function WatchVideo({ videoId }) {
   useEffect(() => {
     if (!video || !videoRef.current || playerRef.current) return;
 
-    const existingPlayer = videojs.getPlayer(videoRef.current);
-    if (existingPlayer) {
-      playerRef.current = existingPlayer;
-      return;
-    }
-
-    playerRef.current = videojs(videoRef.current, {
-      html5: {
-        vhs: {
-          overrideNative: true,
-          withCredentials: false,
-        },
-        nativeVideoTracks: false,
-        nativeAudioTracks: false,
-      },
-      fluid: true,
-      preload: 'metadata',
-      playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
-    });
-
-    const player = playerRef.current;
-
-    // player.mobileUi();
-    player.ytStyle();
-
-    player.src({
-      src: api.videoPlaylistPath(videoId),
-      type: 'application/x-mpegURL',
-    });
-
-    player.on('ready', async () => {
-      await api.addVideoSession(videoId).catch(() => route('/403'));
-    });
-
-    let isSessionStarted = false;
-
-    player.on('play', async () => {
-      if (!isSessionStarted) {
-        isSessionStarted = true;
-        await api.startVideoSession(videoId).catch(() => route('/403'));
-      }
-    });
-
-    // patch video.js to stop fetching a hls segment during seeking
-    // this is made to synchronise the reset session api with seeking
-
-    let isSeeking = false;
     let debounce = null;
-    let lastBlocked = null;
 
-    let originalVhsXhr = null;
+    async function waitForServiceWorker() {
+      if (!(user.isLogged.value && 'serviceWorker' in navigator)) return;
 
-    player.on('xhr-hooks-ready', () => {
-      originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
+      try {
+        const registration = await navigator.serviceWorker.register('/videoserviceworker.js', { scope: '/watch-video/' });
 
-      player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
-        if (isSeeking && options.uri?.endsWith('.ts')) {
-          lastBlocked = { options, callback };
-          return {
-            abort: () => {},
-            addEventListener: () => {},
-          };
+        if (!navigator.serviceWorker.controller && confirm('Do you want to reload this page to enable video caching?')) {
+          window.location.reload();
         }
 
-        return originalVhsXhr(options, callback);
-      };
-    });
-
-    async function onSeekEnd() {
-      await api.resetVideoSession(videoId).catch(() => route('/403'));
-      isSeeking = false;
-
-      if (lastBlocked && originalVhsXhr) {
-        originalVhsXhr(lastBlocked.options, lastBlocked.callback);
-        lastBlocked = null;
+        const sw = registration.installing || registration.waiting || registration.active;
+        if (sw) {
+          sw.postMessage('enableCaching');
+        }
+      } catch (err) {
+        console.error('Video service worker registration failed', err);
       }
     }
 
-    player.on('seeking', () => {
-      if (videojs.browser.IS_IOS) api.resetVideoSession(videoId).catch(() => route('/403'));
+    async function init() {
+      await waitForServiceWorker();
 
-      isSeeking = true;
-      clearTimeout(debounce);
-      debounce = setTimeout(onSeekEnd, 300);
-    });
+      const existingPlayer = videojs.getPlayer(videoRef.current);
+      if (existingPlayer) {
+        playerRef.current = existingPlayer;
+        return;
+      }
+
+      playerRef.current = videojs(videoRef.current, {
+        html5: {
+          vhs: {
+            overrideNative: true,
+            withCredentials: false,
+          },
+          nativeVideoTracks: false,
+          nativeAudioTracks: false,
+        },
+        fluid: true,
+        preload: 'metadata',
+        playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2],
+      });
+
+      const player = playerRef.current;
+
+      // player.mobileUi();
+      player.ytStyle();
+
+      player.src({
+        src: api.videoPlaylistPath(videoId),
+        type: 'application/x-mpegURL',
+      });
+
+      player.on('ready', async () => {
+        await api.addVideoSession(videoId).catch(() => route('/403'));
+      });
+
+      let isSessionStarted = false;
+      player.on('play', async () => {
+        if (!isSessionStarted) {
+          isSessionStarted = true;
+          await api.startVideoSession(videoId).catch(() => route('/403'));
+        }
+      });
+
+      // patch video.js to stop fetching a hls segment during seeking
+      // this is made to synchronise the reset session api with seeking
+
+      let isSeeking = false;
+      let lastBlocked = null;
+
+      let originalVhsXhr = null;
+
+      player.on('xhr-hooks-ready', () => {
+        originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
+
+        player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
+          if (isSeeking && options.uri?.endsWith('.ts')) {
+            lastBlocked = { options, callback };
+            return {
+              abort: () => {},
+              addEventListener: () => {},
+            };
+          }
+
+          return originalVhsXhr(options, callback);
+        };
+      });
+
+      async function onSeekEnd() {
+        await api.resetVideoSession(videoId).catch(() => route('/403'));
+        isSeeking = false;
+
+        if (lastBlocked && originalVhsXhr) {
+          originalVhsXhr(lastBlocked.options, lastBlocked.callback);
+          lastBlocked = null;
+        }
+      }
+
+      player.on('seeking', () => {
+        if (videojs.browser.IS_IOS) api.resetVideoSession(videoId).catch(() => route('/403'));
+
+        isSeeking = true;
+        clearTimeout(debounce);
+        debounce = setTimeout(onSeekEnd, 300);
+      });
+    }
+
+    init();
 
     return () => {
       if (playerRef.current) {
