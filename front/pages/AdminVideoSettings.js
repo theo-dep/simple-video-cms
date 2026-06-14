@@ -21,12 +21,8 @@ export default function AdminUpdateVideo({ videoId }) {
   useEffect(() => {
     if (!video || video.id !== videoId) {
       api
-        .adminVideoList()
-        .then((allVideos) => {
-          const av = allVideos.json ?? allVideos;
-          const video = av.find((v) => v.id === videoId) ?? { title: '', groups: [], users: [] };
-          setVideo(video);
-        })
+        .adminVideo(videoId)
+        .then((r) => setVideo(r.json ?? r))
         .catch(() => route('/403'));
     }
 

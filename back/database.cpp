@@ -521,6 +521,23 @@ std::vector<Group> Database::group_list() const
         order_by(&Group::name).asc());
 }
 
+std::string Database::group_name(int id) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional group_name{
+        storage.get_optional<Group>(id)
+            .transform([](const Group& group) -> std::string {
+                return group.name;
+            })
+            .or_else([&] -> std::optional<std::string> {
+                logging::error{ R"(Fail to fetch group name "{}")", id };
+                return std::string{};
+            })
+    };
+    return group_name.value_or(std::string{});
+}
+
 std::optional<int> Database::add_group(const std::string& name) const
 {
     Group group{

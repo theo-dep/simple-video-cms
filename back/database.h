@@ -53,6 +53,7 @@ public:
 
     std::vector<Group> group_list() const;
 
+    std::string group_name(int id) const;
     [[nodiscard]] std::optional<int> add_group(const std::string& name) const;
     [[nodiscard]] bool add_group_users(int id, const std::vector<int>& user_ids) const;
     [[nodiscard]] bool add_user_groups(int user_id, const std::vector<int>& group_ids) const;

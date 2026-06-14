@@ -6,9 +6,8 @@ import { useTitle } from '../hook/useTitle.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 
-export default function AdminNewUser() {
-  const { query, route } = useLocation();
-  const isAdmin = query.isAdmin === 'true';
+function AdminNewUserBase({ isAdmin }) {
+  const { route } = useLocation();
   const [groups, setGroups] = useState([]);
   const selectRef = useMultiSelect([groups]);
 
@@ -58,4 +57,12 @@ export default function AdminNewUser() {
       <//>
     `}
   `;
+}
+
+export function AdminNewUser() {
+  return html`<${AdminNewUserBase} isAdmin=${false} />`;
+}
+
+export function AdminNewAdmin() {
+  return html`<${AdminNewUserBase} isAdmin=${true} />`;
 }

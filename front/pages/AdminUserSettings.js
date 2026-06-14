@@ -7,10 +7,9 @@ import { selectedItem } from '../store/selection.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 
-export default function AdminUserSettings({ userId }) {
+function AdminUserSettingsBase({ userId, isAdmin }) {
   userId = Number(userId);
-  const { query, route } = useLocation();
-  const isAdmin = query.isAdmin === 'true';
+  const { route } = useLocation();
   const [user, setUser] = useState(selectedItem.value);
   const [groups, setGroups] = useState([]);
   const selectRef = useMultiSelect([user, groups]);
@@ -19,14 +18,8 @@ export default function AdminUserSettings({ userId }) {
 
   useEffect(() => {
     if (!user || user.id !== userId) {
-      api
-        .adminUserList()
-        .then((allUsers) => {
-          const au = allUsers.json ?? allUsers;
-          const user = au.find((u) => u.id === userId) ?? { name: '', groups: [] };
-          setUser(user);
-        })
-        .catch(() => route('/403'));
+      const fetchUser = isAdmin ? api.adminAdmin(userId) : api.adminUser(userId);
+      fetchUser.then((r) => setUser(r.json ?? r)).catch(() => route('/403'));
     }
 
     if (!isAdmin) {
@@ -35,7 +28,7 @@ export default function AdminUserSettings({ userId }) {
         .then((r) => setGroups(r.json ?? r))
         .catch(() => route('/403'));
     }
-  }, [isAdmin, userId]);
+  }, [userId, user?.id]);
 
   function isSelected(groupId) {
     return user.groups.find((g) => g.id === groupId);
@@ -75,4 +68,12 @@ export default function AdminUserSettings({ userId }) {
       <//>
     `}
   `;
+}
+
+export function AdminUserSettings({ userId }) {
+  return html`<${AdminUserSettingsBase} userId=${userId} isAdmin=${false} />`;
+}
+
+export function AdminAdminSettings({ adminId }) {
+  return html`<${AdminUserSettingsBase} userId=${adminId} isAdmin=${true} />`;
 }
