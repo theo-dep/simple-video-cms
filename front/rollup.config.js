@@ -158,9 +158,9 @@ export default [
 
   // Service worker
   {
-    input: 'front/videoserviceworker.js',
+    input: 'front/sw.js',
     output: {
-      file: `${DIST_DIR}/videoserviceworker.js`,
+      file: `${DIST_DIR}/sw.js`,
       format: 'iife',
     },
     plugins: [

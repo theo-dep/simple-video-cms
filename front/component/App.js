@@ -1,18 +1,39 @@
 import { html } from 'htm/preact';
-import { useEffect } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { LocationProvider, Router, lazy } from 'preact-iso';
 import { refreshAuth } from '../store/auth.js';
 import { user } from '../store/auth.js';
 import clearSW from '../clearsw.js';
 
 export function App() {
-  useEffect(async () => {
-    await refreshAuth();
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    refreshAuth().then(() => {
+      setAuthReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
 
     if (!user.isLogged.value) {
-      await clearSW();
+      clearSW();
+      return;
     }
-  }, []);
+
+    if ('serviceWorker' in navigator) {
+      // Scope must be "/" for clients.claim() to work without a reload:
+      // clients.claim() matches the registration scope against the client's
+      // CREATION URL (the initial navigation that loaded the document), not
+      // the current SPA route (pushState). Since this app is always loaded
+      // from "/", only scope="/" can match and grant immediate control.
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((registration) => {
+        const sw = registration.installing || registration.waiting || registration.active;
+        sw?.postMessage('enableCaching');
+      });
+    }
+  }, [authReady, user.isLogged.value]);
 
   return html`
     <${LocationProvider}>
