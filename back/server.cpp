@@ -310,29 +310,30 @@ inline void server::index(const httplib::Request& /*req*/, httplib::Response& re
 
 // Logs
 
-inline void server::logs(const httplib::Request& req, httplib::Response& /*res*/, logging::Logger& logger)
+inline void server::logs(const httplib::Request& req, httplib::Response& res, logging::Logger& logger)
 {
     const nlohmann::json json = nlohmann::json::parse(req.body);
-    const std::string level{ json.value("level", "log") };
-    const std::string message{ json.value("message", "") };
-    const std::string timestamp{ json.value("timestamp", "") };
-    const std::string host{ json.value("host", "?") };
-    const std::string user_agent{ json.value("userAgent", "?") };
-    const std::string path{ json.value("path", "/") };
+    if (!json.is_array()) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        return;
+    }
 
-    logger << level << " - " << timestamp << " - " << host << " - " << path << " - " << message << " - " << user_agent << '\n';
+    for (const auto& log_entry : json) {
+        const std::string level{ log_entry.value("level", "log") };
+        const std::string message{ log_entry.value("message", "") };
+        const std::string timestamp{ log_entry.value("timestamp", "") };
+        const std::string host{ log_entry.value("host", "?") };
+        const std::string user_agent{ log_entry.value("userAgent", "?") };
+        const std::string path{ log_entry.value("path", "/") };
+
+        logger << level << " - " << timestamp << " - " << host << " - " << path << " - " << message << " - " << user_agent << '\n';
+    }
 }
 
 // Auth
 
 namespace server
 {
-    inline void register_session(httplib::Response& res, Session& session, int user_id)
-    {
-        const std::string session_id{ session.create_session(su::int_to_string(user_id)) };
-        res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
-    }
-
     // Returns session_id from cookie, or empty string if not present/valid
     inline std::string session_id_from_req(const httplib::Request& req)
     {
@@ -380,8 +381,7 @@ inline void server::refresh(const httplib::Request& req, httplib::Response& res,
         const int user_id{ su::string_to_int(session.user_from_session(session_id)) };
 
         // reset session
-        session.remove_session_reset_cookie(session_id);
-        register_session(res, session, user_id);
+        res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
 
         const bool is_admin{ db.is_admin(user_id) };
         user.id = user_id;
@@ -433,7 +433,10 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
         return;
     }
 
-    register_session(res, session, user_id);
+    // create session
+    const std::string session_id{ session.create_session(su::int_to_string(user_id)) };
+    res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
+
     res.status = httplib::StatusCode::OK_200;
 }
 

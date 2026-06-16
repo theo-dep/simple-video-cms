@@ -24,7 +24,7 @@ const INCLUDED_ROUTE_PATTERN = [/^\/api\/video\/\d+\/playlist$/, /^\/api\/video\
 const isIncludedRoute = (url) => INCLUDED_ROUTE_PATTERN.some((pattern) => pattern.test(new URL(url).pathname));
 
 async function log(level, ...message) {
-  const clients = await self.clients.matchAll();
+  const clients = await self.clients.matchAll({ includeUncontrolled: true });
   clients.forEach((client) =>
     client.postMessage({
       type: 'SW_LOG',
@@ -33,6 +33,23 @@ async function log(level, ...message) {
     })
   );
 }
+
+let cachingEnabled = true;
+
+self.addEventListener('message', (event) => {
+  log('log', 'Message received:', event.data);
+
+  if (event.data === 'disableCaching') {
+    cachingEnabled = false;
+  } else if (event.data === 'enableCaching') {
+    cachingEnabled = true;
+  }
+});
+
+self.addEventListener('install', (event) => {
+  log('log', 'Install: skip waiting state');
+  event.waitUntil(self.skipWaiting());
+});
 
 self.addEventListener('activate', (event) => {
   log('log', 'Activate: purging outdated caches');
@@ -43,20 +60,21 @@ self.addEventListener('activate', (event) => {
   const expectedCacheNames = Object.values(CURRENT_CACHES);
 
   event.waitUntil(
-    caches
-      .keys()
-      .then((cacheNames) =>
-        Promise.all(
-          cacheNames
-            .filter((name) => !expectedCacheNames.includes(name))
-            .map((name) => {
-              // If this cache name isn't present in the array of "expected" cache names, then delete it.
-              log('log', 'Deleting outdated cache:', name);
-              return caches.delete(name);
-            })
-        )
-      )
-      .then(() => self.clients.claim()) // Take control immediately
+    (async () => {
+      const cacheNames = await caches.keys();
+
+      await Promise.all(
+        cacheNames
+          .filter((name) => !expectedCacheNames.includes(name))
+          .map((name) => {
+            // If this cache name isn't present in the array of "expected" cache names, then delete it.
+            log('log', 'Deleting outdated cache:', name);
+            return caches.delete(name);
+          })
+      );
+
+      await self.clients.claim(); // Take control immediately
+    })()
   );
 });
 
@@ -67,38 +85,43 @@ self.addEventListener('fetch', (event) => {
     return; // Let the browser handle it natively
   }
 
+  if (!cachingEnabled) {
+    log('log', 'Caching disabled, fetch:', request.url);
+    return;
+  }
+
   const currentCache = CURRENT_CACHES.video;
 
   event.respondWith(
-    caches
-      .open(currentCache)
-      // caches.match() will look for a cache entry in all of the caches available to the service worker.
-      // It's an alternative to first opening a specific named cache and then matching on that.
-      .then((cache) => cache.match(request.url))
-      .then((cached) => {
+    (async () => {
+      try {
+        const cache = await caches.open(currentCache);
+
+        // caches.match() will look for a cache entry in all of the caches available to the service worker.
+        // It's an alternative to first opening a specific named cache and then matching on that.
+        const cached = await cache.match(request.url);
         if (cached) {
-          log('log', 'Serving from cache:', request.url);
+          await log('log', 'Serving from cache:', request.url);
           return cached;
         }
+
         // event.request will always have the proper mode set ('cors, 'no-cors', etc.) so we don't
         // have to hardcode 'no-cors' like we do when fetch()ing in the install handler.
-        return fetch(request).then((response) => {
-          if (!response.ok) {
-            throw new Error(`Server returned ${response.status}`);
-          }
-          return caches.open(currentCache).then((cache) => {
-            log('log', 'Caching: ', request.url);
-            cache.put(request.url, response.clone());
-            return response;
-          });
-        });
-      })
-      .catch((err) => {
+        const response = await fetch(request);
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        await log('log', 'Caching: ', request.url);
+        event.waitUntil(cache.put(request.url, response.clone()));
+        return response;
+      } catch (err) {
         // This catch() will handle exceptions thrown from the fetch() operation.
         // Note that a HTTP error response (e.g. 404) will NOT trigger an exception.
         // It will return a normal response object that has the appropriate error code set.
-        log('error', 'Failed to serve:', err);
+        await log('error', 'Failed to serve:', err);
         throw err;
-      })
+      }
+    })()
   );
 });

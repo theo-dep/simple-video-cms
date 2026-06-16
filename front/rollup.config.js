@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, unlinkSync, renameSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync, renameSync, readdirSync, existsSync } from 'fs';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
@@ -51,16 +51,46 @@ const withTerser = (entry) => ({
   plugins: [...entry.plugins, terser({ ...terserOptions, module: true })],
 });
 
+// external video.js and its plugins are hashed
+function hashPathsPlugin() {
+  return {
+    name: 'hash-paths',
+    outputOptions(options) {
+      if (!existsSync(DIST_DIR)) {
+        return options;
+      }
+
+      options.paths = options.paths || {};
+      const fileMappings = {
+        'video.js': 'video.es-',
+        'videojs-yt-style': 'videojs-yt-style-',
+        'videojs-mobile-ui': 'videojs-mobile-ui-',
+      };
+      const files = readdirSync(DIST_DIR).filter((f) => f.endsWith('.js'));
+      for (const [key, prefix] of Object.entries(fileMappings)) {
+        const matchingFile = files.find((file) => file.startsWith(prefix));
+        if (matchingFile) {
+          options.paths[key] = `./${matchingFile}`;
+        }
+      }
+      return options;
+    },
+  };
+}
+
+const withHashPaths = (entry) => ({
+  ...entry,
+  plugins: [...entry.plugins, hashPathsPlugin()],
+});
+
 export default [
   ...videojsEntries.map((entry) => ({
     ...withTerser(entry),
+    ...withHashPaths(entry),
     output: {
       dir: `${DIST_DIR}`,
       format: 'es',
-      entryFileNames: entry.input.endsWith('.js') ? entry.input : `${entry.input}.js`,
-      paths: {
-        'video.js': './video.js',
-      },
+      entryFileNames: '[name]-[hash].js',
     },
   })),
 
@@ -74,14 +104,10 @@ export default [
       assetFileNames: '[name]-[hash][extname]',
       entryFileNames: '[name]-[hash].js',
       chunkFileNames: '[name]-[hash].js',
-      paths: {
-        'video.js': './video.js',
-        'videojs-yt-style': './videojs-yt-style.js',
-        'videojs-mobile-ui': './videojs-mobile-ui.js',
-      },
     },
     external: ['video.js', 'videojs-yt-style', 'videojs-mobile-ui'],
     plugins: [
+      hashPathsPlugin(),
       del({
         // remove previous env.js
         targets: `${DIST_DIR}/env-*.js`,
@@ -132,9 +158,9 @@ export default [
 
   // Service worker
   {
-    input: 'front/videoserviceworker.js',
+    input: 'front/sw.js',
     output: {
-      file: `${DIST_DIR}/videoserviceworker.js`,
+      file: `${DIST_DIR}/sw.js`,
       format: 'iife',
     },
     plugins: [

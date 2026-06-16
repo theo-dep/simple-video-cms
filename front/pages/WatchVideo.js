@@ -60,14 +60,6 @@ export default function WatchVideo({ videoId }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (user.isLogged.value && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/videoserviceworker.js', {
-        scope: '/watch-video/',
-      });
-    }
-  }, []);
-
   function onLoginClicked() {
     videoIdRedirected.value = videoId;
     route('/login');
@@ -111,7 +103,6 @@ export default function WatchVideo({ videoId }) {
     });
 
     let isSessionStarted = false;
-
     player.on('play', async () => {
       if (!isSessionStarted) {
         isSessionStarted = true;
