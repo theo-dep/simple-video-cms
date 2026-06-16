@@ -44,15 +44,15 @@ async function log(level, ...message) {
   );
 }
 
-let cachingEnabled = true;
+let videoCachingEnabled = false;
 
 self.addEventListener('message', (event) => {
   event.waitUntil(log('log', 'Message received:', event.data));
 
-  if (event.data === 'disableCaching') {
-    cachingEnabled = false;
-  } else if (event.data === 'enableCaching') {
-    cachingEnabled = true;
+  if (event.data === 'disableVideoCaching') {
+    videoCachingEnabled = false;
+  } else if (event.data === 'enableVideoCaching') {
+    videoCachingEnabled = true;
   }
 });
 
@@ -149,8 +149,8 @@ self.addEventListener('fetch', (event) => {
     return; // Let the browser handle it natively
   }
 
-  if (!cachingEnabled) {
-    event.waitUntil(log('log', 'Caching disabled, fetch:', url.href));
+  if (!videoCachingEnabled) {
+    //event.waitUntil(log('log', 'Caching disabled, fetch:', url.href));
     return;
   }
 

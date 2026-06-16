@@ -3,7 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { user, refreshAuth } from '../store/auth.js';
-import clearSW from '../clearsw.js';
+import disableSW from '../swdisable.js';
 
 export default function Logout() {
   const { route } = useLocation();
@@ -12,7 +12,7 @@ export default function Logout() {
 
   useEffect(() => {
     async function cleanup() {
-      await clearSW();
+      await disableSW();
 
       await api.logout();
 
