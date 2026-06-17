@@ -16,7 +16,7 @@ export function App() {
       // CREATION URL (the initial navigation that loaded the document), not
       // the current SPA route (pushState). Since this app is always loaded
       // from "/", only scope="/" can match and grant immediate control.
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((registration) => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((_registration) => {
         setSWReady(true);
       });
     }

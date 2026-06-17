@@ -26,6 +26,7 @@ const CURRENT_CACHES = {
 const VIDEO_ROUTE_PATTERN = [/^\/api\/video\/\d+\/playlist$/, /^\/api\/video\/\d+\/\d+_\d+\.ts$/];
 const THUMBNAIL_ROUTE_PATTERN = /^\/api\/thumbnail\/\d+$/;
 
+/* global __ASSETS_MANIFEST__ */
 const assets = typeof __ASSETS_MANIFEST__ !== 'undefined' ? __ASSETS_MANIFEST__ : [];
 const assetPathSet = new Set(assets.map((assetUrl) => new URL(assetUrl, self.location.origin).pathname));
 
