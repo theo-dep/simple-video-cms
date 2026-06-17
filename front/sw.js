@@ -13,15 +13,26 @@
 // cache, then increment the CACHE_VERSION value. It will kick off the service worker update
 // flow and the old cache(s) will be purged as part of the activate event handler when the
 // updated service worker is activated.
-const CACHE_VERSION = 1;
+const VIDEO_CACHE_VERSION = 1;
+const SERVER_ASSETS_CACHE_VERSION = 1;
+const RAW_ASSETS_CACHE_VERSION = '__ASSETS_CACHE_VERSION__';
+const ASSETS_CACHE_VERSION = RAW_ASSETS_CACHE_VERSION === '__ASSETS_CACHE_VERSION__' ? 'dev' : RAW_ASSETS_CACHE_VERSION;
 const CURRENT_CACHES = {
-  video: `video-cache-v${CACHE_VERSION}`,
+  video: `video-cache-v${VIDEO_CACHE_VERSION}`,
+  serverAssets: `server-assets-cache-v${SERVER_ASSETS_CACHE_VERSION}`,
+  assets: `assets-cache-v${ASSETS_CACHE_VERSION}`,
 };
 
-const INCLUDED_ROUTE_PATTERN = [/^\/api\/video\/\d+\/playlist$/, /^\/api\/video\/\d+\/\d+_\d+\.ts$/];
+const VIDEO_ROUTE_PATTERN = [/^\/api\/video\/\d+\/playlist$/, /^\/api\/video\/\d+\/\d+_\d+\.ts$/];
+const THUMBNAIL_ROUTE_PATTERN = /^\/api\/thumbnail\/\d+$/;
+
+/* global __ASSETS_MANIFEST__ */
+const assets = typeof __ASSETS_MANIFEST__ !== 'undefined' ? __ASSETS_MANIFEST__ : [];
+const assetPathSet = new Set(assets.map((assetUrl) => new URL(assetUrl, self.location.origin).pathname));
 
 // Returns true if the given URL matches a dynamic included route
-const isIncludedRoute = (url) => INCLUDED_ROUTE_PATTERN.some((pattern) => pattern.test(new URL(url).pathname));
+const isVideoRoute = (url) => VIDEO_ROUTE_PATTERN.some((pattern) => pattern.test(url.pathname));
+const isThumbnailRoute = (url) => THUMBNAIL_ROUTE_PATTERN.test(url.pathname);
 
 async function log(level, ...message) {
   const clients = await self.clients.matchAll({ includeUncontrolled: true });
@@ -34,41 +45,58 @@ async function log(level, ...message) {
   );
 }
 
-let cachingEnabled = true;
+let videoCachingEnabled = false;
 
 self.addEventListener('message', (event) => {
-  log('log', 'Message received:', event.data);
+  event.waitUntil(log('log', 'Message received:', event.data));
 
-  if (event.data === 'disableCaching') {
-    cachingEnabled = false;
-  } else if (event.data === 'enableCaching') {
-    cachingEnabled = true;
+  if (event.data === 'disableVideoCaching') {
+    videoCachingEnabled = false;
+  } else if (event.data === 'enableVideoCaching') {
+    videoCachingEnabled = true;
   }
 });
 
 self.addEventListener('install', (event) => {
-  log('log', 'Install: skip waiting state');
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(
+    (async () => {
+      await log('log', 'Install: caching assets and skip waiting state');
+
+      if (assets && assets.length > 0) {
+        const cache = await caches.open(CURRENT_CACHES.assets);
+        // add asset per asset to not break the Service Worker in case of one asset missing
+        const results = await Promise.allSettled(assets.map((asset) => cache.add(asset)));
+        await Promise.all(
+          results.map((result, i) =>
+            result.status === 'fulfilled'
+              ? log('log', 'Asset precached:', assets[i])
+              : log('error', 'Failed to precache asset:', assets[i], result.reason)
+          )
+        );
+      }
+      await self.skipWaiting();
+    })()
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  log('log', 'Activate: purging outdated caches');
-
-  // Delete all caches that aren't named in CURRENT_CACHES.
-  // While there is only one cache in this example, the same logic will handle the case where
-  // there are multiple versioned caches.
-  const expectedCacheNames = Object.values(CURRENT_CACHES);
-
   event.waitUntil(
     (async () => {
+      await log('log', 'Activate: purging outdated caches');
+
+      // Delete all caches that aren't named in CURRENT_CACHES.
+      // While there is only one cache in this example, the same logic will handle the case where
+      // there are multiple versioned caches.
+      const expectedCacheNames = Object.values(CURRENT_CACHES);
+
       const cacheNames = await caches.keys();
 
       await Promise.all(
         cacheNames
           .filter((name) => !expectedCacheNames.includes(name))
-          .map((name) => {
+          .map(async (name) => {
             // If this cache name isn't present in the array of "expected" cache names, then delete it.
-            log('log', 'Deleting outdated cache:', name);
+            await log('log', 'Deleting outdated cache:', name);
             return caches.delete(name);
           })
       );
@@ -78,48 +106,64 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+function fromCatchOrFetch(cacheName, label, throwOnNetworkError = false) {
+  return async (event, request, url) => {
+    const cache = await caches.open(cacheName);
+
+    // caches.match() will look for a cache entry in all of the caches available to the service worker.
+    // It's an alternative to first opening a specific named cache and then matching on that.
+    const cached = await cache.match(request);
+    if (cached) {
+      event.waitUntil(log('log', `Serving ${label} from cache:`, url.href));
+      return cached;
+    }
+
+    // event.request will always have the proper mode set ('cors, 'no-cors', etc.) so we don't
+    // have to hardcode 'no-cors' like we do when fetch()ing in the install handler.
+    const response = await fetch(request);
+
+    if (response.ok) {
+      event.waitUntil(log('log', `Caching ${label}:`, url.href));
+      event.waitUntil(cache.put(request, response.clone()));
+    } else if (throwOnNetworkError) {
+      throw new Error(`Server returned ${response.status}`);
+    }
+    return response;
+  };
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+  const url = new URL(request.url);
 
-  if (!isIncludedRoute(request.url)) {
-    return; // Let the browser handle it natively
-  }
-
-  if (!cachingEnabled) {
-    log('log', 'Caching disabled, fetch:', request.url);
+  if (assetPathSet.has(url.pathname)) {
+    event.respondWith(fromCatchOrFetch(CURRENT_CACHES.assets, 'asset')(event, request, url));
     return;
   }
 
-  const currentCache = CURRENT_CACHES.video;
+  if (isThumbnailRoute(url)) {
+    event.respondWith(fromCatchOrFetch(CURRENT_CACHES.serverAssets, 'thumbnail')(event, request, url));
+    return;
+  }
+
+  if (!isVideoRoute(url)) {
+    return; // Let the browser handle it natively
+  }
+
+  if (!videoCachingEnabled) {
+    //event.waitUntil(log('log', 'Caching disabled, fetch:', url.href));
+    return;
+  }
 
   event.respondWith(
     (async () => {
       try {
-        const cache = await caches.open(currentCache);
-
-        // caches.match() will look for a cache entry in all of the caches available to the service worker.
-        // It's an alternative to first opening a specific named cache and then matching on that.
-        const cached = await cache.match(request.url);
-        if (cached) {
-          await log('log', 'Serving from cache:', request.url);
-          return cached;
-        }
-
-        // event.request will always have the proper mode set ('cors, 'no-cors', etc.) so we don't
-        // have to hardcode 'no-cors' like we do when fetch()ing in the install handler.
-        const response = await fetch(request);
-        if (!response.ok) {
-          throw new Error(`Server returned ${response.status}`);
-        }
-
-        await log('log', 'Caching: ', request.url);
-        event.waitUntil(cache.put(request.url, response.clone()));
-        return response;
+        return await fromCatchOrFetch(CURRENT_CACHES.video, 'video', true)(event, request, url);
       } catch (err) {
         // This catch() will handle exceptions thrown from the fetch() operation.
         // Note that a HTTP error response (e.g. 404) will NOT trigger an exception.
         // It will return a normal response object that has the appropriate error code set.
-        await log('error', 'Failed to serve:', err);
+        event.waitUntil(log('error', 'Failed to serve:', err));
         throw err;
       }
     })()
