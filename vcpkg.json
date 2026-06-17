@@ -3,7 +3,9 @@
     {
       "name": "cpp-httplib",
       "default-features": false,
-      "features": ["zlib"]
+      "features": [
+        "zlib"
+      ]
     },
     {
       "name": "nlohmann-json",
@@ -53,7 +55,7 @@
       ]
     }
   ],
-  "builtin-baseline": "b83a134447208c35f740e4b6faf1263b0d6e860e",
+  "builtin-baseline": "f3e10653cc27d62a37a3763cd84b38bca07c6075",
   "overrides": [
     {
       "name": "cpp-httplib",
