@@ -30,7 +30,7 @@
     "preact-iso": "^2.9.1",
     "purecss": "^3.0.0",
     "video.js": "^8.23.7",
-    "videojs-mobile-ui": "^1.2.4",
+    "videojs-mobile-ui": "^1.2.6",
     "videojs-yt-style": "^0.1.8"
   }
 }
