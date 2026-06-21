@@ -1,7 +1,10 @@
 FROM ubuntu:25.10
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get -qq update && \
+    apt-get -qq dist-upgrade && \
+    apt-get install -y -qq --no-install-recommends \
         autoconf \
         autoconf-archive \
         automake \
@@ -13,6 +16,7 @@ RUN apt-get update && \
         git \
         libtool \
         linux-libc-dev \
+        mono-complete \
         nasm \
         ninja-build \
         npm \
@@ -20,7 +24,8 @@ RUN apt-get update && \
         python3 \
         tar \
         unzip \
-        zip
+        zip \
+    && apt-get -qq clean
 
 RUN update-alternatives --install /usr/bin/clang clang /usr/bin/clang-21 100 && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-21 100

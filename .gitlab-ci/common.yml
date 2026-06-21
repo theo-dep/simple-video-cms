@@ -3,22 +3,25 @@
     - linux
     - docker
 
-.install-job:
+.vcpkg-install-job:
   extends:
     - .all-tag
   variables:
-    VCPKG_DEFAULT_BINARY_CACHE: $CI_PROJECT_DIR/vcpkg_cache
-    VCPKG_ROOT: $CI_PROJECT_DIR/vcpkg
-    CACHE_POLICY: pull
-  cache:
-    - key:
-        files:
-          - vcpkg.json
-      paths:
-        - vcpkg_cache/
-      policy: $CACHE_POLICY
+    NUGET_FEED: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/nuget/index.json
+    VCPKG_NUGET_REPO: vcpkg-packages
+    VCPKG_ROOT: ${CI_PROJECT_DIR}/vcpkg
+    CACHE_POLICY: read
+    VCPKG_BINARY_SOURCES: clear;nuget,${VCPKG_NUGET_REPO},${CACHE_POLICY}
   before_script:
-    - git clone https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
-    - $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
-    - mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
+    - git clone https://github.com/microsoft/vcpkg.git ${VCPKG_ROOT}
+    - ${VCPKG_ROOT}/bootstrap-vcpkg.sh -disableMetrics
+    - NUGET_EXE="$(${VCPKG_ROOT}/vcpkg fetch nuget | tail -n 1)"
+    - mono ${NUGET_EXE} source add -Name ${VCPKG_NUGET_REPO} -Source ${NUGET_FEED} -UserName gitlab-ci-token -Password ${CI_JOB_TOKEN} -StorePasswordInClearText -NonInteractive
+    - mono ${NUGET_EXE} setapikey ${CI_JOB_TOKEN} -Source ${VCPKG_NUGET_REPO} -NonInteractive
+
+.install-job:
+  extends:
+    - .vcpkg-install-job
+  before_script:
+    - !reference [.vcpkg-install-job, before_script]
     - npm ci
