@@ -79,7 +79,7 @@ export default function AdminAdminList() {
                           ${a.isLoggedOnce && html` <a onClick=${() => resetUser(a.id)} style="cursor:pointer">Reset password</a>`}
                         </div>
                         <div class="pure-u-1 pure-u-sm-1-3">
-                          ${a.isSuperAdmin && html`<a onClick=${() => deleteUser(a.id)} style="cursor:pointer">Delete</a>`}
+                          <a onClick=${() => deleteUser(a.id)} style="cursor:pointer">Delete</a>
                         </div>
                       </div>
                     `}
