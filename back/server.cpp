@@ -968,24 +968,16 @@ inline void server::admin_add_admin(const httplib::Request& req, httplib::Respon
     su::trim(username);
     su::lower(username);
 
-    // User must already exist — promote them
-    const int user_id{ db.user_id(username) };
-    if (user_id == -1) {
-        res.status = httplib::StatusCode::NotFound_404;
-        res.set_content("Unknown username", "plain/text");
-        return;
-    }
-
-    if (db.is_admin(user_id)) {
+    if (db.user_id(username) != -1) {
         res.status = httplib::StatusCode::Conflict_409;
-        res.set_content("Already admin", "plain/text");
+        res.set_content("Username already exists", "plain/text");
         return;
     }
 
-    // promote_to_admin: insert into admins table
     const std::string salt{ crypto::random_string() };
     const std::optional admin_id{ db.add_admin(username, salt) };
     if (!admin_id) {
+        logging::error{ R"(Fail to add admin "{}")", username };
         res.status = httplib::StatusCode::InternalServerError_500;
         return;
     }
@@ -1056,6 +1048,12 @@ inline void server::admin_add_user(const httplib::Request& req, httplib::Respons
     std::string username{ req.get_param_value("username") };
     su::trim(username);
     su::lower(username);
+
+    if (db.user_id(username) != -1) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Username already exists", "plain/text");
+        return;
+    }
 
     const std::string salt{ crypto::random_string() };
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
