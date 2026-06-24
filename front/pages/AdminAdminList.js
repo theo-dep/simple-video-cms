@@ -6,23 +6,31 @@ import { useTitle } from '../hook/useTitle.js';
 import { selectedItem } from '../store/selection.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
+import { Loader } from '../component/Loader.js';
 import { PersonAddIcon } from '../svg/PersonAddIcon.js';
 
 export default function AdminAdminList() {
   const { route } = useLocation();
   const [admins, setAdmins] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useTitle('Admin List');
 
   function load() {
     api
       .adminAdminList()
-      .then((r) => setAdmins(r.json ?? r))
+      .then((r) => {
+        setAdmins(r.json ?? r);
+        setIsLoading(false);
+      })
       .catch(() => route('/403'));
   }
 
   useEffect(() => {
-    if (Array.isArray(admins)) return;
+    if (Array.isArray(admins)) {
+      setIsLoading(false);
+      return;
+    }
     load();
   }, []);
 
@@ -47,50 +55,51 @@ export default function AdminAdminList() {
     <${AdminNav} />
 
     <${Content}>
-      <h2>List of administrators</h2>
-      ${Array.isArray(admins) &&
-      html`
-        <table id="table" class="table pure-table pure-table-horizontal">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th class="add-user">
-                <a href="/admin/new-admin">
-                  <svg class="svg-button">
-                    <title>Add admin</title>
-                    <${PersonAddIcon} />
-                  </svg>
-                </a>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            ${admins.map(
-              (a) => html`
-                <tr key=${a.id}>
-                  <td>${a.name}</td>
-                  <td>
-                    ${!a.isSuperAdmin &&
-                    html`
-                      <div class="pure-g">
-                        <div class="pure-u-1 pure-u-sm-1-3">
-                          <a onClick=${() => updateAdmin(a)} style="cursor:pointer">Update</a>
-                        </div>
-                        <div class="pure-u-1 pure-u-sm-1-3">
-                          ${a.isLoggedOnce && html` <a onClick=${() => resetUser(a.id)} style="cursor:pointer">Reset password</a>`}
-                        </div>
-                        <div class="pure-u-1 pure-u-sm-1-3">
-                          <a onClick=${() => deleteUser(a.id)} style="cursor:pointer">Delete</a>
-                        </div>
-                      </div>
-                    `}
-                  </td>
+      ${isLoading
+        ? html`<${Loader} />`
+        : html`
+            <h2>List of administrators</h2>
+            <table id="table" class="table pure-table pure-table-horizontal">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th class="add-user">
+                    <a href="/admin/new-admin">
+                      <svg class="svg-button">
+                        <title>Add admin</title>
+                        <${PersonAddIcon} />
+                      </svg>
+                    </a>
+                  </th>
                 </tr>
-              `
-            )}
-          </tbody>
-        </table>
-      `}
+              </thead>
+              <tbody>
+                ${admins.map(
+                  (a) => html`
+                    <tr key=${a.id}>
+                      <td>${a.name}</td>
+                      <td>
+                        ${!a.isSuperAdmin &&
+                        html`
+                          <div class="pure-g">
+                            <div class="pure-u-1 pure-u-sm-1-3">
+                              <a onClick=${() => updateAdmin(a)} style="cursor:pointer">Update</a>
+                            </div>
+                            <div class="pure-u-1 pure-u-sm-1-3">
+                              ${a.isLoggedOnce && html` <a onClick=${() => resetUser(a.id)} style="cursor:pointer">Reset password</a>`}
+                            </div>
+                            <div class="pure-u-1 pure-u-sm-1-3">
+                              <a onClick=${() => deleteUser(a.id)} style="cursor:pointer">Delete</a>
+                            </div>
+                          </div>
+                        `}
+                      </td>
+                    </tr>
+                  `
+                )}
+              </tbody>
+            </table>
+          `}
     <//>
   `;
 }
