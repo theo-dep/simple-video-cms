@@ -28,10 +28,11 @@ export default function AdminUpdateVideo({ videoId }) {
   }
 
   async function onVideoSubmit(e) {
-    if (!confirm('Update this video?')) return;
-
     const form = e.target;
     const title = form.elements['title'].value.trim();
+    const oldTitle = video.value?.title ?? 'this video';
+    const confirmMessage = title === oldTitle ? `Update ${title} video?` : `Update ${oldTitle} video name to ${title}?`;
+    if (!confirm(confirmMessage)) return;
     const groupSelect = form.elements['group-ids'];
     const userSelect = form.elements['user-ids'];
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];

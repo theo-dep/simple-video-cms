@@ -34,11 +34,7 @@ export default function AdminNewVideo() {
   async function onVideoSubmit(e) {
     const form = e.target;
     const fileInput = form.elements['file'];
-    if (!fileInput.files.length) {
-      throw 'Please select a video file';
-    }
-
-    const video = fileInput.files[0];
+    const video = fileInput.files[0] || null;
     const title = form.elements['title'].value.trim();
     const groupSelect = form.elements['group-ids'];
     const userSelect = form.elements['user-ids'];

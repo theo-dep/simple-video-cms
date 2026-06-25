@@ -24,7 +24,8 @@ export default function AdminVideoList() {
   }
 
   async function deleteVideo(id) {
-    if (!confirm('Delete this video?')) return;
+    const name = videos.value?.find((v) => v.id === id)?.title ?? 'this video';
+    if (!confirm(`Delete ${name}?`)) return;
     await api.adminDeleteVideo(id);
     invalidateVideos(); // reset stats
     await loadVideos();

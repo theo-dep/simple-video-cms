@@ -34,11 +34,11 @@ export default function Login() {
         return;
       }
       await refreshAuth();
-      if (videoIdRedirected.value !== '') {
+      if (videoIdRedirected.value === '') {
+        route('/');
+      } else {
         route('/watch-video/' + videoIdRedirected.value);
         videoIdRedirected.value = '';
-      } else {
-        route('/');
       }
     } catch (err) {
       setAlert(err.message || 'Login failed');

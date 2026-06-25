@@ -23,13 +23,15 @@ export default function AdminUserList() {
   }
 
   async function resetUser(id) {
-    if (!confirm('Reset this user?')) return;
+    const name = users.value?.find((u) => u.id === id)?.name ?? 'this user';
+    if (!confirm(`Reset ${name} password?`)) return;
     await api.adminResetUserPassword(id);
     await loadUsers();
   }
 
   async function deleteUser(id) {
-    if (!confirm('Delete this user?')) return;
+    const name = users.value?.find((u) => u.id === id)?.name ?? 'this user';
+    if (!confirm(`Delete ${name}?`)) return;
     await api.adminDeleteUser(id);
     invalidateUsers(); // reset stats
     await loadUsers();

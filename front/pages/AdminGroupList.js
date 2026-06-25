@@ -23,7 +23,8 @@ export default function AdminGroupList() {
   }
 
   async function deleteGroup(id) {
-    if (!confirm('Delete this group?')) return;
+    const name = groups.value?.find((g) => g.id === id)?.name ?? 'this group';
+    if (!confirm(`Delete ${name}?`)) return;
     await api.adminDeleteGroup(id);
     invalidateGroups(); // reset stats
     await loadGroups();

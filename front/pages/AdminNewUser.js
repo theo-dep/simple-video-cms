@@ -32,13 +32,15 @@ function AdminNewUserBase({ isAdmin }) {
     }
   }
 
+  const title = isAdmin ? 'Add a new admin' : 'Add a new user';
+
   return html`
     <${AdminNav} />
 
     ${!isAdmin && isLoading
       ? html`<${Loader} />`
       : html`
-          <${Form} title="Add a new ${isAdmin ? 'admin' : 'user'}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
+          <${Form} title="${title}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
             <div class="pure-control-group">
               <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
             </div>

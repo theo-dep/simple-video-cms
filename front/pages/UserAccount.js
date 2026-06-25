@@ -26,10 +26,6 @@ export default function UserAccount() {
     const newPassword = form.elements['new-password'].value;
     const confirmPassword = form.elements['confirm-password'].value;
 
-    if (newPassword !== confirmPassword) {
-      throw 'New passwords do not match';
-    }
-
     await api.updatePassword(oldPassword, newPassword, confirmPassword);
     form.reset();
   }
