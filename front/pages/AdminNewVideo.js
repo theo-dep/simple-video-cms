@@ -1,11 +1,13 @@
 import { html } from 'htm/preact';
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useRef } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
+import { useLoader } from '../hook/useLoader.js';
 import { refreshAuth } from '../store/auth.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
+import { Loader } from '../component/Loader.js';
 
 export default function AdminNewVideo() {
   const { route } = useLocation();
@@ -13,26 +15,30 @@ export default function AdminNewVideo() {
   const [groups, setGroups] = useState(null);
   const [users, setUsers] = useState(null);
   const titleRef = useRef(null);
-  const selectGroupsRef = useMultiSelect([groups]);
-  const selectUsersRef = useMultiSelect([users]);
+  const selectGroupsRef = useMultiSelect([users, groups]);
+  const selectUsersRef = useMultiSelect([users, groups]);
+  const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups));
+  const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users));
 
   useTitle('New Video');
 
-  useEffect(() => {
-    if (!Array.isArray(groups)) {
-      api
-        .adminGroupList()
-        .then((g) => setGroups(g.json ?? g))
-        .catch(() => route('/403'));
+  async function loadGroups() {
+    try {
+      const r = await api.adminGroupList();
+      setGroups(r.json ?? r);
+    } catch {
+      route('/403');
     }
+  }
 
-    if (!Array.isArray(users)) {
-      api
-        .adminUserList()
-        .then((u) => setUsers(u.json ?? u))
-        .catch(() => route('/403'));
+  async function loadUsers() {
+    try {
+      const r = await api.adminUserList();
+      setUsers(r.json ?? r);
+    } catch {
+      route('/403');
     }
-  }, []);
+  }
 
   function onFileChange(e) {
     const file = e.target.files[0];
@@ -66,48 +72,55 @@ export default function AdminNewVideo() {
   return html`
     <${AdminNav} />
 
-    ${Array.isArray(groups) &&
-    Array.isArray(users) &&
-    html`
-      <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
-        <div
-          class="pure-control-group file-drop-area"
-          onDragEnter=${(e) => e.currentTarget.classList.add('is-active')}
-          onDragLeave=${(e) => e.currentTarget.classList.remove('is-active')}
-          onDrop=${(e) => e.currentTarget.classList.remove('is-active')}
-        >
-          <span class="fake-button">Choose file</span>
-          <span class="file-message">${fileName || 'or drag a video here'}</span>
-          <input class="pure-input-1 file-input" type="file" accept="video/mp4" name="file" onChange=${onFileChange} />
-        </div>
-        <div class="pure-control-group">
-          <input ref=${titleRef} class="pure-input-1" type="text" name="title" id="title" placeholder="Video title" required />
-        </div>
-
-        ${!!groups.length &&
-        html`
-          <div class="pure-control-group">
-            <select
-              ref=${selectGroupsRef}
-              name="group-ids"
-              class="pure-input-1"
-              data-placeholder="Select groups (optional)"
-              multiple
-              data-multi-select
+    ${isGroupsLoading || isUsersLoading
+      ? html`<${Loader} />`
+      : html`
+          <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
+            <div
+              class="pure-control-group file-drop-area"
+              onDragEnter=${(e) => e.currentTarget.classList.add('is-active')}
+              onDragLeave=${(e) => e.currentTarget.classList.remove('is-active')}
+              onDrop=${(e) => e.currentTarget.classList.remove('is-active')}
             >
-              ${groups.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
-            </select>
-          </div>
+              <span class="fake-button">Choose file</span>
+              <span class="file-message">${fileName || 'or drag a video here'}</span>
+              <input class="pure-input-1 file-input" type="file" accept="video/mp4" name="file" onChange=${onFileChange} />
+            </div>
+            <div class="pure-control-group">
+              <input ref=${titleRef} class="pure-input-1" type="text" name="title" id="title" placeholder="Video title" required />
+            </div>
+
+            ${!!groups.length &&
+            html`
+              <div class="pure-control-group">
+                <select
+                  ref=${selectGroupsRef}
+                  name="group-ids"
+                  class="pure-input-1"
+                  data-placeholder="Select groups (optional)"
+                  multiple
+                  data-multi-select
+                >
+                  ${groups.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
+                </select>
+              </div>
+            `}
+            ${!!users.length &&
+            html`
+              <div class="pure-control-group">
+                <select
+                  ref=${selectUsersRef}
+                  name="user-ids"
+                  class="pure-input-1"
+                  data-placeholder="Select users (optional)"
+                  multiple
+                  data-multi-select
+                >
+                  ${users.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
+                </select>
+              </div>
+            `}
+          <//>
         `}
-        ${!!users.length &&
-        html`
-          <div class="pure-control-group">
-            <select ref=${selectUsersRef} name="user-ids" class="pure-input-1" data-placeholder="Select users (optional)" multiple data-multi-select>
-              ${users.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
-            </select>
-          </div>
-        `}
-      <//>
-    `}
   `;
 }
