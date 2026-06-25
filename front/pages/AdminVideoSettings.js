@@ -11,30 +11,34 @@ export default function AdminUpdateVideo({ videoId }) {
   videoId = Number(videoId);
   const { route } = useLocation();
   const [video, setVideo] = useState(selectedItem.value);
-  const [groups, setGroups] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState(null);
+  const [users, setUsers] = useState(null);
   const selectGroupsRef = useMultiSelect([video, groups]);
   const selectUsersRef = useMultiSelect([video, users]);
 
   useTitle(video ? `${video.title} Settings` : 'Video Settings');
 
   useEffect(() => {
-    if (!video || video.id !== videoId) {
+    if (video === null || video.id !== videoId) {
       api
         .adminVideo(videoId)
         .then((r) => setVideo(r.json ?? r))
         .catch(() => route('/403'));
     }
 
-    api
-      .adminGroupList()
-      .then((g) => setGroups(g.json ?? g))
-      .catch(() => route('/403'));
+    if (!Array.isArray(groups)) {
+      api
+        .adminGroupList()
+        .then((g) => setGroups(g.json ?? g))
+        .catch(() => route('/403'));
+    }
 
-    api
-      .adminUserList()
-      .then((u) => setUsers(u.json ?? u))
-      .catch(() => route('/403'));
+    if (!Array.isArray(users)) {
+      api
+        .adminUserList()
+        .then((u) => setUsers(u.json ?? u))
+        .catch(() => route('/403'));
+    }
   }, [videoId]);
 
   function isGroupSelected(groupId) {
@@ -62,9 +66,9 @@ export default function AdminUpdateVideo({ videoId }) {
   return html`
     <${AdminNav} />
 
-    ${video &&
-    users &&
-    groups &&
+    ${video !== null &&
+    Array.isArray(users) &&
+    Array.isArray(groups) &&
     html`
       <${Form} title="Change video title, group and user rights" buttonTitle="Update" onSubmitAction=${onVideoSubmit}>
         <div class="pure-control-group">

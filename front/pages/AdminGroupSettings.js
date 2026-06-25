@@ -11,19 +11,20 @@ export default function AdminGroupSettings({ groupId }) {
   groupId = Number(groupId);
   const { route } = useLocation();
   const [group, setGroup] = useState(selectedItem.value);
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState(null);
   const selectRef = useMultiSelect([group, users]);
 
   useTitle(group ? `${group.name} Settings` : 'Group Settings');
 
   useEffect(() => {
-    if (!group || group.id !== groupId) {
+    if (group === null || group.id !== groupId) {
       api
         .adminGroup(groupId)
         .then((r) => setGroup(r.json ?? r))
         .catch(() => route('/403'));
     }
 
+    if (Array.isArray(users)) return;
     api
       .adminUserList()
       .then((r) => setUsers(r.json ?? r))
@@ -49,8 +50,8 @@ export default function AdminGroupSettings({ groupId }) {
   return html`
     <${AdminNav} />
 
-    ${group &&
-    users &&
+    ${group !== null &&
+    Array.isArray(users) &&
     html`
       <${Form} title="Change group name and users" buttonTitle="Update" onSubmitAction=${onGroupSubmit}>
         <div class="pure-control-group">

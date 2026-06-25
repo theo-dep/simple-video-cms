@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   useTitle('Admin Dashboard');
 
   useEffect(() => {
+    if (stats !== null) return;
     api
       .adminStats()
       .then(({ json }) => setStats(json))
@@ -25,7 +26,7 @@ export default function AdminDashboard() {
 
     <${Content}>
       <h2>${websiteName} Statistics</h2>
-      ${stats &&
+      ${stats !== null &&
       html`
         <table id="table" class="table pure-table pure-table-horizontal">
           <tbody>

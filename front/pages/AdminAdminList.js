@@ -22,6 +22,7 @@ export default function AdminAdminList() {
   }
 
   useEffect(() => {
+    if (Array.isArray(admins)) return;
     load();
   }, []);
 
@@ -47,7 +48,7 @@ export default function AdminAdminList() {
 
     <${Content}>
       <h2>List of administrators</h2>
-      ${admins &&
+      ${Array.isArray(admins) &&
       html`
         <table id="table" class="table pure-table pure-table-horizontal">
           <thead>

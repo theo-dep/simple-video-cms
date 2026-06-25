@@ -8,18 +8,17 @@ import { Form, useMultiSelect } from '../component/Form.js';
 
 function AdminNewUserBase({ isAdmin }) {
   const { route } = useLocation();
-  const [groups, setGroups] = useState([]);
+  const [groups, setGroups] = useState(null);
   const selectRef = useMultiSelect([groups]);
 
   useTitle('New User');
 
   useEffect(() => {
-    if (!isAdmin) {
-      api
-        .adminGroupList()
-        .then((r) => setGroups(r.json ?? r))
-        .catch(() => route('/403'));
-    }
+    if (isAdmin || Array.isArray(groups)) return;
+    api
+      .adminGroupList()
+      .then((r) => setGroups(r.json ?? r))
+      .catch(() => route('/403'));
   }, [isAdmin]);
 
   async function onUserSubmit(e) {
@@ -40,13 +39,14 @@ function AdminNewUserBase({ isAdmin }) {
   return html`
     <${AdminNav} />
 
-    ${groups &&
+    ${(isAdmin || Array.isArray(groups)) &&
     html`
       <${Form} title="Add a new ${isAdmin ? 'admin' : 'user'}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
         <div class="pure-control-group">
           <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
         </div>
-        ${!!groups.length &&
+        ${!isAdmin &&
+        !!groups?.length &&
         html`
           <div class="pure-control-group">
             <select ref=${selectRef} name="group-ids" data-placeholder="Select groups (optional)" multiple data-multi-select>

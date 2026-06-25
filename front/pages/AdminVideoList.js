@@ -24,6 +24,7 @@ export default function AdminVideoList() {
   }
 
   useEffect(() => {
+    if (Array.isArray(videos)) return;
     load();
   }, []);
 
@@ -42,7 +43,7 @@ export default function AdminVideoList() {
     <${AdminNav} />
 
     <${Content}>
-      ${videos &&
+      ${Array.isArray(videos) &&
       (videos.length === 0
         ? html`
             <h1>Nothing uploaded yet</h1>

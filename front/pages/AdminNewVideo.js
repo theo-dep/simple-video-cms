@@ -10,8 +10,8 @@ import { Form, useMultiSelect } from '../component/Form.js';
 export default function AdminNewVideo() {
   const { route } = useLocation();
   const [fileName, setFileName] = useState('');
-  const [groups, setGroups] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState(null);
+  const [users, setUsers] = useState(null);
   const titleRef = useRef(null);
   const selectGroupsRef = useMultiSelect([groups]);
   const selectUsersRef = useMultiSelect([users]);
@@ -19,15 +19,19 @@ export default function AdminNewVideo() {
   useTitle('New Video');
 
   useEffect(() => {
-    api
-      .adminGroupList()
-      .then((g) => setGroups(g.json ?? g))
-      .catch(() => route('/403'));
+    if (!Array.isArray(groups)) {
+      api
+        .adminGroupList()
+        .then((g) => setGroups(g.json ?? g))
+        .catch(() => route('/403'));
+    }
 
-    api
-      .adminUserList()
-      .then((u) => setUsers(u.json ?? u))
-      .catch(() => route('/403'));
+    if (!Array.isArray(users)) {
+      api
+        .adminUserList()
+        .then((u) => setUsers(u.json ?? u))
+        .catch(() => route('/403'));
+    }
   }, []);
 
   function onFileChange(e) {
@@ -62,8 +66,8 @@ export default function AdminNewVideo() {
   return html`
     <${AdminNav} />
 
-    ${groups &&
-    users &&
+    ${Array.isArray(groups) &&
+    Array.isArray(users) &&
     html`
       <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
         <div

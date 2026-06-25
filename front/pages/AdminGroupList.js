@@ -23,6 +23,7 @@ export default function AdminGroupList() {
   }
 
   useEffect(() => {
+    if (Array.isArray(groups)) return;
     load();
   }, []);
 
@@ -42,7 +43,7 @@ export default function AdminGroupList() {
 
     <${Content}>
       <h2>List of groups</h2>
-      ${groups &&
+      ${Array.isArray(groups) &&
       html`
         <table id="table" class="table pure-table pure-table-horizontal">
           <thead>

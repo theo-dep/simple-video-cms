@@ -8,12 +8,13 @@ import { Form, useMultiSelect } from '../component/Form.js';
 
 export default function AdminNewGroup() {
   const { route } = useLocation();
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState(null);
   const selectRef = useMultiSelect([users]);
 
   useTitle('New Group');
 
   useEffect(() => {
+    if (Array.isArray(users)) return;
     api
       .adminUserList()
       .then((r) => setUsers(r.json ?? r))
@@ -33,7 +34,7 @@ export default function AdminNewGroup() {
   return html`
     <${AdminNav} />
 
-    ${users &&
+    ${Array.isArray(users) &&
     html`
       <${Form} title="Add a new group" buttonTitle="Create" onSubmitAction=${onGroupSubmit}>
         <div class="pure-control-group">
