@@ -10,6 +10,8 @@ if(is_multi_config)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/$<CONFIG>)
 endif()
 
+option(BUILD_TESTS "Build tests" OFF)
+
 find_package(httplib REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
@@ -24,6 +26,13 @@ find_package(FFMPEG REQUIRED COMPONENTS avformat avdevice avcodec avfilter avuti
 add_compile_options(-Wall -Wextra -Werror -pedantic)
 add_link_options(-static)
 link_libraries(stdc++exp)
+
+if(BUILD_TESTS)
+    enable_testing()
+    find_package(Catch2 REQUIRED)
+endif()
+
+set(common_lib_name common)
 
 add_subdirectory(common)
 add_subdirectory(back)

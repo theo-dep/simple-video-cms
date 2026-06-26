@@ -9,6 +9,7 @@
         "CMAKE_INSTALL_PREFIX": "dist",
         "CMAKE_C_COMPILER": "clang-22",
         "CMAKE_CXX_COMPILER": "clang++-22",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
       }
     },
@@ -22,6 +23,18 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "vcpkg-release",
+      "configurePreset": "vcpkg",
+      "configuration": "Release"
+    },
+    {
+      "name": "vcpkg-debug",
+      "configurePreset": "vcpkg",
+      "configuration": "Debug"
+    }
+  ],
+  "testPresets": [
     {
       "name": "vcpkg-release",
       "configurePreset": "vcpkg",

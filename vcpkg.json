@@ -1,32 +1,13 @@
 {
+  "builtin-baseline": "f87344cac03158cbf1467264565f1fd36b382a24",
   "dependencies": [
     {
       "name": "cpp-httplib",
       "default-features": false,
-      "features": ["zlib"]
+      "features": [
+        "zlib"
+      ]
     },
-    {
-      "name": "nlohmann-json",
-      "default-features": false
-    },
-    {
-      "name": "sqlite3",
-      "default-features": false,
-      "features": ["unicode"]
-    },
-    {
-      "name": "sqlite-orm",
-      "default-features": false
-    },
-    {
-      "name": "openssl",
-      "default-features": false
-    },
-    {
-      "name": "libpng",
-      "default-features": false
-    },
-    "zlib",
     {
       "name": "ffmpeg",
       "default-features": false,
@@ -52,7 +33,31 @@
         "vorbis",
         "vpx"
       ]
-    }
-  ],
-  "builtin-baseline": "f87344cac03158cbf1467264565f1fd36b382a24"
+    },
+    {
+      "name": "libpng",
+      "default-features": false
+    },
+    {
+      "name": "nlohmann-json",
+      "default-features": false
+    },
+    {
+      "name": "openssl",
+      "default-features": false
+    },
+    {
+      "name": "sqlite-orm",
+      "default-features": false
+    },
+    {
+      "name": "sqlite3",
+      "default-features": false,
+      "features": [
+        "unicode"
+      ]
+    },
+    "zlib",
+    "catch2"
+  ]
 }
