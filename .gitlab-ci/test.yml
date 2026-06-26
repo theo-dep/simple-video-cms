@@ -1,0 +1,62 @@
+include:
+  - local: /.gitlab-ci/common.yml
+
+.test-job:
+  stage: test
+  dependencies: []
+  extends:
+    - .dev-tags
+
+.cpp-test-job:
+  extends:
+    - .test-job
+  needs:
+    - job: debug build
+      artifacts: true
+
+back test:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .cpp-test-job
+    - .merge-rules
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - ./build/vcpkg/Debug/back_tests --reporter JUnit::out=back-junit.xml --reporter console::out=-::colour-mode=ansi
+  artifacts:
+    when: always
+    reports:
+      junit: back-junit.xml
+    paths:
+      - back-junit.xml
+
+common test:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .cpp-test-job
+    - .merge-rules
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - ./build/vcpkg/Debug/common_tests --reporter JUnit::out=common-junit.xml --reporter console::out=-::colour-mode=ansi
+  artifacts:
+    when: always
+    reports:
+      junit: common-junit.xml
+    paths:
+      - common-junit.xml
+
+front test:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .test-job
+    - .install-job
+    - .merge-rules
+  script:
+    - npx vitest run --reporter=default --reporter=junit --outputFile.junit=front-junit.xml
+  artifacts:
+    when: always
+    reports:
+      junit: front-junit.xml
+    paths:
+      - front-junit.xml

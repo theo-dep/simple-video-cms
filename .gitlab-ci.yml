@@ -4,6 +4,7 @@ default:
 stages:
   - .pre
   - build
+  - test
   - lint
   - review
   - deploy
@@ -32,6 +33,7 @@ include:
   - local: /.gitlab-ci/build.yml
   - local: /.gitlab-ci/docker.yml
   - local: /.gitlab-ci/lint.yml
+  - local: /.gitlab-ci/test.yml
 
 build ci image:
   stage: .pre
@@ -51,6 +53,15 @@ debug build:
     - .merge-rules
   variables:
     BUILD: debug
+    BUILD_TESTS: ON
+    BUILD_TARGETS: back back_tests common_tests
+  artifacts:
+    expire_in: 3 days
+    name: debug
+    paths:
+      - build/vcpkg/Debug/back
+      - build/vcpkg/Debug/back_tests
+      - build/vcpkg/Debug/common_tests
 
 release build:
   image: $CONTAINER_CI_IMAGE
@@ -61,6 +72,11 @@ release build:
     - !reference [.deploy-rules, rules]
   variables:
     BUILD: release
+  artifacts:
+    expire_in: 3 days
+    name: dist
+    paths:
+      - dist
 
 docker build:
   stage: build
