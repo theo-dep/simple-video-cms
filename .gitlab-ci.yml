@@ -54,6 +54,7 @@ debug build:
   variables:
     BUILD: debug
     BUILD_TESTS: ON
+    BUILD_COVERAGE: ON
     BUILD_TARGETS: back back_tests common_tests
   artifacts:
     expire_in: 3 days
@@ -62,6 +63,8 @@ debug build:
       - build/vcpkg/Debug/back
       - build/vcpkg/Debug/back_tests
       - build/vcpkg/Debug/common_tests
+      - build/vcpkg/**/*.gcda
+      - build/vcpkg/**/*.gcno
 
 release build:
   image: $CONTAINER_CI_IMAGE

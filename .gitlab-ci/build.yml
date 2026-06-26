@@ -6,6 +6,7 @@ include:
   extends:
     - .install-job
   script:
-    - cmake --preset vcpkg -DCMAKE_INSTALL_PREFIX=dist -DBUILD_TESTS=${BUILD_TESTS:-OFF}
+    - cmake --preset vcpkg -DCMAKE_INSTALL_PREFIX=dist -DBUILD_TESTS=${BUILD_TESTS:-OFF} -DBUILD_COVERAGE=${BUILD_COVERAGE:-OFF}
     - cmake --build --preset vcpkg-${BUILD} --parallel --target ${BUILD_TARGETS:-install}
     - if [ "$BUILD" = "release" ]; then npx rollup -c front/rollup.config.js; fi
+
