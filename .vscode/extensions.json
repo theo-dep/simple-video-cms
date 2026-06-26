@@ -4,6 +4,7 @@
     "ms-vscode.cpptools-extension-pack",
     "vadimcn.vscode-lldb",
     "esbenp.prettier-vscode",
-    "ericc-ch.lit-html"
+    "ericc-ch.lit-html",
+    "vitest.explorer"
   ]
 }
