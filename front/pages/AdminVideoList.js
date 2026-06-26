@@ -11,6 +11,7 @@ import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
 import { CloudPlusIcon } from '../svg/CloudPlusIcon.js';
 import { CloudArrowDownIcon } from '../svg/CloudArrowDownIcon.js';
+import { confirm } from '../component/ConfirmDialog.js';
 
 export default function AdminVideoList() {
   const { route } = useLocation();
@@ -25,7 +26,7 @@ export default function AdminVideoList() {
 
   async function deleteVideo(id) {
     const name = videos.value?.find((v) => v.id === id)?.title ?? 'this video';
-    if (!confirm(`Delete ${name}?`)) return;
+    if (!(await confirm(`Delete ${name} video?`))) return;
     await api.adminDeleteVideo(id);
     invalidateVideos(); // reset stats
     await loadVideos();

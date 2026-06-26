@@ -9,6 +9,7 @@ import { AdminNav } from '../component/UserNav.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
 import { PersonAddIcon } from '../svg/PersonAddIcon.js';
+import { confirm } from '../component/ConfirmDialog.js';
 
 export default function AdminAdminList() {
   const { route } = useLocation();
@@ -23,14 +24,14 @@ export default function AdminAdminList() {
 
   async function resetUser(id) {
     const name = admins.value?.find((a) => a.id === id)?.name ?? 'this admin';
-    if (!confirm(`Reset ${name} password?`)) return;
+    if (!(await confirm(`Reset ${name} password?`))) return;
     await api.adminResetUserPassword(id);
     await loadAdmins();
   }
 
   async function deleteUser(id) {
     const name = admins.value?.find((a) => a.id === id)?.name ?? 'this admin';
-    if (!confirm(`Delete ${name}?`)) return;
+    if (!(await confirm(`Delete ${name}?`))) return;
     await api.adminDeleteUser(id);
     invalidateAdmins(); // reset stats
     await loadAdmins();

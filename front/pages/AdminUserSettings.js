@@ -7,6 +7,7 @@ import { admin, user, admins, groups, users, loadAdmin, loadUser, loadGroups } f
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
+import { confirm } from '../component/ConfirmDialog.js';
 
 function AdminUserSettingsBase({ userId, isAdmin }) {
   userId = Number(userId);
@@ -27,7 +28,7 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
     const username = form.elements['username'].value.trim();
     const oldName = currentUser.value?.name ?? 'this ' + (isAdmin ? 'admin' : 'user');
     const confirmMessage = username === oldName ? `Update ${username}?` : `Update ${oldName} to ${username}?`;
-    if (!confirm(confirmMessage)) return;
+    if (!(await confirm(confirmMessage))) return;
     const groupSelect = form.elements['group-ids'];
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];
 
