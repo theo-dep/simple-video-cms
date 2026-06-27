@@ -503,7 +503,10 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    const std::string new_username{ req.get_param_value("username") };
+    std::string new_username{ req.get_param_value("username") };
+    su::trim(new_username);
+    su::lower(new_username);
+
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
 
     if (new_username.empty()) {
@@ -515,6 +518,12 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     if (password.empty()) {
         res.status = httplib::StatusCode::BadRequest_400;
         res.set_content("Missing password field", "plain/text");
+        return;
+    }
+
+    if (db.user_id(new_username) != -1) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Username already exists", "plain/text");
         return;
     }
 
@@ -1111,7 +1120,15 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
     }
 
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
-    const std::string username{ req.get_param_value("username") };
+    std::string username{ req.get_param_value("username") };
+    su::trim(username);
+    su::lower(username);
+
+    if (db.user_id(username) != -1) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Username already exists", "plain/text");
+        return;
+    }
 
     if (!db.update_username(user_id, username)) {
         res.status = httplib::StatusCode::InternalServerError_500;
