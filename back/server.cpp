@@ -1246,6 +1246,12 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
     const std::string group_name{ req.get_param_value("name") };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
+    if (db.group_id(group_name) != -1) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Group already exists", "plain/text");
+        return;
+    }
+
     const std::optional group_id{
         db.add_group(group_name)
             .and_then([&](int id) -> std::optional<int> {
@@ -1279,6 +1285,12 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
     const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
     const std::string group_name{ req.get_param_value("name") };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
+
+    if (db.group_id(group_name) != -1) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Group already exists", "plain/text");
+        return;
+    }
 
     const std::optional success{
         db.update_group_name(group_id, group_name)

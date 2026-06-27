@@ -521,6 +521,14 @@ std::vector<Group> Database::group_list() const
         order_by(&Group::name).asc());
 }
 
+int Database::group_id(const std::string& name) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name)) };
+    return groups.empty() ? -1 : groups[0];
+}
+
 std::string Database::group_name(int id) const
 {
     const std::scoped_lock lock(_mutex);
