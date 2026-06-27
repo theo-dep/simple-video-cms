@@ -830,6 +830,12 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
     const std::vector<int> group_ids{ extract_ids(req.form.get_field("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.form.get_field("userIds")) };
 
+    if (db.video_id(video_title) != -1) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Video already exists", "plain/text");
+        return;
+    }
+
     const std::optional video_id{
         db.add_video(video_title, video_content)
             .and_then([&](int video_id) -> std::optional<int> {
@@ -875,6 +881,12 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     const std::string video_title{ req.get_param_value("title") };
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
+
+    if (db.video_id(video_title) != -1) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Video already exists", "plain/text");
+        return;
+    }
 
     const std::optional success{
         db.update_video_title(video_id, video_title)

@@ -46,7 +46,7 @@ inline auto database::storage(const std::filesystem::path& path)
                    make_column("name", &Group::name, unique())),
         make_table("videos",
                    make_column("id", &Video::id, primary_key().autoincrement()),
-                   make_column("title", &Video::title)),
+                   make_column("title", &Video::title, unique())),
         make_table("user_groups",
                    make_column("group_id", &GroupUser::group_id),
                    make_column("user_id", &GroupUser::user_id),
@@ -134,6 +134,14 @@ std::vector<Video> Database::no_user_video_list() const
             not_in(&Video::id, select(&VideoUserRight::video_id)) and
             not_in(&Video::id, select(&VideoGroupRight::video_id))),
         order_by(&Video::title).asc());
+}
+
+int Database::video_id(const std::string& title) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector videos{ storage.select(&Video::id, where(c(&Video::title) == title)) };
+    return videos.empty() ? -1 : videos[0];
 }
 
 std::string Database::video_title(int id) const

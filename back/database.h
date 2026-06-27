@@ -20,6 +20,7 @@ public:
     std::vector<Video> user_video_list(int user_id) const;
     std::vector<Video> no_user_video_list() const;
 
+    int video_id(const std::string& title) const;
     std::string video_title(int id) const;
     int video_size(int id) const;
     std::string video(int id, std::size_t offset, std::size_t length) const;
