@@ -1,10 +1,9 @@
 import { html } from 'htm/preact';
-import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { selectedItem } from '../store/selection.js';
+import { video, videos, loadVideos, invalidateVideos } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Drawer } from '../component/Drawer.js';
@@ -15,29 +14,20 @@ import { CloudArrowDownIcon } from '../svg/CloudArrowDownIcon.js';
 
 export default function AdminVideoList() {
   const { route } = useLocation();
-  const [videos, setVideos] = useState(null);
-  const { isLoading } = useLoader(load, Array.isArray(videos));
+  const { isLoading } = useLoader(loadVideos, Array.isArray(videos.value));
 
   useTitle('Video List');
 
-  async function load() {
-    try {
-      const r = await api.adminVideoList();
-      setVideos(r.json ?? r);
-    } catch {
-      route('/403');
-    }
-  }
-
-  function updateVideo(video) {
-    selectedItem.value = video;
-    route('/admin/video-settings/' + video.id);
+  function updateVideo(selectedVideo) {
+    video.value = selectedVideo;
+    route('/admin/video-settings/' + video.value.id);
   }
 
   async function deleteVideo(id) {
     if (!confirm('Delete this video?')) return;
     await api.adminDeleteVideo(id);
-    await load();
+    invalidateVideos(); // reset stats
+    await loadVideos();
   }
 
   return html`
@@ -51,7 +41,7 @@ export default function AdminVideoList() {
             icon="${html`<title>Add video</title> <${CloudPlusIcon} />`}"
             addLink="/admin/new-video"
             columns="${['', 'Video Name']}"
-            items="${videos}"
+            items="${videos.value}"
             renderRow="${(v) => html`
               <tr key=${v.id}>
                 <td>

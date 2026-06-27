@@ -1,10 +1,9 @@
 import { html } from 'htm/preact';
-import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { selectedItem } from '../store/selection.js';
+import { group, groups, users, loadGroup, loadUsers } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
@@ -12,34 +11,14 @@ import { Loader } from '../component/Loader.js';
 export default function AdminGroupSettings({ groupId }) {
   groupId = Number(groupId);
   const { route } = useLocation();
-  const [group, setGroup] = useState(selectedItem.value);
-  const [users, setUsers] = useState(null);
-  const selectRef = useMultiSelect([group, users]);
-  const { isLoading: isGroupLoading } = useLoader(loadGroup, group !== null && group.id === groupId, [groupId]);
-  const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users));
+  const selectRef = useMultiSelect([group.value, users.value]);
+  const { isLoading: isGroupLoading } = useLoader(loadGroup, group.value?.id === groupId, [groupId]);
+  const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
 
-  useTitle(group ? `${group.name} Settings` : 'Group Settings');
-
-  async function loadGroup() {
-    try {
-      const r = await api.adminGroup(groupId);
-      setGroup(r.json ?? r);
-    } catch {
-      route('/403');
-    }
-  }
-
-  async function loadUsers() {
-    try {
-      const r = await api.adminUserList();
-      setUsers(r.json ?? r);
-    } catch {
-      route('/403');
-    }
-  }
+  useTitle(`${group.value?.name || 'Group'} Settings`);
 
   function isSelected(userId) {
-    return group.users.find((u) => u.id === userId);
+    return group.value?.users?.find((u) => u.id === userId);
   }
 
   async function onGroupSubmit(e) {
@@ -51,6 +30,7 @@ export default function AdminGroupSettings({ groupId }) {
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
 
     await api.adminUpdateGroup(groupId, name, userIds);
+    groups.value = null; // force to refresh the group list
     route('/admin/group-list');
   }
 
@@ -62,9 +42,9 @@ export default function AdminGroupSettings({ groupId }) {
       : html`
           <${Form} title="Change group name and users" buttonTitle="Update" onSubmitAction=${onGroupSubmit}>
             <div class="pure-control-group">
-              <input class="pure-input-1" type="text" name="name" value=${group.name} placeholder="name" required />
+              <input class="pure-input-1" type="text" name="name" value=${group.value.name} placeholder="name" required />
             </div>
-            ${!!users.length &&
+            ${!!users.value.length &&
             html`
               <div class="pure-control-group">
                 <select
@@ -75,7 +55,7 @@ export default function AdminGroupSettings({ groupId }) {
                   multiple
                   data-multi-select
                 >
-                  ${users.map((u) => html`<option key=${u.id} value=${u.id} selected=${isSelected(u.id)}>${u.name}</option>`)}
+                  ${users.value.map((u) => html`<option key=${u.id} value=${u.id} selected=${isSelected(u.id)}>${u.name}</option>`)}
                 </select>
               </div>
             `}

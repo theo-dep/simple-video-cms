@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { refreshAuth } from '../store/auth.js';
+import { groups, users, loadGroups, loadUsers, invalidateVideos } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
@@ -12,33 +13,13 @@ import { Loader } from '../component/Loader.js';
 export default function AdminNewVideo() {
   const { route } = useLocation();
   const [fileName, setFileName] = useState('');
-  const [groups, setGroups] = useState(null);
-  const [users, setUsers] = useState(null);
   const titleRef = useRef(null);
-  const selectGroupsRef = useMultiSelect([users, groups]);
-  const selectUsersRef = useMultiSelect([users, groups]);
-  const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups));
-  const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users));
+  const selectGroupsRef = useMultiSelect([users.value, groups.value]);
+  const selectUsersRef = useMultiSelect([users.value, groups.value]);
+  const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
+  const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
 
   useTitle('New Video');
-
-  async function loadGroups() {
-    try {
-      const r = await api.adminGroupList();
-      setGroups(r.json ?? r);
-    } catch {
-      route('/403');
-    }
-  }
-
-  async function loadUsers() {
-    try {
-      const r = await api.adminUserList();
-      setUsers(r.json ?? r);
-    } catch {
-      route('/403');
-    }
-  }
 
   function onFileChange(e) {
     const file = e.target.files[0];
@@ -64,8 +45,8 @@ export default function AdminNewVideo() {
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
     await api.adminAddVideo(video, title, groupIds, userIds);
-    // add this video to the admin video list (current user)
-    await refreshAuth();
+    invalidateVideos(); // force to refresh the video list and stats
+    await refreshAuth(); // add this video to the admin video list (current user)
     route('/admin/video-list');
   }
 
@@ -90,7 +71,7 @@ export default function AdminNewVideo() {
               <input ref=${titleRef} class="pure-input-1" type="text" name="title" id="title" placeholder="Video title" required />
             </div>
 
-            ${!!groups.length &&
+            ${!!groups.value.length &&
             html`
               <div class="pure-control-group">
                 <select
@@ -101,11 +82,11 @@ export default function AdminNewVideo() {
                   multiple
                   data-multi-select
                 >
-                  ${groups.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
+                  ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
                 </select>
               </div>
             `}
-            ${!!users.length &&
+            ${!!users.value.length &&
             html`
               <div class="pure-control-group">
                 <select
@@ -116,7 +97,7 @@ export default function AdminNewVideo() {
                   multiple
                   data-multi-select
                 >
-                  ${users.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
+                  ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
                 </select>
               </div>
             `}

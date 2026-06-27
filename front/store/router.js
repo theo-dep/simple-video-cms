@@ -1,3 +1,3 @@
 import { signal } from '@preact/signals';
 
-export const selectedItem = signal(null);
+export const navigate = signal(null);

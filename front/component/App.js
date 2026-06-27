@@ -1,13 +1,19 @@
 import { html } from 'htm/preact';
 import { useState, useEffect } from 'preact/hooks';
-import { LocationProvider, Router, lazy } from 'preact-iso';
+import { LocationProvider, Router, useLocation, lazy } from 'preact-iso';
 import { refreshAuth } from '../store/auth.js';
+import { navigate } from '../store/router.js';
 import { user } from '../store/auth.js';
 import disableSW from '../swdisable.js';
 
 export function App() {
   const [swReady, setSWReady] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const { route } = useLocation();
+
+  useEffect(() => {
+    navigate.value = route;
+  }, []);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {

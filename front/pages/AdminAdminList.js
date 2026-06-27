@@ -1,10 +1,9 @@
 import { html } from 'htm/preact';
-import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { selectedItem } from '../store/selection.js';
+import { admin, admins, invalidateAdmins, loadAdmins } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 import { ListTable } from '../component/ListTable.js';
@@ -13,35 +12,26 @@ import { PersonAddIcon } from '../svg/PersonAddIcon.js';
 
 export default function AdminAdminList() {
   const { route } = useLocation();
-  const [admins, setAdmins] = useState(null);
-  const { isLoading } = useLoader(load, Array.isArray(admins));
+  const { isLoading } = useLoader(loadAdmins, Array.isArray(admins.value));
 
   useTitle('Admin List');
 
-  async function load() {
-    try {
-      const r = await api.adminAdminList();
-      setAdmins(r.json ?? r);
-    } catch {
-      route('/403');
-    }
-  }
-
-  function updateAdmin(admin) {
-    selectedItem.value = admin;
-    route('/admin/admin-settings/' + admin.id);
+  function updateAdmin(selectedAdmin) {
+    admin.value = selectedAdmin;
+    route('/admin/admin-settings/' + admin.value.id);
   }
 
   async function resetUser(id) {
     if (!confirm('Reset this admin?')) return;
     await api.adminResetUserPassword(id);
-    await load();
+    await loadAdmins();
   }
 
   async function deleteUser(id) {
     if (!confirm('Delete this admin?')) return;
     await api.adminDeleteUser(id);
-    await load();
+    invalidateAdmins(); // reset stats
+    await loadAdmins();
   }
 
   return html`
@@ -55,7 +45,7 @@ export default function AdminAdminList() {
             icon="${html`<title>Add admin</title> <${PersonAddIcon} />`}"
             addLink="/admin/new-admin"
             columns="${['Username']}"
-            items="${admins}"
+            items="${admins.value}"
             renderRow="${(a) => html`
               <tr key=${a.id}>
                 <td>${a.name}</td>
