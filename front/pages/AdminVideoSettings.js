@@ -7,6 +7,7 @@ import { video, groups, users, videos, loadVideo, loadGroups, loadUsers } from '
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
+import { confirm } from '../component/ConfirmDialog.js';
 
 export default function AdminUpdateVideo({ videoId }) {
   videoId = Number(videoId);
@@ -28,10 +29,11 @@ export default function AdminUpdateVideo({ videoId }) {
   }
 
   async function onVideoSubmit(e) {
-    if (!confirm('Update this video?')) return;
-
     const form = e.target;
     const title = form.elements['title'].value.trim();
+    const oldTitle = video.value?.title ?? 'this video';
+    const confirmMessage = title === oldTitle ? `Update ${title} video?` : `Update ${oldTitle} video name to ${title}?`;
+    if (!(await confirm(confirmMessage))) return;
     const groupSelect = form.elements['group-ids'];
     const userSelect = form.elements['user-ids'];
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];

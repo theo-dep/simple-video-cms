@@ -7,6 +7,7 @@ import { admin, user, admins, groups, users, loadAdmin, loadUser, loadGroups } f
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
+import { confirm } from '../component/ConfirmDialog.js';
 
 function AdminUserSettingsBase({ userId, isAdmin }) {
   userId = Number(userId);
@@ -23,10 +24,11 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
   }
 
   async function onUserSubmit(e) {
-    if (!confirm(`Update this ${isAdmin ? 'admin' : 'user'}?`)) return;
-
     const form = e.target;
     const username = form.elements['username'].value.trim();
+    const oldName = currentUser.value?.name ?? 'this ' + (isAdmin ? 'admin' : 'user');
+    const confirmMessage = username === oldName ? `Update ${username}?` : `Update ${oldName} to ${username}?`;
+    if (!(await confirm(confirmMessage))) return;
     const groupSelect = form.elements['group-ids'];
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];
 
@@ -40,13 +42,15 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
     }
   }
 
+  const title = isAdmin ? 'Change admin name' : 'Change username and groups';
+
   return html`
     <${AdminNav} />
 
     ${isUserLoading || (!isAdmin && isGroupsLoading)
       ? html`<${Loader} />`
       : html`
-          <${Form} title="Change username${!isAdmin ? ' and groups' : ''}" buttonTitle="Update" onSubmitAction=${onUserSubmit}>
+          <${Form} title="${title}" buttonTitle="Update" onSubmitAction=${onUserSubmit}>
             <div class="pure-control-group">
               <input class="pure-input-1" type="text" name="username" placeholder="username" value=${currentUser.value.name} required />
             </div>

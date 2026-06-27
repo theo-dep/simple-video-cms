@@ -10,6 +10,7 @@ import { Drawer } from '../component/Drawer.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
 import { GroupAddIcon } from '../svg/GroupAddIcon.js';
+import { confirm } from '../component/ConfirmDialog.js';
 
 export default function AdminGroupList() {
   const { route } = useLocation();
@@ -23,7 +24,8 @@ export default function AdminGroupList() {
   }
 
   async function deleteGroup(id) {
-    if (!confirm('Delete this group?')) return;
+    const name = groups.value?.find((g) => g.id === id)?.name ?? 'this group';
+    if (!(await confirm(`Delete ${name} group?`))) return;
     await api.adminDeleteGroup(id);
     invalidateGroups(); // reset stats
     await loadGroups();

@@ -7,6 +7,7 @@ import { group, groups, users, loadGroup, loadUsers } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
+import { confirm } from '../component/ConfirmDialog.js';
 
 export default function AdminGroupSettings({ groupId }) {
   groupId = Number(groupId);
@@ -22,10 +23,11 @@ export default function AdminGroupSettings({ groupId }) {
   }
 
   async function onGroupSubmit(e) {
-    if (!confirm('Update this group?')) return;
-
     const form = e.target;
     const name = form.elements['name'].value.trim();
+    const oldName = group.value?.name ?? 'this group';
+    const confirmMessage = name === oldName ? `Update ${name} group?` : `Update ${oldName} group name to ${name}?`;
+    if (!(await confirm(confirmMessage))) return;
     const userSelect = form.elements['user-ids'];
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
 

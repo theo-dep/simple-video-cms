@@ -506,9 +506,15 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     const std::string new_username{ req.get_param_value("username") };
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
 
-    if (new_username.empty() || password.empty()) {
+    if (new_username.empty()) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing fields", "plain/text");
+        res.set_content("Missing username field", "plain/text");
+        return;
+    }
+
+    if (password.empty()) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing password field", "plain/text");
         return;
     }
 
@@ -524,6 +530,8 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     if (!success) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update username", "plain/text");
+        const std::string username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to update username "{}")", username };
         return;
     }
 
@@ -544,7 +552,7 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
 
     if (old_password.empty() || new_password.empty() || confirm_password.empty()) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing fields", "plain/text");
+        res.set_content("Missing password fields", "plain/text");
         return;
     }
 
@@ -567,6 +575,8 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
     if (!success) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update password", "plain/text");
+        const std::string username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to update user password "{}")", username };
         return;
     }
 
@@ -793,9 +803,15 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    if (!req.form.has_field("title") || !req.form.has_file("video")) {
+    if (!req.form.has_field("title")) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing fields", "plain/text");
+        res.set_content("Missing title field", "plain/text");
+        return;
+    }
+
+    if (!req.form.has_file("video")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing video field", "plain/text");
         return;
     }
 
@@ -824,8 +840,9 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
     };
 
     if (!video_id) {
-        logging::error{ R"(Fail to add video "{}")", video_title };
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to add the video", "plain/text");
+        logging::error{ R"(Fail to add video "{}")", video_title };
         return;
     }
 
@@ -841,7 +858,7 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
 
     if (!req.has_param("title")) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing fields", "plain/text");
+        res.set_content("Missing title field", "plain/text");
         return;
     }
 
@@ -862,6 +879,8 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
 
     if (!success.value_or(false)) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the video", "plain/text");
+        logging::error{ R"(Fail to update video "{}")", video_title };
         return;
     }
 
@@ -878,6 +897,8 @@ inline void server::admin_delete_video(const httplib::Request& req, httplib::Res
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     if (!db.delete_video(video_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        const std::string video_title{ db.video_title(video_id) };
+        logging::error{ R"(Fail to delete video "{}")", video_title };
         return;
     }
 
@@ -960,7 +981,7 @@ inline void server::admin_add_admin(const httplib::Request& req, httplib::Respon
 
     if (!req.has_param("username")) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing username", "plain/text");
+        res.set_content("Missing username field", "plain/text");
         return;
     }
 
@@ -977,8 +998,9 @@ inline void server::admin_add_admin(const httplib::Request& req, httplib::Respon
     const std::string salt{ crypto::random_string() };
     const std::optional admin_id{ db.add_admin(username, salt) };
     if (!admin_id) {
-        logging::error{ R"(Fail to add admin "{}")", username };
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to add the admin", "plain/text");
+        logging::error{ R"(Fail to add admin "{}")", username };
         return;
     }
 
@@ -1041,7 +1063,7 @@ inline void server::admin_add_user(const httplib::Request& req, httplib::Respons
 
     if (!req.has_param("username")) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing username", "plain/text");
+        res.set_content("Missing username field", "plain/text");
         return;
     }
 
@@ -1066,8 +1088,9 @@ inline void server::admin_add_user(const httplib::Request& req, httplib::Respons
     };
 
     if (!user_id) {
-        logging::error{ R"(Fail to add user "{}")", username };
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to add the user", "plain/text");
+        logging::error{ R"(Fail to add user "{}")", username };
         return;
     }
 
@@ -1083,7 +1106,7 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
 
     if (!req.has_param("username")) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing username", "plain/text");
+        res.set_content("Missing username field", "plain/text");
         return;
     }
 
@@ -1092,6 +1115,8 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
 
     if (!db.update_username(user_id, username)) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the user", "plain/text");
+        logging::error{ R"(Fail to update user "{}")", username };
         return;
     }
 
@@ -1099,6 +1124,8 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
 
     if (!group_ids.empty() && !db.update_user_groups(user_id, group_ids)) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the user groups", "plain/text");
+        logging::error{ R"(Fail to update user group "{}")", username };
         return;
     }
 
@@ -1113,9 +1140,10 @@ inline void server::admin_reset_user_password(const httplib::Request& req, httpl
     }
 
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
-
     if (!db.clear_password(user_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        const std::string username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to reset user password "{}")", username };
         return;
     }
 
@@ -1132,6 +1160,8 @@ inline void server::admin_delete_user(const httplib::Request& req, httplib::Resp
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
     if (!db.delete_user(user_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        const std::string username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to delete user "{}")", username };
         return;
     }
 
@@ -1192,7 +1222,7 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
 
     if (!req.has_param("name")) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing name", "plain/text");
+        res.set_content("Missing name field", "plain/text");
         return;
     }
 
@@ -1207,8 +1237,9 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
     };
 
     if (!group_id) {
-        logging::error{ R"(Fail to add group "{}")", group_name };
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to add the group", "plain/text");
+        logging::error{ R"(Fail to add group "{}")", group_name };
         return;
     }
 
@@ -1224,7 +1255,7 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
 
     if (!req.has_param("name")) {
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Missing name", "plain/text");
+        res.set_content("Missing group name field", "plain/text");
         return;
     }
 
@@ -1241,6 +1272,8 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
 
     if (!success.value_or(false)) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the group", "plain/text");
+        logging::error{ R"(Fail to update group "{}")", group_name };
         return;
     }
 
@@ -1257,6 +1290,8 @@ inline void server::admin_delete_group(const httplib::Request& req, httplib::Res
     const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
     if (!db.delete_group(group_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
+        const std::string group_name{ db.group_name(group_id) };
+        logging::error{ R"(Fail to delete group "{}")", group_name };
         return;
     }
 
