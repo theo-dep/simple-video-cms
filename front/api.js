@@ -1,6 +1,6 @@
 const BASE = '/api';
 
-async function fetchApi(method, path, body = undefined) {
+async function fetchApiResponse(method, path, body = undefined) {
   const res = await fetch(BASE + path, {
     method,
     credentials: 'same-origin',
@@ -12,6 +12,11 @@ async function fetchApi(method, path, body = undefined) {
     err.status = res.status;
     throw err;
   }
+  return res;
+}
+
+async function fetchApi(method, path, body = undefined) {
+  const res = await fetchApiResponse(method, path, body);
   const text = await res.text();
   return {
     status: res.status,
@@ -69,8 +74,8 @@ export const api = {
     ),
 
   videoPlaylistPath: (videoId) => BASE + `/video/${videoId}/playlist`,
-  thumbnailPath: (videoId) => BASE + `/thumbnail/${videoId}`,
   adminDownloadVideoPath: (videoId) => BASE + `/admin/download-video/${videoId}`,
+  thumbnail: (videoId) => fetchApiResponse('GET', `/thumbnail/${videoId}`),
 
   addVideoSession: (videoId) => fetchApi('POST', `/add-video-session/${videoId}`),
   startVideoSession: (videoId) => fetchApi('POST', `/start-video-session/${videoId}`),

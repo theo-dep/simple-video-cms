@@ -1,7 +1,7 @@
 import { html } from 'htm/preact';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
-import { user } from '../store/auth.js';
+import { user, refreshAuth } from '../store/auth.js';
 import { UserNav } from '../component/UserNav.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { FormContent } from '../component/Form.js';
@@ -15,8 +15,9 @@ export default function UserAccount() {
     const password = form.elements['password'].value;
 
     await api.updateUsername(username, password);
+    await refreshAuth(); // refresh the current user id
     form.reset();
-    user.name.value = username;
+    form.elements['username'].value = username;
   }
 
   async function onPasswordSubmit(e) {
