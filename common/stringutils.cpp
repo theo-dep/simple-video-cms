@@ -10,27 +10,31 @@ std::vector<std::string> su::split(const std::string& str, char delim)
     return list;
 }
 
-void su::trim(std::string& str)
+std::string su::trim(const std::string& str)
 {
     static const auto ischar{
         [](unsigned char c) {
             return (std::isspace(c) == 0);
         }
     };
+    std::string s{ str };
     // trim left
-    str.erase(str.begin(), std::ranges::find_if(str, ischar));
+    s.erase(s.begin(), std::ranges::find_if(s, ischar));
     // trim right
-    str.erase(std::ranges::find_if(std::views::reverse(str), ischar).base(), str.end());
+    s.erase(std::ranges::find_if(std::views::reverse(s), ischar).base(), s.end());
+    return s;
 }
 
-void su::lower(std::string& str)
+std::string su::lower(const std::string& str)
 {
     static const auto tolower{
         [](unsigned char c) {
             return static_cast<char>(std::tolower(c));
         }
     };
-    std::ranges::copy(std::views::transform(str, tolower), str.begin());
+    std::string s{ str };
+    std::ranges::transform(s, s.begin(), tolower);
+    return s;
 }
 
 int su::string_to_int(const std::string& str)

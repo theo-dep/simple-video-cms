@@ -11,7 +11,8 @@
     },
     {
       "name": "sqlite3",
-      "default-features": false
+      "default-features": false,
+      "features": ["unicode"]
     },
     {
       "name": "sqlite-orm",

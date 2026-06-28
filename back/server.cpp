@@ -246,7 +246,7 @@ inline void server::generate_front_env_file(const std::filesystem::path& bundle_
 namespace server
 {
     // Social media bots
-    inline bool is_bot(std::string user_agent)
+    inline bool is_bot(const std::string& user_agent)
     {
         static constexpr std::array bots{
             "facebookexternalhit", "twitterbot", "linkedinbot",
@@ -254,10 +254,10 @@ namespace server
             "skype", "redditbot", "mastodon", "friendica", "bluesky"
         };
 
-        su::lower(user_agent);
+        const std::string u{ su::lower(user_agent) };
 
-        return std::ranges::find_if(bots, [&user_agent](const auto& bot) {
-                   return user_agent.find(bot) != std::string::npos;
+        return std::ranges::find_if(bots, [&u](const auto& bot) {
+                   return u.find(bot) != std::string::npos;
                }) != bots.cend();
     }
 }
@@ -401,10 +401,7 @@ inline void server::refresh(const httplib::Request& req, httplib::Response& res,
 
 inline void server::login(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db)
 {
-    std::string username{ req.get_param_value("username") };
-    su::trim(username);
-    su::lower(username);
-
+    const std::string username{ su::trim(req.get_param_value("username")) };
     if (username.empty()) {
         res.status = httplib::StatusCode::NotFound_404;
         res.set_content("Empty username", "plain/text");
@@ -442,10 +439,7 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
 
 inline void server::add_password(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
-    std::string username{ req.get_param_value("username") };
-    su::trim(username);
-    su::lower(username);
-
+    const std::string username{ su::trim(req.get_param_value("username")) };
     const int user_id{ db.user_id(username) };
     if (user_id == -1) {
         res.status = httplib::StatusCode::NotFound_404;
@@ -503,13 +497,10 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    std::string new_username{ req.get_param_value("username") };
-    su::trim(new_username);
-    su::lower(new_username);
-
+    const std::string username{ su::trim(req.get_param_value("username")) };
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
 
-    if (new_username.empty()) {
+    if (username.empty()) {
         res.status = httplib::StatusCode::BadRequest_400;
         res.set_content("Missing username field", "plain/text");
         return;
@@ -521,7 +512,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    if (db.user_id(new_username) != -1) {
+    if (db.user_exists(username)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Username already exists", "plain/text");
         return;
@@ -535,12 +526,12 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    const std::optional success{ db.update_username(user_id, new_username) };
+    const std::optional success{ db.update_username(user_id, username) };
     if (!success) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update username", "plain/text");
-        const std::string username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to update username "{}")", username };
+        const std::string old_username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to update username "{}")", old_username };
         return;
     }
 
@@ -824,13 +815,13 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    const std::string video_title{ req.form.get_field("title") };
+    const std::string video_title{ su::trim(req.form.get_field("title")) };
     const std::string video_content{ req.form.get_file("video").content };
     const std::string thumbnail_content{ video::thumbnail(video_content) };
     const std::vector<int> group_ids{ extract_ids(req.form.get_field("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.form.get_field("userIds")) };
 
-    if (db.video_id(video_title) != -1) {
+    if (db.video_exists(video_title)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Video already exists", "plain/text");
         return;
@@ -878,11 +869,11 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string video_title{ req.get_param_value("title") };
+    const std::string video_title{ su::trim(req.get_param_value("title")) };
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
-    if (db.video_id(video_title) != -1) {
+    if (db.video_exists(video_title)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Video already exists", "plain/text");
         return;
@@ -901,7 +892,8 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     if (!success.value_or(false)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the video", "plain/text");
-        logging::error{ R"(Fail to update video "{}")", video_title };
+        const std::string old_video_title{ db.video_title(video_id) };
+        logging::error{ R"(Fail to update video "{}")", old_video_title };
         return;
     }
 
@@ -1006,11 +998,8 @@ inline void server::admin_add_admin(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    std::string username{ req.get_param_value("username") };
-    su::trim(username);
-    su::lower(username);
-
-    if (db.user_id(username) != -1) {
+    const std::string username{ su::trim(req.get_param_value("username")) };
+    if (db.user_exists(username)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Username already exists", "plain/text");
         return;
@@ -1088,11 +1077,8 @@ inline void server::admin_add_user(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    std::string username{ req.get_param_value("username") };
-    su::trim(username);
-    su::lower(username);
-
-    if (db.user_id(username) != -1) {
+    const std::string username{ su::trim(req.get_param_value("username")) };
+    if (db.user_exists(username)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Username already exists", "plain/text");
         return;
@@ -1132,11 +1118,9 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
     }
 
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
-    std::string username{ req.get_param_value("username") };
-    su::trim(username);
-    su::lower(username);
+    const std::string username{ su::trim(req.get_param_value("username")) };
 
-    if (db.user_id(username) != -1) {
+    if (db.user_exists(username)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Username already exists", "plain/text");
         return;
@@ -1145,7 +1129,8 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
     if (!db.update_username(user_id, username)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the user", "plain/text");
-        logging::error{ R"(Fail to update user "{}")", username };
+        const std::string old_username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to update user "{}")", old_username };
         return;
     }
 
@@ -1255,10 +1240,10 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    const std::string group_name{ req.get_param_value("name") };
+    const std::string group_name{ su::trim(req.get_param_value("name")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
-    if (db.group_id(group_name) != -1) {
+    if (db.group_exists(group_name)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Group already exists", "plain/text");
         return;
@@ -1295,10 +1280,10 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
     }
 
     const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
-    const std::string group_name{ req.get_param_value("name") };
+    const std::string group_name{ su::trim(req.get_param_value("name")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
-    if (db.group_id(group_name) != -1) {
+    if (db.group_exists(group_name)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Group already exists", "plain/text");
         return;
@@ -1314,7 +1299,8 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
     if (!success.value_or(false)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the group", "plain/text");
-        logging::error{ R"(Fail to update group "{}")", group_name };
+        const std::string old_group_name{ db.group_name(group_id) };
+        logging::error{ R"(Fail to update group "{}")", old_group_name };
         return;
     }
 
