@@ -23,12 +23,20 @@ using namespace sqlite_orm;
 namespace database
 {
     auto storage(const std::filesystem::path& path);
+
+    struct Version
+    {
+        int value;
+    };
+    static constexpr Version current_version{ .value = 1 };
 }
 
 inline auto database::storage(const std::filesystem::path& path)
 {
     return make_storage(
         path.string(),
+        make_table("version",
+                   make_column("value", &Version::value)),
         make_table("users",
                    make_column("id", &User::id, primary_key().autoincrement()),
                    make_column("name", &User::name, unique()),
@@ -93,6 +101,44 @@ bool Database::create_tables() const
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     storage.sync_schema();
+
+    const std::vector versions{ storage.get_all<database::Version>() };
+    if (!versions.empty() && versions[0].value == database::current_version.value)
+        return true;
+
+    storage.transaction([&] {
+        // migrate
+        const std::vector users{ storage.get_all<User>() };
+        const std::vector super_admins{ storage.get_all<SuperAdmin>() };
+        const std::vector admins{ storage.get_all<Admin>() };
+        const std::vector groups{ storage.get_all<Group>() };
+        const std::vector videos{ storage.get_all<Video>() };
+        const std::vector user_groups{ storage.get_all<GroupUser>() };
+        const std::vector video_user_rights{ storage.get_all<VideoUserRight>() };
+        const std::vector video_group_rights{ storage.get_all<VideoGroupRight>() };
+
+        for (const std::string& table : {
+                 "video_group_rights", "video_user_rights", "user_groups",
+                 "videos", "groups", "admins", "super_admins", "users" }) {
+            storage.drop_table(table);
+        }
+
+        storage.sync_schema();
+
+        const auto insert_all{ [&storage](const auto& vec) {
+            for (const auto& item : vec) {
+                storage.replace(item);
+            }
+        } };
+
+        const std::tuple vecs{ std::tie(users, super_admins, admins, groups, videos, user_groups, video_user_rights, video_group_rights) };
+        std::apply([&](const auto&... vecs) { (insert_all(vecs), ...); }, vecs);
+
+        storage.replace(database::current_version);
+
+        return true;
+    });
+
     return true;
 }
 
