@@ -1,12 +1,14 @@
 import { html } from 'htm/preact';
 import { Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
+import { Suspense } from 'preact/compat';
 import { LocationProvider, Router, useLocation, lazy } from 'preact-iso';
 import { refreshAuth } from '../store/auth.js';
 import { navigate } from '../store/router.js';
 import { user } from '../store/auth.js';
 import disableSW from '../swdisable.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
+import { Loader } from './Loader.js';
 
 export function App() {
   const [swReady, setSWReady] = useState(false);
@@ -56,6 +58,15 @@ export function App() {
     }
   }, [authReady, swReady, user.isLogged.value]);
 
+  // video.js can be long to load
+  function WatchVideo(props) {
+    return html`
+      <${Suspense} fallback=${html`<${Loader} />`}>
+        <${lazy(() => import('../pages/WatchVideo.js'))} ...${props} />
+      <//>
+    `;
+  }
+
   return (
     // load components after refresh
     authReady &&
@@ -70,7 +81,7 @@ export function App() {
             <${lazy(() => import('../pages/ResetPassword.js'))} path="/reset-password" />
             <${lazy(() => import('../pages/ResetPassword.js'))} path="/reset-password/:username" />
             <${lazy(() => import('../pages/UserAccount.js'))} path="/user-account" />
-            <${lazy(() => import('../pages/WatchVideo.js'))} path="/watch-video/:videoId" />
+            <${WatchVideo} path="/watch-video/:videoId" />
             <${lazy(() => import('../pages/AdminDashboard.js'))} path="/admin" />
             <${lazy(() => import('../pages/AdminVideoList.js'))} path="/admin/video-list" />
             <${lazy(() => import('../pages/AdminNewVideo.js'))} path="/admin/new-video" />
