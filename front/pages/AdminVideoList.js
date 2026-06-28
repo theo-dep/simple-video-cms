@@ -29,6 +29,7 @@ export default function AdminVideoList() {
     if (!(await confirm(`Delete ${name} video?`))) return;
     await api.adminDeleteVideo(id);
     invalidateVideos(); // reset stats
+    await refreshAuth(); // remove this video to the admin video list (current user)
     await loadVideos();
   }
 
