@@ -23,18 +23,25 @@ using namespace sqlite_orm;
 namespace database
 {
     auto storage(const std::filesystem::path& path);
+
+    struct Version
+    {
+        int value;
+    };
+    static constexpr Version current_version{ .value = 1 };
 }
 
 inline auto database::storage(const std::filesystem::path& path)
 {
     return make_storage(
         path.string(),
+        make_table("version",
+                   make_column("value", &Version::value)),
         make_table("users",
                    make_column("id", &User::id, primary_key().autoincrement()),
-                   make_column("name", &User::name, unique()),
+                   make_column("name", &User::name, unique(), collate_nocase()),
                    make_column("password", &User::password),
-                   make_column("salt", &User::salt),
-                   unique(&User::id, &User::name)),
+                   make_column("salt", &User::salt)),
         make_table("super_admins",
                    make_column("id", &SuperAdmin::id, primary_key()),
                    foreign_key(&SuperAdmin::id).references(&User::id).on_delete.cascade()),
@@ -43,10 +50,10 @@ inline auto database::storage(const std::filesystem::path& path)
                    foreign_key(&Admin::id).references(&User::id).on_delete.cascade()),
         make_table("groups",
                    make_column("id", &Group::id, primary_key().autoincrement()),
-                   make_column("name", &Group::name, unique())),
+                   make_column("name", &Group::name, unique(), collate_nocase())),
         make_table("videos",
                    make_column("id", &Video::id, primary_key().autoincrement()),
-                   make_column("title", &Video::title)),
+                   make_column("title", &Video::title, unique(), collate_nocase())),
         make_table("user_groups",
                    make_column("group_id", &GroupUser::group_id),
                    make_column("user_id", &GroupUser::user_id),
@@ -93,6 +100,44 @@ bool Database::create_tables() const
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     storage.sync_schema();
+
+    const std::vector versions{ storage.get_all<database::Version>() };
+    if (!versions.empty() && versions[0].value == database::current_version.value)
+        return true;
+
+    storage.transaction([&] {
+        // migrate
+        const std::vector users{ storage.get_all<User>() };
+        const std::vector super_admins{ storage.get_all<SuperAdmin>() };
+        const std::vector admins{ storage.get_all<Admin>() };
+        const std::vector groups{ storage.get_all<Group>() };
+        const std::vector videos{ storage.get_all<Video>() };
+        const std::vector user_groups{ storage.get_all<GroupUser>() };
+        const std::vector video_user_rights{ storage.get_all<VideoUserRight>() };
+        const std::vector video_group_rights{ storage.get_all<VideoGroupRight>() };
+
+        for (const std::string& table : {
+                 "video_group_rights", "video_user_rights", "user_groups",
+                 "videos", "groups", "admins", "super_admins", "users" }) {
+            storage.drop_table(table);
+        }
+
+        storage.sync_schema();
+
+        const auto insert_all{ [&storage](const auto& vec) {
+            for (const auto& item : vec) {
+                storage.replace(item);
+            }
+        } };
+
+        const std::tuple vecs{ std::tie(users, super_admins, admins, groups, videos, user_groups, video_user_rights, video_group_rights) };
+        std::apply([&](const auto&... vecs) { (insert_all(vecs), ...); }, vecs);
+
+        storage.replace(database::current_version);
+
+        return true;
+    });
+
     return true;
 }
 
@@ -134,6 +179,14 @@ std::vector<Video> Database::no_user_video_list() const
             not_in(&Video::id, select(&VideoUserRight::video_id)) and
             not_in(&Video::id, select(&VideoGroupRight::video_id))),
         order_by(&Video::title).asc());
+}
+
+bool Database::video_exists(const std::string& title) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector videos{ storage.select(&Video::id, where(c(&Video::title) == title)) };
+    return videos.size() == 1;
 }
 
 std::string Database::video_title(int id) const
@@ -414,7 +467,12 @@ int Database::user_id(const std::string& name) const
     const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::vector users{ storage.select(&User::id, where(c(&User::name) == name)) };
-    return users.empty() ? -1 : users[0];
+    return users.size() == 1 ? users[0] : -1;
+}
+
+bool Database::user_exists(const std::string& name) const
+{
+    return user_id(name) != -1;
 }
 
 std::string Database::user_name(int id) const
@@ -519,6 +577,14 @@ std::vector<Group> Database::group_list() const
     return storage.select(
         distinct(database::group_struct), from<Group>(),
         order_by(&Group::name).asc());
+}
+
+bool Database::group_exists(const std::string& name) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name)) };
+    return groups.size() == 1;
 }
 
 std::string Database::group_name(int id) const
