@@ -3,7 +3,7 @@ import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
-import { refreshAuth } from '../store/auth.js';
+import { refreshRequested } from '../store/auth.js';
 import { videoIdRedirected } from '../store/redirect.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
@@ -33,7 +33,7 @@ export default function Login() {
         route('/reset-password/' + encodeURIComponent(username));
         return;
       }
-      await refreshAuth();
+      refreshRequested.value = true; // update the user
       if (videoIdRedirected.value === '') {
         route('/');
       } else {

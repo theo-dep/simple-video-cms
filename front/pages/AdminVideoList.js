@@ -3,6 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
+import { refreshRequested } from '../store/auth.js';
 import { video, videos, loadVideos, invalidateVideos } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
@@ -29,6 +30,7 @@ export default function AdminVideoList() {
     if (!(await confirm(`Delete ${name} video?`))) return;
     await api.adminDeleteVideo(id);
     invalidateVideos(); // reset stats
+    refreshRequested.value = true; // remove this video to the admin video list (current user)
     await loadVideos();
   }
 

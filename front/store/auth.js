@@ -7,6 +7,8 @@ const isLogged = signal(false);
 const isAdmin = signal(false);
 const videos = signal([]);
 
+export const refreshRequested = signal(true);
+
 export const user = {
   id: userId,
   name: userName,
@@ -16,6 +18,8 @@ export const user = {
 };
 
 export async function refreshAuth() {
+  if (!refreshRequested.value) return;
+
   try {
     const { json } = await api.refresh();
     userId.value = json?.id ?? null;
@@ -23,6 +27,7 @@ export async function refreshAuth() {
     isLogged.value = !!json?.id;
     isAdmin.value = !!json?.isAdmin;
     videos.value = json?.videos ?? [];
+    refreshRequested.value = false;
   } catch {
     userId.value = null;
     userName.value = '';

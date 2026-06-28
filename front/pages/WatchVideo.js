@@ -4,11 +4,13 @@ import { useLocation } from 'preact-iso';
 import videojs from 'video.js';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
-import { user } from '../store/auth.js';
+import { useLoader } from '../hook/useLoader.js';
+import { refreshAuth, user, refreshRequested } from '../store/auth.js';
 import { videoIdRedirected } from '../store/redirect.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
 import { Footer } from '../component/Footer.js';
+import { Loader } from '../component/Loader.js';
 
 import 'videojs-yt-style';
 import 'videojs-mobile-ui';
@@ -48,11 +50,18 @@ export default function WatchVideo({ videoId }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const video = user.videos.value.find((v) => v.id === Number(videoId));
+  const { isLoading } = useLoader(refreshAuth, !refreshRequested.value);
 
   useTitle(video ? video.title : 'Watch Video');
 
   useEffect(() => {
-    document.adoptedStyleSheets = [VideoJSStyleSheet, VideoJSMobileUIStyleSheet, VideoJSYtStyleSheet, additionalVideoJSStyle];
+    document.adoptedStyleSheets = [
+      VideoJSStyleSheet,
+      VideoJSMobileUIStyleSheet,
+      VideoJSYtStyleSheet,
+      additionalVideoJSStyle,
+      ...document.adoptedStyleSheets,
+    ];
     return () => {
       document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => {
         return s !== VideoJSStyleSheet || s !== VideoJSMobileUIStyleSheet || s !== VideoJSYtStyleSheet || s !== additionalVideoJSStyle;
@@ -166,31 +175,33 @@ export default function WatchVideo({ videoId }) {
     <${UserNav} videoId=${videoId} />
 
     <${InfoContent} class="info-video">
-      ${video
-        ? html`
-            <h1>${video.title}</h1>
-            <video
-              ref=${videoRef}
-              onContextMenu=${(e) => e.preventDefault()}
-              id="video-player"
-              class="video-js vjs-default-skin"
-              controls
-              playsinline
-            >
-              <p class="vjs-no-js">
-                To view this video please enable JavaScript and upgrade to a browser that
-                <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>.
+      ${isLoading
+        ? html`<${Loader} />`
+        : video
+          ? html`
+              <h1>${video.title}</h1>
+              <video
+                ref=${videoRef}
+                onContextMenu=${(e) => e.preventDefault()}
+                id="video-player"
+                class="video-js vjs-default-skin"
+                controls
+                playsinline
+              >
+                <p class="vjs-no-js">
+                  To view this video please enable JavaScript and upgrade to a browser that
+                  <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>.
+                </p>
+              </video>
+            `
+          : html`
+              <h3>Access Restricted</h3>
+              <p>
+                It looks like you don't have permission to view this video.<br />
+                Please make sure you're logged in or have the right access.
               </p>
-            </video>
-          `
-        : html`
-            <h3>Access Restricted</h3>
-            <p>
-              It looks like you don't have permission to view this video.<br />
-              Please make sure you're logged in or have the right access.
-            </p>
-            <a onClick=${() => onLoginClicked()} style="cursor:pointer" class="back">Log in to continue</a>
-          `}
+              <a onClick=${() => onLoginClicked()} style="cursor:pointer" class="back">Log in to continue</a>
+            `}
     <//>
 
     <${Footer} />

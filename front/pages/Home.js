@@ -1,16 +1,19 @@
 import { html } from 'htm/preact';
 import { useSearch } from '../hook/useSearch.js';
 import { useTitle } from '../hook/useTitle.js';
-import { user } from '../store/auth.js';
+import { useLoader } from '../hook/useLoader.js';
+import { refreshAuth, user, refreshRequested } from '../store/auth.js';
 import { Content } from '../component/Content.js';
 import { UserNav } from '../component/UserNav.js';
 import { SearchInput } from '../component/SearchInput.js';
 import { Footer } from '../component/Footer.js';
 import { VideoThumbnail } from '../component/VideoThumbnail.js';
+import { Loader } from '../component/Loader.js';
 
 export default function Home() {
   const allVideos = user.videos.value;
   const { results, search } = useSearch(allVideos, ['title']);
+  const { isLoading } = useLoader(refreshAuth, !refreshRequested.value);
 
   useTitle('Home');
 
@@ -20,8 +23,10 @@ export default function Home() {
     <//>
 
     <${Content} class="pure-g">
-      ${results.map(
-        (v) => html`
+      ${isLoading
+        ? html`<${Loader} />`
+        : results.map(
+            (v) => html`
           <div class="pure-u-1 pure-u-md-1-3" key=${v.id}>
             <a href=${'/watch-video/' + v.id}>
               <${VideoThumbnail} id=${v.id} title=${v.title} //>
@@ -32,7 +37,7 @@ export default function Home() {
           </div>
           <hr class="pure-u-1" />
         `
-      )}
+          )}
     <//>
 
     <${Footer} />

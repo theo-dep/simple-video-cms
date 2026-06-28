@@ -54,7 +54,7 @@ export function FormContent({ title, buttonTitle, onSubmitAction, children }) {
   const [alert, setAlert] = useState('');
 
   useEffect(() => {
-    document.adoptedStyleSheets = [MultiSelectStyleSheet, additionalMultiSelectStyle];
+    document.adoptedStyleSheets = [MultiSelectStyleSheet, additionalMultiSelectStyle, ...document.adoptedStyleSheets];
     return () => {
       document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => {
         return s !== MultiSelectStyleSheet || s !== additionalMultiSelectStyle;

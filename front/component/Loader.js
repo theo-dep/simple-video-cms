@@ -19,7 +19,7 @@ loaderStyle.replaceSync(`
   height: 25vh;
 }
 
-.svg-container svg {
+.svg-loader {
   width: 100%;
   height: 100%;
   fill: #16a085;
@@ -28,7 +28,7 @@ loaderStyle.replaceSync(`
 
 export function Loader() {
   useEffect(() => {
-    document.adoptedStyleSheets = [loaderStyle];
+    document.adoptedStyleSheets = [loaderStyle, ...document.adoptedStyleSheets];
     return () => {
       document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => {
         return s !== loaderStyle;
