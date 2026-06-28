@@ -2,7 +2,7 @@ import { useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
-import { user, refreshAuth } from '../store/auth.js';
+import { user, refreshRequested } from '../store/auth.js';
 import disableSW from '../swdisable.js';
 
 export default function Logout() {
@@ -22,7 +22,7 @@ export default function Logout() {
       user.name.value = '';
       user.id.value = null;
 
-      await refreshAuth();
+      refreshRequested.value = true; // update the user
       route('/');
     }
     cleanup();

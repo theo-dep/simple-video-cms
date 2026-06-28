@@ -1,7 +1,8 @@
 import { html } from 'htm/preact';
+import { useEffect } from 'preact/hooks';
 import { useSearch } from '../hook/useSearch.js';
 import { useTitle } from '../hook/useTitle.js';
-import { user } from '../store/auth.js';
+import { refreshAuth, user } from '../store/auth.js';
 import { Content } from '../component/Content.js';
 import { UserNav } from '../component/UserNav.js';
 import { SearchInput } from '../component/SearchInput.js';
@@ -13,6 +14,10 @@ export default function Home() {
   const { results, search } = useSearch(allVideos, ['title']);
 
   useTitle('Home');
+
+  useEffect(() => {
+    refreshAuth();
+  }, []);
 
   return html`
     <${UserNav}>

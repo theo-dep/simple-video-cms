@@ -4,7 +4,7 @@ import { useLocation } from 'preact-iso';
 import videojs from 'video.js';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
-import { user } from '../store/auth.js';
+import { refreshAuth, user } from '../store/auth.js';
 import { videoIdRedirected } from '../store/redirect.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
@@ -50,6 +50,10 @@ export default function WatchVideo({ videoId }) {
   const video = user.videos.value.find((v) => v.id === Number(videoId));
 
   useTitle(video ? video.title : 'Watch Video');
+
+  useEffect(() => {
+    refreshAuth();
+  }, []);
 
   useEffect(() => {
     document.adoptedStyleSheets = [VideoJSStyleSheet, VideoJSMobileUIStyleSheet, VideoJSYtStyleSheet, additionalVideoJSStyle];

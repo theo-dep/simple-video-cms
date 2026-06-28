@@ -3,6 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
+import { refreshRequested } from '../store/auth.js';
 import { video, groups, users, videos, loadVideo, loadGroups, loadUsers } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
@@ -41,7 +42,7 @@ export default function AdminUpdateVideo({ videoId }) {
 
     await api.adminUpdateVideo(videoId, title, groupIds, userIds);
     videos.value = null; // force to refresh the video list
-    await refreshAuth(); // update this video to the admin video list (current user)
+    refreshRequested.value = true; // update this video to the admin video list (current user)
     route('/admin/video-list');
   }
 

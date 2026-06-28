@@ -4,7 +4,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { refreshAuth } from '../store/auth.js';
+import { refreshRequested } from '../store/auth.js';
 import { groups, users, loadGroups, loadUsers, invalidateVideos } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
@@ -42,7 +42,7 @@ export default function AdminNewVideo() {
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
     await api.adminAddVideo(video, title, groupIds, userIds);
     invalidateVideos(); // force to refresh the video list and stats
-    await refreshAuth(); // add this video to the admin video list (current user)
+    refreshRequested.value = true; // add this video to the admin video list (current user)
     route('/admin/video-list');
   }
 
