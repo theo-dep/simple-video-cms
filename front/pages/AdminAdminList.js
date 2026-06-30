@@ -3,7 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { admin, admins, invalidateAdmins, loadAdmins } from '../store/admin.js';
+import { selectedAdmin, admins, invalidateAdmins, loadAdmins } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 import { ListTable } from '../component/ListTable.js';
@@ -17,9 +17,9 @@ export default function AdminAdminList() {
 
   useTitle('Admin List');
 
-  function updateAdmin(selectedAdmin) {
-    admin.value = selectedAdmin;
-    route('/admin/admin-settings/' + admin.value.id);
+  function updateAdmin(admin) {
+    selectedAdmin.value = admin;
+    route('/admin/admin-settings/' + selectedAdmin.value.id);
   }
 
   async function resetUser(id) {

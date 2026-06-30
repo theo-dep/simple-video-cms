@@ -3,7 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { group, groups, invalidateGroups, loadGroups } from '../store/admin.js';
+import { selectedGroup, groups, invalidateGroups, loadGroups } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Drawer } from '../component/Drawer.js';
@@ -18,9 +18,9 @@ export default function AdminGroupList() {
 
   useTitle('Group List');
 
-  function updateGroup(selectedGroup) {
-    group.value = selectedGroup;
-    route('/admin/group-settings/' + group.value.id);
+  function updateGroup(group) {
+    selectedGroup.value = group;
+    route('/admin/group-settings/' + selectedGroup.value.id);
   }
 
   async function deleteGroup(id) {
