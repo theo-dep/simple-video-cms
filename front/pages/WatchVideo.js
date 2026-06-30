@@ -4,9 +4,9 @@ import { useLocation } from 'preact-iso';
 import videojs from 'video.js';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
-import { useLoader } from '../hook/useLoader.js';
-import { refreshAuth, user, refreshRequested } from '../store/auth.js';
+import { refreshed, user } from '../store/auth.js';
 import { videoIdRedirected } from '../store/redirect.js';
+import { swReady, postToServiceWorker } from '../store/sw.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/UserNav.js';
 import { Footer } from '../component/Footer.js';
@@ -50,7 +50,7 @@ export default function WatchVideo({ videoId }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
   const video = user.videos.value.find((v) => v.id === Number(videoId));
-  const { isLoading } = useLoader(refreshAuth, !refreshRequested.value);
+  const isLoading = !refreshed.value;
 
   useTitle(video ? video.title : 'Watch Video');
 
@@ -73,6 +73,18 @@ export default function WatchVideo({ videoId }) {
     videoIdRedirected.value = videoId;
     route('/login');
   }
+
+  useEffect(() => {
+    if (!swReady.value) return;
+
+    if (user.isLogged.value) {
+      postToServiceWorker('enableVideoCaching');
+    }
+
+    return () => {
+      postToServiceWorker('disableVideoCaching');
+    };
+  }, [swReady.value, user.isLogged.value]);
 
   useEffect(() => {
     if (!video || !videoRef.current || playerRef.current) return;

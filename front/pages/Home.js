@@ -1,8 +1,7 @@
 import { html } from 'htm/preact';
 import { useSearch } from '../hook/useSearch.js';
 import { useTitle } from '../hook/useTitle.js';
-import { useLoader } from '../hook/useLoader.js';
-import { refreshAuth, user, refreshRequested } from '../store/auth.js';
+import { user, refreshed } from '../store/auth.js';
 import { Content } from '../component/Content.js';
 import { UserNav } from '../component/UserNav.js';
 import { SearchInput } from '../component/SearchInput.js';
@@ -13,7 +12,7 @@ import { Loader } from '../component/Loader.js';
 export default function Home() {
   const allVideos = user.videos.value;
   const { results, search } = useSearch(allVideos, ['title']);
-  const { isLoading } = useLoader(refreshAuth, !refreshRequested.value);
+  const isLoading = !refreshed.value;
 
   useTitle('Home');
 

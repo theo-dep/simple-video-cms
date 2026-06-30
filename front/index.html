@@ -34,7 +34,8 @@
         }
       }
     </script>
-    <style id="head-root">
+    <!-- loader inline style to show fast -->
+    <style>
       .svg-wrapper {
         position: fixed;
         top: 0;
@@ -59,10 +60,9 @@
     </style>
   </head>
   <body>
-    <div id="root">
+    <template id="loader-template">
       <div class="svg-wrapper">
         <div class="svg-container">
-          <!-- https://github.com/n3r4zzurr0/svg-spinners/blob/main/svg-css/blocks-scale.svg -->
           <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <style>
               .spinner_LWk7 {
@@ -164,15 +164,27 @@
           </svg>
         </div>
       </div>
-    </div>
+    </template>
+
+    <div id="boot-loader" aria-live="polite" aria-label="Loading"></div>
 
     <script>
-      const env = window.__ENV__ ?? { websiteName: 'Simple Video CMS' };
-      document.title = `${document.title} | ${env.websiteName}`;
+      (() => {
+        const bootLoader = document.getElementById('boot-loader');
+        const loaderTemplate = document.getElementById('loader-template');
+        bootLoader.innerHTML = loaderTemplate.innerHTML;
+      })();
+    </script>
 
-      if (env.iconPath) {
-        document.querySelector('link[rel="icon"]').href = env.iconPath;
-      }
+    <script>
+      (() => {
+        const env = window.__ENV__ ?? { websiteName: 'Simple Video CMS' };
+        document.title = `${document.title} | ${env.websiteName}`;
+
+        if (env.iconPath) {
+          document.querySelector('link[rel="icon"]').href = env.iconPath;
+        }
+      })();
     </script>
     <script type="module" src="/index.js"></script>
   </body>
