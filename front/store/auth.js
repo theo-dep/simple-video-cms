@@ -1,4 +1,4 @@
-import { signal } from '@preact/signals';
+import { signal, effect } from '@preact/signals';
 import { api } from '../api.js';
 
 const userId = signal(null);
@@ -8,6 +8,7 @@ const isAdmin = signal(false);
 const videos = signal([]);
 
 export const refreshRequested = signal(true);
+export const refreshed = signal(false);
 
 export const user = {
   id: userId,
@@ -17,8 +18,8 @@ export const user = {
   videos,
 };
 
-export async function refreshAuth() {
-  if (!refreshRequested.value) return;
+async function refreshAuth() {
+  refreshed.value = false;
 
   try {
     const { json } = await api.refresh();
@@ -27,12 +28,18 @@ export async function refreshAuth() {
     isLogged.value = !!json?.id;
     isAdmin.value = !!json?.isAdmin;
     videos.value = json?.videos ?? [];
-    refreshRequested.value = false;
   } catch {
     userId.value = null;
     userName.value = '';
     isLogged.value = false;
     isAdmin.value = false;
     videos.value = [];
+  } finally {
+    refreshRequested.value = false;
+    refreshed.value = true;
   }
 }
+
+effect(() => {
+  if (refreshRequested.value) refreshAuth();
+});

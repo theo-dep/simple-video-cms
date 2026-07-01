@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { refreshRequested } from '../store/auth.js';
-import { video, groups, users, videos, loadVideo, loadGroups, loadUsers } from '../store/admin.js';
+import { selectedVideo, groups, users, videos, loadVideo, loadGroups, loadUsers } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
@@ -13,26 +13,26 @@ import { confirm } from '../component/ConfirmDialog.js';
 export default function AdminUpdateVideo({ videoId }) {
   videoId = Number(videoId);
   const { route } = useLocation();
-  const selectGroupsRef = useMultiSelect([video.value, users.value, groups.value]);
-  const selectUsersRef = useMultiSelect([video.value, users.value, groups.value]);
-  const { isLoading: isVideoLoading } = useLoader(loadVideo, video.value?.id === videoId, [videoId]);
+  const selectGroupsRef = useMultiSelect([selectedVideo.value, users.value, groups.value]);
+  const selectUsersRef = useMultiSelect([selectedVideo.value, users.value, groups.value]);
+  const { isLoading: isVideoLoading } = useLoader(loadVideo, selectedVideo.value?.id === videoId, [videoId]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
 
-  useTitle(`${video.value?.title || 'Video'} Settings`);
+  useTitle(`${selectedVideo.value?.title || 'Video'} Settings`);
 
   function isGroupSelected(groupId) {
-    return video.value?.groups?.find((g) => g.id === groupId);
+    return selectedVideo.value?.groups?.find((g) => g.id === groupId);
   }
 
   function isUserSelected(userId) {
-    return video.value?.users?.find((u) => u.id === userId);
+    return selectedVideo.value?.users?.find((u) => u.id === userId);
   }
 
   async function onVideoSubmit(e) {
     const form = e.target;
     const title = form.elements['title'].value.trim();
-    const oldTitle = video.value?.title ?? 'this video';
+    const oldTitle = selectedVideo.value?.title ?? 'this video';
     const confirmMessage = title === oldTitle ? `Update ${title} video?` : `Update ${oldTitle} video name to ${title}?`;
     if (!(await confirm(confirmMessage))) return;
     const groupSelect = form.elements['group-ids'];
@@ -54,7 +54,7 @@ export default function AdminUpdateVideo({ videoId }) {
       : html`
           <${Form} title="Change video title, group and user rights" buttonTitle="Update" onSubmitAction=${onVideoSubmit}>
             <div class="pure-control-group">
-              <input class="pure-input-1" type="text" name="title" value=${video.value.title} placeholder="Video title" required />
+              <input class="pure-input-1" type="text" name="title" value=${selectedVideo.value.title} placeholder="Video title" required />
             </div>
             ${!!groups.value.length &&
             html`

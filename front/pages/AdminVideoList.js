@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { refreshRequested } from '../store/auth.js';
-import { video, videos, loadVideos, invalidateVideos } from '../store/admin.js';
+import { selectedVideo, videos, loadVideos, invalidateVideos } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Drawer } from '../component/Drawer.js';
@@ -20,9 +20,9 @@ export default function AdminVideoList() {
 
   useTitle('Video List');
 
-  function updateVideo(selectedVideo) {
-    video.value = selectedVideo;
-    route('/admin/video-settings/' + video.value.id);
+  function updateVideo(video) {
+    selectedVideo.value = video;
+    route('/admin/video-settings/' + selectedVideo.value.id);
   }
 
   async function deleteVideo(id) {

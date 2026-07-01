@@ -3,7 +3,6 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { user, refreshRequested } from '../store/auth.js';
-import disableSW from '../swdisable.js';
 
 export default function Logout() {
   const { route } = useLocation();
@@ -11,11 +10,7 @@ export default function Logout() {
   useTitle('Logout');
 
   useEffect(() => {
-    async function cleanup() {
-      await disableSW();
-
-      await api.logout();
-
+    api.logout().then((_response) => {
       user.videos.value = [];
       user.isLogged.value = false;
       user.isAdmin.value = false;
@@ -24,8 +19,7 @@ export default function Logout() {
 
       refreshRequested.value = true; // update the user
       route('/');
-    }
-    cleanup();
+    });
   }, []);
 
   return null;

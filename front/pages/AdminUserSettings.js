@@ -3,7 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { admin, user, admins, groups, users, loadAdmin, loadUser, loadGroups } from '../store/admin.js';
+import { selectedAdmin, selectedUser, admins, groups, users, loadAdmin, loadUser, loadGroups } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
@@ -12,7 +12,7 @@ import { confirm } from '../component/ConfirmDialog.js';
 function AdminUserSettingsBase({ userId, isAdmin }) {
   userId = Number(userId);
   const { route } = useLocation();
-  const currentUser = isAdmin ? admin : user;
+  const currentUser = isAdmin ? selectedAdmin : selectedUser;
   const selectRef = useMultiSelect([currentUser.value, groups.value]);
   const { isLoading: isUserLoading } = useLoader(isAdmin ? loadAdmin : loadUser, currentUser.value?.id === userId, [isAdmin, userId]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, isAdmin || Array.isArray(groups.value), [isAdmin]);
