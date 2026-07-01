@@ -56,7 +56,7 @@ export default function AdminVideoList() {
                     </svg>
                   </a>
                 </td>
-                <td><a href=${'/watch-video/' + v.id}>${v.title}</a></td>
+                <td><a href=${'/video/' + v.id}>${v.title}</a></td>
                 <td>
                   <div class="pure-g">
                     <div class="pure-u-1 pure-u-lg-1-3">

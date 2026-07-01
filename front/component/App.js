@@ -6,6 +6,7 @@ import { refreshed } from '../store/auth.js';
 import { swReady } from '../store/sw.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
+import { Redirect } from './Redirect.js';
 
 export function App() {
   const isLoading = !refreshed.value || !swReady.value;
@@ -49,7 +50,8 @@ export function App() {
               <${lazy(() => import('../pages/ResetPassword.js'))} path="/reset-password" />
               <${lazy(() => import('../pages/ResetPassword.js'))} path="/reset-password/:username" />
               <${lazy(() => import('../pages/UserAccount.js'))} path="/user-account" />
-              <${lazy(() => import('../pages/WatchVideo.js'))} path="/watch-video/:videoId" />
+              <${Redirect} path="/watch-video/:videoId" to="/video/:videoId" />
+              <${lazy(() => import('../pages/WatchVideo.js'))} path="/video/:videoId" />
               <${lazy(() => import('../pages/Forbidden.js'))} path="/403" />
               <${lazy(() => import('../pages/NotFound.js'))} default />
               <${adminLazy(() => import('../pages/AdminDashboard.js'))} path="/admin" />
