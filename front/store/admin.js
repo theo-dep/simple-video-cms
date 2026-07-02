@@ -1,5 +1,4 @@
 import { signal } from '@preact/signals';
-import { navigate } from '../store/router.js';
 import { api } from '../api.js';
 
 export const stats = signal(null);
@@ -37,9 +36,7 @@ async function load(target, apiCall, ...apiParam) {
     if (loadTokens.get(target) === token) target.value = r.json ?? r;
   } catch (err) {
     if (loadTokens.get(target) !== token) return; // superseded by a newer request
-    if (err.status === 401 || err.status === 403) {
-      navigate.value ? navigate.value('/403') : (window.location.href = '/403');
-    } else console.error(err);
+    console.error(err);
   }
 }
 

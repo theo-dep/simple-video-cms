@@ -1,14 +1,12 @@
 import { html } from 'htm/preact';
 import { Fragment } from 'preact';
 import { useEffect } from 'preact/hooks';
-import { LocationProvider, Router, useLocation, lazy } from 'preact-iso';
+import { LocationProvider, Router, lazy } from 'preact-iso';
 import { refreshed } from '../store/auth.js';
-import { navigate } from '../store/router.js';
 import { swReady } from '../store/sw.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 
 export function App() {
-  const { route } = useLocation();
   const isLoading = !refreshed.value || !swReady.value;
 
   useEffect(() => {
@@ -16,8 +14,6 @@ export function App() {
   }, [isLoading]);
 
   useEffect(() => {
-    navigate.value = route;
-
     if ('serviceWorker' in navigator) {
       // Scope must be "/" for clients.claim() to work without a reload:
       // clients.claim() matches the registration scope against the client's
