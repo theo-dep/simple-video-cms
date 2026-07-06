@@ -204,7 +204,7 @@ inline void server::set_logger(httplib::Server& server)
 
 inline void server::set_exception_handler(httplib::Server& server)
 {
-    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& /*res*/, std::exception_ptr ep) {
+    server.set_exception_handler([](const httplib::Request& /*req*/, httplib::Response& res, std::exception_ptr ep) {
         std::string message;
         try {
             std::rethrow_exception(std::move(ep));
@@ -216,6 +216,8 @@ inline void server::set_exception_handler(httplib::Server& server)
 
         logging::error{ std::to_string(std::stacktrace::current()) };
         logging::error{ message };
+        res.set_content(message, "text/plain");
+        res.status = httplib::StatusCode::InternalServerError_500;
     });
 }
 
@@ -873,7 +875,7 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
-    if (db.video_exists(video_title)) {
+    if (db.video_exists(video_id, video_title)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Video already exists", "plain/text");
         return;

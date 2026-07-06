@@ -189,6 +189,14 @@ bool Database::video_exists(const std::string& title) const
     return videos.size() == 1;
 }
 
+bool Database::video_exists(int id, const std::string& title) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector videos{ storage.select(&Video::id, where(c(&Video::title) == title and c(&Video::id) != id)) };
+    return videos.size() == 1;
+}
+
 std::string Database::video_title(int id) const
 {
     const std::scoped_lock lock(_mutex);

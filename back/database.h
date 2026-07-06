@@ -21,6 +21,7 @@ public:
     std::vector<Video> no_user_video_list() const;
 
     bool video_exists(const std::string& title) const;
+    bool video_exists(int id, const std::string& title) const;
     std::string video_title(int id) const;
     int video_size(int id) const;
     std::string video(int id, std::size_t offset, std::size_t length) const;
