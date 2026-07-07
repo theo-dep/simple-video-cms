@@ -168,5 +168,5 @@ inline logging::Logger& logging::logger()
 inline void logging::log(const std::string& type, const std::source_location& location, const std::string& message)
 {
     logger() << type << " - " << time_local() << " - " << message << " - " << light_function_name(location)
-             << " (" << location.file_name() << " at line " << location.line() << ")" << '\n';
+             << " (" << location.file_name() << ":" << location.line() << ")" << '\n';
 }
