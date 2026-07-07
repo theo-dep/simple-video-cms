@@ -603,6 +603,14 @@ bool Database::group_exists(const std::string& name) const
     return groups.size() == 1;
 }
 
+bool Database::group_exists(int id, const std::string& name) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name and c(&Group::id) != id)) };
+    return groups.size() == 1;
+}
+
 std::string Database::group_name(int id) const
 {
     const std::scoped_lock lock(_mutex);

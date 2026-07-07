@@ -1285,7 +1285,7 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
     const std::string group_name{ su::trim(req.get_param_value("name")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
-    if (db.group_exists(group_name)) {
+    if (db.group_exists(group_id, group_name)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Group already exists", "plain/text");
         return;
