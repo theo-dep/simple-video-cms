@@ -43,6 +43,7 @@ public:
 
     int user_id(const std::string& name) const;
     bool user_exists(const std::string& name) const;
+    bool user_exists(int id, const std::string& name) const;
     std::string user_name(int id) const;
     std::optional<std::string> user_password(int id) const;
     std::string user_salt(int id) const;

@@ -514,7 +514,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    if (db.user_exists(username)) {
+    if (db.user_exists(user_id, username)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Username already exists", "plain/text");
         return;
@@ -1122,7 +1122,7 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
     const std::string username{ su::trim(req.get_param_value("username")) };
 
-    if (db.user_exists(username)) {
+    if (db.user_exists(user_id, username)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Username already exists", "plain/text");
         return;

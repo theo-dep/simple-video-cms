@@ -483,6 +483,14 @@ bool Database::user_exists(const std::string& name) const
     return user_id(name) != -1;
 }
 
+bool Database::user_exists(int id, const std::string& name) const
+{
+    const std::scoped_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector users{ storage.select(&User::id, where(c(&User::name) == name and c(&User::id) != id)) };
+    return users.size() == 1;
+}
+
 std::string Database::user_name(int id) const
 {
     const std::scoped_lock lock(_mutex);
