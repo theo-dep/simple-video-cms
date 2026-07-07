@@ -16,6 +16,15 @@ export function App() {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
+      // Remove old service worker (v1)
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((reg) => {
+          if (reg.active?.scriptURL.includes('videoserviceworker.js')) {
+            reg.unregister();
+          }
+        });
+      });
+
       // Scope must be "/" for clients.claim() to work without a reload:
       // clients.claim() matches the registration scope against the client's
       // CREATION URL (the initial navigation that loaded the document), not
