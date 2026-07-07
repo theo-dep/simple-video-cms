@@ -262,52 +262,78 @@ namespace server
                    return u.find(bot) != std::string::npos;
                }) != bots.cend();
     }
+
+    struct IndexMetaData
+    {
+        std::string title;
+        std::string description;
+        std::string thumbnail_url;
+        std::string website_url;
+    };
+
+    inline void serve_index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const IndexMetaData& metadata)
+    {
+        const std::string user_agent{ req.get_header_value("User-Agent") };
+
+        if (is_bot(user_agent)) {
+            static const std::string url_scheme{
+#ifdef _DEBUG
+                "http"
+#else
+                "https"
+#endif
+            };
+            const std::string host{ req.get_header_value("Host") };
+            const std::string base_url{ url_scheme + "://" + host };
+            const std::string html{
+                // clang-format off
+                "<!DOCTYPE html>"
+                "<html>"
+                "<head>"
+                "<meta property=\"og:title\" content=\"" + metadata.title + "\" />"
+                "<meta property=\"og:description\" content=\"" + metadata.description + "\" />"
+                "<meta property=\"og:image\" content=\"" + base_url + "/" + metadata.thumbnail_url + "\" />"
+                "<meta property=\"og:url\" content=\"" + base_url + "/" + metadata.website_url + "\" />"
+                "</head>"
+                "<body>"
+                "</body>"
+                "</html>"
+                // clang-format on
+            };
+            res.set_content(html, "text/html");
+        } else {
+            // normal user
+            static const std::string index_file{ (bundle_dir / "index.html").string() };
+            res.set_file_content(index_file);
+        }
+    }
 }
 
 inline void server::watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db)
 {
-    const std::string user_agent{ req.get_header_value("User-Agent") };
-
-    if (is_bot(user_agent)) {
-        const std::string video_id{ req.path_params.at("id") };
-        const std::string host{ req.get_header_value("Host") };
-        const std::string title{ db.video_title(su::string_to_int(video_id)) };
-        static const std::string url_scheme{
-#ifdef _DEBUG
-            "http"
-#else
-            "https"
-#endif
-        };
-        const std::string description{ "Watch " + title + " video" };
-        const std::string thumbnail_url{ url_scheme + "://" + host + "/api/thumbnail/" + video_id };
-        const std::string website_url{ url_scheme + "://" + host + "/watch-video/" + video_id };
-        const std::string html{
-            // clang-format off
-            "<!DOCTYPE html>"
-            "<html>"
-            "<head>"
-            "<meta property=\"og:title\" content=\"" + title + "\" />"
-            "<meta property=\"og:description\" content=\"" + description + "\" />"
-            "<meta property=\"og:image\" content=\"" + thumbnail_url + "\" />"
-            "<meta property=\"og:url\" content=\"" + website_url + "\" />"
-            "</head>"
-            "<body>"
-            "</body>"
-            "</html>"
-            // clang-format on
-        };
-        res.set_content(html, "text/html");
-    } else {
-        // normal user
-        index(req, res, bundle_dir);
-    }
+    const std::string video_id{ req.path_params.at("id") };
+    const std::string title{ db.video_title(su::string_to_int(video_id)) };
+    const std::string description{ "Watch " + title + " video" };
+    const std::string thumbnail_url{ "/api/thumbnail/" + video_id };
+    const std::string website_url{ "/watch-video/" + video_id };
+    serve_index(req, res, bundle_dir,
+                { .title = title,
+                  .description = description,
+                  .thumbnail_url = thumbnail_url,
+                  .website_url = website_url });
 }
 
-inline void server::index(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& bundle_dir)
+inline void server::index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
-    static const std::string index_file{ (bundle_dir / "index.html").string() };
-    res.set_file_content(index_file);
+    const std::string title{ "Home" };
+    const std::string description{ "Welcome to " + env::website_name };
+    const std::string thumbnail_url{ env::icon_path };
+    const std::string website_url{ "/" };
+    serve_index(req, res, bundle_dir,
+                { .title = title,
+                  .description = description,
+                  .thumbnail_url = thumbnail_url,
+                  .website_url = website_url });
 }
 
 // Logs
