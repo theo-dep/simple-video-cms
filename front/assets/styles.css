@@ -44,13 +44,7 @@ body {
   color: var(--color-text);
   line-height: 1.7em;
   background: var(--color-bg-dark);
-}
-
-/* tablets and up */
-@media only screen and (min-width: 48em) {
-  body {
-    font-size: 16px;
-  }
+  font-size: 16px;
 }
 
 /* --- Base styles --- */
@@ -478,6 +472,7 @@ hr {
 /* --- WatchVideo --- */
 video {
   width: 100%;
+  aspect-ratio: 16 / 9;
 }
 
 @media only screen and (min-width: 48em) {
