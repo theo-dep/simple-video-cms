@@ -37,7 +37,7 @@ export default function Login() {
       if (videoIdRedirected.value === '') {
         route('/');
       } else {
-        route('/watch-video/' + videoIdRedirected.value);
+        route('/video/' + videoIdRedirected.value);
         videoIdRedirected.value = '';
       }
     } catch (err) {

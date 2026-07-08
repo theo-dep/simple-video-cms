@@ -662,7 +662,7 @@ namespace server
     inline bool request_from_watch_video(const httplib::Request& req, int video_id)
     {
         const std::string referrer{ req.get_header_value("Referer") };
-        return referrer.ends_with("/watch-video/" + su::int_to_string(video_id)) || referrer.ends_with("/videoserviceworker.js");
+        return referrer.ends_with("/video/" + su::int_to_string(video_id));
     }
 }
 
