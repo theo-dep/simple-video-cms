@@ -381,7 +381,15 @@ inline void server::logs(const httplib::Request& req, httplib::Response& res, lo
         const std::string user_agent{ log_entry.value("userAgent", "?") };
         const std::string path{ log_entry.value("path", "/") };
 
-        logger << level << " - " << timestamp << " - " << host << " - " << path << " - " << message << " - " << user_agent << '\n';
+        std::string log_message{ std::format("{} - {} - {} - {} - {} - {}", level, timestamp, host, path, message, user_agent) };
+        if (level == "error") {
+            const std::string function{ log_entry.value("function", "anonymous_function") };
+            const std::string file{ log_entry.value("file", "?") };
+            const int line{ log_entry.value("line", 0) };
+            log_message += std::format(" - {} ({}:{})", function, file, line);
+        }
+
+        logger << log_message << '\n';
     }
 }
 

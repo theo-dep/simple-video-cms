@@ -29,7 +29,24 @@ let queue = [];
 let flushTimer = null;
 let inFlight = false;
 
-function buildLogEntry(level, message) {
+function buildCallerInfo() {
+  const lines = new Error().stack?.split('\n');
+  // [0]=Error [1]=buildCallerInfo [2]=console.X override [3]=actual caller
+  const callerLine = lines?.[3];
+  if (!callerLine) return {};
+
+  const stripDomain = (url) => url.replace(/^https?:\/\/[^/]+/, '');
+
+  // named: "at fnName (file:line:col)"
+  const named = /at\s+(.+?)\s+\((.+):(\d+):\d+\)/.exec(callerLine);
+  if (named) return { function: named[1], file: stripDomain(named[2]), line: Number.parseInt(named[3], 10) };
+  // anonymous: "at file:line:col"
+  const anon = /at\s+(.+):(\d+):\d+/.exec(callerLine);
+  if (anon) return { file: stripDomain(anon[1]), line: Number.parseInt(anon[2], 10) };
+  return null;
+}
+
+function buildLogEntry(level, message, callerInfo = {}) {
   return {
     level,
     message,
@@ -37,11 +54,12 @@ function buildLogEntry(level, message) {
     host: window.location.hostname,
     userAgent: navigator.userAgent,
     path: window.location.pathname,
+    ...(callerInfo !== null && { function: callerInfo.function, file: callerInfo.file, line: callerInfo.line }),
   };
 }
 
-function enqueueLog(level, message) {
-  queue.push(buildLogEntry(level, message));
+function enqueueLog(level, message, callerInfo = {}) {
+  queue.push(buildLogEntry(level, message, callerInfo));
 
   if (queue.length > MAX_QUEUE_SIZE) {
     // keep the most recent logs, drop the oldest ones
@@ -107,30 +125,32 @@ function flush(useBeacon = false) {
     });
 }
 
-const LEVELS = ['log', 'error', 'warn', 'info'];
+const ERROR_LEVEL = 'error';
+const LEVELS = ['log', ERROR_LEVEL, 'warn', 'info'];
 
 for (const level of LEVELS) {
   console[level] = function (...args) {
     originalConsole[level](...args);
-    enqueueLog(level, args.map(serializeArg).join(' '));
+    const callerInfo = level === ERROR_LEVEL ? buildCallerInfo() : {};
+    enqueueLog(level, args.map(serializeArg).join(' '), callerInfo);
   };
 }
 
 window.onerror = function (message, source, lineno, colno, error) {
   const errorMessage = error ? `${error.name}: ${error.message}\n${error.stack ?? ''}` : String(message);
-  enqueueLog('error', `Uncaught error: ${errorMessage} at ${source}:${lineno}:${colno}`);
+  enqueueLog(ERROR_LEVEL, `Uncaught error: ${errorMessage} at ${source}:${lineno}:${colno}`);
   return true; // do not show error
 };
 
 window.addEventListener('unhandledrejection', function (event) {
-  enqueueLog('error', `Unhandled rejection: ${serializeArg(event.reason)}`);
+  enqueueLog(ERROR_LEVEL, `Unhandled rejection: ${serializeArg(event.reason)}`);
 });
 
 window.addEventListener(
-  'error',
+  ERROR_LEVEL,
   function (event) {
     if (event.target && event.target !== window) {
-      enqueueLog('error', `Resource failed to load: ${event.target.src || event.target.href}`);
+      enqueueLog(ERROR_LEVEL, `Resource failed to load: ${event.target.src || event.target.href}`);
     }
   },
   true
