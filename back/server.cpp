@@ -28,6 +28,7 @@ namespace server
 
     // Routes
     void watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
+    void static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
     void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
 
     // Logs
@@ -114,17 +115,18 @@ int server::start()
     const std::filesystem::path source_dir{ std::filesystem::current_path() / "../../../" };
     server.set_mount_point("/build", (source_dir / "build/").string());
     server.set_mount_point("/node_modules", (source_dir / "node_modules/").string());
+
     const std::filesystem::path bundle_dir{ source_dir / "front/" };
 #else
     const std::filesystem::path bundle_dir{ std::filesystem::current_path() };
 #endif
-    server.set_mount_point("/", bundle_dir.string());
 
     set_logger(server);
     set_exception_handler(server);
 
     server
         .Get("/watch-video/:id", sc::serve(watch_video, std::cref(bundle_dir), std::cref(db)))
+        .Get(R"((?!\/api\/).*\.[^/]+$)", sc::serve(static_file, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*)", sc::serve(index, std::cref(bundle_dir)))
 
         .Post("/api/logs", sc::serve(logs, std::ref(front_logger)))
@@ -262,52 +264,103 @@ namespace server
                    return u.find(bot) != std::string::npos;
                }) != bots.cend();
     }
+
+    struct IndexMetaData
+    {
+        std::string title;
+        std::string description;
+        std::string thumbnail_url;
+        std::string website_url;
+    };
+
+    inline void serve_index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const IndexMetaData& metadata)
+    {
+        const std::string user_agent{ req.get_header_value("User-Agent") };
+
+        if (is_bot(user_agent)) {
+            static const std::string url_scheme{
+#ifdef _DEBUG
+                "http"
+#else
+                "https"
+#endif
+            };
+            const std::string host{ req.get_header_value("Host") };
+            const std::string base_url{ url_scheme + "://" + host };
+            const std::string html{
+                // clang-format off
+                "<!DOCTYPE html>"
+                "<html>"
+                "<head>"
+                "<meta property=\"og:title\" content=\"" + metadata.title + "\" />"
+                "<meta property=\"og:description\" content=\"" + metadata.description + "\" />"
+                "<meta property=\"og:image\" content=\"" + base_url + "/" + metadata.thumbnail_url + "\" />"
+                "<meta property=\"og:url\" content=\"" + base_url + "/" + metadata.website_url + "\" />"
+                "</head>"
+                "<body>"
+                "</body>"
+                "</html>"
+                // clang-format on
+            };
+            res.set_content(html, "text/html");
+        } else {
+            // normal user
+            static const std::string index_file{ (bundle_dir / "index.html").string() };
+            res.set_file_content(index_file);
+        }
+    }
 }
 
 inline void server::watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db)
 {
-    const std::string user_agent{ req.get_header_value("User-Agent") };
-
-    if (is_bot(user_agent)) {
-        const std::string video_id{ req.path_params.at("id") };
-        const std::string host{ req.get_header_value("Host") };
-        const std::string title{ db.video_title(su::string_to_int(video_id)) };
-        static const std::string url_scheme{
-#ifdef _DEBUG
-            "http"
-#else
-            "https"
-#endif
-        };
-        const std::string description{ "Watch " + title + " video" };
-        const std::string thumbnail_url{ url_scheme + "://" + host + "/api/thumbnail/" + video_id };
-        const std::string website_url{ url_scheme + "://" + host + "/watch-video/" + video_id };
-        const std::string html{
-            // clang-format off
-            "<!DOCTYPE html>"
-            "<html>"
-            "<head>"
-            "<meta property=\"og:title\" content=\"" + title + "\" />"
-            "<meta property=\"og:description\" content=\"" + description + "\" />"
-            "<meta property=\"og:image\" content=\"" + thumbnail_url + "\" />"
-            "<meta property=\"og:url\" content=\"" + website_url + "\" />"
-            "</head>"
-            "<body>"
-            "</body>"
-            "</html>"
-            // clang-format on
-        };
-        res.set_content(html, "text/html");
-    } else {
-        // normal user
-        index(req, res, bundle_dir);
-    }
+    const std::string video_id{ req.path_params.at("id") };
+    const std::string title{ db.video_title(su::string_to_int(video_id)) };
+    const std::string description{ "Watch " + title + " video" };
+    const std::string thumbnail_url{ "/api/thumbnail/" + video_id };
+    const std::string website_url{ "/watch-video/" + video_id };
+    serve_index(req, res, bundle_dir,
+                { .title = title,
+                  .description = description,
+                  .thumbnail_url = thumbnail_url,
+                  .website_url = website_url });
 }
 
-inline void server::index(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& bundle_dir)
+inline void server::static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
-    static const std::string index_file{ (bundle_dir / "index.html").string() };
-    res.set_file_content(index_file);
+    static const std::map bundle_files{
+        [&bundle_dir] {
+            std::map<std::string, std::string> files;
+            for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(bundle_dir)) {
+                if (entry.is_regular_file() && entry.path().filename() != "index.html") {
+                    const std::string rel{ "/" + std::filesystem::relative(entry.path(), bundle_dir).string() };
+                    files.emplace(rel, entry.path().string());
+                }
+            }
+            return files;
+        }()
+    };
+
+    const auto bundle_file_it{ bundle_files.find(req.path) };
+    if (bundle_file_it == bundle_files.end()) {
+        logging::error{ "File not found: {}", req.path };
+        res.status = httplib::StatusCode::NotFound_404;
+        return;
+    }
+
+    res.set_file_content(bundle_file_it->second);
+}
+
+inline void server::index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
+{
+    const std::string title{ "Home" };
+    const std::string description{ "Welcome to " + env::website_name };
+    const std::string thumbnail_url{ env::icon_path };
+    const std::string website_url{ "/" };
+    serve_index(req, res, bundle_dir,
+                { .title = title,
+                  .description = description,
+                  .thumbnail_url = thumbnail_url,
+                  .website_url = website_url });
 }
 
 // Logs
