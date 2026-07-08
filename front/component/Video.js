@@ -15,16 +15,16 @@ additionalVideoJSStyle.replaceSync(`
 .video-js .vjs-big-play-button:active,
 .video-js .vjs-big-play-button:focus,
 .video-js:hover .vjs-big-play-button {
-    color: #16A085;
+    color: var(--color-primary);
 }
 
 .video-js .vjs-progress-control .vjs-progress-holder .vjs-play-progress,
 .video-js .vjs-progress-control .vjs-progress-holder .vjs-play-progress:before {
-    background-color: #16A085;
+    background-color: var(--color-primary);
 }
 
 .video-js .vjs-loading-spinner {
-    border-color: #16A085;
+    border-color: var(--color-primary);
 }
 
 .video-js .vjs-progress-control {

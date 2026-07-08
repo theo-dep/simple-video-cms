@@ -10,7 +10,7 @@ import MultiSelectStyleSheet from 'multi-select-dropdown-js/MultiSelect.css' wit
 const additionalMultiSelectStyle = new CSSStyleSheet();
 additionalMultiSelectStyle.replaceSync(`
 .multi-select .multi-select-header:hover {
-  border-color: #16a085;
+  border-color: var(--color-primary);
 }
 
 .multi-select .multi-select-header::after {
@@ -22,18 +22,18 @@ additionalMultiSelectStyle.replaceSync(`
 }
 
 .multi-select .multi-select-header .multi-select-header-placeholder {
-  color: #c9c9c9;
+  color: var(--color-text);
 }
 
 .multi-select .multi-select-options .multi-select-option.multi-select-selected .multi-select-option-radio,
 .multi-select .multi-select-options .multi-select-all.multi-select-selected .multi-select-option-radio {
-  border-color: #16a085;
-  background-color: #16a085;
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
 }
 
 .multi-select .multi-select-options .multi-select-option.multi-select-selected .multi-select-option-text,
 .multi-select .multi-select-options .multi-select-all.multi-select-selected .multi-select-option-text {
-  color: #16a085;
+  color: var(--color-primary);
 }
 `);
 
