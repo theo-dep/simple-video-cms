@@ -26,12 +26,12 @@ export default function Home() {
         ? html`<${Loader} />`
         : results.map(
             (v) => html`
-          <div class="pure-u-1 pure-u-md-1-3" key=${v.id}>
+          <div class="pure-u-1 pure-u-sm-2-5" key=${v.id}>
             <a href=${'/video/' + v.id}>
               <${VideoThumbnail} id=${v.id} title=${v.title} //>
             </a>
           </div>
-          <div class="pure-u-1 pure-u-md-2-3" key=${v.id}>
+          <div class="pure-u-1 pure-u-sm-3-5" key=${v.id}>
             <h4><a href=${'/video/' + v.id}>${v.title}</a></h4>
           </div>
           <hr class="pure-u-1" />
