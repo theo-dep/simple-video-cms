@@ -21,6 +21,7 @@ public:
     std::vector<Video> no_user_video_list() const;
 
     bool video_exists(const std::string& title) const;
+    bool video_exists(int id, const std::string& title) const;
     std::string video_title(int id) const;
     int video_size(int id) const;
     std::string video(int id, std::size_t offset, std::size_t length) const;
@@ -42,6 +43,7 @@ public:
 
     int user_id(const std::string& name) const;
     bool user_exists(const std::string& name) const;
+    bool user_exists(int id, const std::string& name) const;
     std::string user_name(int id) const;
     std::optional<std::string> user_password(int id) const;
     std::string user_salt(int id) const;
@@ -56,6 +58,7 @@ public:
     std::vector<Group> group_list() const;
 
     bool group_exists(const std::string& name) const;
+    bool group_exists(int id, const std::string& name) const;
     std::string group_name(int id) const;
     [[nodiscard]] std::optional<int> add_group(const std::string& name) const;
     [[nodiscard]] bool add_group_users(int id, const std::vector<int>& user_ids) const;
