@@ -17,6 +17,12 @@
 
 #include <stacktrace>
 
+#ifdef _DEBUG // debug, allow reload of static files
+#define STATIC
+#else // production, don't parse multiple times
+#define STATIC static
+#endif
+
 namespace server
 {
     bool create_super_admin(const Database& db);
@@ -279,7 +285,7 @@ namespace server
             res.set_content(html, "text/html");
         } else {
             // normal user
-            static const std::string index_content{
+            STATIC const std::string index_content{
                 [&bundle_dir] {
                     const nlohmann::json env_json{
                         { "websiteName", env::website_name },
@@ -315,7 +321,7 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
 
 inline void server::static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
-    static const std::map bundle_files{
+    STATIC const std::map bundle_files{
         [&bundle_dir] {
             std::map<std::string, std::string> files;
             for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(bundle_dir)) {
