@@ -50,7 +50,7 @@ export default function Video({ videoId }) {
     ];
     return () => {
       document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => {
-        return s !== VideoJSStyleSheet || s !== VideoJSMobileUIStyleSheet || s !== VideoJSYtStyleSheet || s !== additionalVideoJSStyle;
+        return s !== VideoJSStyleSheet && s !== VideoJSMobileUIStyleSheet && s !== VideoJSYtStyleSheet && s !== additionalVideoJSStyle;
       });
     };
   }, []);
