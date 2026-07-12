@@ -25,7 +25,7 @@
     "fuse.js": "^7.3.0",
     "htm": "^3.1.1",
     "multi-select-dropdown-js": "^1.0.3",
-    "preact": "^10.26.0",
+    "preact": "^10.29.7",
     "preact-iso": "^2.9.1",
     "purecss": "^3.0.0",
     "video.js": "^8.23.7",
