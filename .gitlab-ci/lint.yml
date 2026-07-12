@@ -6,9 +6,6 @@ include:
   dependencies: []
   extends:
     - .install-job
-  before_script:
-    - !reference [.install-job, before_script]
-    - apt-get -y install clang-tidy-21
   script:
     - cmake --preset lint
     - cmake --build build/lint --parallel 1

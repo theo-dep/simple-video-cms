@@ -7,14 +7,14 @@ A preact web application video content management system and cpp-httplib, FFmpeg
 
 ## Local
 
-For development purpose, files can be compiled with `clang LLVM` version 21.
+For development purpose, files can be compiled with `clang LLVM` version 22.
 
 Install [vcpkg](https://learn.microsoft.com/en-us/vcpkg/get_started/get-started?pivots=shell-bash#1---set-up-vcpkg).
 
 Install development requirements:
 
 ```bash
-sudo apt install npm cmake clang-21 yasm ninja-build
+sudo apt install npm cmake clang-22 yasm ninja-build
 ```
 
 And Node.js dependencies:
@@ -114,12 +114,12 @@ All third party files are available offline.
 
 ### Javascript and CSS
 
-### preact
+#### preact
 
 - https://github.com/preactjs/preact
 - MIT License
 
-### Fuse.js
+#### Fuse.js
 
 - https://github.com/krisk/fuse
 - Apache License Version 2.0
