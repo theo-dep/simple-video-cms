@@ -54,39 +54,5 @@
       ]
     }
   ],
-  "builtin-baseline": "b83a134447208c35f740e4b6faf1263b0d6e860e",
-  "overrides": [
-    {
-      "name": "cpp-httplib",
-      "version": "0.41.0"
-    },
-    {
-      "name": "nlohmann-json",
-      "version": "3.12.0"
-    },
-    {
-      "name": "sqlite3",
-      "version": "3.53.0"
-    },
-    {
-      "name": "sqlite-orm",
-      "version": "1.9.1"
-    },
-    {
-      "name": "openssl",
-      "version": "3.6.2"
-    },
-    {
-      "name": "libpng",
-      "version": "1.6.57"
-    },
-    {
-      "name": "zlib",
-      "version": "1.3.1"
-    },
-    {
-      "name": "ffmpeg",
-      "version": "8.1"
-    }
-  ]
+  "builtin-baseline": "f87344cac03158cbf1467264565f1fd36b382a24"
 }
