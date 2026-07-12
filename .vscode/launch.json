@@ -21,6 +21,12 @@
           "text": "-enable-pretty-printing",
           "ignoreFailures": true
         }
+      ],
+      "environment": [
+        {
+          "name": "WEBSITE_NAME",
+          "value": "Test"
+        }
       ]
     },
     {

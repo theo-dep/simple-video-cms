@@ -34,6 +34,7 @@ namespace server
     void watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
     void static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
     void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
+    void manifest(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
 
     // Logs
     void logs(const httplib::Request& req, httplib::Response& res, logging::Logger& logger);
@@ -130,6 +131,7 @@ int server::start()
 
     server
         .Get("/watch-video/:id", sc::serve(watch_video, std::cref(bundle_dir), std::cref(db)))
+        .Get(R"(.*\/manifest\.json$)", sc::serve(manifest, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*\.[^/]+$)", sc::serve(static_file, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*)", sc::serve(index, std::cref(bundle_dir)))
 
@@ -289,7 +291,6 @@ namespace server
                 [&bundle_dir] {
                     const nlohmann::json env_json{
                         { "websiteName", env::website_name },
-                        { "iconPath", env::icon_path }
                     };
 
                     const std::filesystem::path index_file{ bundle_dir / "index.html" };
@@ -348,13 +349,28 @@ inline void server::index(const httplib::Request& req, httplib::Response& res, c
 {
     const std::string title{ "Home" };
     const std::string description{ "Welcome to " + env::website_name };
-    const std::string thumbnail_url{ env::icon_path };
+    const std::string thumbnail_url{ "/assets/icons/icon.png" };
     const std::string website_url{ "/" };
     serve_index(req, res, bundle_dir,
                 { .title = title,
                   .description = description,
                   .thumbnail_url = thumbnail_url,
                   .website_url = website_url });
+}
+
+inline void server::manifest(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& bundle_dir)
+{
+    STATIC const std::string manifest_content{
+        [&bundle_dir] {
+            const std::filesystem::path manifest_file{ bundle_dir / "manifest.json" };
+            const std::string manifest_content{ filesystem::read_file(manifest_file) };
+            nlohmann::json manifest = nlohmann::json::parse(manifest_content);
+            manifest["name"] = env::website_name;
+            manifest["short_name"] = env::short_website_name;
+            return manifest.dump();
+        }()
+    };
+    res.set_content(manifest_content, "application/json");
 }
 
 // Logs

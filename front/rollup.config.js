@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, unlinkSync, renameSync, readdirSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync, renameSync, readdirSync, existsSync, copyFileSync, mkdirSync } from 'fs';
 import { createHash } from 'crypto';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
@@ -14,11 +14,27 @@ const PROD_HTML_FILE = 'index-prod.html';
 const PROD_HTML = `front/${PROD_HTML_FILE}`;
 const DIST_DIR = 'dist';
 
+const collectedAssetUrls = new Set();
+
 // prepare index.html without absolute path for html plugin
 {
   const src = readFileSync(SRC_HTML, 'utf-8');
-  const prod = src.replace(/href="\/assets\//g, 'href="./assets/').replace(/src="\/index\.js"/g, 'src="./index.js"');
+  const prod = src
+    .replace(/href="\/assets\//g, 'href="./assets/')
+    .replace(/href="\/manifest\.json"/g, 'href="./manifest.json"')
+    .replace(/src="\/index\.js"/g, 'src="./index.js"');
   writeFileSync(PROD_HTML, prod);
+}
+
+// Copy PWA files to dist
+{
+  mkdirSync(`${DIST_DIR}/assets/icons`, { recursive: true });
+  copyFileSync('front/manifest.json', `${DIST_DIR}/manifest.json`);
+  const icons = readdirSync('front/assets/icons').filter((f) => !f.startsWith('apple-touch'));
+  for (const icon of icons) {
+    copyFileSync(`front/assets/icons/${icon}`, `${DIST_DIR}/assets/icons/${icon}`);
+    collectedAssetUrls.add(`/assets/icons/${icon}`);
+  }
 }
 
 function deleteProdHtmlFile() {
@@ -79,8 +95,6 @@ const withCollectAssetUrls = (entry) => ({
   plugins: [...entry.plugins, collectAssetUrlsPlugin()],
 });
 
-const collectedAssetUrls = new Set();
-
 function collectAssetUrlsPlugin() {
   return {
     name: 'collect-asset-urls',
@@ -95,6 +109,7 @@ function collectAssetUrlsPlugin() {
           fileName === 'sw.js' ||
           fileName === PROD_HTML_FILE ||
           fileName === SRC_HTML_FILE ||
+          fileName === 'manifest.json' ||
           fileName.endsWith('.map') ||
           fileName.endsWith('.html')
         ) {
@@ -162,6 +177,7 @@ export default [
       html({
         minify: true,
         minifyCss: true,
+        externalAssets: ['manifest.json'],
         transformHtml: (html) => {
           return (
             html

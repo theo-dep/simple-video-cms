@@ -60,8 +60,7 @@ To personalize front and backend, there is few environment variables to know:
   - BACK_PORT (default 8080)
 - Name of your hosted website:
   - WEBSITE_NAME (default Simple Video CMS)
-- Browser icon:
-  - ICON_PATH (default /front/assets/img/icon.svg), mount a volume with your custom icon and set this variable to the path
+  - SHORT_WEBSITE_NAME (default Video CMS)
 
 ## Screenshots
 
