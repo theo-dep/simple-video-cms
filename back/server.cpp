@@ -562,6 +562,21 @@ inline void server::logout(const httplib::Request& req, httplib::Response& res, 
     res.status = httplib::StatusCode::OK_200;
 }
 
+namespace server
+{
+    inline bool validate_field(httplib::Response& res, const std::string& field)
+    {
+        static const std::regex allow_list(R"(^[a-zA-Z0-9\s.,!?'"()\-:;\x80-\xFF]*$)");
+        if (std::regex_match(field, allow_list)) {
+            return true;
+        }
+
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Unauthorized character set", "plain/text");
+        return false;
+    }
+}
+
 inline void server::update_username(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     const int user_id{ authenticated_user(req, session) };
@@ -576,6 +591,10 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     if (username.empty()) {
         res.status = httplib::StatusCode::BadRequest_400;
         res.set_content("Missing username field", "plain/text");
+        return;
+    }
+
+    if (!validate_field(res, username)) {
         return;
     }
 
@@ -894,6 +913,10 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
     const std::vector<int> group_ids{ extract_ids(req.form.get_field("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.form.get_field("userIds")) };
 
+    if (!validate_field(res, video_title)) {
+        return;
+    }
+
     if (db.video_exists(video_title)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Video already exists", "plain/text");
@@ -945,6 +968,10 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     const std::string video_title{ su::trim(req.get_param_value("title")) };
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
+
+    if (!validate_field(res, video_title)) {
+        return;
+    }
 
     if (db.video_exists(video_id, video_title)) {
         res.status = httplib::StatusCode::Conflict_409;
@@ -1072,6 +1099,11 @@ inline void server::admin_add_admin(const httplib::Request& req, httplib::Respon
     }
 
     const std::string username{ su::trim(req.get_param_value("username")) };
+
+    if (!validate_field(res, username)) {
+        return;
+    }
+
     if (db.user_exists(username)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Username already exists", "plain/text");
@@ -1151,6 +1183,11 @@ inline void server::admin_add_user(const httplib::Request& req, httplib::Respons
     }
 
     const std::string username{ su::trim(req.get_param_value("username")) };
+
+    if (!validate_field(res, username)) {
+        return;
+    }
+
     if (db.user_exists(username)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Username already exists", "plain/text");
@@ -1192,6 +1229,10 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
 
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
     const std::string username{ su::trim(req.get_param_value("username")) };
+
+    if (!validate_field(res, username)) {
+        return;
+    }
 
     if (db.user_exists(user_id, username)) {
         res.status = httplib::StatusCode::Conflict_409;
@@ -1316,6 +1357,10 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
     const std::string group_name{ su::trim(req.get_param_value("name")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
+    if (!validate_field(res, group_name)) {
+        return;
+    }
+
     if (db.group_exists(group_name)) {
         res.status = httplib::StatusCode::Conflict_409;
         res.set_content("Group already exists", "plain/text");
@@ -1355,6 +1400,10 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
     const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
     const std::string group_name{ su::trim(req.get_param_value("name")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
+
+    if (!validate_field(res, group_name)) {
+        return;
+    }
 
     if (db.group_exists(group_id, group_name)) {
         res.status = httplib::StatusCode::Conflict_409;

@@ -8,6 +8,7 @@ import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
 import { confirm } from '../component/ConfirmDialog.js';
+import { validateField } from '../utils/validation.js';
 
 export default function AdminGroupSettings({ groupId }) {
   groupId = Number(groupId);
@@ -25,6 +26,8 @@ export default function AdminGroupSettings({ groupId }) {
   async function onGroupSubmit(e) {
     const form = e.target;
     const name = form.elements['name'].value.trim();
+    validateField(name);
+
     const oldName = selectedGroup.value?.name ?? 'this group';
     const confirmMessage = name === oldName ? `Update ${name} group?` : `Update ${oldName} group name to ${name}?`;
     if (!(await confirm(confirmMessage))) return;

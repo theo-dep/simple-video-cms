@@ -9,6 +9,7 @@ import { groups, users, loadGroups, loadUsers, invalidateVideos } from '../store
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
+import { validateField } from '../utils/validation.js';
 
 export default function AdminNewVideo() {
   const { route } = useLocation();
@@ -23,8 +24,8 @@ export default function AdminNewVideo() {
 
   function onFileChange(e) {
     const file = e.target.files[0];
-    if (!file) return;
     setFileName(file.name);
+
     if (titleRef.current && !titleRef.current.value) {
       titleRef.current.value = file.name.replace(/\.[^/.]+$/, '');
     }
@@ -36,6 +37,8 @@ export default function AdminNewVideo() {
     const fileInput = form.elements['file'];
     const video = fileInput.files[0] || null;
     const title = form.elements['title'].value.trim();
+    validateField(title);
+
     const groupSelect = form.elements['group-ids'];
     const userSelect = form.elements['user-ids'];
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];
@@ -61,7 +64,14 @@ export default function AdminNewVideo() {
             >
               <span class="fake-button">Choose file</span>
               <span class="file-message">${fileName || 'or drag a video here'}</span>
-              <input class="pure-input-1 file-input" type="file" accept="video/mp4" name="file" onChange=${onFileChange} />
+              <input
+                class="pure-input-1 file-input"
+                type="file"
+                accept="video/mp4,video/webm,video/ogg,video/quicktime"
+                name="file"
+                onChange=${onFileChange}
+                required
+              />
             </div>
             <div class="pure-control-group">
               <input ref=${titleRef} class="pure-input-1" type="text" name="title" id="title" placeholder="Video title" required />
