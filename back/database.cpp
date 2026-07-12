@@ -267,6 +267,7 @@ std::string Database::video_playlist(int id) const
 
 std::string Database::video_segment(int id, const std::string& segment) const
 {
+    const std::scoped_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional segment_content{
         storage.get_optional<Video>(id)
