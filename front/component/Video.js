@@ -56,12 +56,17 @@ export default function Video({ videoId }) {
   }, []);
 
   useEffect(() => {
-    if (!videoRef.current || playerRef.current) return;
+    if (!videoRef.current) return;
+
+    // Dispose any existing player first to prevent memory leaks
+    if (playerRef.current) {
+      playerRef.current.dispose();
+      playerRef.current = null;
+    }
 
     const existingPlayer = videojs.getPlayer(videoRef.current);
     if (existingPlayer) {
-      playerRef.current = existingPlayer;
-      return;
+      existingPlayer.dispose();
     }
 
     playerRef.current = videojs(videoRef.current, {
