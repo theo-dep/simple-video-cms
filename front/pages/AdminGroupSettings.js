@@ -13,7 +13,7 @@ export default function AdminGroupSettings({ groupId }) {
   groupId = Number(groupId);
   const { route } = useLocation();
   const selectRef = useMultiSelect([selectedGroup.value, users.value]);
-  const { isLoading: isGroupLoading } = useLoader(loadGroup, selectedGroup.value?.id === groupId, [groupId]);
+  const { isLoading: isGroupLoading } = useLoader(() => loadGroup(groupId), selectedGroup.value?.id === groupId, [groupId]);
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
 
   useTitle(`${selectedGroup.value?.name || 'Group'} Settings`);

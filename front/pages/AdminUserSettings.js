@@ -14,7 +14,8 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
   const { route } = useLocation();
   const currentUser = isAdmin ? selectedAdmin : selectedUser;
   const selectRef = useMultiSelect([currentUser.value, groups.value]);
-  const { isLoading: isUserLoading } = useLoader(isAdmin ? loadAdmin : loadUser, currentUser.value?.id === userId, [isAdmin, userId]);
+  const loadUserCall = isAdmin ? loadAdmin : loadUser;
+  const { isLoading: isUserLoading } = useLoader(() => loadUserCall(userId), currentUser.value?.id === userId, [isAdmin, userId]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, isAdmin || Array.isArray(groups.value), [isAdmin]);
 
   useTitle(`${currentUser.value?.name || (isAdmin ? 'Admin' : 'User')} Settings`);
