@@ -15,7 +15,7 @@ export default function AdminUpdateVideo({ videoId }) {
   const { route } = useLocation();
   const selectGroupsRef = useMultiSelect([selectedVideo.value, users.value, groups.value]);
   const selectUsersRef = useMultiSelect([selectedVideo.value, users.value, groups.value]);
-  const { isLoading: isVideoLoading } = useLoader(loadVideo, selectedVideo.value?.id === videoId, [videoId]);
+  const { isLoading: isVideoLoading } = useLoader(() => loadVideo(videoId), selectedVideo.value?.id === videoId, [videoId]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
 
