@@ -3,6 +3,8 @@
 #include "logging.h"
 #include "stringutils.h"
 
+#include <mutex>
+
 template <>
 struct std::formatter<VideoSession::Key> : std::formatter<std::string>
 {
@@ -29,7 +31,7 @@ void VideoSession::add_session(const std::string& session_id, const std::string&
 {
     clean_expired_sessions({});
 
-    const std::scoped_lock lock(_mutex);
+    const std::unique_lock lock(_mutex);
     const Key key{ .session_id = session_id, .video_id = video_id };
     State& state{ _sessions[key] };
     state = State{}; // reset
@@ -41,7 +43,7 @@ void VideoSession::start_session(const std::string& session_id, const std::strin
 {
     clean_expired_sessions({});
 
-    const std::scoped_lock lock(_mutex);
+    const std::unique_lock lock(_mutex);
 
     const auto session{ _sessions.find({ session_id, video_id }) };
     if (session == _sessions.end()) {
@@ -56,7 +58,7 @@ void VideoSession::reset_session(const std::string& session_id, const std::strin
 {
     clean_expired_sessions({});
 
-    const std::scoped_lock lock(_mutex);
+    const std::unique_lock lock(_mutex);
 
     const auto session{ _sessions.find({ session_id, video_id }) };
     if (session == _sessions.end()) {
@@ -81,7 +83,7 @@ bool VideoSession::validate_segment_access(const std::string& session_id, const 
 
     const int segment_number{ su::string_to_int(segment.substr(underscore + 1, dot - underscore - 1)) };
 
-    const std::scoped_lock lock(_mutex);
+    const std::shared_lock lock(_mutex);
 
     const auto session{ _sessions.find({ session_id, video_id }) };
     if (session == _sessions.end()) {
@@ -143,7 +145,7 @@ bool VideoSession::is_expired(const std::chrono::system_clock::time_point& time)
 
 void VideoSession::clean_expired_sessions(const std::string& except_session_id)
 {
-    const std::scoped_lock lock(_mutex);
+    const std::unique_lock lock(_mutex);
     std::erase_if(_sessions,
                   [&except_session_id](const decltype(_sessions)::value_type& session) {
                       return except_session_id != session.first.session_id && is_expired(session.second.created_at);
