@@ -428,8 +428,15 @@ hr {
 
 .thumbnail {
   width: 100%;
+  margin-inline: auto;
   border-radius: 25px;
   padding: 0.5em;
+}
+
+@media only screen and (min-width: 35.5em) {
+  .thumbnail {
+    width: 320px;
+  }
 }
 
 /* --- Login --- */
