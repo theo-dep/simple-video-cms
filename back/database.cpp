@@ -16,7 +16,6 @@
 #pragma clang diagnostic pop
 
 #include <algorithm>
-#include <fstream>
 
 using namespace sqlite_orm;
 
@@ -83,11 +82,6 @@ namespace database
     constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title);
     constexpr auto group_struct = struct_<Group>(&Group::id, &Group::name);
     constexpr auto user_struct = struct_<User>(&User::id, &User::name);
-
-    int file_size(const std::string& path);
-    std::string read_file(const std::string& path, std::size_t offset, std::size_t length);
-    std::string read_file(const std::string& path);
-    void write_file(const std::string& path, const std::string& content);
 }
 
 Database::Database(std::filesystem::path path)
@@ -221,7 +215,7 @@ int Database::video_size(int id) const
     const std::optional video_size{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> int {
-                return database::file_size(video_path(video.id).string());
+                return filesystem::file_size(video_path(video.id));
             })
             .or_else([&] -> std::optional<int> {
                 logging::error{ R"(Fail to fetch video size "{}")", id };
@@ -242,7 +236,7 @@ std::string Database::video(int id, std::size_t offset, std::size_t length) cons
     const std::optional video{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> std::string {
-                return database::read_file(video_path(video.id).string(), offset, length);
+                return filesystem::read_file(video_path(video.id), offset, length);
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video content "{}")", id };
@@ -261,7 +255,7 @@ std::string Database::video_playlist(int id) const
             .transform([&](const Video& video) -> std::string {
                 const std::filesystem::path path{ hls_video_path(video.id) };
                 const std::filesystem::path playlist_path{ path / (hls_video_name(id) + ".m3u8") };
-                return database::read_file(playlist_path.string());
+                return filesystem::read_file(playlist_path);
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video playlist "{}")", id };
@@ -279,7 +273,7 @@ std::string Database::video_segment(int id, const std::string& segment) const
             .transform([&](const Video& video) -> std::string {
                 const std::filesystem::path path{ hls_video_path(video.id) };
                 const std::filesystem::path segment_path{ path / segment };
-                return database::read_file(segment_path.string());
+                return filesystem::read_file(segment_path);
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video segment "{}": "{}")", id, segment };
@@ -296,7 +290,7 @@ std::string Database::thumbnail(int id) const
     const std::optional thumbnail{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> std::string {
-                return database::read_file(thumbnail_path(video.id).string());
+                return filesystem::read_file(thumbnail_path(video.id));
             })
             .or_else([&] -> std::optional<std::string> {
                 logging::error{ R"(Fail to fetch video thumbnail "{}")", id };
@@ -763,7 +757,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
         return std::nullopt;
     }
 
-    database::write_file(video_path(video.id).string(), video_content);
+    filesystem::write_file(video_path(video.id), video_content);
 
     return video.id;
 }
@@ -779,7 +773,7 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
     const std::optional video_id{
         storage.get_optional<Video>(id)
             .transform([&](const Video& video) -> int {
-                database::write_file(thumbnail_path(video.id).string(), thumbnail_content);
+                filesystem::write_file(thumbnail_path(video.id), thumbnail_content);
                 return video.id;
             })
     };
@@ -955,37 +949,4 @@ std::string Database::hls_video_name(int id)
 std::filesystem::path Database::hls_video_path(int id) const
 {
     return video_path() / ("hls_" + su::int_to_string(id));
-}
-
-inline int database::file_size(const std::string& path)
-{
-    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
-    return static_cast<int>(file.tellg());
-}
-
-inline std::string database::read_file(const std::string& path, std::size_t offset, std::size_t length)
-{
-    std::ifstream file(path, std::ios::in | std::ios::binary);
-    file.seekg(static_cast<std::streamoff>(offset));
-
-    std::string file_content;
-    file_content.resize_and_overwrite(length, [&file](char* buffer, std::size_t buffer_size) -> std::size_t {
-        file.read(buffer, static_cast<std::streamoff>(buffer_size));
-        return file.gcount();
-    });
-    return file_content;
-}
-
-inline std::string database::read_file(const std::string& path)
-{
-    // https://insanecoding.blogspot.com/2011/11/how-to-read-in-file-in-c.html
-    std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
-    const std::size_t file_length{ static_cast<std::size_t>(file.tellg()) };
-    return read_file(path, 0, file_length);
-}
-
-inline void database::write_file(const std::string& path, const std::string& content)
-{
-    std::ofstream file(path, std::ios::out | std::ios::binary | std::ios::trunc);
-    file.write(content.data(), static_cast<std::streamoff>(content.size()));
 }

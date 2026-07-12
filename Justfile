@@ -24,3 +24,6 @@ build-front:
 
 eslint:
 	@npx eslint "front/**/*.js"
+
+launch-browser:
+	@brave-browser --app=http://0.0.0.0:8080

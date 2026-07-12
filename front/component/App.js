@@ -7,6 +7,7 @@ import { swReady } from '../store/sw.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
 import { Redirect } from './Redirect.js';
+import { OfflineWatcher } from './OfflineWatcher.js';
 
 export function App() {
   const isLoading = !refreshed.value || !swReady.value;
@@ -41,6 +42,7 @@ export function App() {
     ? null
     : html`
         <${Fragment}>
+          <${OfflineWatcher} />
           <${ConfirmDialog} />
           <${LocationProvider}>
             <${Router}>

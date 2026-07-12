@@ -30,5 +30,6 @@
   "yaml.customTags": ["!reference sequence"],
   "prettier.configPath": "prettier.config.js",
   "prettier.requireConfig": true,
-  "prettier.useEditorConfig": false
+  "prettier.useEditorConfig": false,
+  "C_Cpp.default.compileCommands": ["${workspaceFolder}/build/vcpkg/compile_commands.json"]
 }

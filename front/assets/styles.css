@@ -16,6 +16,7 @@
 
   /* Border/Shadow colors */
   --color-border: #464646;
+  --color-border-dark: #5a5a5a;
   --color-shadow: rgba(0, 0, 0, 0.1);
   --color-shadow-dark: rgba(0, 0, 0, 0.5);
   --color-shadow-overlay: rgba(0, 0, 0, 0.7);
@@ -106,6 +107,39 @@ p {
     margin-top: 0em;
     margin-left: 0.5em;
   }
+}
+
+/* --- ShareButton --- */
+.video-share-button-content {
+  text-align: right;
+  margin-top: 1em;
+}
+
+.share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: 20px;
+  padding: 0.4em 0.9em;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.share-button:hover {
+  border-color: var(--color-primary-dark);
+  color: var(--color-primary-dark);
+}
+
+.share-button svg {
+  fill: var(--color-primary);
+}
+
+.share-button:hover svg {
+  fill: var(--color-primary-dark);
 }
 
 /* --- Table styles --- */
@@ -545,5 +579,38 @@ video {
 }
 
 .confirm-cancel:hover {
-  background-color: #5a5a5a;
+  background-color: var(--color-border-dark);
+}
+
+/* --- Offline banner --- */
+.offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1em;
+  flex-wrap: wrap;
+  padding: 0.5em 0.5em;
+  background-color: var(--color-primary);
+  color: var(--color-text-white);
+  text-align: center;
+  -webkit-box-shadow:
+    0 1px 3px 0 var(--color-border),
+    0 1px 2px 0 var(--color-border);
+  -moz-box-shadow:
+    0 1px 3px 0 var(--color-border),
+    0 1px 2px 0 var(--color-border);
+  box-shadow:
+    0 1px 3px 0 var(--color-border),
+    0 1px 2px 0 var(--color-border);
+}
+
+.offline-banner span {
+  font-size: 0.9em;
+}
+
+@media only screen and (max-width: 35.5em) {
+  .offline-banner {
+    flex-direction: column;
+    gap: 0.5em;
+  }
 }

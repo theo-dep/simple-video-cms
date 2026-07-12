@@ -17,6 +17,12 @@
 
 #include <stacktrace>
 
+#ifdef _DEBUG // debug, allow reload of static files
+#define STATIC
+#else // production, don't parse multiple times
+#define STATIC static
+#endif
+
 namespace server
 {
     bool create_super_admin(const Database& db);
@@ -24,12 +30,11 @@ namespace server
     void set_logger(httplib::Server& server);
     void set_exception_handler(httplib::Server& server);
 
-    void generate_front_env_file(const std::filesystem::path& bundle_dir);
-
     // Routes
     void watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
     void static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
     void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
+    void manifest(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
 
     // Logs
     void logs(const httplib::Request& req, httplib::Response& res, logging::Logger& logger);
@@ -126,6 +131,7 @@ int server::start()
 
     server
         .Get("/watch-video/:id", sc::serve(watch_video, std::cref(bundle_dir), std::cref(db)))
+        .Get(R"(.*\/manifest\.json$)", sc::serve(manifest, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*\.[^/]+$)", sc::serve(static_file, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*)", sc::serve(index, std::cref(bundle_dir)))
 
@@ -170,8 +176,6 @@ int server::start()
         .Post("/api/admin/add-group", sc::serve(admin_add_group, std::cref(session), std::cref(db)))
         .Post("/api/admin/update-group/:group_id", sc::serve(admin_update_group, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-group/:group_id", sc::serve(admin_delete_group, std::cref(session), std::cref(db)));
-
-    generate_front_env_file(bundle_dir);
 
     static const int port{ su::string_to_int(env::back_port) };
     logging::info{ "Serving HTTP on http://{0}:{1} ...", env::back_host, port };
@@ -221,28 +225,6 @@ inline void server::set_exception_handler(httplib::Server& server)
         res.set_content(message, "text/plain");
         res.status = httplib::StatusCode::InternalServerError_500;
     });
-}
-
-inline void server::generate_front_env_file(const std::filesystem::path& bundle_dir)
-{
-    static const nlohmann::json env_json{
-        { "websiteName", env::website_name },
-        { "iconPath", env::icon_path }
-    };
-    static const std::string env_content{ "window.__ENV__ = " + env_json.dump() + ";" };
-
-    // rollup hash the file
-    std::filesystem::directory_iterator bundle_dir_iterator(bundle_dir);
-    const auto env_file_it{
-        std::ranges::find_if(bundle_dir_iterator, [](const std::filesystem::directory_entry& dir_entry) {
-            const std::string filename{ dir_entry.path().filename().string() };
-            return filename.starts_with("env") && filename.ends_with(".js");
-        })
-    };
-    const std::filesystem::path env_file{ env_file_it == std::filesystem::end(bundle_dir_iterator) ? bundle_dir / "env.js" : *env_file_it };
-
-    std::ofstream file(env_file, std::ios::out | std::ios::trunc);
-    file.write(env_content.data(), static_cast<std::streamoff>(env_content.size()));
 }
 
 // Routes
@@ -305,8 +287,21 @@ namespace server
             res.set_content(html, "text/html");
         } else {
             // normal user
-            static const std::string index_file{ (bundle_dir / "index.html").string() };
-            res.set_file_content(index_file);
+            STATIC const std::string index_content{
+                [&bundle_dir] {
+                    const nlohmann::json env_json{
+                        { "websiteName", env::website_name },
+                    };
+
+                    const std::filesystem::path index_file{ bundle_dir / "index.html" };
+                    const std::string index_content{ filesystem::read_file(index_file) };
+
+                    const std::regex env_regex{ "__ENV_PLACEHOLDER__" };
+                    // replace all occurrences of envPattern with env_json.dump()
+                    return std::regex_replace(index_content, env_regex, env_json.dump());
+                }()
+            };
+            res.set_content(index_content, "text/html");
         }
     }
 }
@@ -327,7 +322,7 @@ inline void server::watch_video(const httplib::Request& req, httplib::Response& 
 
 inline void server::static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
-    static const std::map bundle_files{
+    STATIC const std::map bundle_files{
         [&bundle_dir] {
             std::map<std::string, std::string> files;
             for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(bundle_dir)) {
@@ -354,13 +349,28 @@ inline void server::index(const httplib::Request& req, httplib::Response& res, c
 {
     const std::string title{ "Home" };
     const std::string description{ "Welcome to " + env::website_name };
-    const std::string thumbnail_url{ env::icon_path };
+    const std::string thumbnail_url{ "/assets/icons/icon.png" };
     const std::string website_url{ "/" };
     serve_index(req, res, bundle_dir,
                 { .title = title,
                   .description = description,
                   .thumbnail_url = thumbnail_url,
                   .website_url = website_url });
+}
+
+inline void server::manifest(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& bundle_dir)
+{
+    STATIC const std::string manifest_content{
+        [&bundle_dir] {
+            const std::filesystem::path manifest_file{ bundle_dir / "manifest.json" };
+            const std::string manifest_content{ filesystem::read_file(manifest_file) };
+            nlohmann::json manifest = nlohmann::json::parse(manifest_content);
+            manifest["name"] = env::website_name;
+            manifest["short_name"] = env::short_website_name;
+            return manifest.dump();
+        }()
+    };
+    res.set_content(manifest_content, "application/json");
 }
 
 // Logs

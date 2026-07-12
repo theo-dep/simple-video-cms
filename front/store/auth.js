@@ -1,5 +1,6 @@
 import { signal, effect } from '@preact/signals';
 import { api } from '../api.js';
+import { apiOffline } from './offline.js';
 
 const userId = signal(null);
 const userName = signal('');
@@ -41,5 +42,6 @@ async function refreshAuth() {
 }
 
 effect(() => {
+  if (apiOffline.value) return;
   if (refreshRequested.value) refreshAuth();
 });

@@ -1,11 +1,24 @@
 const BASE = '/api';
 
+function isNetworkError(err) {
+  return err instanceof TypeError || !navigator.onLine;
+}
+
 async function fetchApiResponse(method, path, body = undefined) {
-  const res = await fetch(BASE + path, {
-    method,
-    credentials: 'same-origin',
-    ...(body !== undefined && { body: body }),
-  });
+  let res;
+  try {
+    res = await fetch(BASE + path, {
+      method,
+      credentials: 'same-origin',
+      ...(body !== undefined && { body: body }),
+    });
+  } catch (err) {
+    if (isNetworkError(err)) {
+      dispatchEvent(new CustomEvent('api-offline'));
+    }
+    throw err;
+  }
+
   if (!res.ok) {
     const msg = await res.text().catch(() => res.statusText);
     const err = new Error(msg || `HTTP ${res.status}`);

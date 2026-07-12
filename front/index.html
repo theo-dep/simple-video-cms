@@ -3,12 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A preact web application video content management system and cpp-httplib, FFmpeg, SQLite backend server" />
+    <meta name="theme-color" content="#16a085" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Loading</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon-x180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/assets/icons/apple-touch-icon-x167.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/assets/icons/apple-touch-icon-x152.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/assets/icons/apple-touch-icon-x120.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/assets/icons/apple-touch-icon-x76.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/assets/icons/apple-touch-icon-x60.png" />
+    <link rel="apple-touch-startup-image" href="/assets/icons/apple-touch-startup-image.png" />
     <link rel="stylesheet" href="/node_modules/purecss/build/pure-min.css" />
     <link rel="stylesheet" href="/node_modules/purecss/build/grids-responsive-min.css" />
     <link rel="stylesheet" href="/assets/styles.css" />
     <link rel="icon" href="/assets/img/icon.svg" type="image/png" />
-    <script src="/env.js"></script>
     <script type="importmap">
       {
         "imports": {
@@ -40,6 +51,7 @@
         position: fixed;
         top: 0;
         left: 0;
+        z-index: -1;
         width: 100%;
         height: 100%;
         display: flex;
@@ -178,7 +190,9 @@
 
     <script>
       (() => {
-        const env = window.__ENV__ ?? { websiteName: 'Simple Video CMS' };
+        /* global __ENV_PLACEHOLDER__ */
+        const env = typeof __ENV_PLACEHOLDER__ !== 'undefined' ? __ENV_PLACEHOLDER__ : { websiteName: 'Simple Video CMS' };
+        window.__ENV__ = env;
         document.title = `${document.title} | ${env.websiteName}`;
 
         if (env.iconPath) {

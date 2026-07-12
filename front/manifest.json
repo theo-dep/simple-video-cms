@@ -1,0 +1,68 @@
+{
+  "name": "Simple Video CMS",
+  "short_name": "Video CMS",
+  "description": "A preact web application video content management system and cpp-httplib, FFmpeg, SQLite backend server",
+  "id": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#16a085",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "sizes": "1024x1024",
+      "src": "/assets/icons/icon.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "maskable",
+      "sizes": "1024x1024",
+      "src": "/assets/icons/maskable_icon.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "maskable",
+      "sizes": "48x48",
+      "src": "/assets/icons/maskable_icon_x48.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "maskable",
+      "sizes": "72x72",
+      "src": "/assets/icons/maskable_icon_x72.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "maskable",
+      "sizes": "96x96",
+      "src": "/assets/icons/maskable_icon_x96.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "maskable",
+      "sizes": "128x128",
+      "src": "/assets/icons/maskable_icon_x128.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "maskable",
+      "sizes": "192x192",
+      "src": "/assets/icons/maskable_icon_x192.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "maskable",
+      "sizes": "384x384",
+      "src": "/assets/icons/maskable_icon_x384.png",
+      "type": "image/png"
+    },
+    {
+      "purpose": "maskable",
+      "sizes": "512x512",
+      "src": "/assets/icons/maskable_icon_x512.png",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["video", "entertainment", "productivity"],
+  "screenshots": []
+}
