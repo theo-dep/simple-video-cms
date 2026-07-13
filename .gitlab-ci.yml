@@ -36,22 +36,6 @@ build ci image:
     - docker build -f container/ci.containerfile -t $CONTAINER_CI_IMAGE .
     - docker push $CONTAINER_CI_IMAGE
 
-build vcpkg deps:
-  stage: .pre
-  image: $CONTAINER_CI_IMAGE
-  dependencies:
-    - build ci image
-  timeout: 2h
-  extends:
-    - .vcpkg-install-job
-  rules:
-    - !reference [.merge-rules, rules]
-    - !reference [.deploy-rules, rules]
-  variables:
-    CACHE_POLICY: readwrite
-  script:
-    - cmake --preset vcpkg
-
 debug build:
   image: $CONTAINER_CI_IMAGE
   extends:
