@@ -365,8 +365,9 @@ inline void server::manifest(const httplib::Request& /*req*/, httplib::Response&
             const std::filesystem::path manifest_file{ bundle_dir / "manifest.json" };
             const std::string manifest_content{ filesystem::read_file(manifest_file) };
             nlohmann::json manifest = nlohmann::json::parse(manifest_content);
-            manifest["name"] = env::website_name;
-            manifest["short_name"] = env::short_website_name;
+            manifest.update(nlohmann::json{
+                { "name", env::website_name },
+                { "short_name", env::short_website_name } });
             return manifest.dump();
         }()
     };

@@ -97,7 +97,7 @@ bool Database::create_tables() const
     storage.sync_schema();
 
     const std::vector versions{ storage.get_all<database::Version>() };
-    if (!versions.empty() && versions[0].value == database::current_version.value)
+    if (!versions.empty() && versions.at(0).value == database::current_version.value)
         return true;
 
     storage.transaction([&] {
@@ -471,7 +471,7 @@ int Database::user_id(const std::string& name) const
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::vector users{ storage.select(&User::id, where(c(&User::name) == name)) };
-    return users.size() == 1 ? users[0] : -1;
+    return users.size() == 1 ? users.at(0) : -1;
 }
 
 bool Database::user_exists(const std::string& name) const

@@ -6,7 +6,7 @@
 
 void filesystem::set_current_path(std::span<const char*> args)
 {
-    std::filesystem::current_path(std::filesystem::path(args[0]).parent_path());
+    std::filesystem::current_path(std::filesystem::path(args.at(0)).parent_path());
 }
 
 const std::filesystem::path& filesystem::data_path()

@@ -1,7 +1,7 @@
 # Simple Video CMS
 
 A managed video sharing platform inspired by [VideoHub](https://github.com/sharadbhat/VideoHub).
-A preact web application video content management system and cpp-httplib, FFmpeg, SQLite backend server.
+A preact web application video content management system and cpp-httplib, FFmpeg, SQLite backend c++26 server.
 
 [![Latest Release](https://gitlab.devau.co/theo/simple-video-cms/-/badges/release.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/releases) [![pipeline status](https://gitlab.devau.co/theo/simple-video-cms/badges/develop/pipeline.svg)](https://gitlab.devau.co/theo/simple-video-cms/-/commits/develop)
 
@@ -33,6 +33,10 @@ cmake --build --preset vcpkg-release --parallel
 This will generates server binary in `build/vcpkg/Release/back`. Build with `vcpkg-debug` preset to make debug binaries.
 
 Server can be run using VS Code and CMake extension or with commands `just start-dev` or `just start-prod`.
+
+> [!NOTE]
+> Configure CMake with `-DCMAKE_CXX_FLAGS_RELEASE=-DNO_SECURE` to define `NO_SECURE` cookie in Release mode.
+> This allow to test the production bundle in local environment (like with a phone).
 
 ## Container
 

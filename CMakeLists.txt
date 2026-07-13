@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.26)
 project(simple-video-cms LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
