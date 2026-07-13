@@ -21,7 +21,7 @@ export default function AdminDashboard() {
           ? html`<${Loader} />`
           : html`
               <h2>${websiteName} Statistics</h2>
-              <table id="table" class="table pure-table pure-table-horizontal">
+              <table class="table pure-table pure-table-horizontal">
                 <tbody>
                   <tr>
                     <td>Total number of users registered</td>
