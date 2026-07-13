@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chrono>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -44,7 +44,7 @@ private:
     };
 
     std::unordered_map<std::string, Data> _sessions; // session_id -> key, value
-    mutable std::mutex _mutex;
+    mutable std::shared_mutex _mutex;
 
     // prevent copy/move
     Session(const Session&) = delete;

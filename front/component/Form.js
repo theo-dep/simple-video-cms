@@ -57,7 +57,7 @@ export function FormContent({ title, buttonTitle, onSubmitAction, children }) {
     document.adoptedStyleSheets = [MultiSelectStyleSheet, additionalMultiSelectStyle, ...document.adoptedStyleSheets];
     return () => {
       document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => {
-        return s !== MultiSelectStyleSheet || s !== additionalMultiSelectStyle;
+        return s !== MultiSelectStyleSheet && s !== additionalMultiSelectStyle;
       });
     };
   }, []);

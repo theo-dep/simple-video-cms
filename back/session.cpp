@@ -3,6 +3,8 @@
 #include "cookie.h"
 #include "crypto.h"
 
+#include <mutex>
+
 namespace session
 {
     constexpr const char* cookie_key() { return "id"; }
@@ -12,7 +14,7 @@ const std::string& Session::create_session(const std::string& user_id, std::chro
 {
     clean_expired_sessions();
 
-    const std::scoped_lock lock(_mutex);
+    const std::unique_lock lock(_mutex);
     const std::string session_id{ generate_session_id(user_id) };
     _sessions[session_id].user_id = user_id;
     _sessions[session_id].max_age = max_age;
@@ -22,7 +24,7 @@ const std::string& Session::create_session(const std::string& user_id, std::chro
 
 const std::string& Session::user_from_session(const std::string& session_id) const
 {
-    const std::scoped_lock lock(_mutex);
+    const std::shared_lock lock(_mutex);
 
     const auto it_session{ _sessions.find(session_id) };
     if (it_session == _sessions.cend()) {
@@ -37,7 +39,7 @@ std::string Session::remove_session_reset_cookie(const std::string& session_id)
 {
     clean_expired_sessions();
 
-    const std::scoped_lock lock(_mutex);
+    const std::unique_lock lock(_mutex);
     _sessions.erase(session_id);
 
     return cookie::insert_to_cookie(session::cookie_key(), std::string{}, std::chrono::seconds{ 0 });
@@ -56,7 +58,7 @@ std::string Session::extract_session_id_from_cookie(const std::string& cookie)
 
 std::string Session::insert_session_id_to_cookie(const std::string& session_id)
 {
-    const std::scoped_lock lock(_mutex);
+    const std::unique_lock lock(_mutex);
 
     const auto it_session_data{ _sessions.find(session_id) };
     if (it_session_data == _sessions.end()) {
@@ -69,7 +71,7 @@ std::string Session::insert_session_id_to_cookie(const std::string& session_id)
 
 void Session::clean_expired_sessions()
 {
-    const std::scoped_lock lock(_mutex);
+    const std::unique_lock lock(_mutex);
     std::erase_if(_sessions,
                   [now{ std::chrono::system_clock::now() }](const std::pair<std::string, Data>& session) {
                       return (now - session.second.creation > session.second.max_age);

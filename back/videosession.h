@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chrono>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -52,7 +52,7 @@ private:
     };
 
     std::unordered_map<Key, State, KeyHash> _sessions; // session_id, video_id -> state
-    mutable std::mutex _mutex;
+    mutable std::shared_mutex _mutex;
 
     // prevent copy/move
     VideoSession(const VideoSession&) = delete;

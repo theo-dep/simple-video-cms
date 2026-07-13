@@ -9,6 +9,7 @@ import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
 import { confirm } from '../component/ConfirmDialog.js';
+import { validateField } from '../utils/validation.js';
 
 export default function AdminUpdateVideo({ videoId }) {
   videoId = Number(videoId);
@@ -32,6 +33,8 @@ export default function AdminUpdateVideo({ videoId }) {
   async function onVideoSubmit(e) {
     const form = e.target;
     const title = form.elements['title'].value.trim();
+    validateField(title);
+
     const oldTitle = selectedVideo.value?.title ?? 'this video';
     const confirmMessage = title === oldTitle ? `Update ${title} video?` : `Update ${oldTitle} video name to ${title}?`;
     if (!(await confirm(confirmMessage))) return;

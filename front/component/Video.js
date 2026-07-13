@@ -50,18 +50,23 @@ export default function Video({ videoId }) {
     ];
     return () => {
       document.adoptedStyleSheets = document.adoptedStyleSheets.filter((s) => {
-        return s !== VideoJSStyleSheet || s !== VideoJSMobileUIStyleSheet || s !== VideoJSYtStyleSheet || s !== additionalVideoJSStyle;
+        return s !== VideoJSStyleSheet && s !== VideoJSMobileUIStyleSheet && s !== VideoJSYtStyleSheet && s !== additionalVideoJSStyle;
       });
     };
   }, []);
 
   useEffect(() => {
-    if (!videoRef.current || playerRef.current) return;
+    if (!videoRef.current) return;
+
+    // Dispose any existing player first to prevent memory leaks
+    if (playerRef.current) {
+      playerRef.current.dispose();
+      playerRef.current = null;
+    }
 
     const existingPlayer = videojs.getPlayer(videoRef.current);
     if (existingPlayer) {
-      playerRef.current = existingPlayer;
-      return;
+      existingPlayer.dispose();
     }
 
     playerRef.current = videojs(videoRef.current, {

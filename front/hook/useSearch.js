@@ -5,6 +5,7 @@ export function useSearch(items, keys) {
   const [query, setQuery] = useState('');
 
   const fuse = useMemo(() => {
+    if (!items || items.length === 0) return null;
     return new Fuse(items, {
       keys,
       useTokenSearch: true,
@@ -15,12 +16,14 @@ export function useSearch(items, keys) {
       findAllMatches: true,
       minMatchCharLength: 2,
     });
-  }, [items]);
+  }, [items, keys]);
 
   // don't break the reactivity chain from items to results
   const results = useMemo(() => {
-    return query.trim() ? fuse.search(query).map((r) => r.item) : items;
-  }, [fuse, query, items]);
+    if (!fuse) return items || [];
+    const trimmedQuery = query.trim();
+    return trimmedQuery ? fuse.search(trimmedQuery).map((r) => r.item) : items;
+  }, [fuse, query]);
 
   function search(query) {
     setQuery(query);

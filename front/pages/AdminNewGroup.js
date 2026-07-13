@@ -7,6 +7,7 @@ import { users, loadUsers, invalidateGroups } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
+import { validateField } from '../utils/validation.js';
 
 export default function AdminNewGroup() {
   const { route } = useLocation();
@@ -18,6 +19,8 @@ export default function AdminNewGroup() {
   async function onGroupSubmit(e) {
     const form = e.target;
     const name = form.elements['name'].value.trim();
+    validateField(name);
+
     const userSelect = form.elements['user-ids'];
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
 
