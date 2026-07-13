@@ -1,5 +1,5 @@
 default:
-  image: ubuntu:25.10
+  image: ubuntu:26.04
 
 stages:
   - .pre
@@ -8,7 +8,7 @@ stages:
   - release
 
 variables:
-  CONTAINER_CI_IMAGE: $CI_REGISTRY/theo/simple-video-cms/ci:clang-21
+  CONTAINER_CI_IMAGE: $CI_REGISTRY/theo/simple-video-cms/ci:clang-22
   CONTAINER_TEST_IMAGE: $CI_REGISTRY/theo/simple-video-cms:$CI_COMMIT_REF_SLUG
   CONTAINER_RELEASE_IMAGE: $CI_REGISTRY/theo/simple-video-cms:latest
 

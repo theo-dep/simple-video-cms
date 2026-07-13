@@ -109,6 +109,28 @@ namespace video
         int _video_stream_index{ -1 };
         const AVStream* _video_stream{ nullptr };
     };
+
+    class PngWriter
+    {
+    public:
+        PngWriter();
+        ~PngWriter();
+
+        PngWriter(const PngWriter&) = delete;
+        PngWriter& operator=(const PngWriter&) = delete;
+        PngWriter(PngWriter&&) = delete;
+        PngWriter& operator=(PngWriter&&) = delete;
+
+        [[nodiscard]] png_structp handle() const { return _png_ptr; }
+        [[nodiscard]] png_infop info() const { return _info_ptr; }
+
+    private:
+        static void on_error(png_structp png_ptr, png_const_charp msg);
+        static void on_warning(png_structp png_ptr, png_const_charp msg);
+
+        png_structp _png_ptr{ nullptr };
+        png_infop _info_ptr{ nullptr };
+    };
 }
 
 std::string video::thumbnail(const std::string& video_content, const std::string& format,
@@ -241,7 +263,7 @@ inline bool video::VideoProcessor::setup_video_decoder()
     }
 
     const std::span streams(_format_context->streams, _format_context->nb_streams);
-    _video_stream = streams[_video_stream_index];
+    _video_stream = streams.at(_video_stream_index);
 
     const AVCodecParameters* const input_codec_parameters{ _video_stream->codecpar };
 
@@ -528,7 +550,7 @@ inline std::string video::VideoProcessor::retrieve_filtered_frame(std::size_t wi
     return frame_to_png(filtered_frame.get());
 }
 
-bool video::VideoProcessor::remux_to_hls(const std::string& out_dir, const std::string& name, int hls_time)
+inline bool video::VideoProcessor::remux_to_hls(const std::string& out_dir, const std::string& name, int hls_time)
 {
     const std::string playlist_path{ std::format("{}/{}.m3u8", out_dir, name) };
     const std::string segment_pattern{ std::format("{}/{}_%03d.ts", out_dir, name) };
@@ -593,10 +615,10 @@ bool video::VideoProcessor::remux_to_hls(const std::string& out_dir, const std::
             continue;
         }
 
-        const AVStream* const in_stream{ input_streams[stream_index] };
+        const AVStream* const in_stream{ input_streams.at(stream_index) };
 
         const std::span output_streams(output_format_context->streams, output_format_context->nb_streams);
-        const AVStream* const out_stream{ output_streams[stream_index] };
+        const AVStream* const out_stream{ output_streams.at(stream_index) };
 
         av_packet_rescale_ts(packet.get(), in_stream->time_base, out_stream->time_base);
         packet->pos = -1;
@@ -759,46 +781,64 @@ inline std::int64_t video::seek(void* opaque, std::int64_t offset, int whence)
     return pos;
 }
 
+inline video::PngWriter::PngWriter()
+    : _png_ptr{ png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) }
+    , _info_ptr{ png_create_info_struct(_png_ptr) }
+{
+    if (_png_ptr == nullptr) {
+        throw std::runtime_error{ "Could not create PNG writer" };
+    }
+
+    if (_info_ptr == nullptr) {
+        png_destroy_write_struct(&_png_ptr, nullptr);
+        throw std::runtime_error{ "Could not create PNG info" };
+    }
+
+    png_set_error_fn(_png_ptr, nullptr, &PngWriter::on_error, &PngWriter::on_warning);
+}
+
+inline video::PngWriter::~PngWriter()
+{
+    png_destroy_write_struct(&_png_ptr, &_info_ptr);
+}
+
+inline void video::PngWriter::on_error(png_structp /*png_ptr*/, png_const_charp msg)
+{
+    throw std::runtime_error{ msg };
+}
+
+inline void video::PngWriter::on_warning(png_structp /*png_ptr*/, png_const_charp msg)
+{
+    logging::info{ msg };
+}
+
 inline std::string video::frame_to_png(const AVFrame* frame)
 {
-    png_structp png_ptr{ png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
-    if (png_ptr == nullptr) {
-        logging::error{ "Could not create PNG writer" };
+    try {
+        PngWriter writer;
+
+        std::ostringstream png_stream;
+        png_set_write_fn(writer.handle(), &png_stream, write_data, nullptr);
+
+        constexpr int bit_depth{ 8 };
+        png_set_IHDR(writer.handle(), writer.info(), frame->width, frame->height, bit_depth,
+                     PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE,
+                     PNG_FILTER_TYPE_BASE);
+
+        std::vector<png_bytep> raw_pointers(frame->height);
+        std::ranges::generate(raw_pointers, [pos{ 0UZ }, &frame]() mutable -> png_bytep {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            return frame->data[0] + (pos++ * frame->linesize[0]);
+        });
+
+        png_set_rows(writer.handle(), writer.info(), raw_pointers.data());
+        png_write_png(writer.handle(), writer.info(), PNG_TRANSFORM_IDENTITY, nullptr);
+
+        return png_stream.str();
+    } catch (const std::exception& e) {
+        logging::error{ e.what() };
         return {};
     }
-
-    png_infop info_ptr{ png_create_info_struct(png_ptr) };
-    if (info_ptr == nullptr) {
-        png_destroy_write_struct(&png_ptr, nullptr);
-        logging::error{ "Could not create PNG info" };
-        return {};
-    }
-
-    if (setjmp(png_jmpbuf(png_ptr))) { // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay)
-        png_destroy_write_struct(&png_ptr, &info_ptr);
-        logging::error{ "Could not create PNG image" };
-        return {};
-    }
-
-    std::ostringstream png_stream;
-    png_set_write_fn(png_ptr, &png_stream, write_data, nullptr);
-
-    constexpr int bit_depth{ 8 };
-    png_set_IHDR(png_ptr, info_ptr, frame->width, frame->height, bit_depth, PNG_COLOR_TYPE_RGB,
-                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
-
-    std::vector<png_bytep> raw_pointers(frame->height);
-    std::ranges::generate(raw_pointers, [pos{ 0UZ }, &frame]() mutable -> png_bytep {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        return frame->data[0] + (pos++ * frame->linesize[0]);
-    });
-
-    png_set_rows(png_ptr, info_ptr, raw_pointers.data());
-    png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
-
-    png_destroy_write_struct(&png_ptr, &info_ptr);
-
-    return png_stream.str();
 }
 
 inline void video::write_data(png_structp png_ptr, png_bytep data, png_size_t length)

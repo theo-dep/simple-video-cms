@@ -32,6 +32,7 @@ void VideoSession::add_session(const std::string& session_id, const std::string&
     clean_expired_sessions({});
 
     const std::unique_lock lock(_mutex);
+
     const Key key{ .session_id = session_id, .video_id = video_id };
     State& state{ _sessions[key] };
     state = State{}; // reset
@@ -45,7 +46,8 @@ void VideoSession::start_session(const std::string& session_id, const std::strin
 
     const std::unique_lock lock(_mutex);
 
-    const auto session{ _sessions.find({ session_id, video_id }) };
+    const Key key{ .session_id = session_id, .video_id = video_id };
+    const auto session{ _sessions.find(key) };
     if (session == _sessions.end()) {
         return;
     }
@@ -60,7 +62,8 @@ void VideoSession::reset_session(const std::string& session_id, const std::strin
 
     const std::unique_lock lock(_mutex);
 
-    const auto session{ _sessions.find({ session_id, video_id }) };
+    const Key key{ .session_id = session_id, .video_id = video_id };
+    const auto session{ _sessions.find(key) };
     if (session == _sessions.end()) {
         return;
     }
@@ -85,7 +88,8 @@ bool VideoSession::validate_segment_access(const std::string& session_id, const 
 
     const std::shared_lock lock(_mutex);
 
-    const auto session{ _sessions.find({ session_id, video_id }) };
+    const Key key{ .session_id = session_id, .video_id = video_id };
+    const auto session{ _sessions.find(key) };
     if (session == _sessions.end()) {
         logging::error{ "session not found {} for {}", session_id, video_id };
         return false;
