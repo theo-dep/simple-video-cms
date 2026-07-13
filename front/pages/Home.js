@@ -26,17 +26,15 @@ export default function Home() {
         isLoading
           ? html`<${Loader} />`
           : results.map(
-              (v) => html`
-          <div class="pure-u-1 pure-u-sm-2-5" key=${v.id}>
-            <a href=${'/video/' + v.id}>
-              <${VideoThumbnail} id=${v.id} title=${v.title} //>
-            </a>
-          </div>
-          <div class="pure-u-1 pure-u-sm-3-5" key=${v.id}>
-            <h4><a href=${'/video/' + v.id}>${v.title}</a></h4>
-          </div>
-          <hr class="pure-u-1" />
-        `
+              (v) =>
+                html` <div key=${v.id} class="pure-u-1 pure-u-sm-1-2 pure-u-lg-1-3 pure-u-xl-1-4">
+                  <a href=${'/video/' + v.id} class="video-card">
+                    <div class="video-card-thumb">
+                      <${VideoThumbnail} id=${v.id} title=${v.title} />
+                    </div>
+                    <h4 class="video-title">${v.title}</h4>
+                  </a>
+                </div>`
             )
       }
     <//>
