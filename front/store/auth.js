@@ -9,6 +9,7 @@ const isAdmin = signal(false);
 const videos = signal([]);
 
 export const refreshRequested = signal(true);
+export const firstRefreshed = signal(false);
 export const refreshed = signal(false);
 
 export const user = {
@@ -37,6 +38,7 @@ async function refreshAuth() {
     videos.value = [];
   } finally {
     refreshRequested.value = false;
+    firstRefreshed.value = true;
     refreshed.value = true;
   }
 }
