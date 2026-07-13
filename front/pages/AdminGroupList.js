@@ -35,34 +35,38 @@ export default function AdminGroupList() {
     <${AdminNav} />
 
     <${Content}>
-      ${isLoading
-        ? html`<${Loader} />`
-        : html`<${ListTable}
-            title="List of groups"
-            icon="${html`<title>Add group</title> <${GroupAddIcon} />`}"
-            addLink="/admin/new-group"
-            columns="${['Name']}"
-            items="${groups.value}"
-            renderRow="${(g) => html`
-              <tr key=${g.id}>
-                <td>${g.name}</td>
-                <td>
-                  <div class="pure-g">
-                    <div class="pure-u-1 pure-u-sm-1-3">
-                      ${!!g.users?.length &&
-                      html`<${Drawer} label="Users" items=${[{ label: 'Group Users', elements: g.users.map((u) => u.name) }]} />`}
+      ${
+        isLoading
+          ? html`<${Loader} />`
+          : html`<${ListTable}
+              title="List of groups"
+              icon="${html`<title>Add group</title> <${GroupAddIcon} />`}"
+              addLink="/admin/new-group"
+              columns="${['Name']}"
+              items="${groups.value}"
+              renderRow="${(g) => html`
+                <tr key=${g.id}>
+                  <td>${g.name}</td>
+                  <td>
+                    <div class="pure-g">
+                      <div class="pure-u-1 pure-u-sm-1-3">
+                        ${
+                          !!g.users?.length &&
+                          html`<${Drawer} label="Users" items=${[{ label: 'Group Users', elements: g.users.map((u) => u.name) }]} />`
+                        }
+                      </div>
+                      <div class="pure-u-1 pure-u-sm-1-3">
+                        <a onClick=${() => updateGroup(g)} style="cursor:pointer">Update</a>
+                      </div>
+                      <div class="pure-u-1 pure-u-sm-1-3">
+                        <a onClick=${() => deleteGroup(g.id)} style="cursor:pointer">Delete</a>
+                      </div>
                     </div>
-                    <div class="pure-u-1 pure-u-sm-1-3">
-                      <a onClick=${() => updateGroup(g)} style="cursor:pointer">Update</a>
-                    </div>
-                    <div class="pure-u-1 pure-u-sm-1-3">
-                      <a onClick=${() => deleteGroup(g.id)} style="cursor:pointer">Delete</a>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            `}"
-          /> `}
+                  </td>
+                </tr>
+              `}"
+            /> `
+      }
     <//>
   `;
 }

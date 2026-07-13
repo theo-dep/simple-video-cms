@@ -52,62 +52,68 @@ export default function AdminNewVideo() {
   return html`
     <${AdminNav} />
 
-    ${isGroupsLoading || isUsersLoading
-      ? html`<${Loader} />`
-      : html`
-          <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
-            <div
-              class="pure-control-group file-drop-area"
-              onDragEnter=${(e) => e.currentTarget.classList.add('is-active')}
-              onDragLeave=${(e) => e.currentTarget.classList.remove('is-active')}
-              onDrop=${(e) => e.currentTarget.classList.remove('is-active')}
-            >
-              <span class="fake-button">Choose file</span>
-              <span class="file-message">${fileName || 'or drag a video here'}</span>
-              <input
-                class="pure-input-1 file-input"
-                type="file"
-                accept="video/mp4,video/webm,video/ogg,video/quicktime"
-                name="file"
-                onChange=${onFileChange}
-                required
-              />
-            </div>
-            <div class="pure-control-group">
-              <input ref=${titleRef} class="pure-input-1" type="text" name="title" id="title" placeholder="Video title" required />
-            </div>
+    ${
+      isGroupsLoading || isUsersLoading
+        ? html`<${Loader} />`
+        : html`
+            <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
+              <div
+                class="pure-control-group file-drop-area"
+                onDragEnter=${(e) => e.currentTarget.classList.add('is-active')}
+                onDragLeave=${(e) => e.currentTarget.classList.remove('is-active')}
+                onDrop=${(e) => e.currentTarget.classList.remove('is-active')}
+              >
+                <span class="fake-button">Choose file</span>
+                <span class="file-message">${fileName || 'or drag a video here'}</span>
+                <input
+                  class="pure-input-1 file-input"
+                  type="file"
+                  accept="video/mp4,video/webm,video/ogg,video/quicktime"
+                  name="file"
+                  onChange=${onFileChange}
+                  required
+                />
+              </div>
+              <div class="pure-control-group">
+                <input ref=${titleRef} class="pure-input-1" type="text" name="title" id="title" placeholder="Video title" required />
+              </div>
 
-            ${!!groups.value.length &&
-            html`
-              <div class="pure-control-group">
-                <select
-                  ref=${selectGroupsRef}
-                  name="group-ids"
-                  class="pure-input-1"
-                  data-placeholder="Select groups (optional)"
-                  multiple
-                  data-multi-select
-                >
-                  ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
-                </select>
-              </div>
-            `}
-            ${!!users.value.length &&
-            html`
-              <div class="pure-control-group">
-                <select
-                  ref=${selectUsersRef}
-                  name="user-ids"
-                  class="pure-input-1"
-                  data-placeholder="Select users (optional)"
-                  multiple
-                  data-multi-select
-                >
-                  ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
-                </select>
-              </div>
-            `}
-          <//>
-        `}
+              ${
+                !!groups.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select
+                      ref=${selectGroupsRef}
+                      name="group-ids"
+                      class="pure-input-1"
+                      data-placeholder="Select groups (optional)"
+                      multiple
+                      data-multi-select
+                    >
+                      ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+              ${
+                !!users.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select
+                      ref=${selectUsersRef}
+                      name="user-ids"
+                      class="pure-input-1"
+                      data-placeholder="Select users (optional)"
+                      multiple
+                      data-multi-select
+                    >
+                      ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+            <//>
+          `
+    }
   `;
 }

@@ -22,10 +22,11 @@ export default function Home() {
     <//>
 
     <${Content} class="pure-g">
-      ${isLoading
-        ? html`<${Loader} />`
-        : results.map(
-            (v) => html`
+      ${
+        isLoading
+          ? html`<${Loader} />`
+          : results.map(
+              (v) => html`
           <div class="pure-u-1 pure-u-sm-2-5" key=${v.id}>
             <a href=${'/video/' + v.id}>
               <${VideoThumbnail} id=${v.id} title=${v.title} //>
@@ -36,7 +37,8 @@ export default function Home() {
           </div>
           <hr class="pure-u-1" />
         `
-          )}
+            )
+      }
     <//>
 
     <${Footer} />

@@ -52,44 +52,50 @@ export default function AdminUpdateVideo({ videoId }) {
   return html`
     <${AdminNav} />
 
-    ${isVideoLoading || isGroupsLoading || isUsersLoading
-      ? html`<${Loader} />`
-      : html`
-          <${Form} title="Change video title, group and user rights" buttonTitle="Update" onSubmitAction=${onVideoSubmit}>
-            <div class="pure-control-group">
-              <input class="pure-input-1" type="text" name="title" value=${selectedVideo.value.title} placeholder="Video title" required />
-            </div>
-            ${!!groups.value.length &&
-            html`
+    ${
+      isVideoLoading || isGroupsLoading || isUsersLoading
+        ? html`<${Loader} />`
+        : html`
+            <${Form} title="Change video title, group and user rights" buttonTitle="Update" onSubmitAction=${onVideoSubmit}>
               <div class="pure-control-group">
-                <select
-                  ref=${selectGroupsRef}
-                  name="group-ids"
-                  class="pure-input-1"
-                  data-placeholder="Select groups (optional)"
-                  multiple
-                  data-multi-select
-                >
-                  ${groups.value.map((g) => html`<option key=${g.id} value=${g.id} selected=${isGroupSelected(g.id)}>${g.name}</option>`)}
-                </select>
+                <input class="pure-input-1" type="text" name="title" value=${selectedVideo.value.title} placeholder="Video title" required />
               </div>
-            `}
-            ${!!users.value.length &&
-            html`
-              <div class="pure-control-group">
-                <select
-                  ref=${selectUsersRef}
-                  name="user-ids"
-                  class="pure-input-1"
-                  data-placeholder="Select users (optional)"
-                  multiple
-                  data-multi-select
-                >
-                  ${users.value.map((u) => html`<option key=${u.id} value=${u.id} selected=${isUserSelected(u.id)}>${u.name}</option>`)}
-                </select>
-              </div>
-            `}
-          <//>
-        `}
+              ${
+                !!groups.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select
+                      ref=${selectGroupsRef}
+                      name="group-ids"
+                      class="pure-input-1"
+                      data-placeholder="Select groups (optional)"
+                      multiple
+                      data-multi-select
+                    >
+                      ${groups.value.map((g) => html`<option key=${g.id} value=${g.id} selected=${isGroupSelected(g.id)}>${g.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+              ${
+                !!users.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select
+                      ref=${selectUsersRef}
+                      name="user-ids"
+                      class="pure-input-1"
+                      data-placeholder="Select users (optional)"
+                      multiple
+                      data-multi-select
+                    >
+                      ${users.value.map((u) => html`<option key=${u.id} value=${u.id} selected=${isUserSelected(u.id)}>${u.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+            <//>
+          `
+    }
   `;
 }
