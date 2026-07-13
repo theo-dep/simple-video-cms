@@ -251,8 +251,8 @@ namespace server
     {
         std::string title;
         std::string description;
-        std::string thumbnail_url;
-        std::string website_url;
+        std::string image;
+        std::string url;
     };
 
     inline void serve_index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const IndexMetaData& metadata)
@@ -269,21 +269,22 @@ namespace server
             };
             const std::string host{ req.get_header_value("Host") };
             const std::string base_url{ url_scheme + "://" + host };
-            const std::string html{
-                // clang-format off
+            const std::string html{ std::format(
                 "<!DOCTYPE html>"
                 "<html>"
                 "<head>"
-                "<meta property=\"og:title\" content=\"" + metadata.title + "\" />"
-                "<meta property=\"og:description\" content=\"" + metadata.description + "\" />"
-                "<meta property=\"og:image\" content=\"" + base_url + "/" + metadata.thumbnail_url + "\" />"
-                "<meta property=\"og:url\" content=\"" + base_url + "/" + metadata.website_url + "\" />"
+                "<meta property=\"og:title\" content=\"{}\" />"
+                "<meta property=\"og:description\" content=\"{}\" />"
+                "<meta property=\"og:image\" content=\"{}\" />"
+                "<meta property=\"og:url\" content=\"{}\" />"
                 "</head>"
                 "<body>"
                 "</body>"
-                "</html>"
-                // clang-format on
-            };
+                "</html>",
+                metadata.title,
+                metadata.description,
+                base_url + metadata.image,
+                base_url + metadata.url) };
             res.set_content(html, "text/html");
         } else {
             // normal user
@@ -312,12 +313,12 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
     const std::string title{ db.video_title(su::string_to_int(video_id)) };
     const std::string description{ "Watch " + title + " video" };
     const std::string thumbnail_url{ "/api/thumbnail/" + video_id };
-    const std::string website_url{ "/video/" + video_id };
+    const std::string video_url{ "/video/" + video_id };
     serve_index(req, res, bundle_dir,
                 { .title = title,
                   .description = description,
-                  .thumbnail_url = thumbnail_url,
-                  .website_url = website_url });
+                  .image = thumbnail_url,
+                  .url = video_url });
 }
 
 inline void server::static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
@@ -347,15 +348,15 @@ inline void server::static_file(const httplib::Request& req, httplib::Response& 
 
 inline void server::index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
-    const std::string title{ "Home" };
-    const std::string description{ "Welcome to " + env::website_name };
-    const std::string thumbnail_url{ "/assets/icons/icon.png" };
+    const std::string title{ env::website_name };
+    const std::string description{ "Welcome to " + env::website_name + " home" };
+    const std::string icon_url{ "/assets/icons/icon.png" };
     const std::string website_url{ "/" };
     serve_index(req, res, bundle_dir,
                 { .title = title,
                   .description = description,
-                  .thumbnail_url = thumbnail_url,
-                  .website_url = website_url });
+                  .image = icon_url,
+                  .url = website_url });
 }
 
 inline void server::manifest(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& bundle_dir)
