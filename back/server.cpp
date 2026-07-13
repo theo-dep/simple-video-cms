@@ -31,7 +31,7 @@ namespace server
     void set_exception_handler(httplib::Server& server);
 
     // Routes
-    void watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
+    void video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
     void static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
     void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
     void manifest(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
@@ -130,7 +130,7 @@ int server::start()
     set_exception_handler(server);
 
     server
-        .Get("/watch-video/:id", sc::serve(watch_video, std::cref(bundle_dir), std::cref(db)))
+        .Get("/video/:id", sc::serve(video, std::cref(bundle_dir), std::cref(db)))
         .Get(R"(.*\/manifest\.json$)", sc::serve(manifest, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*\.[^/]+$)", sc::serve(static_file, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*)", sc::serve(index, std::cref(bundle_dir)))
@@ -251,8 +251,8 @@ namespace server
     {
         std::string title;
         std::string description;
-        std::string thumbnail_url;
-        std::string website_url;
+        std::string image;
+        std::string url;
     };
 
     inline void serve_index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const IndexMetaData& metadata)
@@ -269,21 +269,22 @@ namespace server
             };
             const std::string host{ req.get_header_value("Host") };
             const std::string base_url{ url_scheme + "://" + host };
-            const std::string html{
-                // clang-format off
+            const std::string html{ std::format(
                 "<!DOCTYPE html>"
                 "<html>"
                 "<head>"
-                "<meta property=\"og:title\" content=\"" + metadata.title + "\" />"
-                "<meta property=\"og:description\" content=\"" + metadata.description + "\" />"
-                "<meta property=\"og:image\" content=\"" + base_url + "/" + metadata.thumbnail_url + "\" />"
-                "<meta property=\"og:url\" content=\"" + base_url + "/" + metadata.website_url + "\" />"
+                "<meta property=\"og:title\" content=\"{}\" />"
+                "<meta property=\"og:description\" content=\"{}\" />"
+                "<meta property=\"og:image\" content=\"{}\" />"
+                "<meta property=\"og:url\" content=\"{}\" />"
                 "</head>"
                 "<body>"
                 "</body>"
-                "</html>"
-                // clang-format on
-            };
+                "</html>",
+                metadata.title,
+                metadata.description,
+                base_url + metadata.image,
+                base_url + metadata.url) };
             res.set_content(html, "text/html");
         } else {
             // normal user
@@ -306,18 +307,18 @@ namespace server
     }
 }
 
-inline void server::watch_video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db)
+inline void server::video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db)
 {
     const std::string video_id{ req.path_params.at("id") };
     const std::string title{ db.video_title(su::string_to_int(video_id)) };
     const std::string description{ "Watch " + title + " video" };
     const std::string thumbnail_url{ "/api/thumbnail/" + video_id };
-    const std::string website_url{ "/watch-video/" + video_id };
+    const std::string video_url{ "/video/" + video_id };
     serve_index(req, res, bundle_dir,
                 { .title = title,
                   .description = description,
-                  .thumbnail_url = thumbnail_url,
-                  .website_url = website_url });
+                  .image = thumbnail_url,
+                  .url = video_url });
 }
 
 inline void server::static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
@@ -347,15 +348,15 @@ inline void server::static_file(const httplib::Request& req, httplib::Response& 
 
 inline void server::index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
-    const std::string title{ "Home" };
-    const std::string description{ "Welcome to " + env::website_name };
-    const std::string thumbnail_url{ "/assets/icons/icon.png" };
+    const std::string title{ env::website_name };
+    const std::string description{ "Welcome to " + env::website_name + " home" };
+    const std::string icon_url{ "/assets/icons/icon.png" };
     const std::string website_url{ "/" };
     serve_index(req, res, bundle_dir,
                 { .title = title,
                   .description = description,
-                  .thumbnail_url = thumbnail_url,
-                  .website_url = website_url });
+                  .image = icon_url,
+                  .url = website_url });
 }
 
 inline void server::manifest(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& bundle_dir)
@@ -696,8 +697,8 @@ namespace server
         return db.has_video_right(video_id);
     }
 
-    // block video if not in watch-video page
-    inline bool request_from_watch_video(const httplib::Request& req, int video_id)
+    // block video if not in video page
+    inline bool request_from_video(const httplib::Request& req, int video_id)
     {
         const std::string referrer{ req.get_header_value("Referer") };
         return referrer.ends_with("/video/" + su::int_to_string(video_id));
@@ -712,7 +713,7 @@ inline void server::video_playlist(const httplib::Request& req, httplib::Respons
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_watch_video(req, video_id)) {
+    if (!request_from_video(req, video_id)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
@@ -746,7 +747,7 @@ inline void server::video_segment(const httplib::Request& req, httplib::Response
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_watch_video(req, video_id)) {
+    if (!request_from_video(req, video_id)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
@@ -776,7 +777,7 @@ inline void server::add_video_session(const httplib::Request& req, httplib::Resp
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_watch_video(req, video_id)) {
+    if (!request_from_video(req, video_id)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
@@ -795,7 +796,7 @@ inline void server::start_video_session(const httplib::Request& req, httplib::Re
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_watch_video(req, video_id)) {
+    if (!request_from_video(req, video_id)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
@@ -814,7 +815,7 @@ inline void server::reset_video_session(const httplib::Request& req, httplib::Re
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_watch_video(req, video_id)) {
+    if (!request_from_video(req, video_id)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
