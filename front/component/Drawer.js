@@ -24,32 +24,36 @@ export function Drawer({ label, items }) {
   return html`
     <span class="drawer-button open-drawer" onClick=${openDrawer}>${label}</span>
 
-    ${open &&
-    html`
-      <div class="drawer-overlay" onClick=${() => setOpen(false)}>
-        <div class="drawer" aria-modal="true" role="dialog" onClick=${(e) => e.stopPropagation()}>
-          ${items.map(
-            (i, idx) =>
-              !!i.elements?.length &&
-              html`
-                <div class="drawer-title">
-                  <h1>${i.label}</h1>
+    ${
+      open &&
+      html`
+        <div class="drawer-overlay" onClick=${() => setOpen(false)}>
+          <div class="drawer" aria-modal="true" role="dialog" onClick=${(e) => e.stopPropagation()}>
+            ${items.map(
+              (i, idx) =>
+                !!i.elements?.length &&
+                html`
+                  <div class="drawer-title">
+                    <h1>${i.label}</h1>
 
-                  ${idx === firstIdx &&
-                  html`
-                    <span class="drawer-button drawer-close" onClick=${() => setOpen(false)}>
-                      <svg class="svg-button">
-                        <title>Close</title>
-                        <${XLargeIcon} />
-                      </svg>
-                    </span>
-                  `}
-                </div>
-                <div class="elements-grid">${i.elements.map((e) => html`<div class="element-cell" key=${e}><p>${e}</p></div>`)}</div>
-              `
-          )}
+                    ${
+                      idx === firstIdx &&
+                      html`
+                        <span class="drawer-button drawer-close" onClick=${() => setOpen(false)}>
+                          <svg class="svg-button">
+                            <title>Close</title>
+                            <${XLargeIcon} />
+                          </svg>
+                        </span>
+                      `
+                    }
+                  </div>
+                  <div class="elements-grid">${i.elements.map((e) => html`<div class="element-cell" key=${e}><p>${e}</p></div>`)}</div>
+                `
+            )}
+          </div>
         </div>
-      </div>
-    `}
+      `
+    }
   `;
 }

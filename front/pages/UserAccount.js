@@ -36,7 +36,7 @@ export default function UserAccount() {
     <${UserNav} />
 
     <${InfoContent}>
-      <${FormContent} title="Change username" buttonTitle="Update" onSubmitAction=${onUsernameSubmit}>
+      <${FormContent} title="Change username" buttonTitle="Update" successMessage="Username updated!" onSubmitAction=${onUsernameSubmit}>
         <div class="pure-control-group">
           <input class="pure-input-1" type="text" name="username" placeholder="username" value=${user.name.value} required />
         </div>
@@ -45,7 +45,7 @@ export default function UserAccount() {
         </div>
       <//>
 
-      <${FormContent} title="Change password" buttonTitle="Update" onSubmitAction=${onPasswordSubmit}>
+      <${FormContent} title="Change password" buttonTitle="Update" successMessage="Password updated!" onSubmitAction=${onPasswordSubmit}>
         <div class="pure-control-group">
           <input class="pure-input-1" type="password" name="old-password" placeholder="old password" required />
         </div>

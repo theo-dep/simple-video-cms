@@ -43,26 +43,28 @@ export default function WatchVideo({ videoId }) {
     <${UserNav} videoId=${videoId} />
 
     <${InfoContent} class="info-video">
-      ${isLoading
-        ? html`<${Loader} />`
-        : video
-          ? html`
-              <${Suspense} fallback=${html`<${Loader} />`}>
-                <h1>${video.title}</h1>
-                <${Video} videoId=${videoId} />
-                <div class="video-share-button-content">
-                  <${ShareButton} />
-                </div>
-              <//>
-            `
-          : html`
-              <h3>Access Restricted</h3>
-              <p>
-                It looks like you don't have permission to view this video.<br />
-                Please make sure you're logged in or have the right access.
-              </p>
-              <a onClick=${() => onLoginClicked()} style="cursor:pointer" class="back">Log in to continue</a>
-            `}
+      ${
+        isLoading
+          ? html`<${Loader} />`
+          : video
+            ? html`
+                <${Suspense} fallback=${html`<${Loader} />`}>
+                  <h1>${video.title}</h1>
+                  <${Video} videoId=${videoId} />
+                  <div class="video-share-button-content">
+                    <${ShareButton} />
+                  </div>
+                <//>
+              `
+            : html`
+                <h3>Access Restricted</h3>
+                <p>
+                  It looks like you don't have permission to view this video.<br />
+                  Please make sure you're logged in or have the right access.
+                </p>
+                <a onClick=${() => onLoginClicked()} style="cursor:pointer" class="back">Log in to continue</a>
+              `
+      }
     <//>
 
     <${Footer} />

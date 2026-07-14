@@ -2,7 +2,7 @@ import { html } from 'htm/preact';
 import { Fragment } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { LocationProvider, Router, lazy } from 'preact-iso';
-import { refreshed } from '../store/auth.js';
+import { firstRefreshed } from '../store/auth.js';
 import { swReady } from '../store/sw.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
@@ -10,7 +10,7 @@ import { Redirect } from './Redirect.js';
 import { OfflineWatcher } from './OfflineWatcher.js';
 
 export function App() {
-  const isLoading = !refreshed.value || !swReady.value;
+  const isLoading = !firstRefreshed.value || !swReady.value;
 
   useEffect(() => {
     if (!isLoading) document.getElementById('boot-loader')?.remove();

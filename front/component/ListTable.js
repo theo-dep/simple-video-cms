@@ -3,7 +3,7 @@ import { html } from 'htm/preact';
 export function ListTable({ title, icon, addLink, columns, items, renderRow }) {
   return html`
     <h2>${title}</h2>
-    <table id="table" class="table pure-table pure-table-horizontal">
+    <table class="table pure-table pure-table-horizontal">
       <thead>
         <tr>
           ${columns.map((col) => html`<th>${col}</th>`)}

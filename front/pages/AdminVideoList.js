@@ -38,50 +38,54 @@ export default function AdminVideoList() {
     <${AdminNav} />
 
     <${Content}>
-      ${isLoading
-        ? html`<${Loader} />`
-        : html`<${ListTable}
-            title="List of videos"
-            icon="${html`<title>Add video</title> <${CloudPlusIcon} />`}"
-            addLink="/admin/new-video"
-            columns="${['', 'Video Name']}"
-            items="${videos.value}"
-            renderRow="${(v) => html`
-              <tr key=${v.id}>
-                <td>
-                  <a href=${api.adminDownloadVideoPath(v.id)} download=${v.title + '.mp4'}>
-                    <svg class="svg-button">
-                      <title>Download</title>
-                      <${CloudArrowDownIcon} />
-                    </svg>
-                  </a>
-                </td>
-                <td><a href=${'/video/' + v.id}>${v.title}</a></td>
-                <td>
-                  <div class="pure-g">
-                    <div class="pure-u-1 pure-u-lg-1-3">
-                      ${(!!v.groups?.length || !!v.users?.length) &&
-                      html`
-                        <${Drawer}
-                          label="Rights"
-                          items=${[
-                            { label: 'Group Rights', elements: v.groups?.map((g) => g.name) ?? [] },
-                            { label: 'User Rights', elements: v.users?.map((u) => u.name) ?? [] },
-                          ]}
-                        />
-                      `}
+      ${
+        isLoading
+          ? html`<${Loader} />`
+          : html`<${ListTable}
+              title="List of videos"
+              icon="${html`<title>Add video</title> <${CloudPlusIcon} />`}"
+              addLink="/admin/new-video"
+              columns="${['', 'Video Name']}"
+              items="${videos.value}"
+              renderRow="${(v) => html`
+                <tr key=${v.id}>
+                  <td>
+                    <a href=${api.adminDownloadVideoPath(v.id)} download=${v.title + '.mp4'}>
+                      <svg class="svg-button">
+                        <title>Download</title>
+                        <${CloudArrowDownIcon} />
+                      </svg>
+                    </a>
+                  </td>
+                  <td><a href=${'/video/' + v.id}>${v.title}</a></td>
+                  <td>
+                    <div class="pure-g">
+                      <div class="pure-u-1 pure-u-lg-1-3">
+                        ${
+                          (!!v.groups?.length || !!v.users?.length) &&
+                          html`
+                            <${Drawer}
+                              label="Rights"
+                              items=${[
+                                { label: 'Group Rights', elements: v.groups?.map((g) => g.name) ?? [] },
+                                { label: 'User Rights', elements: v.users?.map((u) => u.name) ?? [] },
+                              ]}
+                            />
+                          `
+                        }
+                      </div>
+                      <div class="pure-u-1 pure-u-lg-1-3">
+                        <a onClick=${() => updateVideo(v)} style="cursor:pointer">Update</a>
+                      </div>
+                      <div class="pure-u-1 pure-u-lg-1-3">
+                        <a onClick=${() => deleteVideo(v.id)} style="cursor:pointer">Delete</a>
+                      </div>
                     </div>
-                    <div class="pure-u-1 pure-u-lg-1-3">
-                      <a onClick=${() => updateVideo(v)} style="cursor:pointer">Update</a>
-                    </div>
-                    <div class="pure-u-1 pure-u-lg-1-3">
-                      <a onClick=${() => deleteVideo(v.id)} style="cursor:pointer">Delete</a>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            `}"
-          /> `}
+                  </td>
+                </tr>
+              `}"
+            /> `
+      }
     <//>
   `;
 }

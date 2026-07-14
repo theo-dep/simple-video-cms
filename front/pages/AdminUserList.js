@@ -42,37 +42,41 @@ export default function AdminUserList() {
     <${AdminNav} />
 
     <${Content}>
-      ${isLoading
-        ? html`<${Loader} />`
-        : html`<${ListTable}
-            title="List of users"
-            icon="${html`<title>Add user</title> <${PersonAddIcon} />`}"
-            addLink="/admin/new-user"
-            columns="${['Username']}"
-            items="${users.value}"
-            renderRow="${(u) => html`
-              <tr key=${u.id}>
-                <td>${u.name}</td>
-                <td>
-                  <div class="pure-g">
-                    <div class="pure-u-1 pure-u-sm-1-4">
-                      ${!!u.groups?.length &&
-                      html`<${Drawer} label="Groups" items=${[{ label: 'User Groups', elements: u.groups.map((g) => g.name) }]} />`}
+      ${
+        isLoading
+          ? html`<${Loader} />`
+          : html`<${ListTable}
+              title="List of users"
+              icon="${html`<title>Add user</title> <${PersonAddIcon} />`}"
+              addLink="/admin/new-user"
+              columns="${['Username']}"
+              items="${users.value}"
+              renderRow="${(u) => html`
+                <tr key=${u.id}>
+                  <td>${u.name}</td>
+                  <td>
+                    <div class="pure-g">
+                      <div class="pure-u-1 pure-u-sm-1-4">
+                        ${
+                          !!u.groups?.length &&
+                          html`<${Drawer} label="Groups" items=${[{ label: 'User Groups', elements: u.groups.map((g) => g.name) }]} />`
+                        }
+                      </div>
+                      <div class="pure-u-1 pure-u-sm-1-4">
+                        <a onClick=${() => updateUser(u)} style="cursor:pointer">Update</a>
+                      </div>
+                      <div class="pure-u-1 pure-u-sm-1-4">
+                        ${u.isLoggedOnce && html` <a onClick=${() => resetUser(u.id)} style="cursor:pointer">Reset password</a>`}
+                      </div>
+                      <div class="pure-u-1 pure-u-sm-1-4">
+                        <a onClick=${() => deleteUser(u.id)} style="cursor:pointer">Delete</a>
+                      </div>
                     </div>
-                    <div class="pure-u-1 pure-u-sm-1-4">
-                      <a onClick=${() => updateUser(u)} style="cursor:pointer">Update</a>
-                    </div>
-                    <div class="pure-u-1 pure-u-sm-1-4">
-                      ${u.isLoggedOnce && html` <a onClick=${() => resetUser(u.id)} style="cursor:pointer">Reset password</a>`}
-                    </div>
-                    <div class="pure-u-1 pure-u-sm-1-4">
-                      <a onClick=${() => deleteUser(u.id)} style="cursor:pointer">Delete</a>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            `}"
-          /> `}
+                  </td>
+                </tr>
+              `}"
+            /> `
+      }
     <//>
   `;
 }

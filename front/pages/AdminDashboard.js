@@ -16,27 +16,29 @@ export default function AdminDashboard() {
     <${AdminNav} />
 
     <${Content}>
-      ${isLoading
-        ? html`<${Loader} />`
-        : html`
-            <h2>${websiteName} Statistics</h2>
-            <table id="table" class="table pure-table pure-table-horizontal">
-              <tbody>
-                <tr>
-                  <td>Total number of users registered</td>
-                  <td><a href="/admin/user-list">${stats.value.userCount}</a></td>
-                </tr>
-                <tr>
-                  <td>Total number of groups registered</td>
-                  <td><a href="/admin/group-list">${stats.value.groupCount}</a></td>
-                </tr>
-                <tr>
-                  <td>Total number of videos uploaded</td>
-                  <td><a href="/admin/video-list">${stats.value.videoCount}</a></td>
-                </tr>
-              </tbody>
-            </table>
-          `}
+      ${
+        isLoading
+          ? html`<${Loader} />`
+          : html`
+              <h2>${websiteName} Statistics</h2>
+              <table class="table pure-table pure-table-horizontal">
+                <tbody>
+                  <tr>
+                    <td>Total number of users registered</td>
+                    <td><a href="/admin/user-list">${stats.value.userCount}</a></td>
+                  </tr>
+                  <tr>
+                    <td>Total number of groups registered</td>
+                    <td><a href="/admin/group-list">${stats.value.groupCount}</a></td>
+                  </tr>
+                  <tr>
+                    <td>Total number of videos uploaded</td>
+                    <td><a href="/admin/video-list">${stats.value.videoCount}</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            `
+      }
     <//>
   `;
 }

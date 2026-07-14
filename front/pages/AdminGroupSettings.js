@@ -42,29 +42,33 @@ export default function AdminGroupSettings({ groupId }) {
   return html`
     <${AdminNav} />
 
-    ${isGroupLoading || isUsersLoading
-      ? html`<${Loader} />`
-      : html`
-          <${Form} title="Change group name and users" buttonTitle="Update" onSubmitAction=${onGroupSubmit}>
-            <div class="pure-control-group">
-              <input class="pure-input-1" type="text" name="name" value=${selectedGroup.value.name} placeholder="name" required />
-            </div>
-            ${!!users.value.length &&
-            html`
+    ${
+      isGroupLoading || isUsersLoading
+        ? html`<${Loader} />`
+        : html`
+            <${Form} title="Change group name and users" buttonTitle="Update" onSubmitAction=${onGroupSubmit}>
               <div class="pure-control-group">
-                <select
-                  ref=${selectRef}
-                  name="user-ids"
-                  class="pure-input-1"
-                  data-placeholder="Add users to group (optional)"
-                  multiple
-                  data-multi-select
-                >
-                  ${users.value.map((u) => html`<option key=${u.id} value=${u.id} selected=${isSelected(u.id)}>${u.name}</option>`)}
-                </select>
+                <input class="pure-input-1" type="text" name="name" value=${selectedGroup.value.name} placeholder="name" required />
               </div>
-            `}
-          <//>
-        `}
+              ${
+                !!users.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select
+                      ref=${selectRef}
+                      name="user-ids"
+                      class="pure-input-1"
+                      data-placeholder="Add users to group (optional)"
+                      multiple
+                      data-multi-select
+                    >
+                      ${users.value.map((u) => html`<option key=${u.id} value=${u.id} selected=${isSelected(u.id)}>${u.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+            <//>
+          `
+    }
   `;
 }

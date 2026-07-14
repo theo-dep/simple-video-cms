@@ -32,29 +32,33 @@ export default function AdminNewGroup() {
   return html`
     <${AdminNav} />
 
-    ${isLoading
-      ? html`<${Loader} />`
-      : html`
-          <${Form} title="Add a new group" buttonTitle="Create" onSubmitAction=${onGroupSubmit}>
-            <div class="pure-control-group">
-              <input class="pure-input-1" type="text" name="name" placeholder="name" required autofocus />
-            </div>
-            ${!!users.value.length &&
-            html`
+    ${
+      isLoading
+        ? html`<${Loader} />`
+        : html`
+            <${Form} title="Add a new group" buttonTitle="Create" onSubmitAction=${onGroupSubmit}>
               <div class="pure-control-group">
-                <select
-                  ref=${selectRef}
-                  name="user-ids"
-                  class="pure-input-1"
-                  data-placeholder="Add users to group (optional)"
-                  multiple
-                  data-multi-select
-                >
-                  ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
-                </select>
+                <input class="pure-input-1" type="text" name="name" placeholder="name" required autofocus />
               </div>
-            `}
-          <//>
-        `}
+              ${
+                !!users.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select
+                      ref=${selectRef}
+                      name="user-ids"
+                      class="pure-input-1"
+                      data-placeholder="Add users to group (optional)"
+                      multiple
+                      data-multi-select
+                    >
+                      ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+            <//>
+          `
+    }
   `;
 }

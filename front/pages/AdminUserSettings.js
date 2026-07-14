@@ -51,24 +51,35 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
   return html`
     <${AdminNav} />
 
-    ${isUserLoading || (!isAdmin && isGroupsLoading)
-      ? html`<${Loader} />`
-      : html`
-          <${Form} title="${title}" buttonTitle="Update" onSubmitAction=${onUserSubmit}>
-            <div class="pure-control-group">
-              <input class="pure-input-1" type="text" name="username" placeholder="username" value=${currentUser.value.name} required />
-            </div>
-            ${!isAdmin &&
-            !!groups.value.length &&
-            html`
+    ${
+      isUserLoading || (!isAdmin && isGroupsLoading)
+        ? html`<${Loader} />`
+        : html`
+            <${Form} title="${title}" buttonTitle="Update" onSubmitAction=${onUserSubmit}>
               <div class="pure-control-group">
-                <select ref=${selectRef} name="group-ids" class="pure-input-1" data-placeholder="Select groups (optional)" multiple data-multi-select>
-                  ${groups.value.map((g) => html`<option key=${g.id} value=${g.id} selected=${isSelected(g.id)}>${g.name}</option>`)}
-                </select>
+                <input class="pure-input-1" type="text" name="username" placeholder="username" value=${currentUser.value.name} required />
               </div>
-            `}
-          <//>
-        `}
+              ${
+                !isAdmin &&
+                !!groups.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select
+                      ref=${selectRef}
+                      name="group-ids"
+                      class="pure-input-1"
+                      data-placeholder="Select groups (optional)"
+                      multiple
+                      data-multi-select
+                    >
+                      ${groups.value.map((g) => html`<option key=${g.id} value=${g.id} selected=${isSelected(g.id)}>${g.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+            <//>
+          `
+    }
   `;
 }
 

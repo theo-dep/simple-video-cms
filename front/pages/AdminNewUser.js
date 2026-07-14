@@ -40,24 +40,28 @@ function AdminNewUserBase({ isAdmin }) {
   return html`
     <${AdminNav} />
 
-    ${!isAdmin && isLoading
-      ? html`<${Loader} />`
-      : html`
-          <${Form} title="${title}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
-            <div class="pure-control-group">
-              <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
-            </div>
-            ${!isAdmin &&
-            !!groups.value.length &&
-            html`
+    ${
+      !isAdmin && isLoading
+        ? html`<${Loader} />`
+        : html`
+            <${Form} title="${title}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
               <div class="pure-control-group">
-                <select ref=${selectRef} name="group-ids" data-placeholder="Select groups (optional)" multiple data-multi-select>
-                  ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
-                </select>
+                <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
               </div>
-            `}
-          <//>
-        `}
+              ${
+                !isAdmin &&
+                !!groups.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select ref=${selectRef} name="group-ids" data-placeholder="Select groups (optional)" multiple data-multi-select>
+                      ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+            <//>
+          `
+    }
   `;
 }
 

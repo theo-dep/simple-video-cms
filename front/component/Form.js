@@ -49,7 +49,7 @@ export function useMultiSelect(deps = []) {
   return ref;
 }
 
-export function FormContent({ title, buttonTitle, onSubmitAction, children }) {
+export function FormContent({ title, buttonTitle, successMessage, onSubmitAction, children }) {
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState('');
 
@@ -69,6 +69,7 @@ export function FormContent({ title, buttonTitle, onSubmitAction, children }) {
     setAlert('');
     try {
       await onSubmitAction(e);
+      if (successMessage) setAlert(successMessage);
     } catch (err) {
       setAlert(err.message || 'Unknown error');
     } finally {
@@ -91,10 +92,10 @@ export function FormContent({ title, buttonTitle, onSubmitAction, children }) {
   `;
 }
 
-export function Form({ title, buttonTitle, onSubmitAction, children }) {
+export function Form({ title, buttonTitle, successMessage, onSubmitAction, children }) {
   return html`
     <${InfoContent}>
-      <${FormContent} title=${title} buttonTitle=${buttonTitle} onSubmitAction=${onSubmitAction}> ${children} <//>
+      <${FormContent} title=${title} buttonTitle=${buttonTitle} successMessage=${successMessage} onSubmitAction=${onSubmitAction}> ${children} <//>
     <//>
   `;
 }
