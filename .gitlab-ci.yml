@@ -140,7 +140,7 @@ deploy preprod:
   variables:
     GIT_STRATEGY: none
   script:
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/theo/simple-video-cms-vietvodao-configuration.git deploy-configs
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.devau.co/theo/simple-video-cms-vietvodao-configuration.git deploy-configs
     - cd deploy-configs
     - docker compose -p simple_video_cms_dev -f compose-dev.yml pull
     - docker compose -p simple_video_cms_dev -f compose-dev.yml up -d --force-recreate
@@ -157,7 +157,7 @@ deploy production:
   variables:
     GIT_STRATEGY: none
   script:
-    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/theo/simple-video-cms-vietvodao-configuration.git deploy-configs
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.devau.co/theo/simple-video-cms-vietvodao-configuration.git deploy-configs
     - cd deploy-configs
     - export IMAGE_TAG=$CI_COMMIT_TAG
     - docker pull $CONTAINER_RELEASE_IMAGE
