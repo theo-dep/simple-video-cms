@@ -5,6 +5,7 @@ stages:
   - .pre
   - build
   - lint
+  - review
   - release
 
 variables:
@@ -73,6 +74,42 @@ lint:
   extends:
     - .lint-job
     - .merge-rules
+
+deploy review:
+  stage: review
+  extends:
+    - .merge-rules
+    - .docker-job
+  variables:
+    CONTAINER_NAME: review-$CI_COMMIT_REF_SLUG
+  before_script:
+    - !reference [.docker-job, before_script]
+    - apk add --no-cache curl
+  script:
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker rm -f "$CONTAINER_NAME" || true
+    - docker run -d --name "$CONTAINER_NAME" -P $CONTAINER_TEST_IMAGE
+    - 'export PORT=$(docker port "$CONTAINER_NAME" 8080/tcp | cut -d: -f2)'
+    - export HOST=$(curl -4 ifconfig.me)
+    - echo "Deployed on http://$HOST:$PORT"
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: http://$HOST:$PORT
+    on_stop: stop review
+    auto_stop_in: 1 week
+
+stop review:
+  stage: review
+  when: manual
+  extends:
+    - .docker-job
+  variables:
+    CONTAINER_NAME: review-$CI_COMMIT_REF_SLUG
+  script:
+    - docker rm -f "$CONTAINER_NAME" || true
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
 
 docker release image:
   stage: release
