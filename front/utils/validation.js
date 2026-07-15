@@ -1,4 +1,4 @@
-const uxAllowlist = /^[\p{L}\p{N}\s.,!?'"()\-:;]*$/u;
+const uxAllowlist = /^[\p{L}\p{N}\s.,!?'"()\-_:;]*$/u;
 
 export function validateField(value) {
   if (uxAllowlist.test(value)) return;

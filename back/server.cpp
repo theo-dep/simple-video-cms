@@ -568,7 +568,7 @@ namespace server
 {
     inline bool validate_field(httplib::Response& res, const std::string& field)
     {
-        static const std::regex allow_list(R"(^[a-zA-Z0-9\s.,!?'"()\-:;\x80-\xFF]*$)");
+        static const std::regex allow_list(R"(^[a-zA-Z0-9\s.,!?'"()\-_:;\x80-\xFF]*$)");
         if (std::regex_match(field, allow_list)) {
             return true;
         }
