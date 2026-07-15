@@ -82,6 +82,7 @@ deploy review:
     - .merge-rules
     - .docker-job
   variables:
+    GIT_STRATEGY: none
     CONTAINER_NAME: review-$CI_COMMIT_REF_SLUG
   before_script:
     - !reference [.docker-job, before_script]
@@ -103,8 +104,10 @@ stop review:
   stage: review
   when: manual
   extends:
+    - .merge-rules
     - .docker-job
   variables:
+    GIT_STRATEGY: none
     CONTAINER_NAME: review-$CI_COMMIT_REF_SLUG
   script:
     - docker rm -f "$CONTAINER_NAME" || true
@@ -118,6 +121,8 @@ docker release image:
   extends:
     - .docker-job
     - .deploy-rules
+  variables:
+    GIT_STRATEGY: none
   script:
     - docker pull $CONTAINER_TEST_IMAGE
     - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
@@ -132,6 +137,8 @@ deploy preprod:
     - .deploy-rules
   dependencies:
     - docker release image
+  variables:
+    GIT_STRATEGY: none
   script:
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/theo/simple-video-cms-vietvodao-configuration.git deploy-configs
     - cd deploy-configs
@@ -147,6 +154,8 @@ deploy production:
   rules:
     - if: '$CI_COMMIT_TAG'
       when: manual
+  variables:
+    GIT_STRATEGY: none
   script:
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/theo/simple-video-cms-vietvodao-configuration.git deploy-configs
     - cd deploy-configs
