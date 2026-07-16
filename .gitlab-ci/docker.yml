@@ -3,7 +3,7 @@ include:
 
 .docker-job:
   extends:
-    - .all-tag
+    - .dev-tags
   image:
     name: docker:29.6.1-cli
   services:
