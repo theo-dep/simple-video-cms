@@ -12,3 +12,17 @@ include:
     DOCKER_DRIVER: overlay2
   before_script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin
+
+docker build:
+  stage: build
+  extends:
+    - .docker-job
+  needs:
+    - job: release build
+      artifacts: true
+  rules:
+    - !reference [.merge-rules, rules]
+    - !reference [.deploy-rules, rules]
+  script:
+    - docker build -f container/Containerfile -t $CONTAINER_TEST_IMAGE dist
+    - docker push $CONTAINER_TEST_IMAGE

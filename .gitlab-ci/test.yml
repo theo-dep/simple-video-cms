@@ -3,7 +3,6 @@ include:
 
 .test-job:
   stage: test
-  dependencies: []
   extends:
     - .dev-tags
 
