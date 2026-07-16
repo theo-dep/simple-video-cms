@@ -1,11 +1,12 @@
-.all-tag:
+.dev-tags:
   tags:
     - linux
     - docker
+    - dev
 
 .vcpkg-install-job:
   extends:
-    - .all-tag
+    - .dev-tags
   variables:
     NUGET_FEED: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/nuget/index.json
     VCPKG_NUGET_REPO: vcpkg-packages

@@ -22,6 +22,12 @@ variables:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+.deploy-tags:
+  tags:
+    - linux
+    - docker
+    - deploy
+
 include:
   - local: /.gitlab-ci/build.yml
   - local: /.gitlab-ci/docker.yml
@@ -135,6 +141,7 @@ deploy preprod:
   extends:
     - .docker-job
     - .deploy-rules
+    - .deploy-tags
   dependencies:
     - docker release image
   variables:
@@ -151,6 +158,7 @@ deploy production:
   stage: deploy
   extends:
     - .docker-job
+    - .deploy-tags
   rules:
     - if: '$CI_COMMIT_TAG'
       when: manual
