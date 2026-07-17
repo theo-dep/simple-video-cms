@@ -6,11 +6,42 @@ include:
   extends:
     - .install-job
   script:
-    - cmake --preset vcpkg -DCMAKE_INSTALL_PREFIX=dist
-    - cmake --build --preset vcpkg-${BUILD} --parallel --target install
+    - cmake --preset vcpkg -DCMAKE_INSTALL_PREFIX=dist -DBUILD_TESTS=${BUILD_TESTS:-OFF} -DBUILD_COVERAGE=${BUILD_COVERAGE:-OFF}
+    - cmake --build --preset vcpkg-${BUILD} --parallel --target ${BUILD_TARGETS:-install}
     - if [ "$BUILD" = "release" ]; then npx rollup -c front/rollup.config.js; fi
+
+debug build:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .build-job
+    - .merge-rules
+  variables:
+    BUILD: debug
+    BUILD_TESTS: ON
+    BUILD_COVERAGE: ON
+    BUILD_TARGETS: back back_tests common_tests
+  artifacts:
+    expire_in: 3 days
+    name: debug
+    paths:
+      - build/vcpkg/Debug/back
+      - build/vcpkg/Debug/back_tests
+      - build/vcpkg/Debug/common_tests
+      - build/vcpkg/**/*.gcda
+      - build/vcpkg/**/*.gcno
+      
+release build:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .build-job
+  rules:
+    - !reference [.merge-rules, rules]
+    - !reference [.deploy-rules, rules]
+  variables:
+    BUILD: release
   artifacts:
     expire_in: 3 days
     name: dist
     paths:
       - dist
+

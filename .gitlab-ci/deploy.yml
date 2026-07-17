@@ -1,0 +1,99 @@
+include:
+  - local: /.gitlab-ci/common.yml
+  - local: /.gitlab-ci/docker.yml
+
+.deploy-tags:
+  tags:
+    - linux
+    - docker
+    - deploy
+
+deploy review:
+  stage: review
+  extends:
+    - .merge-rules
+    - .docker-job
+  variables:
+    GIT_STRATEGY: none
+    CONTAINER_NAME: review-$CI_COMMIT_REF_SLUG
+  before_script:
+    - !reference [.docker-job, before_script]
+    - apk add --no-cache curl
+  script:
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker rm -f "$CONTAINER_NAME" || true
+    - docker run -d --name "$CONTAINER_NAME" -P $CONTAINER_TEST_IMAGE
+    - 'export PORT=$(docker port "$CONTAINER_NAME" 8080/tcp | cut -d: -f2)'
+    - export HOST=$(curl -4 ifconfig.me)
+    - echo "Deployed on http://$HOST:$PORT"
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: http://$HOST:$PORT
+    on_stop: stop review
+    auto_stop_in: 1 week
+
+stop review:
+  stage: review
+  when: manual
+  extends:
+    - .merge-rules
+    - .docker-job
+  variables:
+    GIT_STRATEGY: none
+    CONTAINER_NAME: review-$CI_COMMIT_REF_SLUG
+  script:
+    - docker rm -f "$CONTAINER_NAME" || true
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
+
+docker release image:
+  stage: deploy
+  extends:
+    - .docker-job
+    - .deploy-rules
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - docker pull $CONTAINER_TEST_IMAGE
+    - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
+    - docker tag $CONTAINER_TEST_IMAGE $CONTAINER_BASE_IMAGE:latest
+    - docker push $CONTAINER_RELEASE_IMAGE
+    - docker push $CONTAINER_BASE_IMAGE:latest
+
+deploy preprod:
+  stage: deploy
+  extends:
+    - .docker-job
+    - .deploy-rules
+    - .deploy-tags
+  dependencies:
+    - docker release image
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.devau.co/theo/simple-video-cms-vietvodao-configuration.git deploy-configs
+    - cd deploy-configs
+    - docker compose -p simple_video_cms_dev -f compose-dev.yml pull
+    - docker compose -p simple_video_cms_dev -f compose-dev.yml up -d --force-recreate
+  environment:
+    name: pre-production
+
+deploy production:
+  stage: deploy
+  extends:
+    - .docker-job
+    - .tag-rules
+    - .deploy-tags
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.devau.co/theo/simple-video-cms-vietvodao-configuration.git deploy-configs
+    - cd deploy-configs
+    - export IMAGE_TAG=$CI_COMMIT_TAG
+    - docker pull $CONTAINER_RELEASE_IMAGE
+    - docker tag $CONTAINER_RELEASE_IMAGE $CONTAINER_BASE_IMAGE:$IMAGE_TAG
+    - docker compose -p simple_video_cms_prod -f compose-prod.yml up -d
+    - docker push $CONTAINER_BASE_IMAGE:$IMAGE_TAG
+  environment:
+    name: production

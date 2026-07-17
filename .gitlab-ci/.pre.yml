@@ -1,0 +1,14 @@
+include:
+  - local: /.gitlab-ci/common.yml
+  - local: /.gitlab-ci/docker.yml
+
+build ci image:
+  stage: .pre
+  extends:
+    - .docker-job
+  rules:
+    - !reference [.merge-rules, rules]
+    - !reference [.deploy-rules, rules]
+  script:
+    - docker build -f container/ci.containerfile -t $CONTAINER_CI_IMAGE .
+    - docker push $CONTAINER_CI_IMAGE

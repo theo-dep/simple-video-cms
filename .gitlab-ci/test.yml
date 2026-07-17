@@ -1,0 +1,56 @@
+include:
+  - local: /.gitlab-ci/common.yml
+
+.test-job:
+  stage: test
+  extends:
+    - .dev-tags
+
+back test:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .test-job
+    - .install-job
+    - .merge-rules
+  needs:
+    - job: debug build
+      artifacts: true
+  script:
+    - cmake --preset vcpkg -DBUILD_TESTS=ON -DBUILD_COVERAGE=ON
+    - ./build/vcpkg/Debug/back_tests --reporter JUnit::out=back-junit.xml --reporter console::out=-::colour-mode=ansi
+    - ./build/vcpkg/Debug/common_tests --reporter JUnit::out=common-junit.xml --reporter console::out=-::colour-mode=ansi
+    - gcovr --root . --filter '^back/' --filter '^common/' --exclude-directories 'build/.*/vcpkg_installed|node_modules|.*/tests' --gcov-executable 'llvm-cov-22 gcov' --print-summary --cobertura-pretty --xml back-coverage.xml build/vcpkg
+  coverage: /^lines\s*:\s*([^%]+)/
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - back-junit.xml
+        - common-junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: back-coverage.xml
+    paths:
+      - back-junit.xml
+      - common-junit.xml
+      - back-coverage.xml
+
+front test:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .test-job
+    - .install-job
+    - .merge-rules
+  script:
+    - npx vitest run --reporter=default --reporter=junit --outputFile.junit=front-junit.xml --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=cobertura --coverage.reporter=text-summary --coverage.reportsDirectory=coverage/front
+  coverage: /^Lines\s*:\s*([^%]+)/
+  artifacts:
+    when: always
+    reports:
+      junit: front-junit.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/front/cobertura-coverage.xml
+    paths:
+      - front-junit.xml
+      - coverage/front/cobertura-coverage.xml

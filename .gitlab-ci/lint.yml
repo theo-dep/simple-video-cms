@@ -3,10 +3,22 @@ include:
 
 .lint-job:
   stage: lint
-  dependencies: []
   extends:
     - .install-job
+
+back lint:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .lint-job
+    - .merge-rules
   script:
     - cmake --preset lint
     - cmake --build build/lint --parallel 1
+
+front lint:
+  image: $CONTAINER_CI_IMAGE
+  extends:
+    - .lint-job
+    - .merge-rules
+  script:
     - npx eslint "front/**/*.js"

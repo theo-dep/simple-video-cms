@@ -1,4 +1,4 @@
-set(target_name common)
+set(target_name ${common_lib_name})
 add_library(${target_name}
     cookie.cpp
     crypto.cpp
@@ -21,3 +21,7 @@ target_compile_definitions(${target_name} PUBLIC
 
 target_link_libraries(${target_name} PUBLIC httplib::httplib ZLIB::ZLIB)
 target_link_libraries(${target_name} PRIVATE OpenSSL::Crypto)
+
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
