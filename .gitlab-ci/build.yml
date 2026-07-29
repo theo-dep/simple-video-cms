@@ -29,7 +29,7 @@ debug build:
       - build/vcpkg/Debug/common_tests
       - build/vcpkg/**/*.gcda
       - build/vcpkg/**/*.gcno
-      
+
 release build:
   image: $CONTAINER_CI_IMAGE
   extends:
@@ -44,4 +44,3 @@ release build:
     name: dist
     paths:
       - dist
-

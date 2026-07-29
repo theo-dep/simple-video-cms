@@ -4,9 +4,7 @@
     {
       "name": "cpp-httplib",
       "default-features": false,
-      "features": [
-        "zlib"
-      ]
+      "features": ["zlib"]
     },
     {
       "name": "ffmpeg",
@@ -53,9 +51,7 @@
     {
       "name": "sqlite3",
       "default-features": false,
-      "features": [
-        "unicode"
-      ]
+      "features": ["unicode"]
     },
     "zlib",
     "catch2"
