@@ -165,13 +165,14 @@ export const api = {
         videoIds: videoIds,
       })
     ),
-  adminUpdateGroup: (groupId, name, userIds) =>
+  adminUpdateGroup: (groupId, name, userIds, videoIds) =>
     fetchApi(
       'POST',
       `/admin/update-group/${groupId}`,
       new URLSearchParams({
         name: name,
         userIds: userIds,
+        videoIds: videoIds,
       })
     ),
   adminDeleteGroup: (groupId) => fetchApi('POST', `/admin/delete-group/${groupId}`),
