@@ -25,6 +25,8 @@
     VCPKG_NUGET_REPO: vcpkg-packages
     VCPKG_ROOT: ${CI_PROJECT_DIR}/vcpkg
     VCPKG_BINARY_SOURCES: clear;nuget,${VCPKG_NUGET_REPO},readwrite
+    VCPKG_ASSET_PROVIDER: ${CI_PROJECT_DIR}/.gitlab-ci/vcpkg-asset-provider.sh
+    X_VCPKG_ASSET_SOURCES: clear;x-script,bash ${VCPKG_ASSET_PROVIDER} {url} {sha512} {dst};x-block-origin
   before_script:
     - git clone https://github.com/microsoft/vcpkg.git ${VCPKG_ROOT}
     - ${VCPKG_ROOT}/bootstrap-vcpkg.sh -disableMetrics
