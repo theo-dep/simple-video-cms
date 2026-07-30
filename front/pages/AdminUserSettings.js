@@ -57,11 +57,12 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
     const videoSelect = form.elements['video-ids'];
     const videoIds = videoSelect ? Array.from(videoSelect.selectedOptions).map((o) => o.value) : [];
 
-    await api.adminUpdateUser(userId, username, groupIds, videoIds);
     if (isAdmin) {
+      await api.adminUpdateAdmin(userId, username);
       admins.value = null; // force to refresh the admin list
       route('/admin/admin-list');
     } else {
+      await api.adminUpdateUser(userId, username, groupIds, videoIds);
       invalidateAdminLists(); // force to refresh the user, group and video lists
       route('/admin/user-list');
     }

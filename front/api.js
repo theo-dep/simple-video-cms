@@ -128,6 +128,14 @@ export const api = {
         username: username,
       })
     ),
+  adminUpdateAdmin: (adminId, username) =>
+    fetchApi(
+      'POST',
+      `/admin/update-admin/${adminId}`,
+      new URLSearchParams({
+        username: username,
+      })
+    ),
 
   adminUserList: () => fetchApi('GET', '/admin/user-list'),
   adminUser: (userId) => fetchApi('GET', `/admin/user/${userId}`),

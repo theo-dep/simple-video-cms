@@ -70,6 +70,7 @@ namespace server
     void admin_admin_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_update_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
     // Admin - users
     void admin_user_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
@@ -163,6 +164,7 @@ int server::start()
         .Get("/api/admin/admin-list", sc::serve(admin_admin_list, std::cref(session), std::cref(db)))
         .Get("/api/admin/admin/:admin_id", sc::serve(admin_admin, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-admin", sc::serve(admin_add_admin, std::cref(session), std::cref(db)))
+        .Post("/api/admin/update-admin/:user_id", sc::serve(admin_update_admin, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/user-list", sc::serve(admin_user_list, std::cref(session), std::cref(db)))
         .Get("/api/admin/user/:user_id", sc::serve(admin_user, std::cref(session), std::cref(db)))
@@ -1124,6 +1126,43 @@ inline void server::admin_add_admin(const httplib::Request& req, httplib::Respon
     res.set_content(nlohmann::json({ { "id", *admin_id } }).dump(), "application/json");
 }
 
+inline void server::admin_update_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("username")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing username field", "plain/text");
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+    const std::string username{ su::trim(req.get_param_value("username")) };
+
+    if (!validate_field(res, username)) {
+        return;
+    }
+
+    if (db.user_exists(user_id, username)) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Username already exists", "plain/text");
+        return;
+    }
+
+    if (!db.update_username(user_id, username)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the user", "plain/text");
+        const std::string old_username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to update user "{}")", old_username };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
 // Admin - Users
 
 inline void server::admin_user_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
@@ -1248,28 +1287,24 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
         return;
     }
 
-    if (!db.update_username(user_id, username)) {
+    const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
+    const std::vector<int> video_ids{ extract_ids(req.get_param_value("videoIds")) };
+
+    const std::optional success{
+        db.update_username(user_id, username)
+            .and_then([&](int id) -> std::optional<int> {
+                return db.update_user_groups(id, group_ids) ? std::optional(id) : std::nullopt;
+            })
+            .transform([&](int id) -> bool {
+                return db.update_user_video_rights(id, video_ids);
+            })
+    };
+
+    if (!success.value_or(false)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the user", "plain/text");
         const std::string old_username{ db.user_name(user_id) };
         logging::error{ R"(Fail to update user "{}")", old_username };
-        return;
-    }
-
-    const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
-    const std::vector<int> video_ids{ extract_ids(req.get_param_value("videoIds")) };
-
-    if (!group_ids.empty() && !db.update_user_groups(user_id, group_ids)) {
-        res.status = httplib::StatusCode::InternalServerError_500;
-        res.set_content("Fail to update the user groups", "plain/text");
-        logging::error{ R"(Fail to update user group "{}")", username };
-        return;
-    }
-
-    if (!video_ids.empty() && !db.update_user_video_rights(user_id, video_ids)) {
-        res.status = httplib::StatusCode::InternalServerError_500;
-        res.set_content("Fail to update the user video rights", "plain/text");
-        logging::error{ R"(Fail to update user video rights "{}")", username };
         return;
     }
 
