@@ -263,16 +263,14 @@ hr {
 }
 
 .drawer-title {
-  position: sticky;
-  top: 0;
-}
-
-.drawer-title h1 {
   color: var(--color-primary);
   text-align: center;
 }
 
 .drawer-close {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
   float: right;
   padding-right: 1em;
   margin-top: -3.5em;

@@ -1313,7 +1313,8 @@ inline void server::admin_group_list(const httplib::Request& req, httplib::Respo
         return AdminGroupInfo{
             .id = group.id,
             .name = group.name,
-            .users = db.group_user_list(group.id)
+            .users = db.group_user_list(group.id),
+            .videos = db.group_video_list(group.id)
         };
     });
 
@@ -1337,7 +1338,8 @@ inline void server::admin_group(const httplib::Request& req, httplib::Response& 
     const AdminGroupInfo admin_group{
         .id = group_id,
         .name = group_name,
-        .users = db.group_user_list(group_id)
+        .users = db.group_user_list(group_id),
+        .videos = db.group_video_list(group_id)
     };
 
     res.set_content(nlohmann::json(admin_group).dump(), "application/json");

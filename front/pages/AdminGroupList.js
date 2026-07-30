@@ -51,8 +51,14 @@ export default function AdminGroupList() {
                     <div class="pure-g">
                       <div class="pure-u-1 pure-u-sm-1-3">
                         ${
-                          !!g.users?.length &&
-                          html`<${Drawer} label="Users" items=${[{ label: 'Group Users', elements: g.users.map((u) => u.name) }]} />`
+                          (!!g.users?.length || !!g.videos?.length) &&
+                          html`<${Drawer}
+                            label="Users and Rights"
+                            items=${[
+                              { label: 'Group Users', elements: g.users.map((u) => u.name) ?? [] },
+                              { label: 'Video Rights', elements: g.videos.map((v) => v.title) ?? [] },
+                            ]}
+                          />`
                         }
                       </div>
                       <div class="pure-u-1 pure-u-sm-1-3">

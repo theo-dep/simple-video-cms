@@ -69,9 +69,10 @@ struct AdminGroupInfo
     int id{ 0 };
     std::string name;
     std::vector<User> users;
+    std::vector<Video> videos;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminGroupInfo, id, name, users)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminGroupInfo, id, name, users, videos)
 
 struct AdminVideoInfo
 {

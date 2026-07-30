@@ -19,8 +19,6 @@ export function Drawer({ label, items }) {
 
   if (!items?.length) return null;
 
-  const firstIdx = items.findIndex((i) => i.elements.length > 0);
-
   return html`
     <span class="drawer-button open-drawer" onClick=${openDrawer}>${label}</span>
 
@@ -29,25 +27,17 @@ export function Drawer({ label, items }) {
       html`
         <div class="drawer-overlay" onClick=${() => setOpen(false)}>
           <div class="drawer" aria-modal="true" role="dialog" onClick=${(e) => e.stopPropagation()}>
+            <span class="drawer-button drawer-close" onClick=${() => setOpen(false)}>
+              <svg class="svg-button">
+                <title>Close</title>
+                <${XLargeIcon} />
+              </svg>
+            </span>
             ${items.map(
-              (i, idx) =>
+              (i) =>
                 !!i.elements?.length &&
                 html`
-                  <div class="drawer-title">
-                    <h1>${i.label}</h1>
-
-                    ${
-                      idx === firstIdx &&
-                      html`
-                        <span class="drawer-button drawer-close" onClick=${() => setOpen(false)}>
-                          <svg class="svg-button">
-                            <title>Close</title>
-                            <${XLargeIcon} />
-                          </svg>
-                        </span>
-                      `
-                    }
-                  </div>
+                  <h1 class="drawer-title">${i.label}</h1>
                   <div class="elements-grid">${i.elements.map((e) => html`<div class="element-cell" key=${e}><p>${e}</p></div>`)}</div>
                 `
             )}

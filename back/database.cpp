@@ -719,15 +719,26 @@ bool Database::delete_group(int id) const
     return success.value_or(false);
 }
 
-std::vector<User> Database::group_user_list(int id) const
+std::vector<User> Database::group_user_list(int group_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(
         distinct(database::user_struct), from<User>(),
         where(
-            in(&User::id, select(distinct(&GroupUser::user_id), where(c(&GroupUser::group_id) == id)))),
+            in(&User::id, select(distinct(&GroupUser::user_id), where(c(&GroupUser::group_id) == group_id)))),
         order_by(&User::name).asc());
+}
+
+std::vector<Video> Database::group_video_list(int group_id) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(
+        distinct(database::video_struct), from<Video>(),
+        where(
+            in(&Video::id, select(distinct(&VideoGroupRight::video_id), where(c(&VideoGroupRight::group_id) == group_id)))),
+        order_by(&Video::title).asc());
 }
 
 std::vector<Group> Database::user_group_list(int user_id) const
