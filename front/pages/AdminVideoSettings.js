@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { refreshRequested } from '../store/auth.js';
-import { selectedVideo, groups, users, videos, loadVideo, loadGroups, loadUsers } from '../store/admin.js';
+import { selectedVideo, groups, users, loadVideo, loadGroups, loadUsers, invalidateAdminLists } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
@@ -44,7 +44,7 @@ export default function AdminUpdateVideo({ videoId }) {
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
 
     await api.adminUpdateVideo(videoId, title, groupIds, userIds);
-    videos.value = null; // force to refresh the video list
+    invalidateAdminLists(); // force to refresh the video, user and group list
     refreshRequested.value = true; // update this video to the admin video list (current user)
     route('/admin/video-list');
   }

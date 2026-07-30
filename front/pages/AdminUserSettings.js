@@ -3,7 +3,18 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { selectedAdmin, selectedUser, admins, groups, videos, loadAdmin, loadUser, loadGroups, loadVideos } from '../store/admin.js';
+import {
+  selectedAdmin,
+  selectedUser,
+  admins,
+  groups,
+  videos,
+  loadAdmin,
+  loadUser,
+  loadGroups,
+  loadVideos,
+  invalidateAdminLists,
+} from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
@@ -51,7 +62,7 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
       admins.value = null; // force to refresh the admin list
       route('/admin/admin-list');
     } else {
-      users.value = null; // force to refresh the user list
+      invalidateAdminLists(); // force to refresh the user, group and video lists
       route('/admin/user-list');
     }
   }

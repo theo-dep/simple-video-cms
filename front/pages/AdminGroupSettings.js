@@ -3,7 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { selectedGroup, groups, users, videos, loadGroup, loadUsers, loadVideos } from '../store/admin.js';
+import { selectedGroup, users, videos, loadGroup, loadUsers, loadVideos, invalidateAdminLists } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
@@ -45,7 +45,7 @@ export default function AdminGroupSettings({ groupId }) {
     const videoIds = videoSelect ? Array.from(videoSelect.selectedOptions).map((o) => o.value) : [];
 
     await api.adminUpdateGroup(groupId, name, userIds, videoIds);
-    groups.value = null; // force to refresh the group list
+    invalidateAdminLists(); // force to refresh the group, user and video lists
     route('/admin/group-list');
   }
 

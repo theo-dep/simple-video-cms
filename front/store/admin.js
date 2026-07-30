@@ -61,3 +61,9 @@ export const invalidateAdmins = () => invalidate(admins);
 export const invalidateGroups = () => invalidate(groups);
 export const invalidateUsers = () => invalidate(users);
 export const invalidateVideos = () => invalidate(videos);
+
+export function invalidateAdminLists() {
+  users.value = null;
+  groups.value = null;
+  videos.value = null;
+}
