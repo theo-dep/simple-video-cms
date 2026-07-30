@@ -1257,11 +1257,19 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
     }
 
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
+    const std::vector<int> video_ids{ extract_ids(req.get_param_value("videoIds")) };
 
     if (!group_ids.empty() && !db.update_user_groups(user_id, group_ids)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the user groups", "plain/text");
         logging::error{ R"(Fail to update user group "{}")", username };
+        return;
+    }
+
+    if (!video_ids.empty() && !db.update_user_video_rights(user_id, video_ids)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the user video rights", "plain/text");
+        logging::error{ R"(Fail to update user video rights "{}")", username };
         return;
     }
 

@@ -142,13 +142,14 @@ export const api = {
       })
     ),
 
-  adminUpdateUser: (userId, username, groupIds) =>
+  adminUpdateUser: (userId, username, groupIds, videoIds) =>
     fetchApi(
       'POST',
       `/admin/update-user/${userId}`,
       new URLSearchParams({
         username: username,
         groupIds: groupIds,
+        videoIds: videoIds,
       })
     ),
   adminResetUserPassword: (userId) => fetchApi('POST', `/admin/reset-user-password/${userId}`),

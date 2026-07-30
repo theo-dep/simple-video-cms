@@ -69,6 +69,7 @@ public:
     [[nodiscard]] bool update_group_users(int id, const std::vector<int>& user_ids) const;
     [[nodiscard]] bool update_group_video_rights(int id, const std::vector<int>& video_ids) const;
     [[nodiscard]] bool update_user_groups(int user_id, const std::vector<int>& group_ids) const;
+    [[nodiscard]] bool update_user_video_rights(int user_id, const std::vector<int>& video_ids) const;
     [[nodiscard]] bool delete_group(int id) const;
 
     std::vector<User> group_user_list(int group_id) const;

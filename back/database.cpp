@@ -738,6 +738,16 @@ bool Database::update_user_groups(int user_id, const std::vector<int>& group_ids
     return add_user_groups(user_id, group_ids);
 }
 
+bool Database::update_user_video_rights(int user_id, const std::vector<int>& video_ids) const
+{
+    {
+        const std::unique_lock lock(_mutex);
+        database::StorageType storage{ database::storage(_path) };
+        storage.remove_all<VideoUserRight>(where(c(&VideoUserRight::user_id) == user_id));
+    }
+    return add_user_video_rights(user_id, video_ids);
+}
+
 bool Database::delete_group(int id) const
 {
     const std::unique_lock lock(_mutex);
