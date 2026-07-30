@@ -1360,6 +1360,7 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
 
     const std::string group_name{ su::trim(req.get_param_value("name")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
+    const std::vector<int> video_ids{ extract_ids(req.get_param_value("videoIds")) };
 
     if (!validate_field(res, group_name)) {
         return;
@@ -1375,6 +1376,9 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
         db.add_group(group_name)
             .and_then([&](int id) -> std::optional<int> {
                 return db.add_group_users(id, user_ids) ? std::optional(id) : std::nullopt;
+            })
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_group_video_rights(id, video_ids) ? std::optional(id) : std::nullopt;
             })
     };
 

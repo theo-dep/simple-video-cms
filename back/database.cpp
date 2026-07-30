@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <mutex>
+#include <ranges>
 
 using namespace sqlite_orm;
 
@@ -649,6 +650,19 @@ bool Database::add_group_users(int id, const std::vector<int>& user_ids) const
     return true;
 }
 
+bool Database::add_group_video_rights(int id, const std::vector<int>& video_ids) const
+{
+    std::vector<VideoGroupRight> video_rights(video_ids.size());
+    std::ranges::transform(video_ids, video_rights.begin(), [&id](int video_id) -> VideoGroupRight {
+        return VideoGroupRight{ .video_id = video_id, .group_id = id };
+    });
+
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    storage.replace_range(video_rights.cbegin(), video_rights.cend());
+    return true;
+}
+
 bool Database::add_user_groups(int user_id, const std::vector<int>& group_ids) const
 {
     std::vector<GroupUser> group_users(group_ids.size());
@@ -796,7 +810,7 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
 bool Database::add_video_group_rights(int id, const std::vector<int>& group_ids) const
 {
     std::vector<VideoGroupRight> video_rights(group_ids.size());
-    std::ranges::transform(group_ids, video_rights.begin(), [&id](int group_id) -> VideoGroupRight {
+    std::ranges::transform(group_ids, video_rights.begin(), [id](int group_id) -> VideoGroupRight {
         return VideoGroupRight{ .video_id = id, .group_id = group_id };
     });
 
@@ -845,7 +859,7 @@ bool Database::update_video_group_rights(int id, const std::vector<int>& group_i
         database::StorageType storage{ database::storage(_path) };
         storage.remove_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id));
     }
-    return add_video_group_rights(id, group_ids);
+    return add_video_group_rights({ id }, group_ids);
 }
 
 bool Database::update_video_user_rights(int id, const std::vector<int>& user_ids) const

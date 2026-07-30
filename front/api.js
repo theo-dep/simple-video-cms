@@ -155,13 +155,14 @@ export const api = {
 
   adminGroupList: () => fetchApi('GET', '/admin/group-list'),
   adminGroup: (groupId) => fetchApi('GET', `/admin/group/${groupId}`),
-  adminAddGroup: (name, userIds) =>
+  adminAddGroup: (name, userIds, videoIds) =>
     fetchApi(
       'POST',
       '/admin/add-group',
       new URLSearchParams({
         name: name,
         userIds: userIds,
+        videoIds: videoIds,
       })
     ),
   adminUpdateGroup: (groupId, name, userIds) =>
