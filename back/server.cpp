@@ -1140,6 +1140,7 @@ inline void server::admin_user_list(const httplib::Request& req, httplib::Respon
             .id = user.id,
             .name = user.name,
             .groups = db.user_group_list(user.id),
+            .videos = db.unique_user_video_list(user.id),
             .is_logged_once = db.user_password(user.id).has_value()
         };
     });
@@ -1165,6 +1166,7 @@ inline void server::admin_user(const httplib::Request& req, httplib::Response& r
         .id = user_id,
         .name = user_name,
         .groups = db.user_group_list(user_id),
+        .videos = db.unique_user_video_list(user_id),
         .is_logged_once = db.user_password(user_id).has_value()
     };
 

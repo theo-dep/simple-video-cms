@@ -776,6 +776,16 @@ std::vector<Group> Database::user_group_list(int user_id) const
         order_by(&Group::name).asc());
 }
 
+std::vector<Video> Database::unique_user_video_list(int user_id) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(
+        distinct(database::video_struct), from<Video>(),
+        where(in(&Video::id, select(distinct(&VideoUserRight::video_id), where(c(&VideoUserRight::user_id) == user_id)))),
+        order_by(&Video::title).asc());
+}
+
 std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const
 {
     if (!filesystem::create(video_path())) {

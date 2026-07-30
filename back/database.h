@@ -73,6 +73,7 @@ public:
     std::vector<User> group_user_list(int group_id) const;
     std::vector<Video> group_video_list(int group_id) const;
     std::vector<Group> user_group_list(int user_id) const;
+    std::vector<Video> unique_user_video_list(int user_id) const;
 
     [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
     static std::string hls_video_name(int id);
