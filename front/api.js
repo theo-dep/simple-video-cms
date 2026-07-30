@@ -131,13 +131,14 @@ export const api = {
 
   adminUserList: () => fetchApi('GET', '/admin/user-list'),
   adminUser: (userId) => fetchApi('GET', `/admin/user/${userId}`),
-  adminAddUser: (username, groupIds) =>
+  adminAddUser: (username, groupIds, videoIds) =>
     fetchApi(
       'POST',
       '/admin/add-user',
       new URLSearchParams({
         username: username,
         groupIds: groupIds,
+        videoIds: videoIds,
       })
     ),
 

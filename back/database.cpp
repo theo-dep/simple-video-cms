@@ -676,6 +676,19 @@ bool Database::add_user_groups(int user_id, const std::vector<int>& group_ids) c
     return true;
 }
 
+bool Database::add_user_video_rights(int user_id, const std::vector<int>& video_ids) const
+{
+    std::vector<VideoUserRight> video_rights(video_ids.size());
+    std::ranges::transform(video_ids, video_rights.begin(), [&user_id](int video_id) -> VideoUserRight {
+        return VideoUserRight{ .video_id = video_id, .user_id = user_id };
+    });
+
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    storage.replace_range(video_rights.cbegin(), video_rights.cend());
+    return true;
+}
+
 std::optional<int> Database::update_group_name(int id, const std::string& name) const
 {
     const std::unique_lock lock(_mutex);

@@ -3,7 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { groups, loadGroups, invalidateUsers, invalidateAdmins } from '../store/admin.js';
+import { groups, videos, loadGroups, loadVideos, invalidateUsers, invalidateAdmins } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
@@ -11,8 +11,10 @@ import { validateField } from '../utils/validation.js';
 
 function AdminNewUserBase({ isAdmin }) {
   const { route } = useLocation();
-  const selectRef = useMultiSelect([groups.value]);
-  const { isLoading } = useLoader(loadGroups, isAdmin || Array.isArray(groups.value), [isAdmin]);
+  const selectGroupRef = useMultiSelect([groups.value, videos.value]);
+  const selectVideoRef = useMultiSelect([groups.value, videos.value]);
+  const { isLoading: isGroupsLoading } = useLoader(loadGroups, isAdmin || Array.isArray(groups.value), [isAdmin]);
+  const { isLoading: isVideosLoading } = useLoader(loadVideos, isAdmin || Array.isArray(videos.value), [isAdmin]);
 
   useTitle(`New ${isAdmin ? 'Admin' : 'User'}`);
 
@@ -24,12 +26,15 @@ function AdminNewUserBase({ isAdmin }) {
     const groupSelect = form.elements['group-ids'];
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];
 
+    const videoSelect = form.elements['video-ids'];
+    const videoIds = videoSelect ? Array.from(videoSelect.selectedOptions).map((o) => o.value) : [];
+
     if (isAdmin) {
       await api.adminAddAdmin(username);
       invalidateAdmins(); // force to refresh the admin list and stats
       route('/admin/admin-list');
     } else {
-      await api.adminAddUser(username, groupIds);
+      await api.adminAddUser(username, groupIds, videoIds);
       invalidateUsers(); // force to refresh the user list and stats
       route('/admin/user-list');
     }
@@ -41,7 +46,7 @@ function AdminNewUserBase({ isAdmin }) {
     <${AdminNav} />
 
     ${
-      !isAdmin && isLoading
+      !isAdmin && (isGroupsLoading || isVideosLoading)
         ? html`<${Loader} />`
         : html`
             <${Form} title="${title}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
@@ -53,8 +58,19 @@ function AdminNewUserBase({ isAdmin }) {
                 !!groups.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select ref=${selectRef} name="group-ids" data-placeholder="Select groups (optional)" multiple data-multi-select>
+                    <select ref=${selectGroupRef} name="group-ids" data-placeholder="Add groups to user (optional)" multiple data-multi-select>
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
+                    </select>
+                  </div>
+                `
+              }
+              ${
+                !isAdmin &&
+                !!videos.value.length &&
+                html`
+                  <div class="pure-control-group">
+                    <select ref=${selectVideoRef} name="video-ids" data-placeholder="Add videos to user (optional)" multiple data-multi-select>
+                      ${videos.value.map((v) => html`<option key=${v.id} value=${v.id}>${v.title}</option>`)}
                     </select>
                   </div>
                 `

@@ -1200,11 +1200,15 @@ inline void server::admin_add_user(const httplib::Request& req, httplib::Respons
 
     const std::string salt{ crypto::random_string() };
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
+    const std::vector<int> video_ids{ extract_ids(req.get_param_value("videoIds")) };
 
     const std::optional user_id{
         db.add_user(username, salt)
             .and_then([&](int id) -> std::optional<int> {
                 return db.add_user_groups(id, group_ids) ? std::optional(id) : std::nullopt;
+            })
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_user_video_rights(id, video_ids) ? std::optional(id) : std::nullopt;
             })
     };
 
