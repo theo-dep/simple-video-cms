@@ -51,6 +51,7 @@ export default function AdminUserList() {
               addLink="/admin/new-user"
               columns="${['Username']}"
               items="${users.value}"
+              searchKeys="${['name']}"
               renderRow="${(u) => html`
                 <tr key=${u.id}>
                   <td>${u.name}</td>

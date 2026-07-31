@@ -47,6 +47,7 @@ export default function AdminVideoList() {
               addLink="/admin/new-video"
               columns="${['', 'Video Name']}"
               items="${videos.value}"
+              searchKeys="${['title']}"
               renderRow="${(v) => html`
                 <tr key=${v.id}>
                   <td>

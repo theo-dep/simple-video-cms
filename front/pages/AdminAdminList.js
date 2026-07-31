@@ -50,6 +50,7 @@ export default function AdminAdminList() {
               addLink="/admin/new-admin"
               columns="${['Username']}"
               items="${admins.value}"
+              searchKeys="${['name']}"
               renderRow="${(a) => html`
                 <tr key=${a.id}>
                   <td>${a.name}</td>

@@ -44,6 +44,7 @@ export default function AdminGroupList() {
               addLink="/admin/new-group"
               columns="${['Name']}"
               items="${groups.value}"
+              searchKeys="${['name']}"
               renderRow="${(g) => html`
                 <tr key=${g.id}>
                   <td>${g.name}</td>

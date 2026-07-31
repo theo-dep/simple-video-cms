@@ -516,6 +516,10 @@ hr {
 }
 
 /* --- SearchInput --- */
+.search-content {
+  margin-bottom: 1em;
+}
+
 .form-search {
   margin: 0 0.5em;
   padding-top: 0.2em;

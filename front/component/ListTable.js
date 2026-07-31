@@ -1,8 +1,17 @@
 import { html } from 'htm/preact';
+import { useSearch } from '../hook/useSearch.js';
+import { SearchInput } from './SearchInput.js';
 
-export function ListTable({ title, icon, addLink, columns, items, renderRow }) {
+export function ListTable({ title, icon, addLink, columns, items, searchKeys, renderRow }) {
+  const { results, search } = useSearch(items, searchKeys);
+
   return html`
     <h2>${title}</h2>
+    <div class="pure-g">
+      <div class="search-content pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
+        <${SearchInput} onSearch=${search} />
+      </div>
+    </div>
     <table class="table pure-table pure-table-horizontal">
       <thead>
         <tr>
@@ -15,7 +24,7 @@ export function ListTable({ title, icon, addLink, columns, items, renderRow }) {
         </tr>
       </thead>
       <tbody>
-        ${items?.map(renderRow)}
+        ${results?.map(renderRow)}
       </tbody>
     </table>
   `;
