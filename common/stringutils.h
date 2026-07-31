@@ -10,6 +10,7 @@ namespace su
     std::string trim(const std::string& str);
     std::string lower(const std::string& str);
 
+    bool string_to_bool(const std::string& str);
     int string_to_int(const std::string& str);
     std::string int_to_string(int val);
 }

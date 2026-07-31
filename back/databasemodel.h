@@ -50,3 +50,9 @@ struct VideoGroupRight
     int video_id{ 0 };
     int group_id{ 0 };
 };
+
+struct UserVideoBookmark
+{
+    int user_id{ 0 };
+    int video_id{ 0 };
+};

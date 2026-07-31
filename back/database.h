@@ -20,6 +20,9 @@ public:
     std::vector<Video> user_video_list(int user_id) const;
     std::vector<Video> no_user_video_list() const;
 
+    bool bookmarked(int user_id, int video_id) const;
+    bool set_bookmark(int user_id, int video_id, bool bookmarked) const;
+
     bool video_exists(const std::string& title) const;
     bool video_exists(int video_id, const std::string& title) const;
     std::string video_title(int video_id) const;

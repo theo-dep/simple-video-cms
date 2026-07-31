@@ -114,11 +114,6 @@ hr {
 }
 
 /* --- ShareButton --- */
-.video-share-button-content {
-  text-align: right;
-  margin-top: 1em;
-}
-
 .share-button {
   display: inline-flex;
   align-items: center;
@@ -546,6 +541,61 @@ hr {
   color: var(--color-primary-dark);
 }
 
+.video-card-thumb {
+  position: relative;
+}
+
+.bookmark-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2em;
+  height: 2em;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.bookmark-button[location='home'] {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  background-color: var(--color-shadow-overlay);
+  transition:
+    background-color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.bookmark-button[location='video'] {
+  border: 1px solid var(--color-primary);
+}
+
+.bookmark-button svg {
+  width: 1em;
+  height: 1em;
+  fill: var(--color-primary);
+  transition: fill 0.2s ease;
+}
+
+.bookmark-button[location='home']:hover svg {
+  fill: var(--color-text-white);
+}
+
+.bookmark-button[location='video']:hover svg {
+  fill: var(--color-primary-dark);
+}
+
+.bookmark-button[location='home']:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.bookmark-button[location='video']:hover {
+  border-color: var(--color-primary-dark);
+}
+
+.bookmark-button[location='home']:hover {
+  transform: scale(1.1);
+}
+
 /* --- Login --- */
 .lined {
   display: flex;
@@ -618,6 +668,20 @@ hr {
 }
 
 /* --- WatchVideo --- */
+.video-footer-content {
+  display: flex;
+  align-items: right;
+  justify-content: right;
+  text-align: right;
+  gap: 0.5em;
+  margin-top: 1em;
+}
+
+.video-footer-content .bookmark-button {
+  position: static;
+  flex-shrink: 0;
+}
+
 video {
   width: 100%;
   aspect-ratio: 16 / 9;

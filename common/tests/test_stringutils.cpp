@@ -37,6 +37,29 @@ TEST_CASE("su::lower")
     }
 }
 
+TEST_CASE("su::string_to_bool")
+{
+    SECTION("parses true values")
+    {
+        REQUIRE(su::string_to_bool("True") == true);
+        REQUIRE(su::string_to_bool("TRUE") == true);
+        REQUIRE(su::string_to_bool("true") == true);
+        REQUIRE(su::string_to_bool("1") == true);
+    }
+
+    SECTION("parses false values")
+    {
+        REQUIRE(su::string_to_bool("False") == false);
+        REQUIRE(su::string_to_bool("FALSE") == false);
+        REQUIRE(su::string_to_bool("false") == false);
+        REQUIRE(su::string_to_bool("0") == false);
+
+        REQUIRE(su::string_to_bool("42") == false);
+        REQUIRE(su::string_to_bool("bad") == false);
+        REQUIRE(su::string_to_bool("12bad") == false);
+    }
+}
+
 TEST_CASE("su::string_to_int")
 {
     SECTION("parses integer values")
