@@ -1091,8 +1091,6 @@ inline void server::admin_download_video(const httplib::Request& req, httplib::R
     }
 
     const std::string content{ db.video(video_id, 0, static_cast<std::size_t>(size)) };
-    const std::string filename{ "video_" + su::int_to_string(video_id) + ".mp4" };
-    res.set_header("Content-Disposition", "attachment; filename=\"" + filename + "\"");
     res.set_content(content, "video/mp4");
 }
 
