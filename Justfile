@@ -5,7 +5,7 @@ start-dev: build-debug
 	@./build/vcpkg/Debug/back
 
 build-debug: configure
-	@cmake --build --preset vcpkg-debug
+	@cmake --build --preset vcpkg-debug --target back
 
 build-back: configure
 	@cmake --build --preset vcpkg-release --target install

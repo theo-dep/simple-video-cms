@@ -35,6 +35,7 @@ struct AdminUserInfo
     int id{ 0 };
     std::string name;
     std::vector<Group> groups;
+    std::vector<Video> videos;
     bool is_logged_once{ false };
 };
 
@@ -44,6 +45,7 @@ void to_json(BasicJsonType& json, const AdminUserInfo& user)
     json["id"] = user.id;
     json["name"] = user.name;
     json["groups"] = user.groups;
+    json["videos"] = user.videos;
     json["isLoggedOnce"] = user.is_logged_once;
 }
 
@@ -69,9 +71,10 @@ struct AdminGroupInfo
     int id{ 0 };
     std::string name;
     std::vector<User> users;
+    std::vector<Video> videos;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminGroupInfo, id, name, users)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminGroupInfo, id, name, users, videos)
 
 struct AdminVideoInfo
 {

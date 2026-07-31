@@ -128,26 +128,36 @@ export const api = {
         username: username,
       })
     ),
+  adminUpdateAdmin: (adminId, username) =>
+    fetchApi(
+      'POST',
+      `/admin/update-admin/${adminId}`,
+      new URLSearchParams({
+        username: username,
+      })
+    ),
 
   adminUserList: () => fetchApi('GET', '/admin/user-list'),
   adminUser: (userId) => fetchApi('GET', `/admin/user/${userId}`),
-  adminAddUser: (username, groupIds) =>
+  adminAddUser: (username, groupIds, videoIds) =>
     fetchApi(
       'POST',
       '/admin/add-user',
       new URLSearchParams({
         username: username,
         groupIds: groupIds,
+        videoIds: videoIds,
       })
     ),
 
-  adminUpdateUser: (userId, username, groupIds) =>
+  adminUpdateUser: (userId, username, groupIds, videoIds) =>
     fetchApi(
       'POST',
       `/admin/update-user/${userId}`,
       new URLSearchParams({
         username: username,
         groupIds: groupIds,
+        videoIds: videoIds,
       })
     ),
   adminResetUserPassword: (userId) => fetchApi('POST', `/admin/reset-user-password/${userId}`),
@@ -155,22 +165,24 @@ export const api = {
 
   adminGroupList: () => fetchApi('GET', '/admin/group-list'),
   adminGroup: (groupId) => fetchApi('GET', `/admin/group/${groupId}`),
-  adminAddGroup: (name, userIds) =>
+  adminAddGroup: (name, userIds, videoIds) =>
     fetchApi(
       'POST',
       '/admin/add-group',
       new URLSearchParams({
         name: name,
         userIds: userIds,
+        videoIds: videoIds,
       })
     ),
-  adminUpdateGroup: (groupId, name, userIds) =>
+  adminUpdateGroup: (groupId, name, userIds, videoIds) =>
     fetchApi(
       'POST',
       `/admin/update-group/${groupId}`,
       new URLSearchParams({
         name: name,
         userIds: userIds,
+        videoIds: videoIds,
       })
     ),
   adminDeleteGroup: (groupId) => fetchApi('POST', `/admin/delete-group/${groupId}`),
