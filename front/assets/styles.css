@@ -314,6 +314,7 @@ hr {
   text-align: left;
   padding: 0.5em;
   box-shadow: 0 1px 1px var(--color-shadow);
+  position: relative;
 }
 
 .menu-link {
@@ -336,13 +337,82 @@ hr {
   text-shadow: 0px 0px 1px var(--color-primary);
 }
 
-.pure-menu-horizontal.pure-menu-scrollable {
-  padding: 0;
+/* --- Burger toggle (hidden on desktop) --- */
+.menu-burger-toggle {
+  display: none;
+  width: 34px;
+  height: 34px;
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
 }
 
-@media only screen and (max-width: 35.5em) {
-  .menu-scrollable-list {
+.menu-burger-toggle .bar {
+  background-color: var(--color-primary);
+  display: block;
+  width: 22px;
+  height: 2px;
+  border-radius: 100px;
+  position: absolute;
+  right: 6px;
+  transition: all 0.3s;
+}
+
+.menu-burger-toggle .bar:nth-child(1) {
+  top: 10px;
+}
+.menu-burger-toggle .bar:nth-child(2) {
+  top: 17px;
+}
+.menu-burger-toggle .bar:nth-child(3) {
+  top: 24px;
+}
+
+.menu-burger-toggle.is-active .bar:nth-child(1) {
+  top: 17px;
+  transform: rotate(45deg);
+}
+
+.menu-burger-toggle.is-active .bar:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-burger-toggle.is-active .bar:nth-child(3) {
+  top: 17px;
+  transform: rotate(-45deg);
+}
+
+/* --- Tucked dropdown wrapper --- */
+.menu-burger-wrapper {
+  overflow: hidden;
+}
+
+@media only screen and (max-width: 48em) {
+  .menu-list {
     float: unset;
+  }
+
+  .menu-burger-toggle {
+    display: block;
+  }
+
+  .menu-burger-wrapper {
+    max-height: 0;
+    transition: max-height 0.4s ease;
+  }
+
+  .menu-burger-wrapper.menu-burger-open {
+    max-height: 20em;
+  }
+
+  .menu-burger-wrapper .menu-scrollable-list,
+  .menu-burger-wrapper .pure-menu-list {
+    float: unset;
+    display: block;
+  }
+
+  .menu-burger-wrapper .pure-menu-item {
+    display: block;
   }
 }
 

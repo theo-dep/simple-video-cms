@@ -1,4 +1,5 @@
 import { html } from 'htm/preact';
+import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { user } from '../store/auth.js';
 import { videoIdRedirected } from '../store/redirect.js';
@@ -9,7 +10,7 @@ function NavLinks({ pages }) {
     (p) => html`
       <li class="pure-menu-item" key=${p.href}>
         <a
-          ...${p.href ? { href: p.href } : { onClick: () => p.onClick(), style: 'cursor:pointer' }}
+          ...${p.href ? { href: p.href } : { onClick: () => p.onClick(), style: 'cursor: pointer;' }}
           class=${'menu-link pure-menu-link' + (document.location.pathname === p.href ? ' menu-selected pure-menu-selected' : '')}
         >
           ${p.label}
@@ -19,9 +20,44 @@ function NavLinks({ pages }) {
   );
 }
 
+function useBurgerMenu() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const close = () => setIsOpen(false);
+    window.addEventListener('resize', close);
+    window.addEventListener('orientationchange', close);
+
+    return () => {
+      window.removeEventListener('resize', close);
+      window.removeEventListener('orientationchange', close);
+    };
+  }, [isOpen]);
+
+  return [isOpen, setIsOpen];
+}
+
+function BurgerToggle({ isOpen, onToggle }) {
+  return html`<a
+    href="#"
+    class=${'menu-burger-toggle' + (isOpen ? ' is-active' : '')}
+    aria-label="Toggle menu"
+    aria-expanded=${isOpen}
+    onClick=${(e) => {
+      e.preventDefault();
+      onToggle();
+    }}
+  >
+    <s class="bar"></s><s class="bar"></s><s class="bar"></s>
+  </a> `;
+}
+
 export function UserNav({ children, videoId = null }) {
   const { route } = useLocation();
   const hasChildren = !!children;
+  const [isOpen, setIsOpen] = useBurgerMenu();
 
   function onLoginClicked() {
     if (videoId) {
@@ -39,19 +75,29 @@ export function UserNav({ children, videoId = null }) {
     : [{ onClick: onLoginClicked, label: 'Login' }];
 
   return html`
-    <div class=${'header' + (hasChildren ? ' pure-g' : '')}>
-      <div class=${(hasChildren ? 'pure-u-1 pure-u-md-3-4 ' : '') + 'pure-menu pure-menu-horizontal'}>
+    <div class="header pure-g">
+      <div class="pure-u-1 pure-u-sm-1-5 pure-menu pure-menu-horizontal">
         <a href="/" class="menu-link pure-menu-heading pure-menu-link">${websiteName}</a>
-        <ul class="menu-list pure-menu-list">
-          <${NavLinks} pages=${pages} />
-        </ul>
+        <${BurgerToggle} isOpen=${isOpen} onToggle=${() => setIsOpen((v) => !v)} />
       </div>
-      ${hasChildren && html`<div class="pure-u-1 pure-u-md-1-4">${children}</div>`}
+      <div
+        class=${'pure-u-1 menu-burger-wrapper' + (isOpen ? ' menu-burger-open' : '') + (hasChildren ? ' pure-u-md-2-5' : ' pure-u-sm-4-5')}
+        onClick=${() => setIsOpen(false)}
+      >
+        <div class="pure-menu pure-menu-horizontal">
+          <ul class="menu-list pure-menu-list">
+            <${NavLinks} pages=${pages} />
+          </ul>
+        </div>
+      </div>
+      ${hasChildren && html`<div class="pure-u-1 pure-u-md-2-5">${children}</div>`}
     </div>
   `;
 }
 
 export function AdminNav() {
+  const [isOpen, setIsOpen] = useBurgerMenu();
+
   const pages = [
     { href: '/admin', label: 'Admin' },
     { href: '/admin/video-list', label: 'Video List' },
@@ -65,11 +111,14 @@ export function AdminNav() {
     <div class="header pure-g">
       <div class="pure-u-1 pure-u-md-1-5 pure-menu pure-menu-horizontal">
         <a href="/" class="menu-link pure-menu-heading pure-menu-link">${websiteName}</a>
+        <${BurgerToggle} isOpen=${isOpen} onToggle=${() => setIsOpen((v) => !v)} />
       </div>
-      <div class="pure-u-1 pure-u-md-4-5 menu-scrollable pure-menu pure-menu-horizontal pure-menu-scrollable">
-        <ul class="menu-scrollable-list pure-menu-list">
-          <${NavLinks} pages=${pages} />
-        </ul>
+      <div class=${'pure-u-1 pure-u-md-4-5 menu-burger-wrapper' + (isOpen ? ' menu-burger-open' : '')} onClick=${() => setIsOpen(false)}>
+        <div class="pure-menu pure-menu-horizontal">
+          <ul class="menu-scrollable-list pure-menu-list">
+            <${NavLinks} pages=${pages} />
+          </ul>
+        </div>
       </div>
     </div>
   `;

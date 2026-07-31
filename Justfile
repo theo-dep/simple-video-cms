@@ -25,5 +25,9 @@ build-front:
 eslint:
 	@npx eslint "front/**/*.js"
 
+format:
+	@npx prettier --write .
+	@find . -type d -name build -prune -iname '*.h' -o -iname '*.cpp' | xargs clang-format -i --verbose
+
 launch-browser:
 	@brave-browser --app=http://0.0.0.0:8080
