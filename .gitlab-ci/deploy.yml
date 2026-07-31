@@ -68,7 +68,7 @@ deploy preprod:
     - .docker-job
     - .deploy-rules
     - .deploy-tags
-  dependencies:
+  needs:
     - docker release image
   variables:
     GIT_STRATEGY: none
