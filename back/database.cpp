@@ -17,7 +17,6 @@
 
 #include <algorithm>
 #include <mutex>
-#include <ranges>
 
 using namespace sqlite_orm;
 
@@ -185,42 +184,42 @@ bool Database::video_exists(const std::string& title) const
     return videos.size() == 1;
 }
 
-bool Database::video_exists(int id, const std::string& title) const
+bool Database::video_exists(int video_id, const std::string& title) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::vector videos{ storage.select(&Video::id, where(c(&Video::title) == title and c(&Video::id) != id)) };
+    const std::vector videos{ storage.select(&Video::id, where(c(&Video::title) == title and c(&Video::id) != video_id)) };
     return videos.size() == 1;
 }
 
-std::string Database::video_title(int id) const
+std::string Database::video_title(int video_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video_title{
-        storage.get_optional<Video>(id)
+        storage.get_optional<Video>(video_id)
             .transform([](const Video& video) -> std::string {
                 return video.title;
             })
             .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch video title "{}")", id };
+                logging::error{ R"(Fail to fetch video title "{}")", video_id };
                 return std::string{};
             })
     };
     return video_title.value_or(std::string{});
 }
 
-int Database::video_size(int id) const
+int Database::video_size(int video_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video_size{
-        storage.get_optional<Video>(id)
+        storage.get_optional<Video>(video_id)
             .transform([&](const Video& video) -> int {
                 return filesystem::file_size(video_path(video.id));
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to fetch video size "{}")", id };
+                logging::error{ R"(Fail to fetch video size "{}")", video_id };
                 return -1;
             })
     };
@@ -231,72 +230,72 @@ int Database::video_size(int id) const
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/blob_binding.cpp
 // https://github.com/fnc12/sqlite_orm/blob/v1.9/examples/key_value.cpp
 
-std::string Database::video(int id, std::size_t offset, std::size_t length) const
+std::string Database::video(int video_id, std::size_t offset, std::size_t length) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional video{
-        storage.get_optional<Video>(id)
+        storage.get_optional<Video>(video_id)
             .transform([&](const Video& video) -> std::string {
                 return filesystem::read_file(video_path(video.id), offset, length);
             })
             .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch video content "{}")", id };
+                logging::error{ R"(Fail to fetch video content "{}")", video_id };
                 return std::string{};
             })
     };
     return video.value_or(std::string{});
 }
 
-std::string Database::video_playlist(int id) const
+std::string Database::video_playlist(int video_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional playlist{
-        storage.get_optional<Video>(id)
+        storage.get_optional<Video>(video_id)
             .transform([&](const Video& video) -> std::string {
                 const std::filesystem::path path{ hls_video_path(video.id) };
-                const std::filesystem::path playlist_path{ path / (hls_video_name(id) + ".m3u8") };
+                const std::filesystem::path playlist_path{ path / (hls_video_name(video_id) + ".m3u8") };
                 return filesystem::read_file(playlist_path);
             })
             .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch video playlist "{}")", id };
+                logging::error{ R"(Fail to fetch video playlist "{}")", video_id };
                 return std::string{};
             })
     };
     return playlist.value_or(std::string{});
 }
 
-std::string Database::video_segment(int id, const std::string& segment) const
+std::string Database::video_segment(int video_id, const std::string& segment) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional segment_content{
-        storage.get_optional<Video>(id)
+        storage.get_optional<Video>(video_id)
             .transform([&](const Video& video) -> std::string {
                 const std::filesystem::path path{ hls_video_path(video.id) };
                 const std::filesystem::path segment_path{ path / segment };
                 return filesystem::read_file(segment_path);
             })
             .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch video segment "{}": "{}")", id, segment };
+                logging::error{ R"(Fail to fetch video segment "{}": "{}")", video_id, segment };
                 return std::string{};
             })
     };
     return segment_content.value_or(std::string{});
 }
 
-std::string Database::thumbnail(int id) const
+std::string Database::thumbnail(int video_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional thumbnail{
-        storage.get_optional<Video>(id)
+        storage.get_optional<Video>(video_id)
             .transform([&](const Video& video) -> std::string {
                 return filesystem::read_file(thumbnail_path(video.id));
             })
             .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch video thumbnail "{}")", id };
+                logging::error{ R"(Fail to fetch video thumbnail "{}")", video_id };
                 return std::string{};
             })
     };
@@ -322,22 +321,22 @@ std::optional<int> Database::add_super_admin(const std::string& name, const std:
     return super_admin.id;
 }
 
-bool Database::is_super_admin(int id) const
+bool Database::is_super_admin(int user_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.get_all<SuperAdmin>(where(c(&SuperAdmin::id) == id)).size() == 1;
+    return storage.get_all<SuperAdmin>(where(c(&SuperAdmin::id) == user_id)).size() == 1;
 }
 
-bool Database::is_admin(int id) const
+bool Database::is_admin(int user_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.get_all<User>(
                       where(
-                          c(&User::id) == id and
-                          (in(id, select(&Admin::id)) or
-                           in(id, select(&SuperAdmin::id)))))
+                          c(&User::id) == user_id and
+                          (in(user_id, select(&Admin::id)) or
+                           in(user_id, select(&SuperAdmin::id)))))
                .size() == 1;
 }
 
@@ -373,94 +372,94 @@ std::optional<int> Database::add_user(const std::string& name, const std::string
     return user.id;
 }
 
-std::optional<int> Database::add_password(int id, const std::string& password) const
+std::optional<int> Database::add_password(int user_id, const std::string& password) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional user_id{
-        storage.get_optional<User>(id)
+    const std::optional id{
+        storage.get_optional<User>(user_id)
             .and_then([&](User user) -> std::optional<int> {
                 user.password = password;
                 storage.update(user);
-                return id;
+                return user_id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to add password "{}")", id };
+                logging::error{ R"(Fail to add password "{}")", user_id };
                 return std::nullopt;
             })
     };
-    return user_id;
+    return id;
 }
 
-std::optional<int> Database::update_username(int id, const std::string& name) const
+std::optional<int> Database::update_username(int user_id, const std::string& name) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional user_id{
-        storage.get_optional<User>(id)
+    const std::optional id{
+        storage.get_optional<User>(user_id)
             .and_then([&](User user) -> std::optional<int> {
                 user.name = name;
                 storage.update(user);
-                return id;
+                return user_id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to update username "{}")", id };
+                logging::error{ R"(Fail to update username "{}")", user_id };
                 return std::nullopt;
             })
     };
-    return user_id;
+    return id;
 }
 
-std::optional<int> Database::update_password(int id, const std::string& password) const
+std::optional<int> Database::update_password(int user_id, const std::string& password) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional user_id{
-        storage.get_optional<User>(id)
+    const std::optional id{
+        storage.get_optional<User>(user_id)
             .and_then([&](User user) -> std::optional<int> {
                 user.password = password;
                 storage.update(user);
-                return id;
+                return user_id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to update password "{}")", id };
+                logging::error{ R"(Fail to update password "{}")", user_id };
                 return std::nullopt;
             })
     };
-    return user_id;
+    return id;
 }
 
-std::optional<int> Database::clear_password(int id) const
+std::optional<int> Database::clear_password(int user_id) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional user_id{
-        storage.get_optional<User>(id)
+    const std::optional id{
+        storage.get_optional<User>(user_id)
             .and_then([&](User user) -> std::optional<int> {
                 user.password.reset();
                 storage.update(user);
-                return id;
+                return user_id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to clear password "{}")", id };
+                logging::error{ R"(Fail to clear password "{}")", user_id };
                 return std::nullopt;
             })
     };
-    return user_id;
+    return id;
 }
 
-bool Database::delete_user(int id) const
+bool Database::delete_user(int user_id) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
-        storage.get_optional<User>(id)
+        storage.get_optional<User>(user_id)
             .transform([&](const User& user) -> bool {
                 storage.remove<User>(user.id);
                 return true;
             })
             .or_else([&] -> std::optional<bool> {
-                logging::error{ R"(Fail to delete user "{}")", id };
+                logging::error{ R"(Fail to delete user "{}")", user_id };
                 return false;
             })
     };
@@ -480,60 +479,60 @@ bool Database::user_exists(const std::string& name) const
     return user_id(name) != -1;
 }
 
-bool Database::user_exists(int id, const std::string& name) const
+bool Database::user_exists(int user_id, const std::string& name) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::vector users{ storage.select(&User::id, where(c(&User::name) == name and c(&User::id) != id)) };
+    const std::vector users{ storage.select(&User::id, where(c(&User::name) == name and c(&User::id) != user_id)) };
     return users.size() == 1;
 }
 
-std::string Database::user_name(int id) const
+std::string Database::user_name(int user_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_name{
-        storage.get_optional<User>(id)
+        storage.get_optional<User>(user_id)
             .transform([](const User& user) -> std::string {
                 return user.name;
             })
             .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch user name "{}")", id };
+                logging::error{ R"(Fail to fetch user name "{}")", user_id };
                 return std::string{};
             })
     };
     return user_name.value_or(std::string{});
 }
 
-std::optional<std::string> Database::user_password(int id) const
+std::optional<std::string> Database::user_password(int user_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_password{
-        storage.get_optional<User>(id)
+        storage.get_optional<User>(user_id)
             .and_then([](const User& user) -> std::optional<std::string> {
                 return user.password;
             })
         // can be null
         //.or_else([&] -> std::optional<std::string> {
-        //    logging::error{ R"(Fail to fetch user password "{}")", id };
+        //    logging::error{ R"(Fail to fetch user password "{}")", user_id };
         //    return std::nullopt;
         //})
     };
     return user_password;
 }
 
-std::string Database::user_salt(int id) const
+std::string Database::user_salt(int user_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional user_salt{
-        storage.get_optional<User>(id)
+        storage.get_optional<User>(user_id)
             .transform([](const User& user) -> std::string {
                 return user.salt;
             })
             .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch user salt "{}")", id };
+                logging::error{ R"(Fail to fetch user salt "{}")", user_id };
                 return std::string{};
             })
     };
@@ -600,25 +599,25 @@ bool Database::group_exists(const std::string& name) const
     return groups.size() == 1;
 }
 
-bool Database::group_exists(int id, const std::string& name) const
+bool Database::group_exists(int group_id, const std::string& name) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name and c(&Group::id) != id)) };
+    const std::vector groups{ storage.select(&Group::id, where(c(&Group::name) == name and c(&Group::id) != group_id)) };
     return groups.size() == 1;
 }
 
-std::string Database::group_name(int id) const
+std::string Database::group_name(int group_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional group_name{
-        storage.get_optional<Group>(id)
+        storage.get_optional<Group>(group_id)
             .transform([](const Group& group) -> std::string {
                 return group.name;
             })
             .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch group name "{}")", id };
+                logging::error{ R"(Fail to fetch group name "{}")", group_id };
                 return std::string{};
             })
     };
@@ -637,11 +636,11 @@ std::optional<int> Database::add_group(const std::string& name) const
     return group.id;
 }
 
-bool Database::add_group_users(int id, const std::vector<int>& user_ids) const
+bool Database::add_group_users(int group_id, const std::vector<int>& user_ids) const
 {
     std::vector<GroupUser> group_users(user_ids.size());
-    std::ranges::transform(user_ids, group_users.begin(), [&id](int user_id) -> GroupUser {
-        return GroupUser{ .group_id = id, .user_id = user_id };
+    std::ranges::transform(user_ids, group_users.begin(), [&group_id](int user_id) -> GroupUser {
+        return GroupUser{ .group_id = group_id, .user_id = user_id };
     });
 
     const std::unique_lock lock(_mutex);
@@ -650,11 +649,11 @@ bool Database::add_group_users(int id, const std::vector<int>& user_ids) const
     return true;
 }
 
-bool Database::add_group_video_rights(int id, const std::vector<int>& video_ids) const
+bool Database::add_group_video_rights(int group_id, const std::vector<int>& video_ids) const
 {
     std::vector<VideoGroupRight> video_rights(video_ids.size());
-    std::ranges::transform(video_ids, video_rights.begin(), [&id](int video_id) -> VideoGroupRight {
-        return VideoGroupRight{ .video_id = video_id, .group_id = id };
+    std::ranges::transform(video_ids, video_rights.begin(), [&group_id](int video_id) -> VideoGroupRight {
+        return VideoGroupRight{ .video_id = video_id, .group_id = group_id };
     });
 
     const std::unique_lock lock(_mutex);
@@ -689,43 +688,43 @@ bool Database::add_user_video_rights(int user_id, const std::vector<int>& video_
     return true;
 }
 
-std::optional<int> Database::update_group_name(int id, const std::string& name) const
+std::optional<int> Database::update_group_name(int group_id, const std::string& name) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional group_id{
-        storage.get_optional<Group>(id)
+    const std::optional id{
+        storage.get_optional<Group>(group_id)
             .and_then([&](Group group) -> std::optional<int> {
                 group.name = name;
                 storage.update(group);
-                return id;
+                return group_id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to update group name "{}")", id };
+                logging::error{ R"(Fail to update group name "{}")", group_id };
                 return std::nullopt;
             })
     };
-    return group_id;
+    return id;
 }
 
-bool Database::update_group_users(int id, const std::vector<int>& user_ids) const
+bool Database::update_group_users(int group_id, const std::vector<int>& user_ids) const
 {
     {
         const std::unique_lock lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
-        storage.remove_all<GroupUser>(where(c(&GroupUser::group_id) == id));
+        storage.remove_all<GroupUser>(where(c(&GroupUser::group_id) == group_id));
     }
-    return add_group_users(id, user_ids);
+    return add_group_users(group_id, user_ids);
 }
 
-bool Database::update_group_video_rights(int id, const std::vector<int>& video_ids) const
+bool Database::update_group_video_rights(int group_id, const std::vector<int>& video_ids) const
 {
     {
         const std::unique_lock lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
-        storage.remove_all<VideoGroupRight>(where(c(&VideoGroupRight::group_id) == id));
+        storage.remove_all<VideoGroupRight>(where(c(&VideoGroupRight::group_id) == group_id));
     }
-    return add_group_video_rights(id, video_ids);
+    return add_group_video_rights(group_id, video_ids);
 }
 
 bool Database::update_user_groups(int user_id, const std::vector<int>& group_ids) const
@@ -748,18 +747,18 @@ bool Database::update_user_video_rights(int user_id, const std::vector<int>& vid
     return add_user_video_rights(user_id, video_ids);
 }
 
-bool Database::delete_group(int id) const
+bool Database::delete_group(int group_id) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
-        storage.get_optional<Group>(id)
+        storage.get_optional<Group>(group_id)
             .transform([&](const Group& group) -> bool {
                 storage.remove<Group>(group.id);
                 return true;
             })
             .or_else([&] -> std::optional<bool> {
-                logging::error{ R"(Fail to delete group "{}")", id };
+                logging::error{ R"(Fail to delete group "{}")", group_id };
                 return false;
             })
     };
@@ -805,7 +804,8 @@ std::vector<Video> Database::unique_user_video_list(int user_id) const
     database::StorageType storage{ database::storage(_path) };
     return storage.select(
         distinct(database::video_struct), from<Video>(),
-        where(in(&Video::id, select(distinct(&VideoUserRight::video_id), where(c(&VideoUserRight::user_id) == user_id)))),
+        where(
+            in(&Video::id, select(distinct(&VideoUserRight::video_id), where(c(&VideoUserRight::user_id) == user_id)))),
         order_by(&Video::title).asc());
 }
 
@@ -832,7 +832,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::stri
     return video.id;
 }
 
-std::optional<int> Database::add_video_thumbnail(int id, const std::string& thumbnail_content) const
+std::optional<int> Database::add_video_thumbnail(int video_id, const std::string& thumbnail_content) const
 {
     if (!filesystem::create(thumbnail_path())) {
         return std::nullopt;
@@ -840,21 +840,21 @@ std::optional<int> Database::add_video_thumbnail(int id, const std::string& thum
 
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional video_id{
-        storage.get_optional<Video>(id)
+    const std::optional id{
+        storage.get_optional<Video>(video_id)
             .transform([&](const Video& video) -> int {
                 filesystem::write_file(thumbnail_path(video.id), thumbnail_content);
                 return video.id;
             })
     };
-    return video_id;
+    return id;
 }
 
-bool Database::add_video_group_rights(int id, const std::vector<int>& group_ids) const
+bool Database::add_video_group_rights(int video_id, const std::vector<int>& group_ids) const
 {
     std::vector<VideoGroupRight> video_rights(group_ids.size());
-    std::ranges::transform(group_ids, video_rights.begin(), [id](int group_id) -> VideoGroupRight {
-        return VideoGroupRight{ .video_id = id, .group_id = group_id };
+    std::ranges::transform(group_ids, video_rights.begin(), [&video_id](int group_id) -> VideoGroupRight {
+        return VideoGroupRight{ .video_id = video_id, .group_id = group_id };
     });
 
     const std::unique_lock lock(_mutex);
@@ -863,11 +863,11 @@ bool Database::add_video_group_rights(int id, const std::vector<int>& group_ids)
     return true;
 }
 
-bool Database::add_video_user_rights(int id, const std::vector<int>& user_ids) const
+bool Database::add_video_user_rights(int video_id, const std::vector<int>& user_ids) const
 {
     std::vector<VideoUserRight> video_rights(user_ids.size());
-    std::ranges::transform(user_ids, video_rights.begin(), [&id](int user_id) -> VideoUserRight {
-        return VideoUserRight{ .video_id = id, .user_id = user_id };
+    std::ranges::transform(user_ids, video_rights.begin(), [&video_id](int user_id) -> VideoUserRight {
+        return VideoUserRight{ .video_id = video_id, .user_id = user_id };
     });
 
     const std::unique_lock lock(_mutex);
@@ -876,51 +876,51 @@ bool Database::add_video_user_rights(int id, const std::vector<int>& user_ids) c
     return true;
 }
 
-std::optional<int> Database::update_video_title(int id, const std::string& title) const
+std::optional<int> Database::update_video_title(int video_id, const std::string& title) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional video_id{
-        storage.get_optional<Video>(id)
+    const std::optional id{
+        storage.get_optional<Video>(video_id)
             .and_then([&](Video video) -> std::optional<int> {
                 video.title = title;
                 storage.update(video);
-                return id;
+                return video_id;
             })
             .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to update video title "{}")", id };
+                logging::error{ R"(Fail to update video title "{}")", video_id };
                 return std::nullopt;
             })
     };
-    return video_id;
+    return id;
 }
 
-bool Database::update_video_group_rights(int id, const std::vector<int>& group_ids) const
+bool Database::update_video_group_rights(int video_id, const std::vector<int>& group_ids) const
 {
     {
         const std::unique_lock lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
-        storage.remove_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id));
+        storage.remove_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == video_id));
     }
-    return add_video_group_rights(id, group_ids);
+    return add_video_group_rights(video_id, group_ids);
 }
 
-bool Database::update_video_user_rights(int id, const std::vector<int>& user_ids) const
+bool Database::update_video_user_rights(int video_id, const std::vector<int>& user_ids) const
 {
     {
         const std::unique_lock lock(_mutex);
         database::StorageType storage{ database::storage(_path) };
-        storage.remove_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id));
+        storage.remove_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == video_id));
     }
-    return add_video_user_rights(id, user_ids);
+    return add_video_user_rights(video_id, user_ids);
 }
 
-bool Database::delete_video(int id) const
+bool Database::delete_video(int video_id) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
-        storage.get_optional<Video>(id)
+        storage.get_optional<Video>(video_id)
             .and_then([&](const Video& video) -> std::optional<Video> {
                 // remove video file
                 return filesystem::remove(video_path(video.id)) ? std::optional(video) : std::nullopt;
@@ -938,51 +938,54 @@ bool Database::delete_video(int id) const
                 return true;
             })
             .or_else([&] -> std::optional<bool> {
-                logging::error{ R"(Fail to delete video "{}")", id };
+                logging::error{ R"(Fail to delete video "{}")", video_id };
                 return false;
             })
     };
     return success.value_or(false);
 }
 
-bool Database::has_video_right(int id) const
+bool Database::has_video_right(int video_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.get_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id)).empty() &&
-           storage.get_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id)).empty();
+    return storage.get_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == video_id)).empty() &&
+           storage.get_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == video_id)).empty();
 }
 
-bool Database::has_video_right(int id, int user_id) const
+bool Database::has_video_right(int video_id, int user_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return !storage.get_all<VideoUserRight>(where(c(&VideoUserRight::video_id) == id and c(&VideoUserRight::user_id) == user_id)).empty() ||
-           !storage.get_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == id and
+    return !storage.get_all<VideoUserRight>(where(
+                                                c(&VideoUserRight::video_id) == video_id and
+                                                c(&VideoUserRight::user_id) == user_id))
+                .empty() ||
+           !storage.get_all<VideoGroupRight>(where(c(&VideoGroupRight::video_id) == video_id and
                                                    in(&VideoGroupRight::group_id,
                                                       select(&GroupUser::group_id, where(c(&GroupUser::user_id) == user_id)))))
                 .empty();
 }
 
-std::vector<Group> Database::video_group_right_list(int id) const
+std::vector<Group> Database::video_group_right_list(int video_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(
         distinct(database::group_struct), from<Group>(),
         where(
-            in(&Group::id, select(distinct(&VideoGroupRight::group_id), where(c(&VideoGroupRight::video_id) == id)))),
+            in(&Group::id, select(distinct(&VideoGroupRight::group_id), where(c(&VideoGroupRight::video_id) == video_id)))),
         order_by(&Group::name).asc());
 }
 
-std::vector<User> Database::video_user_right_list(int id) const
+std::vector<User> Database::video_user_right_list(int video_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(
         distinct(database::user_struct), from<User>(),
         where(
-            in(&User::id, select(distinct(&VideoUserRight::user_id), where(c(&VideoUserRight::video_id) == id)))),
+            in(&User::id, select(distinct(&VideoUserRight::user_id), where(c(&VideoUserRight::video_id) == video_id)))),
         order_by(&User::name).asc());
 }
 
@@ -996,9 +999,9 @@ std::filesystem::path Database::video_path() const
     return base_path() / "videos";
 }
 
-std::filesystem::path Database::video_path(int id) const
+std::filesystem::path Database::video_path(int video_id) const
 {
-    return video_path() / su::int_to_string(id);
+    return video_path() / su::int_to_string(video_id);
 }
 
 std::filesystem::path Database::thumbnail_path() const
@@ -1006,17 +1009,17 @@ std::filesystem::path Database::thumbnail_path() const
     return base_path() / "thumbnails";
 }
 
-std::filesystem::path Database::thumbnail_path(int id) const
+std::filesystem::path Database::thumbnail_path(int video_id) const
 {
-    return thumbnail_path() / su::int_to_string(id);
+    return thumbnail_path() / su::int_to_string(video_id);
 }
 
-std::string Database::hls_video_name(int id)
+std::string Database::hls_video_name(int video_id)
 {
-    return su::int_to_string(id);
+    return su::int_to_string(video_id);
 }
 
-std::filesystem::path Database::hls_video_path(int id) const
+std::filesystem::path Database::hls_video_path(int video_id) const
 {
-    return video_path() / ("hls_" + su::int_to_string(id));
+    return video_path() / ("hls_" + su::int_to_string(video_id));
 }
