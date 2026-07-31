@@ -11,13 +11,22 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Video, id, title)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Group, id, name)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(User, id, name)
 
+struct VideoInfo
+{
+    int id{ 0 };
+    std::string title;
+    bool bookmarked{ false };
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(VideoInfo, id, title, bookmarked)
+
 struct ConnectedUser
 {
     int id{ 0 };
     std::string name;
     bool is_admin{ false };
     bool is_first_connection{ false };
-    std::vector<Video> videos;
+    std::vector<VideoInfo> videos;
 };
 
 template <typename BasicJsonType>

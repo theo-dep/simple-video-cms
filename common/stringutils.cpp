@@ -37,6 +37,11 @@ std::string su::lower(const std::string& str)
     return s;
 }
 
+bool su::string_to_bool(const std::string& str)
+{
+    return lower(str) == "true" || str == "1";
+}
+
 int su::string_to_int(const std::string& str)
 {
     int value{ 0 };

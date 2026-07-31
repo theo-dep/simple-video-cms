@@ -48,6 +48,8 @@ namespace server
     void update_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
     // Video (user)
+    void bookmark(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+
     void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db);
@@ -144,6 +146,8 @@ int server::start()
         .Post("/api/add-password", sc::serve(add_password, std::cref(db)))
         .Post("/api/update-username", sc::serve(update_username, std::cref(session), std::cref(db)))
         .Post("/api/update-password", sc::serve(update_password, std::cref(session), std::cref(db)))
+
+        .Post("/api/bookmark/:video_id", sc::serve(bookmark, std::cref(session), std::cref(db)))
 
         .Get("/api/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
         .Get("/api/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::cref(db)))
@@ -447,6 +451,33 @@ namespace server
                std::views::filter([](int i) { return i > 0; }) |
                std::ranges::to<std::vector<int>>();
     }
+
+    // Convert when not connected
+    inline std::vector<VideoInfo> video_to_video_info(const std::vector<Video>& videos)
+    {
+        std::vector<VideoInfo> video_infos(videos.size());
+        std::ranges::transform(videos, video_infos.begin(), [](const Video& video) -> VideoInfo {
+            return VideoInfo{
+                .id = video.id,
+                .title = video.title
+            };
+        });
+        return video_infos;
+    }
+
+    // Convert when connected
+    inline std::vector<VideoInfo> video_to_video_info(int user_id, const Database& db, const std::vector<Video>& videos)
+    {
+        std::vector<VideoInfo> video_infos(videos.size());
+        std::ranges::transform(videos, video_infos.begin(), [&user_id, &db](const Video& video) -> VideoInfo {
+            return VideoInfo{
+                .id = video.id,
+                .title = video.title,
+                .bookmarked = db.bookmarked(user_id, video.id)
+            };
+        });
+        return video_infos;
+    }
 }
 
 inline void server::refresh(const httplib::Request& req, httplib::Response& res, Session& session, const Database& db)
@@ -465,12 +496,12 @@ inline void server::refresh(const httplib::Request& req, httplib::Response& res,
         user.name = db.user_name(user_id);
         user.is_admin = is_admin;
         if (is_admin) {
-            user.videos = db.admin_video_list();
+            user.videos = video_to_video_info(user_id, db, db.admin_video_list());
         } else {
-            user.videos = db.user_video_list(user_id);
+            user.videos = video_to_video_info(user_id, db, db.user_video_list(user_id));
         }
     } else {
-        user.videos = db.no_user_video_list();
+        user.videos = video_to_video_info(db.no_user_video_list());
     }
 
     res.set_content(nlohmann::json(user).dump(), "application/json");
@@ -680,6 +711,29 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
 }
 
 // Video (user)
+
+inline void server::bookmark(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    const int user_id{ authenticated_user(req, session) };
+    if (user_id == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const bool bookmarked{ su::string_to_bool(req.get_param_value("bookmarked")) };
+
+    const bool success{ db.set_bookmark(user_id, video_id, bookmarked) };
+    if (!success) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to set the bookmark", "plain/text");
+        const std::string username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to set bookmark "{}" for user "{}" and video "{}")", bookmarked, username, video_id };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
 
 namespace server
 {

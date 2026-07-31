@@ -71,7 +71,13 @@ inline auto database::storage(const std::filesystem::path& path)
                    make_column("group_id", &VideoGroupRight::group_id),
                    primary_key(&VideoGroupRight::video_id, &VideoGroupRight::group_id),
                    foreign_key(&VideoGroupRight::video_id).references(&Video::id).on_delete.cascade(),
-                   foreign_key(&VideoGroupRight::group_id).references(&Group::id).on_delete.cascade()));
+                   foreign_key(&VideoGroupRight::group_id).references(&Group::id).on_delete.cascade()),
+        make_table("user_video_bookmarks",
+                   make_column("user_id", &UserVideoBookmark::user_id),
+                   make_column("video_id", &UserVideoBookmark::video_id),
+                   primary_key(&UserVideoBookmark::user_id, &UserVideoBookmark::video_id),
+                   foreign_key(&UserVideoBookmark::user_id).references(&User::id).on_delete.cascade(),
+                   foreign_key(&UserVideoBookmark::video_id).references(&Video::id).on_delete.cascade()));
     // make virtual table with FTS5 for search?
     // https://www.sqlite.org/fts5.html
 }
@@ -110,8 +116,10 @@ bool Database::create_tables() const
         const std::vector user_groups{ storage.get_all<GroupUser>() };
         const std::vector video_user_rights{ storage.get_all<VideoUserRight>() };
         const std::vector video_group_rights{ storage.get_all<VideoGroupRight>() };
+        const std::vector user_video_bookmarks{ storage.get_all<UserVideoBookmark>() };
 
         for (const std::string& table : {
+                 "user_video_bookmarks",
                  "video_group_rights", "video_user_rights", "user_groups",
                  "videos", "groups", "admins", "super_admins", "users" }) {
             storage.drop_table(table);
@@ -125,7 +133,7 @@ bool Database::create_tables() const
             }
         } };
 
-        const std::tuple vecs{ std::tie(users, super_admins, admins, groups, videos, user_groups, video_user_rights, video_group_rights) };
+        const std::tuple vecs{ std::tie(users, super_admins, admins, groups, videos, user_groups, video_user_rights, video_group_rights, user_video_bookmarks) };
         std::apply([&](const auto&... vecs) { (insert_all(vecs), ...); }, vecs);
 
         storage.replace(database::current_version);
@@ -174,6 +182,39 @@ std::vector<Video> Database::no_user_video_list() const
             not_in(&Video::id, select(&VideoUserRight::video_id)) and
             not_in(&Video::id, select(&VideoGroupRight::video_id))),
         order_by(&Video::title).asc());
+}
+
+bool Database::bookmarked(int user_id, int video_id) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional bookmark{ storage.get_optional<UserVideoBookmark>(user_id, video_id) };
+    // if the video is not bookmarked, the entry does not exist in the table
+    return bookmark.has_value();
+}
+
+bool Database::set_bookmark(int user_id, int video_id, bool bookmarked) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+
+    const std::optional bookmark{ storage.get_optional<UserVideoBookmark>(user_id, video_id) };
+    if ((bookmark && bookmarked) || (!bookmark && !bookmarked)) {
+        logging::error{ R"(Fail to set bookmark "{}" for user "{}" and video "{}")", bookmarked, user_id, video_id };
+        return false;
+    }
+
+    if (bookmarked) {
+        const UserVideoBookmark bookmark{
+            .user_id = user_id,
+            .video_id = video_id
+        };
+        storage.replace(bookmark);
+    } else {
+        storage.remove<UserVideoBookmark>(user_id, video_id);
+    }
+
+    return true;
 }
 
 bool Database::video_exists(const std::string& title) const
