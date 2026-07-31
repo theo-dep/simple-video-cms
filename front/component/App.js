@@ -47,6 +47,7 @@ export function App() {
           <${LocationProvider}>
             <${Router}>
               <${lazy(() => import('../pages/Home.js'))} path="/" />
+              <${lazy(() => import('../pages/Bookmarks.js'))} path="/bookmarks" />
               <${lazy(() => import('../pages/Login.js'))} path="/login" />
               <${lazy(() => import('../pages/Logout.js'))} path="/logout" />
               <${lazy(() => import('../pages/ResetPassword.js'))} path="/reset-password" />

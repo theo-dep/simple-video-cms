@@ -69,6 +69,7 @@ export function UserNav({ children, videoId = null }) {
   const pages = user.isLogged.value
     ? [
         ...(user.isAdmin.value ? [{ href: '/admin', label: 'Admin' }] : []),
+        { href: '/bookmarks', label: 'Bookmarks' },
         { href: '/user-account', label: 'Account' },
         { href: '/logout', label: 'Logout' },
       ]

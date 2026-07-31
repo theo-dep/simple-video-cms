@@ -90,6 +90,8 @@ export const api = {
   adminDownloadVideoPath: (videoId) => BASE + `/admin/download-video/${videoId}`,
   thumbnail: (videoId) => fetchApiResponse('GET', `/thumbnail/${videoId}`),
 
+  bookmark: (videoId, bookmarked) => fetchApi('POST', `/bookmark/${videoId}`, new URLSearchParams({ bookmarked })),
+
   addVideoSession: (videoId) => fetchApi('POST', `/add-video-session/${videoId}`),
   startVideoSession: (videoId) => fetchApi('POST', `/start-video-session/${videoId}`),
   resetVideoSession: (videoId) => fetchApi('POST', `/reset-video-session/${videoId}`),
