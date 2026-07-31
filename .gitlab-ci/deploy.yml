@@ -22,7 +22,7 @@ deploy review:
   script:
     - docker pull $CONTAINER_TEST_IMAGE
     - docker rm -f "$CONTAINER_NAME" || true
-    - docker run -d --name "$CONTAINER_NAME" -P $CONTAINER_TEST_IMAGE
+    - docker run -d --init --name "$CONTAINER_NAME" -P $CONTAINER_TEST_IMAGE
     - 'export PORT=$(docker port "$CONTAINER_NAME" 8080/tcp | cut -d: -f2)'
     - export HOST=$(curl -4 ifconfig.me)
     - echo "Deployed on http://$HOST:$PORT"
@@ -43,6 +43,7 @@ stop review:
     CONTAINER_NAME: review-$CI_COMMIT_REF_SLUG
   script:
     - docker rm -f "$CONTAINER_NAME" || true
+    - docker rmi $CONTAINER_TEST_IMAGE || true
   environment:
     name: review/$CI_COMMIT_REF_NAME
     action: stop
@@ -67,7 +68,7 @@ deploy preprod:
     - .docker-job
     - .deploy-rules
     - .deploy-tags
-  dependencies:
+  needs:
     - docker release image
   variables:
     GIT_STRATEGY: none
