@@ -23,6 +23,13 @@ export default function AdminUserList() {
     route('/admin/user-settings/' + selectedUser.value.id);
   }
 
+  async function deactivateUser(id, deactivated) {
+    const name = users.value?.find((u) => u.id === id)?.name ?? 'this user';
+    if (!(await confirm(`${deactivated ? 'Deactivate' : 'Activate'} ${name}?`))) return;
+    await api.adminDeactivateUser(id, deactivated);
+    await loadUsers();
+  }
+
   async function resetUser(id) {
     const name = users.value?.find((u) => u.id === id)?.name ?? 'this user';
     if (!(await confirm(`Reset ${name} password?`))) return;
@@ -57,7 +64,7 @@ export default function AdminUserList() {
                   <td>${u.name}</td>
                   <td>
                     <div class="pure-g">
-                      <div class="pure-u-1 pure-u-sm-1-4">
+                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
                         ${
                           (!!u.groups?.length || !!u.videos?.length) &&
                           html`<${Drawer}
@@ -69,14 +76,17 @@ export default function AdminUserList() {
                           />`
                         }
                       </div>
-                      <div class="pure-u-1 pure-u-sm-1-4">
-                        <a onClick=${() => updateUser(u)} style="cursor:pointer">Update</a>
+                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
+                        <a onClick=${() => updateUser(u)}>Update</a>
                       </div>
-                      <div class="pure-u-1 pure-u-sm-1-4">
-                        ${u.isLoggedOnce && html` <a onClick=${() => resetUser(u.id)} style="cursor:pointer">Reset password</a>`}
+                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
+                        <a onClick=${() => deactivateUser(u.id, !u.isDeactivated)}> ${u.isDeactivated ? 'Activate' : 'Deactivate'} </a>
                       </div>
-                      <div class="pure-u-1 pure-u-sm-1-4">
-                        <a onClick=${() => deleteUser(u.id)} style="cursor:pointer">Delete</a>
+                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
+                        ${u.isLoggedOnce && html` <a onClick=${() => resetUser(u.id)}>Reset password</a>`}
+                      </div>
+                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
+                        <a onClick=${() => deleteUser(u.id)}>Delete</a>
                       </div>
                     </div>
                   </td>

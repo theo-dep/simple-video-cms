@@ -50,7 +50,7 @@ export default function AdminGroupList() {
                   <td>${g.name}</td>
                   <td>
                     <div class="pure-g">
-                      <div class="pure-u-1 pure-u-sm-1-3">
+                      <div class="table-button pure-u-1 pure-u-sm-1-3">
                         ${
                           (!!g.users?.length || !!g.videos?.length) &&
                           html`<${Drawer}
@@ -62,11 +62,11 @@ export default function AdminGroupList() {
                           />`
                         }
                       </div>
-                      <div class="pure-u-1 pure-u-sm-1-3">
-                        <a onClick=${() => updateGroup(g)} style="cursor:pointer">Update</a>
+                      <div class="table-button pure-u-1 pure-u-sm-1-3">
+                        <a onClick=${() => updateGroup(g)}>Update</a>
                       </div>
-                      <div class="pure-u-1 pure-u-sm-1-3">
-                        <a onClick=${() => deleteGroup(g.id)} style="cursor:pointer">Delete</a>
+                      <div class="table-button pure-u-1 pure-u-sm-1-3">
+                        <a onClick=${() => deleteGroup(g.id)}>Delete</a>
                       </div>
                     </div>
                   </td>

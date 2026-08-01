@@ -162,6 +162,8 @@ export const api = {
         videoIds: videoIds,
       })
     ),
+  adminDeactivateUser: (userId, userDeactivated) =>
+    fetchApi('POST', `/admin/deactivate-user/${userId}`, new URLSearchParams({ deactivated: userDeactivated })),
   adminResetUserPassword: (userId) => fetchApi('POST', `/admin/reset-user-password/${userId}`),
   adminDeleteUser: (userId) => fetchApi('POST', `/admin/delete-user/${userId}`),
 
