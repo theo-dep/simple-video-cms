@@ -49,7 +49,7 @@ export default function AdminUserList() {
               title="List of users"
               icon="${html`<title>Add user</title> <${PersonAddIcon} />`}"
               addLink="/admin/new-user"
-              columns="${['Username']}"
+              columns="${[{ label: 'Username', key: 'name' }]}"
               items="${users.value}"
               searchKeys="${['name']}"
               renderRow="${(u) => html`

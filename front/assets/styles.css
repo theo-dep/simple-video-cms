@@ -102,10 +102,6 @@ hr {
   fill: var(--color-primary-dark);
 }
 
-.add-user {
-  text-align: right;
-}
-
 @media only screen and (max-width: 48em) {
   .pure-form button[type='submit'] {
     margin-top: 0em;
@@ -174,6 +170,34 @@ hr {
 .table > tbody > tr:hover > td,
 .table > tbody > tr:hover > th {
   background-color: var(--color-bg-hover);
+}
+
+.table-header-content {
+  display: flex;
+}
+
+.table-header-content > *:last-child {
+  margin-left: auto;
+}
+
+.table-sort-button {
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.table-sort-button:hover {
+  color: var(--color-primary-dark);
+}
+
+.table-sort-icon {
+  margin-left: 0.5em;
+  transform: translateY(-2px);
+  width: 0.5em;
+  height: 0.5em;
+}
+
+.table-sorted-asc {
+  transform: translateY(-2px) rotate(180deg);
 }
 
 /* --- Content --- */
@@ -530,7 +554,7 @@ hr {
   float: right;
   position: relative;
   margin-right: 0.6em;
-  margin-top: -1.9em;
+  margin-top: -1.85em;
   z-index: 2;
   cursor: pointer;
 }
@@ -666,6 +690,10 @@ hr {
 }
 
 /* --- Login --- */
+.forgot-password {
+  text-align: right;
+}
+
 .lined {
   display: flex;
 }
