@@ -48,8 +48,9 @@ export default function AdminAdminList() {
               title="List of administrators"
               icon="${html`<title>Add admin</title> <${PersonAddIcon} />`}"
               addLink="/admin/new-admin"
-              columns="${['Username']}"
+              columns="${[{ label: 'Username', key: 'name' }]}"
               items="${admins.value}"
+              searchKeys="${['name']}"
               renderRow="${(a) => html`
                 <tr key=${a.id}>
                   <td>${a.name}</td>

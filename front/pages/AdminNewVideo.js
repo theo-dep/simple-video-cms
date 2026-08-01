@@ -4,21 +4,26 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
+import { useSearch } from '../hook/useSearch.js';
 import { refreshRequested } from '../store/auth.js';
-import { groups, users, loadGroups, loadUsers, invalidateVideos } from '../store/admin.js';
+import { groups, users, videos, loadGroups, loadUsers, loadVideos, invalidateVideos } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
+import { Dropdown } from '../component/DropDown.js';
 import { validateField } from '../utils/validation.js';
 
 export default function AdminNewVideo() {
   const { route } = useLocation();
   const [fileName, setFileName] = useState('');
+  const [title, setTitle] = useState('');
   const titleRef = useRef(null);
+  const { results, search } = useSearch(videos.value, ['title']);
   const selectGroupsRef = useMultiSelect([users.value, groups.value]);
   const selectUsersRef = useMultiSelect([users.value, groups.value]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
+  const { isLoading: isVideosLoading } = useLoader(loadVideos, Array.isArray(videos.value));
 
   useTitle('New Video');
 
@@ -30,6 +35,12 @@ export default function AdminNewVideo() {
       titleRef.current.value = file.name.replace(/\.[^/.]+$/, '');
     }
     e.target.closest('.file-drop-area')?.classList.remove('is-active');
+  }
+
+  function onTitleInput(e) {
+    const value = e.target.value;
+    setTitle(value);
+    search(value);
   }
 
   async function onVideoSubmit(e) {
@@ -75,9 +86,36 @@ export default function AdminNewVideo() {
                 />
               </div>
               <div class="pure-control-group">
-                <input ref=${titleRef} class="pure-input-1" type="text" name="title" id="title" placeholder="Video title" required />
+                <input
+                  ref=${titleRef}
+                  onInput=${onTitleInput}
+                  value="${title}"
+                  class="pure-input-1"
+                  type="text"
+                  name="title"
+                  id="title"
+                  placeholder="Video title"
+                  required
+                />
               </div>
 
+              ${
+                !isVideosLoading &&
+                title &&
+                !!results.length &&
+                html` <div class="pure-control-group">
+                  <${Dropdown}
+                    title="Similar videos"
+                    liElements=${results.slice(0, 3).map(
+                      (v) => html`
+                        <li>
+                          <a href=${'/video/' + v.id} target="_blank">${v.title}</a>
+                        </li>
+                      `
+                    )}
+                  />
+                </div>`
+              }
               ${
                 !!groups.value.length &&
                 html`

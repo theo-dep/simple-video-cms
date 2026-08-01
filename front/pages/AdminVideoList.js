@@ -45,8 +45,9 @@ export default function AdminVideoList() {
               title="List of videos"
               icon="${html`<title>Add video</title> <${CloudPlusIcon} />`}"
               addLink="/admin/new-video"
-              columns="${['', 'Video Name']}"
+              columns="${[null, { label: 'Video Name', key: 'title' }]}"
               items="${videos.value}"
+              searchKeys="${['title']}"
               renderRow="${(v) => html`
                 <tr key=${v.id}>
                   <td>

@@ -73,10 +73,10 @@ export default function Login() {
         </fieldset>
       </form>
 
-      <div class="add-user">
+      <div class="forgot-password">
         <a onClick=${() => setShowForgot(!showForgot)}>Forgot password?</a>
       </div>
-      <div class="add-user" style="visibility: ${showForgot ? 'visible' : 'hidden'}">Ask an admin to reset your password</div>
+      <div class="forgot-password" style="visibility: ${showForgot ? 'visible' : 'hidden'}">Ask an admin to reset your password</div>
 
       <h4 class="lined">Or</h4>
       <h3>First connection?</h3>

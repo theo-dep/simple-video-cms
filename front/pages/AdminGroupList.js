@@ -42,8 +42,9 @@ export default function AdminGroupList() {
               title="List of groups"
               icon="${html`<title>Add group</title> <${GroupAddIcon} />`}"
               addLink="/admin/new-group"
-              columns="${['Name']}"
+              columns="${[{ label: 'Name', key: 'name' }]}"
               items="${groups.value}"
+              searchKeys="${['name']}"
               renderRow="${(g) => html`
                 <tr key=${g.id}>
                   <td>${g.name}</td>
