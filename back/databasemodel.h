@@ -9,6 +9,7 @@ struct User
     std::string name;
     std::optional<std::string> password{ std::nullopt };
     std::string salt;
+    bool deactivated{ false };
 };
 
 struct SuperAdmin

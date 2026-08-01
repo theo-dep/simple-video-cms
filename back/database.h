@@ -42,6 +42,7 @@ public:
     [[nodiscard]] std::optional<int> update_username(int user_id, const std::string& name) const;
     [[nodiscard]] std::optional<int> update_password(int user_id, const std::string& password) const;
     [[nodiscard]] std::optional<int> clear_password(int user_id) const;
+    [[nodiscard]] std::optional<int> deactivate_user(int user_id, bool deactivated) const;
     [[nodiscard]] bool delete_user(int user_id) const;
 
     int user_id(const std::string& name) const;
@@ -50,6 +51,7 @@ public:
     std::string user_name(int user_id) const;
     std::optional<std::string> user_password(int user_id) const;
     std::string user_salt(int user_id) const;
+    bool deactivated_user(int user_id) const;
 
     int user_count() const;
     int group_count() const;

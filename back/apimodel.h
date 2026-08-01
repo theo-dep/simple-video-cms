@@ -46,6 +46,7 @@ struct AdminUserInfo
     std::vector<Group> groups;
     std::vector<Video> videos;
     bool is_logged_once{ false };
+    bool is_deactivated{ false };
 };
 
 template <typename BasicJsonType>
@@ -56,6 +57,7 @@ void to_json(BasicJsonType& json, const AdminUserInfo& user)
     json["groups"] = user.groups;
     json["videos"] = user.videos;
     json["isLoggedOnce"] = user.is_logged_once;
+    json["isDeactivated"] = user.is_deactivated;
 }
 
 struct AdminAdminInfo
@@ -64,6 +66,7 @@ struct AdminAdminInfo
     std::string name;
     bool is_super_admin{ false };
     bool is_logged_once{ false };
+    bool is_deactivated{ false };
 };
 
 template <typename BasicJsonType>
@@ -73,6 +76,7 @@ void to_json(BasicJsonType& json, const AdminAdminInfo& user)
     json["name"] = user.name;
     json["isSuperAdmin"] = user.is_super_admin;
     json["isLoggedOnce"] = user.is_logged_once;
+    json["isDeactivated"] = user.is_deactivated;
 }
 
 struct AdminGroupInfo
