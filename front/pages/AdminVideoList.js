@@ -61,7 +61,7 @@ export default function AdminVideoList() {
                   <td><a href=${'/video/' + v.id}>${v.title}</a></td>
                   <td>
                     <div class="pure-g">
-                      <div class="pure-u-1 pure-u-lg-1-3">
+                      <div class="table-button pure-u-1 pure-u-lg-1-3">
                         ${
                           (!!v.groups?.length || !!v.users?.length) &&
                           html`
@@ -75,11 +75,11 @@ export default function AdminVideoList() {
                           `
                         }
                       </div>
-                      <div class="pure-u-1 pure-u-lg-1-3">
-                        <a onClick=${() => updateVideo(v)} style="cursor:pointer">Update</a>
+                      <div class="table-button pure-u-1 pure-u-lg-1-3">
+                        <a onClick=${() => updateVideo(v)}>Update</a>
                       </div>
-                      <div class="pure-u-1 pure-u-lg-1-3">
-                        <a onClick=${() => deleteVideo(v.id)} style="cursor:pointer">Delete</a>
+                      <div class="table-button pure-u-1 pure-u-lg-1-3">
+                        <a onClick=${() => deleteVideo(v.id)}>Delete</a>
                       </div>
                     </div>
                   </td>

@@ -28,20 +28,54 @@ namespace database
     {
         int value;
     };
-    static constexpr Version current_version{ .value = 1 };
+    static constexpr Version current_version{ .value = 2 };
+
+    inline auto version_table()
+    {
+        return make_table("version",
+                          make_column("value", &Version::value));
+    }
+
+    namespace v1
+    {
+        struct User
+        {
+            int id{ 0 };
+            std::string name;
+            std::optional<std::string> password{ std::nullopt };
+            std::string salt;
+        };
+
+        inline auto user_table()
+        {
+            return make_table("users",
+                              make_column("id", &User::id, primary_key().autoincrement()),
+                              make_column("name", &User::name, unique(), collate_nocase()),
+                              make_column("password", &User::password),
+                              make_column("salt", &User::salt));
+        }
+    }
+
+    namespace v2
+    {
+        inline auto user_table()
+        {
+            return make_table("users",
+                              make_column("id", &User::id, primary_key().autoincrement()),
+                              make_column("name", &User::name, unique(), collate_nocase()),
+                              make_column("password", &User::password),
+                              make_column("salt", &User::salt),
+                              make_column("deactivated", &User::deactivated));
+        }
+    }
 }
 
 inline auto database::storage(const std::filesystem::path& path)
 {
     return make_storage(
         path.string(),
-        make_table("version",
-                   make_column("value", &Version::value)),
-        make_table("users",
-                   make_column("id", &User::id, primary_key().autoincrement()),
-                   make_column("name", &User::name, unique(), collate_nocase()),
-                   make_column("password", &User::password),
-                   make_column("salt", &User::salt)),
+        version_table(),
+        v2::user_table(),
         make_table("super_admins",
                    make_column("id", &SuperAdmin::id, primary_key()),
                    foreign_key(&SuperAdmin::id).references(&User::id).on_delete.cascade()),
@@ -100,14 +134,46 @@ bool Database::create_tables() const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
+
+    auto version_storage = make_storage(_path.string(), database::version_table());
+    version_storage.sync_schema();
+
+    const std::vector versions{ version_storage.get_all<database::Version>() };
+    if (!versions.empty() && versions.back().value == database::current_version.value) {
+        storage.sync_schema();
+        return true;
+    }
+
+    if (versions.empty()) {
+        static constexpr database::Version v1_version{ .value = 1 };
+        storage.replace(v1_version);
+    }
+
+    if (versions.empty() || versions.back().value == 1) { // to v2
+        auto user_v1_storage = make_storage(_path.string(), database::v1::user_table());
+        user_v1_storage.sync_schema();
+        const std::vector v1_users{ user_v1_storage.get_all<database::v1::User>() };
+
+        auto user_v2_storage = make_storage(_path.string(), database::v2::user_table());
+        user_v2_storage.drop_table("users");
+        user_v2_storage.sync_schema();
+
+        for (const database::v1::User& v1_user : v1_users) {
+            const User v2_user{
+                .id = v1_user.id,
+                .name = v1_user.name,
+                .password = v1_user.password,
+                .salt = v1_user.salt
+            };
+            user_v2_storage.replace(v2_user);
+        }
+    }
+
+    // sync to add new tables
     storage.sync_schema();
 
-    const std::vector versions{ storage.get_all<database::Version>() };
-    if (!versions.empty() && versions.at(0).value == database::current_version.value)
-        return true;
-
+    // auto-migrate
     storage.transaction([&] {
-        // migrate
         const std::vector users{ storage.get_all<User>() };
         const std::vector super_admins{ storage.get_all<SuperAdmin>() };
         const std::vector admins{ storage.get_all<Admin>() };
@@ -489,6 +555,25 @@ std::optional<int> Database::clear_password(int user_id) const
     return id;
 }
 
+std::optional<int> Database::deactivate_user(int user_id, bool deactivated) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional id{
+        storage.get_optional<User>(user_id)
+            .and_then([&](User user) -> std::optional<int> {
+                user.deactivated = deactivated;
+                storage.update(user);
+                return user_id;
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to deactivate "{}")", user_id };
+                return std::nullopt;
+            })
+    };
+    return id;
+}
+
 bool Database::delete_user(int user_id) const
 {
     const std::unique_lock lock(_mutex);
@@ -578,6 +663,24 @@ std::string Database::user_salt(int user_id) const
             })
     };
     return user_salt.value_or(std::string{});
+}
+
+bool Database::deactivated_user(int user_id) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional deactivated_user{
+        storage.get_optional<User>(user_id)
+            .transform([](const User& user) -> bool {
+                return user.deactivated;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to fetch deactivated user "{}")", user_id };
+                return true;
+            })
+    };
+    // true on error to block the connection
+    return deactivated_user.value_or(true);
 }
 
 int Database::user_count() const

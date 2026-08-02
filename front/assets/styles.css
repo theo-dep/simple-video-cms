@@ -200,6 +200,11 @@ hr {
   transform: translateY(-2px) rotate(180deg);
 }
 
+.table-button {
+  cursor: pointer;
+  text-align: center;
+}
+
 /* --- Content --- */
 .content {
   margin: 2em 1em;

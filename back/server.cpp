@@ -79,6 +79,7 @@ namespace server
     void admin_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_update_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_deactivate_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_reset_user_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_delete_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
@@ -174,6 +175,7 @@ int server::start()
         .Get("/api/admin/user/:user_id", sc::serve(admin_user, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-user", sc::serve(admin_add_user, std::cref(session), std::cref(db)))
         .Post("/api/admin/update-user/:user_id", sc::serve(admin_update_user, std::cref(session), std::cref(db)))
+        .Post("/api/admin/deactivate-user/:user_id", sc::serve(admin_deactivate_user, std::cref(session), std::cref(db)))
         .Post("/api/admin/reset-user-password/:user_id", sc::serve(admin_reset_user_password, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-user/:user_id", sc::serve(admin_delete_user, std::cref(session), std::cref(db)))
 
@@ -535,6 +537,13 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
     if (password.empty() || crypto::password(password, salt) != *db_password) {
         res.status = httplib::StatusCode::BadRequest_400;
         res.set_content("Invalid password", "plain/text");
+        return;
+    }
+
+    const bool deactivated{ db.deactivated_user(user_id) };
+    if (deactivated) {
+        res.status = httplib::StatusCode::Locked_423;
+        res.set_content("Deactivated user", "plain/text");
         return;
     }
 
@@ -1110,7 +1119,8 @@ inline void server::admin_admin_list(const httplib::Request& req, httplib::Respo
             .id = admin.id,
             .name = admin.name,
             .is_super_admin = db.is_super_admin(admin.id),
-            .is_logged_once = db.user_password(admin.id).has_value()
+            .is_logged_once = db.user_password(admin.id).has_value(),
+            .is_deactivated = db.deactivated_user(admin.id)
         };
     });
 
@@ -1135,7 +1145,8 @@ inline void server::admin_admin(const httplib::Request& req, httplib::Response& 
         .id = admin_id,
         .name = admin_name,
         .is_super_admin = db.is_super_admin(admin_id),
-        .is_logged_once = db.user_password(admin_id).has_value()
+        .is_logged_once = db.user_password(admin_id).has_value(),
+        .is_deactivated = db.deactivated_user(admin_id)
     };
 
     res.set_content(nlohmann::json(admin_admin).dump(), "application/json");
@@ -1232,7 +1243,8 @@ inline void server::admin_user_list(const httplib::Request& req, httplib::Respon
             .name = user.name,
             .groups = db.user_group_list(user.id),
             .videos = db.unique_user_video_list(user.id),
-            .is_logged_once = db.user_password(user.id).has_value()
+            .is_logged_once = db.user_password(user.id).has_value(),
+            .is_deactivated = db.deactivated_user(user.id)
         };
     });
 
@@ -1258,7 +1270,8 @@ inline void server::admin_user(const httplib::Request& req, httplib::Response& r
         .name = user_name,
         .groups = db.user_group_list(user_id),
         .videos = db.unique_user_video_list(user_id),
-        .is_logged_once = db.user_password(user_id).has_value()
+        .is_logged_once = db.user_password(user_id).has_value(),
+        .is_deactivated = db.deactivated_user(user_id)
     };
 
     res.set_content(nlohmann::json(admin_user).dump(), "application/json");
@@ -1357,6 +1370,26 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
         res.set_content("Fail to update the user", "plain/text");
         const std::string old_username{ db.user_name(user_id) };
         logging::error{ R"(Fail to update user "{}")", old_username };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::admin_deactivate_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == -1) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+    const bool deactivated{ su::string_to_bool(req.get_param_value("deactivated")) };
+
+    if (!db.deactivate_user(user_id, deactivated)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        const std::string username{ db.user_name(user_id) };
+        logging::error{ R"(Fail to deactivate "{}" user "{}")", deactivated, username };
         return;
     }
 

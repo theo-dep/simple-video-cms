@@ -22,6 +22,13 @@ export default function AdminAdminList() {
     route('/admin/admin-settings/' + selectedAdmin.value.id);
   }
 
+  async function deactivateUser(id, deactivated) {
+    const name = admins.value?.find((u) => u.id === id)?.name ?? 'this admin';
+    if (!(await confirm(`${deactivated ? 'Deactivate' : 'Activate'} ${name}?`))) return;
+    await api.adminDeactivateUser(id, deactivated);
+    await loadAdmins();
+  }
+
   async function resetUser(id) {
     const name = admins.value?.find((a) => a.id === id)?.name ?? 'this admin';
     if (!(await confirm(`Reset ${name} password?`))) return;
@@ -59,14 +66,17 @@ export default function AdminAdminList() {
                       !a.isSuperAdmin &&
                       html`
                         <div class="pure-g">
-                          <div class="pure-u-1 pure-u-sm-1-3">
-                            <a onClick=${() => updateAdmin(a)} style="cursor:pointer">Update</a>
+                          <div class="table-button pure-u-1 pure-u-sm-1-4">
+                            <a onClick=${() => updateAdmin(a)}>Update</a>
                           </div>
-                          <div class="pure-u-1 pure-u-sm-1-3">
-                            ${a.isLoggedOnce && html` <a onClick=${() => resetUser(a.id)} style="cursor:pointer">Reset password</a>`}
+                          <div class="table-button pure-u-1 pure-u-sm-1-4">
+                            <a onClick=${() => deactivateUser(a.id, !a.isDeactivated)}> ${a.isDeactivated ? 'Activate' : 'Deactivate'} </a>
                           </div>
-                          <div class="pure-u-1 pure-u-sm-1-3">
-                            <a onClick=${() => deleteUser(a.id)} style="cursor:pointer">Delete</a>
+                          <div class="table-button pure-u-1 pure-u-sm-1-4">
+                            ${a.isLoggedOnce && html` <a onClick=${() => resetUser(a.id)}>Reset password</a>`}
+                          </div>
+                          <div class="table-button pure-u-1 pure-u-sm-1-4">
+                            <a onClick=${() => deleteUser(a.id)}>Delete</a>
                           </div>
                         </div>
                       `
