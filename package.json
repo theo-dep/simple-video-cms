@@ -28,7 +28,7 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "@preact/signals": "^2.10.0",
+    "@preact/signals": "^2.10.1",
     "fuse.js": "^7.5.0",
     "htm": "^3.1.1",
     "multi-select-dropdown-js": "^1.0.3",
