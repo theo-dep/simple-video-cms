@@ -3,6 +3,7 @@
 #include "cookie.h"
 #include "crypto.h"
 
+#include <format>
 #include <mutex>
 
 namespace session
@@ -10,7 +11,7 @@ namespace session
     constexpr const char* cookie_key() { return "id"; }
 }
 
-const std::string& Session::create_session(const std::string& user_id, std::chrono::seconds max_age)
+const std::string& Session::create_session(int user_id, std::chrono::seconds max_age)
 {
     clean_expired_sessions();
 
@@ -22,14 +23,13 @@ const std::string& Session::create_session(const std::string& user_id, std::chro
     return _sessions.find(session_id)->first;
 }
 
-const std::string& Session::user_from_session(const std::string& session_id) const
+int Session::user_from_session(const std::string& session_id) const
 {
     const std::shared_lock lock(_mutex);
 
     const auto it_session{ _sessions.find(session_id) };
     if (it_session == _sessions.cend()) {
-        static const std::string empty_string;
-        return empty_string; // Session not found
+        return invalid_user_id(); // Session not found
     }
 
     return it_session->second.user_id;
@@ -43,12 +43,6 @@ std::string Session::remove_session_reset_cookie(const std::string& session_id)
     _sessions.erase(session_id);
 
     return cookie::insert_to_cookie(session::cookie_key(), std::string{}, std::chrono::seconds{ 0 });
-}
-
-bool Session::is_valid_session(const std::string& session_id) const
-{
-    const std::string user_id{ user_from_session(session_id) };
-    return !user_id.empty();
 }
 
 std::string Session::extract_session_id_from_cookie(const std::string& cookie)
@@ -78,7 +72,7 @@ void Session::clean_expired_sessions()
                   });
 }
 
-std::string Session::generate_session_id(const std::string& user_id)
+std::string Session::generate_session_id(int user_id)
 {
-    return crypto::sha512("sess_" + crypto::random_string() + "_" + user_id + "_ion");
+    return crypto::sha512(std::format("sess_{}_{}_ion", crypto::random_string(), user_id));
 }
