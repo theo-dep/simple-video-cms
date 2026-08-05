@@ -111,7 +111,13 @@ inline auto database::storage(const std::filesystem::path& path)
                    make_column("video_id", &UserVideoBookmark::video_id),
                    primary_key(&UserVideoBookmark::user_id, &UserVideoBookmark::video_id),
                    foreign_key(&UserVideoBookmark::user_id).references(&User::id).on_delete.cascade(),
-                   foreign_key(&UserVideoBookmark::video_id).references(&Video::id).on_delete.cascade()));
+                   foreign_key(&UserVideoBookmark::video_id).references(&Video::id).on_delete.cascade()),
+        make_table("sessions",
+                   make_column("id", &SessionInfo::id, primary_key()),
+                   make_column("user_id", &SessionInfo::user_id),
+                   make_column("creation_date", &SessionInfo::creation_date),
+                   make_column("max_age_time", &SessionInfo::max_age_time),
+                   foreign_key(&UserVideoBookmark::user_id).references(&User::id).on_delete.cascade()));
     // make virtual table with FTS5 for search?
     // https://www.sqlite.org/fts5.html
 }
@@ -183,9 +189,10 @@ bool Database::create_tables() const
         const std::vector video_user_rights{ storage.get_all<VideoUserRight>() };
         const std::vector video_group_rights{ storage.get_all<VideoGroupRight>() };
         const std::vector user_video_bookmarks{ storage.get_all<UserVideoBookmark>() };
+        const std::vector sessions{ storage.get_all<SessionInfo>() };
 
         for (const std::string& table : {
-                 "user_video_bookmarks",
+                 "sessions", "user_video_bookmarks",
                  "video_group_rights", "video_user_rights", "user_groups",
                  "videos", "groups", "admins", "super_admins", "users" }) {
             storage.drop_table(table);
@@ -193,14 +200,18 @@ bool Database::create_tables() const
 
         storage.sync_schema();
 
-        const auto insert_all{ [&storage](const auto& vec) {
-            for (const auto& item : vec) {
-                storage.replace(item);
-            }
-        } };
-
-        const std::tuple vecs{ std::tie(users, super_admins, admins, groups, videos, user_groups, video_user_rights, video_group_rights, user_video_bookmarks) };
-        std::apply([&](const auto&... vecs) { (insert_all(vecs), ...); }, vecs);
+        const std::tuple vecs{
+            std::tie(users, super_admins, admins, groups, videos,
+                     user_groups, video_user_rights, video_group_rights,
+                     user_video_bookmarks, sessions)
+        };
+        std::apply(
+            [&storage](const auto&... vecs) { ([&storage](const auto& vec) {
+                                                  for (const auto& item : vec) {
+                                                      storage.replace(item);
+                                                  }
+                                              }(vecs),
+                                               ...); }, vecs);
 
         storage.replace(database::current_version);
 
@@ -1131,6 +1142,62 @@ std::vector<User> Database::video_user_right_list(int video_id) const
         where(
             in(&User::id, select(distinct(&VideoUserRight::user_id), where(c(&VideoUserRight::video_id) == video_id)))),
         order_by(&User::name).asc());
+}
+
+std::vector<std::tuple<std::string, int, std::string, std::string>> Database::session_list() const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(asterisk<SessionInfo>());
+}
+
+int Database::session_user_id(const std::string& session_id) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional user_id{
+        storage.get_optional<SessionInfo>(session_id)
+            .transform([](const SessionInfo& session) -> int {
+                return session.user_id;
+            })
+            .or_else([&] -> std::optional<int> {
+                logging::error{ R"(Fail to fetch session user id "{}")", session_id };
+                return -1;
+            })
+    };
+    return user_id.value_or(-1);
+}
+
+void Database::add_session(const std::string& session_id, int user_id, const std::string& creation_date, const std::string& max_age_time) const
+{
+    const SessionInfo session{
+        .id = session_id,
+        .user_id = user_id,
+        .creation_date = creation_date,
+        .max_age_time = max_age_time
+    };
+
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    storage.replace(session);
+}
+
+bool Database::delete_session(const std::string& session_id) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional success{
+        storage.get_optional<SessionInfo>(session_id)
+            .transform([&](const SessionInfo& session) -> bool {
+                storage.remove<SessionInfo>(session.id);
+                return true;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to delete session "{}")", session_id };
+                return false;
+            })
+    };
+    return success.value_or(false);
 }
 
 std::filesystem::path Database::base_path() const

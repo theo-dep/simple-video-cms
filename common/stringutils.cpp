@@ -46,8 +46,7 @@ int su::string_to_int(const std::string& str)
 {
     int value{ 0 };
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): wait for c++26
-    const std::from_chars_result ret{ std::from_chars(str.data(), str.data() + str.size(), value) };
-    if (ret.ec == std::errc{})
+    if (std::from_chars(str.data(), str.data() + str.size(), value))
         return value;
     return 0;
 }
@@ -55,4 +54,32 @@ int su::string_to_int(const std::string& str)
 std::string su::int_to_string(int val)
 {
     return std::to_string(val);
+}
+
+std::string su::time_point_to_string(std::chrono::system_clock::time_point tp)
+{
+    return std::format("{:%Y-%m-%dT%H:%M:%SZ}", std::chrono::floor<std::chrono::seconds>(tp));
+}
+
+std::optional<std::chrono::system_clock::time_point> su::string_to_time_point(const std::string& str)
+{
+    std::chrono::system_clock::time_point tp;
+    std::istringstream ss(str);
+    ss >> std::chrono::parse("%Y-%m-%dT%H:%M:%SZ", tp);
+    return ss.fail() ? std::nullopt : std::optional{ tp };
+}
+
+std::string su::seconds_to_string(std::chrono::seconds d)
+{
+    return std::to_string(d.count());
+}
+
+std::chrono::seconds su::string_to_seconds(const std::string& str)
+{
+    std::int64_t value{ 0 };
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic): wait for c++26
+    if (std::from_chars(str.data(), str.data() + str.size(), value))
+        return std::chrono::seconds{ value };
+    using namespace std::chrono_literals;
+    return 0s;
 }

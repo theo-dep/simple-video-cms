@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
@@ -10,6 +11,13 @@ class Session
 public:
     // Constructor
     Session() = default;
+
+    // From serialization
+    void init_from_map(const std::vector<std::tuple<std::string, int, std::string, std::string>>& data);
+
+    // To serialization
+    void add_insert_function(std::function<void(const std::string&, int, const std::string&, const std::string&)> function) { insert_function = function; }
+    void add_remove_function(std::function<void(const std::string&)> function) { remove_function = function; }
 
     // Create a new session for a user
     const std::string& create_session(int user_id, std::chrono::seconds max_age = std::chrono::days{ 30 });
@@ -45,6 +53,9 @@ private:
 
     std::unordered_map<std::string, Data> _sessions; // session_id -> key, value
     mutable std::shared_mutex _mutex;
+
+    std::function<void(const std::string&, int, const std::string&, const std::string&)> insert_function;
+    std::function<void(const std::string&)> remove_function;
 
     // prevent copy/move
     Session(const Session&) = delete;

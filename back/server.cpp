@@ -109,6 +109,23 @@ int server::start()
     Session session;
     VideoSession video_session;
 
+    // database session management
+
+    session.add_insert_function([&db](const std::string& session_id, int user_id, const std::string& creation_date, const std::string& max_age_time) {
+        db.add_session(session_id, user_id, creation_date, max_age_time);
+    });
+
+    session.add_remove_function([&db](const std::string& session_id) {
+        if (!db.delete_session(session_id)) {
+            const int user_id{ db.session_user_id(session_id) };
+            const std::string username{ db.user_name(user_id) };
+            logging::error{ R"(Fail to delete session "{}" of user "{}")", session_id, username };
+        }
+    });
+
+    // init after added both functions to cleanup expired sessions
+    session.init_from_map(db.session_list());
+
     const std::filesystem::path logs_path{ filesystem::logs_path() / "front.log" };
     logging::Logger front_logger;
     front_logger.open(logs_path);

@@ -88,3 +88,55 @@ TEST_CASE("su::int_to_string")
         REQUIRE(su::int_to_string(-12) == "-12");
     }
 }
+
+TEST_CASE("su::time_point_to_string")
+{
+    SECTION("formats time_point as ISO 8601 UTC")
+    {
+        const auto tp = std::chrono::sys_days{ std::chrono::year{ 2024 } / 3 / 15 } + std::chrono::hours{ 10 } + std::chrono::minutes{ 30 } + std::chrono::seconds{ 5 };
+
+        REQUIRE(su::time_point_to_string(tp) == "2024-03-15T10:30:05Z");
+    }
+}
+
+TEST_CASE("su::string_to_time_point")
+{
+    SECTION("parses ISO 8601 UTC string")
+    {
+        const auto tp = su::string_to_time_point("2024-03-15T10:30:05Z");
+        const auto expected = std::chrono::sys_days{ std::chrono::year{ 2024 } / 3 / 15 } + std::chrono::hours{ 10 } + std::chrono::minutes{ 30 } + std::chrono::seconds{ 5 };
+
+        REQUIRE(tp.has_value());
+        REQUIRE(tp.value() == expected);
+    }
+
+    SECTION("returns nullopt for invalid string")
+    {
+        REQUIRE(su::string_to_time_point("bad") == std::nullopt);
+        REQUIRE(su::string_to_time_point("2024-13-99T99:99:99Z") == std::nullopt);
+    }
+}
+
+TEST_CASE("su::seconds_to_string")
+{
+    SECTION("formats seconds values")
+    {
+        REQUIRE(su::seconds_to_string(std::chrono::seconds{ 0 }) == "0");
+        REQUIRE(su::seconds_to_string(std::chrono::seconds{ 3600 }) == "3600");
+        REQUIRE(su::seconds_to_string(std::chrono::seconds{ -12 }) == "-12");
+    }
+}
+
+TEST_CASE("su::string_to_seconds")
+{
+    SECTION("parses seconds values")
+    {
+        REQUIRE(su::string_to_seconds("42") == std::chrono::seconds{ 42 });
+        REQUIRE(su::string_to_seconds("-7") == std::chrono::seconds{ -7 });
+    }
+
+    SECTION("returns fallback value for invalid string")
+    {
+        REQUIRE(su::string_to_seconds("bad") == std::chrono::seconds{ 0 });
+    }
+}
