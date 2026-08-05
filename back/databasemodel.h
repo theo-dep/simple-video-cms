@@ -57,3 +57,11 @@ struct UserVideoBookmark
     int user_id{ 0 };
     int video_id{ 0 };
 };
+
+struct SessionInfo
+{
+    std::string id;
+    int user_id{ 0 };
+    std::string creation_date;
+    std::string max_age_time;
+};

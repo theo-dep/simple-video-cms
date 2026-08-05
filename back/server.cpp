@@ -109,6 +109,23 @@ int server::start()
     Session session;
     VideoSession video_session;
 
+    // database session management
+
+    session.add_insert_function([&db](const std::string& session_id, int user_id, const std::string& creation_date, const std::string& max_age_time) {
+        db.add_session(session_id, user_id, creation_date, max_age_time);
+    });
+
+    session.add_remove_function([&db](const std::string& session_id) {
+        if (!db.delete_session(session_id)) {
+            const int user_id{ db.session_user_id(session_id) };
+            const std::string username{ db.user_name(user_id) };
+            logging::error{ R"(Fail to delete session "{}" of user "{}")", session_id, username };
+        }
+    });
+
+    // init after added both functions to cleanup expired sessions
+    session.init_from_map(db.session_list());
+
     const std::filesystem::path logs_path{ filesystem::logs_path() / "front.log" };
     logging::Logger front_logger;
     front_logger.open(logs_path);
@@ -423,22 +440,19 @@ namespace server
         return Session::extract_session_id_from_cookie(req.get_header_value("Cookie"));
     }
 
-    // Returns user_id or -1 if not authenticated
+    // Returns user_id or Session::invalid_user_id() if not authenticated
     inline int authenticated_user(const httplib::Request& req, const Session& session)
     {
         const std::string session_id{ session_id_from_req(req) };
-        if (!session.is_valid_session(session_id)) {
-            return -1;
-        }
-        return su::string_to_int(session.user_from_session(session_id));
+        return session.user_from_session(session_id);
     }
 
-    // Returns user_id if authenticated and admin, else -1
+    // Returns user_id if authenticated and admin, else Session::invalid_user_id()
     inline int authenticated_admin(const httplib::Request& req, const Session& session, const Database& db)
     {
         const int user_id{ authenticated_user(req, session) };
-        if (user_id == -1 || !db.is_admin(user_id)) {
-            return -1;
+        if (user_id == Session::invalid_user_id() || !db.is_admin(user_id)) {
+            return Session::invalid_user_id();
         }
         return user_id;
     }
@@ -487,8 +501,8 @@ inline void server::refresh(const httplib::Request& req, httplib::Response& res,
     ConnectedUser user;
 
     const std::string session_id{ session_id_from_req(req) };
-    if (session.is_valid_session(session_id)) {
-        const int user_id{ su::string_to_int(session.user_from_session(session_id)) };
+    const int user_id{ session.user_from_session(session_id) };
+    if (user_id != Session::invalid_user_id()) {
 
         // reset session
         res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
@@ -519,7 +533,7 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
     }
 
     const int user_id{ db.user_id(username) };
-    if (user_id == -1) {
+    if (user_id == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::NotFound_404;
         res.set_content("Unknown username", "plain/text");
         return;
@@ -548,7 +562,7 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
     }
 
     // create session
-    const std::string session_id{ session.create_session(su::int_to_string(user_id)) };
+    const std::string session_id{ session.create_session(user_id) };
     res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
 
     res.status = httplib::StatusCode::OK_200;
@@ -558,7 +572,7 @@ inline void server::add_password(const httplib::Request& req, httplib::Response&
 {
     const std::string username{ su::trim(req.get_param_value("username")) };
     const int user_id{ db.user_id(username) };
-    if (user_id == -1) {
+    if (user_id == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::NotFound_404;
         res.set_content("Unknown username", "plain/text");
         return;
@@ -624,7 +638,7 @@ namespace server
 inline void server::update_username(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     const int user_id{ authenticated_user(req, session) };
-    if (user_id == -1) {
+    if (user_id == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -677,7 +691,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
 inline void server::update_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     const int user_id{ authenticated_user(req, session) };
-    if (user_id == -1) {
+    if (user_id == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -724,7 +738,7 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
 inline void server::bookmark(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     const int user_id{ authenticated_user(req, session) };
-    if (user_id == -1) {
+    if (user_id == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -751,11 +765,10 @@ namespace server
     {
         const std::string session_id{ session_id_from_req(req) };
 
-        const bool is_logged{ session.is_valid_session(session_id) };
+        const int user_id{ session.user_from_session(session_id) };
         const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
-        if (is_logged) {
-            const int user_id{ su::string_to_int(session.user_from_session(session_id)) };
+        if (user_id != Session::invalid_user_id()) {
             return db.is_admin(user_id) || db.has_video_right(video_id, user_id);
         }
 
@@ -895,7 +908,7 @@ inline void server::reset_video_session(const httplib::Request& req, httplib::Re
 
 inline void server::admin_stats(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -912,7 +925,7 @@ inline void server::admin_stats(const httplib::Request& req, httplib::Response& 
 
 inline void server::admin_video_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -933,7 +946,7 @@ inline void server::admin_video_list(const httplib::Request& req, httplib::Respo
 
 inline void server::admin_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -957,7 +970,7 @@ inline void server::admin_video(const httplib::Request& req, httplib::Response& 
 
 inline void server::admin_add_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1020,7 +1033,7 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
 
 inline void server::admin_update_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1069,7 +1082,7 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
 
 inline void server::admin_delete_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1087,7 +1100,7 @@ inline void server::admin_delete_video(const httplib::Request& req, httplib::Res
 
 inline void server::admin_download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1107,7 +1120,7 @@ inline void server::admin_download_video(const httplib::Request& req, httplib::R
 
 inline void server::admin_admin_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1129,7 +1142,7 @@ inline void server::admin_admin_list(const httplib::Request& req, httplib::Respo
 
 inline void server::admin_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1154,7 +1167,7 @@ inline void server::admin_admin(const httplib::Request& req, httplib::Response& 
 
 inline void server::admin_add_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1191,7 +1204,7 @@ inline void server::admin_add_admin(const httplib::Request& req, httplib::Respon
 
 inline void server::admin_update_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1230,7 +1243,7 @@ inline void server::admin_update_admin(const httplib::Request& req, httplib::Res
 
 inline void server::admin_user_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1253,7 +1266,7 @@ inline void server::admin_user_list(const httplib::Request& req, httplib::Respon
 
 inline void server::admin_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1279,7 +1292,7 @@ inline void server::admin_user(const httplib::Request& req, httplib::Response& r
 
 inline void server::admin_add_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1328,7 +1341,7 @@ inline void server::admin_add_user(const httplib::Request& req, httplib::Respons
 
 inline void server::admin_update_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1378,7 +1391,7 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
 
 inline void server::admin_deactivate_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1398,7 +1411,7 @@ inline void server::admin_deactivate_user(const httplib::Request& req, httplib::
 
 inline void server::admin_reset_user_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1416,7 +1429,7 @@ inline void server::admin_reset_user_password(const httplib::Request& req, httpl
 
 inline void server::admin_delete_user(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1436,7 +1449,7 @@ inline void server::admin_delete_user(const httplib::Request& req, httplib::Resp
 
 inline void server::admin_group_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1457,7 +1470,7 @@ inline void server::admin_group_list(const httplib::Request& req, httplib::Respo
 
 inline void server::admin_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1481,7 +1494,7 @@ inline void server::admin_group(const httplib::Request& req, httplib::Response& 
 
 inline void server::admin_add_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1528,7 +1541,7 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
 
 inline void server::admin_update_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1577,7 +1590,7 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
 
 inline void server::admin_delete_group(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
-    if (authenticated_admin(req, session, db) == -1) {
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }

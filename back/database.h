@@ -99,6 +99,11 @@ public:
     std::vector<Group> video_group_right_list(int video_id) const;
     std::vector<User> video_user_right_list(int video_id) const;
 
+    std::vector<std::tuple<std::string, int, std::string, std::string>> session_list() const;
+    int session_user_id(const std::string& session_id) const;
+    void add_session(const std::string& session_id, int user_id, const std::string& creation_date, const std::string& max_age_time) const;
+    [[nodiscard]] bool delete_session(const std::string& session_id) const;
+
 protected:
     std::filesystem::path base_path() const;
     std::filesystem::path video_path() const;
