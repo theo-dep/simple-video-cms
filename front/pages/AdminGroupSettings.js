@@ -5,7 +5,8 @@ import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { selectedGroup, users, videos, loadGroup, loadUsers, loadVideos, invalidateAdminLists } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
-import { Form, useMultiSelect } from '../component/Form.js';
+import { Form } from '../component/Form.js';
+import { MultiSelectDropDown } from '../component/MultiSelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { confirm } from '../component/ConfirmDialog.js';
 import { validateField } from '../utils/validation.js';
@@ -13,8 +14,6 @@ import { validateField } from '../utils/validation.js';
 export default function AdminGroupSettings({ groupId }) {
   groupId = Number(groupId);
   const { route } = useLocation();
-  const selectUsersRef = useMultiSelect([selectedGroup.value, users.value, videos.value]);
-  const selectVideosRef = useMultiSelect([selectedGroup.value, users.value, videos.value]);
   const { isLoading: isGroupLoading } = useLoader(() => loadGroup(groupId), selectedGroup.value?.id === groupId, [groupId]);
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
   const { isLoading: isVideosLoading } = useLoader(loadVideos, Array.isArray(videos.value));
@@ -64,16 +63,9 @@ export default function AdminGroupSettings({ groupId }) {
                 !!users.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select
-                      ref=${selectUsersRef}
-                      name="user-ids"
-                      class="pure-input-1"
-                      data-placeholder="Add users to group (optional)"
-                      multiple
-                      data-multi-select
-                    >
+                    <${MultiSelectDropDown} name="user-ids" placeholder="Add users to group (optional)">
                       ${users.value.map((u) => html`<option key=${u.id} value=${u.id} selected=${isUserSelected(u.id)}>${u.name}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }
@@ -81,16 +73,9 @@ export default function AdminGroupSettings({ groupId }) {
                 !!videos.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select
-                      ref=${selectVideosRef}
-                      name="video-ids"
-                      class="pure-input-1"
-                      data-placeholder="Add videos to group (optional)"
-                      multiple
-                      data-multi-select
-                    >
+                    <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to group (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id} selected=${isVideoSelected(v.id)}>${v.title}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }

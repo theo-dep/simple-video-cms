@@ -5,14 +5,13 @@ import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { groups, videos, loadGroups, loadVideos, invalidateUsers, invalidateAdmins } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
-import { Form, useMultiSelect } from '../component/Form.js';
+import { Form } from '../component/Form.js';
+import { MultiSelectDropDown } from '../component/MultiSelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { validateField } from '../utils/validation.js';
 
 function AdminNewUserBase({ isAdmin }) {
   const { route } = useLocation();
-  const selectGroupRef = useMultiSelect([groups.value, videos.value]);
-  const selectVideoRef = useMultiSelect([groups.value, videos.value]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, isAdmin || Array.isArray(groups.value), [isAdmin]);
   const { isLoading: isVideosLoading } = useLoader(loadVideos, isAdmin || Array.isArray(videos.value), [isAdmin]);
 
@@ -58,9 +57,9 @@ function AdminNewUserBase({ isAdmin }) {
                 !!groups.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select ref=${selectGroupRef} name="group-ids" data-placeholder="Add groups to user (optional)" multiple data-multi-select>
+                    <${MultiSelectDropDown} name="group-ids" placeholder="Add groups to user (optional)">
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }
@@ -69,9 +68,9 @@ function AdminNewUserBase({ isAdmin }) {
                 !!videos.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select ref=${selectVideoRef} name="video-ids" data-placeholder="Add videos to user (optional)" multiple data-multi-select>
+                    <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to user (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id}>${v.title}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }

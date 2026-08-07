@@ -8,7 +8,8 @@ import { useSearch } from '../hook/useSearch.js';
 import { refreshRequested } from '../store/auth.js';
 import { groups, users, videos, loadGroups, loadUsers, loadVideos, invalidateVideos } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
-import { Form, useMultiSelect } from '../component/Form.js';
+import { Form } from '../component/Form.js';
+import { MultiSelectDropDown } from '../component/MultiSelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { Dropdown } from '../component/DropDown.js';
 import { validateField } from '../utils/validation.js';
@@ -18,8 +19,6 @@ export default function AdminNewVideo() {
   const [fileName, setFileName] = useState('');
   const [title, setTitle] = useState('');
   const { results, search } = useSearch(videos.value, ['title']);
-  const selectGroupsRef = useMultiSelect([users.value, groups.value]);
-  const selectUsersRef = useMultiSelect([users.value, groups.value]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
   const { isLoading: isVideosLoading } = useLoader(loadVideos, Array.isArray(videos.value));
@@ -118,16 +117,9 @@ export default function AdminNewVideo() {
                 !!groups.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select
-                      ref=${selectGroupsRef}
-                      name="group-ids"
-                      class="pure-input-1"
-                      data-placeholder="Select groups (optional)"
-                      multiple
-                      data-multi-select
-                    >
+                    <${MultiSelectDropDown} name="group-ids" placeholder="Add groups to video (optional)">
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }
@@ -135,16 +127,9 @@ export default function AdminNewVideo() {
                 !!users.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select
-                      ref=${selectUsersRef}
-                      name="user-ids"
-                      class="pure-input-1"
-                      data-placeholder="Select users (optional)"
-                      multiple
-                      data-multi-select
-                    >
+                    <${MultiSelectDropDown} name="user-ids" placeholder="Add users to video (optional)">
                       ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }

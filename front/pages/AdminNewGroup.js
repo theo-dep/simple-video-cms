@@ -5,14 +5,13 @@ import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { users, videos, loadUsers, loadVideos, invalidateGroups } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
-import { Form, useMultiSelect } from '../component/Form.js';
+import { Form } from '../component/Form.js';
+import { MultiSelectDropDown } from '../component/MultiSelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { validateField } from '../utils/validation.js';
 
 export default function AdminNewGroup() {
   const { route } = useLocation();
-  const selectUserRef = useMultiSelect([users.value, videos.value]);
-  const selectVideoRef = useMultiSelect([users.value, videos.value]);
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
   const { isLoading: isVideosLoading } = useLoader(loadVideos, Array.isArray(videos.value));
 
@@ -49,16 +48,9 @@ export default function AdminNewGroup() {
                 !!users.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select
-                      ref=${selectUserRef}
-                      name="user-ids"
-                      class="pure-input-1"
-                      data-placeholder="Add users to group (optional)"
-                      multiple
-                      data-multi-select
-                    >
+                    <${MultiSelectDropDown} name="user-ids" placeholder="Add users to group (optional)">
                       ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }
@@ -66,16 +58,9 @@ export default function AdminNewGroup() {
                 !!videos.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select
-                      ref=${selectVideoRef}
-                      name="video-ids"
-                      class="pure-input-1"
-                      data-placeholder="Add videos to group (optional)"
-                      multiple
-                      data-multi-select
-                    >
+                    <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to group (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id}>${v.title}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }
