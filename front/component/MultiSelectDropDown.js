@@ -2,6 +2,8 @@ import { html } from 'htm/preact';
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { useSearch } from '../hook/useSearch.js';
 import { useStyleSheet } from '../hook/useStyleSheet.js';
+import { ArrowDownIcon } from '../svg/ArrowDownIcon.js';
+import { XIcon } from '../svg/XIcon.js';
 import { Loader } from './Loader.js';
 
 import MultiSelectDropDownStyleSheet from './MultiSelectDropDown.css' with { type: 'css' };
@@ -127,13 +129,14 @@ export function MultiSelectDropDown({ name, placeholder, children }) {
                       onClick=${(e) => removeTag(e, item.value)}
                       aria-label="Remove ${item.label}"
                     >
-                      ×
+                      <${XIcon} />
                     </button>
                   </span>
                 `
               )
             : html`<span class="multi-select-header-placeholder">${placeholder || 'Select item(s)'}</span>`
         }
+        <${ArrowDownIcon} class="multi-select-arrow" />
       </div>
 
       ${

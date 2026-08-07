@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useEffect, useState, useMemo } from 'preact/hooks';
 import { useSearch } from '../hook/useSearch.js';
 import { SearchInput } from './SearchInput.js';
+import { ArrowDownIcon } from '../svg/ArrowDownIcon.js';
 
 export function ListTable({ title, icon, addLink, columns, items, searchKeys, renderRow }) {
   const { results, search } = useSearch(items, searchKeys);
@@ -46,14 +47,9 @@ export function ListTable({ title, icon, addLink, columns, items, searchKeys, re
                     ${col?.label}
                     ${
                       col?.key &&
-                      html` <svg
+                      html`<${ArrowDownIcon}
                         class="table-sort-icon table-sorted-${sort.key === col.key ? (sort.dir === 1 ? 'asc' : 'desc') : 'asc'}"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="currentColor"
-                        viewBox="0 0 16 16"
-                      >
-                        <path d="M8 13.1l-8-8 2.1-2.2 5.9 5.9 5.9-5.9 2.1 2.2z" />
-                      </svg>`
+                      />`
                     }
                   </div>
 
