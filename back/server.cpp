@@ -68,6 +68,18 @@ namespace server
     void admin_delete_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
+    void admin_place_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_add_place(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_delete_place(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+
+    void admin_author_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_add_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_delete_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+
+    void admin_tag_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_add_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_delete_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+
     // Admin - admins
     void admin_admin_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_admin(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
@@ -117,9 +129,19 @@ int server::start()
 
     session.add_remove_function([&db](const std::string& session_id) {
         if (!db.delete_session(session_id)) {
-            const int user_id{ db.session_user_id(session_id) };
-            const std::string username{ db.user_name(user_id) };
-            logging::error{ R"(Fail to delete session "{}" of user "{}")", session_id, username };
+            const std::optional session{ db.session(session_id) };
+            if (!session) {
+                logging::error{ R"(Fail to delete session: unknown session "{}")", session_id };
+                return;
+            }
+
+            const std::optional user{ db.user(session->user_id) };
+            if (!user) {
+                logging::error{ R"(Fail to delete session: unknown user "{}" in session "{}")", session->user_id, session_id };
+                return;
+            }
+
+            logging::error{ R"(Fail to delete session "{}" of user "{}")", session_id, user->name };
         }
     });
 
@@ -183,10 +205,22 @@ int server::start()
         .Post("/api/admin/delete-video/:video_id", sc::serve(admin_delete_video, std::cref(session), std::cref(db)))
         .Get("/api/admin/download-video/:video_id", sc::serve(admin_download_video, std::cref(session), std::cref(db)))
 
+        .Get("/api/admin/place-list", sc::serve(admin_place_list, std::cref(session), std::cref(db)))
+        .Post("/api/admin/add-place", sc::serve(admin_add_place, std::cref(session), std::cref(db)))
+        .Post("/api/admin/delete-place/:place_id", sc::serve(admin_delete_place, std::cref(session), std::cref(db)))
+
+        .Get("/api/admin/author-list", sc::serve(admin_author_list, std::cref(session), std::cref(db)))
+        .Post("/api/admin/add-author", sc::serve(admin_add_author, std::cref(session), std::cref(db)))
+        .Post("/api/admin/delete-author/:author_id", sc::serve(admin_delete_author, std::cref(session), std::cref(db)))
+
+        .Get("/api/admin/tag-list", sc::serve(admin_tag_list, std::cref(session), std::cref(db)))
+        .Post("/api/admin/add-tag", sc::serve(admin_add_tag, std::cref(session), std::cref(db)))
+        .Post("/api/admin/delete-tag/:tag_id", sc::serve(admin_delete_tag, std::cref(session), std::cref(db)))
+
         .Get("/api/admin/admin-list", sc::serve(admin_admin_list, std::cref(session), std::cref(db)))
         .Get("/api/admin/admin/:admin_id", sc::serve(admin_admin, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-admin", sc::serve(admin_add_admin, std::cref(session), std::cref(db)))
-        .Post("/api/admin/update-admin/:user_id", sc::serve(admin_update_admin, std::cref(session), std::cref(db)))
+        .Post("/api/admin/update-admin/:admin_id", sc::serve(admin_update_admin, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/user-list", sc::serve(admin_user_list, std::cref(session), std::cref(db)))
         .Get("/api/admin/user/:user_id", sc::serve(admin_user, std::cref(session), std::cref(db)))
@@ -209,8 +243,8 @@ int server::start()
 
 inline bool server::create_super_admin(const Database& db)
 {
-    const int user_id{ db.user_id(env::super_admin_username) };
-    if (db.is_admin(user_id)) {
+    const std::optional user{ db.user(env::super_admin_username) };
+    if (user && db.is_admin(user->id)) {
         // already created
         return true;
     }
@@ -335,12 +369,18 @@ namespace server
 inline void server::video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db)
 {
     const std::string video_id{ req.path_params.at("id") };
-    const std::string title{ db.video_title(su::string_to_int(video_id)) };
-    const std::string description{ "Watch " + title + " video" };
+    const std::optional video{ db.video(su::string_to_int(video_id)) };
+    if (!video) {
+        res.status = httplib::StatusCode::NotFound_404;
+        res.set_content("Unknown video", "plain/text");
+        return;
+    }
+
+    const std::string description{ "Watch " + video->title + " video" };
     const std::string thumbnail_url{ "/api/thumbnail/" + video_id };
     const std::string video_url{ "/video/" + video_id };
     serve_index(req, res, bundle_dir,
-                { .title = title,
+                { .title = video->title,
                   .description = description,
                   .image = thumbnail_url,
                   .url = video_url });
@@ -468,14 +508,33 @@ namespace server
                std::ranges::to<std::vector<int>>();
     }
 
+    inline std::optional<std::string> place_id_to_name(const Database& db, const std::optional<int>& place_id)
+    {
+        return place_id
+            .and_then([&db](int id) { return db.place(id); })
+            .transform([](const Place& place) { return place.name; });
+    }
+
+    template <typename T, typename P>
+    inline auto types_to_elements(const std::vector<T>& types, P member)
+    {
+        return types |
+               std::views::transform([member](const T& type) { return type.*member; }) |
+               std::ranges::to<std::vector<std::remove_cvref_t<decltype(std::declval<T>().*member)>>>();
+    }
+
     // Convert when not connected
-    inline std::vector<VideoInfo> video_to_video_info(const std::vector<Video>& videos)
+    inline std::vector<VideoInfo> video_to_video_info(const Database& db, const std::vector<Video>& videos)
     {
         std::vector<VideoInfo> video_infos(videos.size());
-        std::ranges::transform(videos, video_infos.begin(), [](const Video& video) -> VideoInfo {
+        std::ranges::transform(videos, video_infos.begin(), [&db](const Video& video) -> VideoInfo {
             return VideoInfo{
                 .id = video.id,
-                .title = video.title
+                .title = video.title,
+                .date = video.date,
+                .place = place_id_to_name(db, video.place_id),
+                .authors = types_to_elements(db.video_author_list(video.id), &Author::name),
+                .tags = types_to_elements(db.video_tag_list(video.id), &Tag::name)
             };
         });
         return video_infos;
@@ -489,7 +548,11 @@ namespace server
             return VideoInfo{
                 .id = video.id,
                 .title = video.title,
-                .bookmarked = db.bookmarked(user_id, video.id)
+                .bookmarked = db.bookmarked(user_id, video.id),
+                .date = video.date,
+                .place = place_id_to_name(db, video.place_id),
+                .authors = types_to_elements(db.video_author_list(video.id), &Author::name),
+                .tags = types_to_elements(db.video_tag_list(video.id), &Tag::name)
             };
         });
         return video_infos;
@@ -503,13 +566,19 @@ inline void server::refresh(const httplib::Request& req, httplib::Response& res,
     const std::string session_id{ session_id_from_req(req) };
     const int user_id{ session.user_from_session(session_id) };
     if (user_id != Session::invalid_user_id()) {
+        const std::optional db_user{ db.user(user_id) };
+        if (!db_user) {
+            res.status = httplib::StatusCode::NotFound_404;
+            res.set_content("Unknown user", "plain/text");
+            return;
+        }
 
         // reset session
         res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
 
         const bool is_admin{ db.is_admin(user_id) };
         user.id = user_id;
-        user.name = db.user_name(user_id);
+        user.name = db_user->name;
         user.is_admin = is_admin;
         if (is_admin) {
             user.videos = video_to_video_info(user_id, db, db.admin_video_list());
@@ -517,7 +586,7 @@ inline void server::refresh(const httplib::Request& req, httplib::Response& res,
             user.videos = video_to_video_info(user_id, db, db.user_video_list(user_id));
         }
     } else {
-        user.videos = video_to_video_info(db.no_user_video_list());
+        user.videos = video_to_video_info(db, db.no_user_video_list());
     }
 
     res.set_content(nlohmann::json(user).dump(), "application/json");
@@ -532,29 +601,27 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
         return;
     }
 
-    const int user_id{ db.user_id(username) };
-    if (user_id == Session::invalid_user_id()) {
+    const std::optional user{ db.user(username) };
+    if (!user) {
         res.status = httplib::StatusCode::NotFound_404;
         res.set_content("Unknown username", "plain/text");
         return;
     }
 
-    const std::optional db_password{ db.user_password(user_id) };
-    const bool is_first_connection{ !db_password || db_password->empty() };
+    const bool is_first_connection{ !user->password || user->password->empty() };
     if (is_first_connection) {
         res.status = httplib::StatusCode::NoContent_204;
         return;
     }
 
-    const std::string salt{ db.user_salt(user_id) };
     const std::string password{ crypto::sha512(req.get_param_value("password")) };
-    if (password.empty() || crypto::password(password, salt) != *db_password) {
+    if (password.empty() || crypto::password(password, user->salt) != *user->password) {
         res.status = httplib::StatusCode::BadRequest_400;
         res.set_content("Invalid password", "plain/text");
         return;
     }
 
-    const bool deactivated{ db.deactivated_user(user_id) };
+    const bool deactivated{ db.deactivated_user(user->id) };
     if (deactivated) {
         res.status = httplib::StatusCode::Locked_423;
         res.set_content("Deactivated user", "plain/text");
@@ -562,7 +629,7 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
     }
 
     // create session
-    const std::string session_id{ session.create_session(user_id) };
+    const std::string session_id{ session.create_session(user->id) };
     res.set_header("Set-Cookie", session.insert_session_id_to_cookie(session_id));
 
     res.status = httplib::StatusCode::OK_200;
@@ -571,15 +638,14 @@ inline void server::login(const httplib::Request& req, httplib::Response& res, S
 inline void server::add_password(const httplib::Request& req, httplib::Response& res, const Database& db)
 {
     const std::string username{ su::trim(req.get_param_value("username")) };
-    const int user_id{ db.user_id(username) };
-    if (user_id == Session::invalid_user_id()) {
+    const std::optional user{ db.user(username) };
+    if (!user) {
         res.status = httplib::StatusCode::NotFound_404;
         res.set_content("Unknown username", "plain/text");
         return;
     }
 
-    const std::optional db_password{ db.user_password(user_id) };
-    const bool is_first_connection{ !db_password || db_password->empty() };
+    const bool is_first_connection{ !user->password || user->password->empty() };
     if (!is_first_connection) {
         res.status = httplib::StatusCode::Unauthorized_401;
         res.set_content("Password already set", "plain/text");
@@ -600,16 +666,15 @@ inline void server::add_password(const httplib::Request& req, httplib::Response&
         return;
     }
 
-    const std::string salt{ db.user_salt(user_id) };
-    const std::string new_db_password{ crypto::password(password, salt) };
-    const std::optional success_user_id{ db.add_password(user_id, new_db_password) };
+    const std::string new_db_password{ crypto::password(password, user->salt) };
+    const std::optional success_user_id{ db.add_password(user->id, new_db_password) };
     if (!success_user_id.has_value()) {
         res.status = httplib::StatusCode::Locked_423;
         res.set_content("Fail to set new password", "plain/text");
         return;
     }
 
-    logging::info{ "User password updated by {}", user_id };
+    logging::info{ "User password updated by {}", user->id };
     res.status = httplib::StatusCode::OK_200;
 }
 
@@ -638,7 +703,8 @@ namespace server
 inline void server::update_username(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     const int user_id{ authenticated_user(req, session) };
-    if (user_id == Session::invalid_user_id()) {
+    const std::optional user{ db.user(user_id) };
+    if (!user) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -668,9 +734,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    const std::optional db_password{ db.user_password(user_id) };
-    const std::string salt{ db.user_salt(user_id) };
-    if (!db_password || crypto::password(password, salt) != *db_password) {
+    if (!user->password || crypto::password(password, user->salt) != *user->password) {
         res.status = httplib::StatusCode::Unauthorized_401;
         res.set_content("Invalid password", "plain/text");
         return;
@@ -680,8 +744,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
     if (!success) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update username", "plain/text");
-        const std::string old_username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to update username "{}")", old_username };
+        logging::error{ R"(Fail to update username "{}")", user->name };
         return;
     }
 
@@ -691,7 +754,8 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
 inline void server::update_password(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     const int user_id{ authenticated_user(req, session) };
-    if (user_id == Session::invalid_user_id()) {
+    const std::optional user{ db.user(user_id) };
+    if (!user) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -706,9 +770,7 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    const std::string salt{ db.user_salt(user_id) };
-    const std::optional db_password{ db.user_password(user_id) };
-    if (!db_password || crypto::password(old_password, salt) != *db_password) {
+    if (!user->password || crypto::password(old_password, user->salt) != *user->password) {
         res.status = httplib::StatusCode::Unauthorized_401;
         res.set_content("Invalid old password", "plain/text");
         return;
@@ -720,13 +782,12 @@ inline void server::update_password(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    const std::string new_db_password{ crypto::password(new_password, salt) };
+    const std::string new_db_password{ crypto::password(new_password, user->salt) };
     const std::optional success{ db.update_password(user_id, new_db_password) };
     if (!success) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update password", "plain/text");
-        const std::string username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to update user password "{}")", username };
+        logging::error{ R"(Fail to update user password "{}")", user->name };
         return;
     }
 
@@ -750,8 +811,7 @@ inline void server::bookmark(const httplib::Request& req, httplib::Response& res
     if (!success) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to set the bookmark", "plain/text");
-        const std::string username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to set bookmark "{}" for user "{}" and video "{}")", bookmarked, username, video_id };
+        logging::error{ R"(Fail to set bookmark "{}" for user "{}" and video "{}")", bookmarked, user_id, video_id };
         return;
     }
 
@@ -936,6 +996,10 @@ inline void server::admin_video_list(const httplib::Request& req, httplib::Respo
         return AdminVideoInfo{
             .id = video.id,
             .title = video.title,
+            .date = video.date,
+            .place = video.place_id.and_then([&db](int place_id) { return db.place(place_id); }),
+            .authors = db.video_author_list(video.id),
+            .tags = db.video_tag_list(video.id),
             .groups = db.video_group_right_list(video.id),
             .users = db.video_user_right_list(video.id)
         };
@@ -952,15 +1016,19 @@ inline void server::admin_video(const httplib::Request& req, httplib::Response& 
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    const std::string video_title{ db.video_title(video_id) };
-    if (video_title.empty()) {
+    const std::optional video{ db.video(video_id) };
+    if (!video) {
         res.status = httplib::StatusCode::NotFound_404;
         return;
     }
 
     const AdminVideoInfo admin_video{
         .id = video_id,
-        .title = video_title,
+        .title = video->title,
+        .date = video->date,
+        .place = video->place_id.and_then([&db](int place_id) { return db.place(place_id); }),
+        .authors = db.video_author_list(video_id),
+        .tags = db.video_tag_list(video_id),
         .groups = db.video_group_right_list(video_id),
         .users = db.video_user_right_list(video_id)
     };
@@ -988,23 +1056,23 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
     }
 
     const std::string video_title{ su::trim(req.form.get_field("title")) };
+    const std::string video_date{ su::trim(req.form.get_field("date")) };
+    const std::optional video_opt_date{ video_date.empty() ? std::nullopt : std::optional(video_date) };
+    const int place_id{ su::string_to_int(req.form.get_field("placeId")) };
+    const std::optional place_opt_id{ place_id == 0 ? std::nullopt : std::optional(place_id) };
     const std::string video_content{ req.form.get_file("video").content };
     const std::string thumbnail_content{ video::thumbnail(video_content) };
-    const std::vector<int> group_ids{ extract_ids(req.form.get_field("groupIds")) };
-    const std::vector<int> user_ids{ extract_ids(req.form.get_field("userIds")) };
+    const std::vector author_ids{ extract_ids(req.form.get_field("authorIds")) };
+    const std::vector tag_ids{ extract_ids(req.form.get_field("tagIds")) };
+    const std::vector group_ids{ extract_ids(req.form.get_field("groupIds")) };
+    const std::vector user_ids{ extract_ids(req.form.get_field("userIds")) };
 
     if (!validate_field(res, video_title)) {
         return;
     }
 
-    if (db.video_exists(video_title)) {
-        res.status = httplib::StatusCode::Conflict_409;
-        res.set_content("Video already exists", "plain/text");
-        return;
-    }
-
     const std::optional video_id{
-        db.add_video(video_title, video_content)
+        db.add_video(video_title, video_opt_date, place_opt_id, video_content)
             .and_then([&](int video_id) -> std::optional<int> {
                 const std::filesystem::path video_path{ db.hls_video_path(video_id) };
                 const bool converted{ video::convert_to_hls(video_content, video_path.string(), Database::hls_video_name(video_id)) };
@@ -1012,6 +1080,12 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
             })
             .and_then([&](int id) -> std::optional<int> {
                 return db.add_video_thumbnail(id, thumbnail_content);
+            })
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_video_authors(id, author_ids) ? std::optional(id) : std::nullopt;
+            })
+            .and_then([&](int id) -> std::optional<int> {
+                return db.add_video_tags(id, tag_ids) ? std::optional(id) : std::nullopt;
             })
             .and_then([&](int id) -> std::optional<int> {
                 return db.add_video_group_rights(id, group_ids) ? std::optional(id) : std::nullopt;
@@ -1046,6 +1120,12 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     const std::string video_title{ su::trim(req.get_param_value("title")) };
+    const std::string video_date{ su::trim(req.get_param_value("date")) };
+    const std::optional video_opt_date{ video_date.empty() ? std::nullopt : std::optional(video_date) };
+    const int place_id{ su::string_to_int(req.get_param_value("placeId")) };
+    const std::optional place_opt_id{ place_id == 0 ? std::nullopt : std::optional(place_id) };
+    const std::vector author_ids{ extract_ids(req.get_param_value("authorIds")) };
+    const std::vector tag_ids{ extract_ids(req.get_param_value("tagIds")) };
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
@@ -1053,14 +1133,14 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
         return;
     }
 
-    if (db.video_exists(video_id, video_title)) {
-        res.status = httplib::StatusCode::Conflict_409;
-        res.set_content("Video already exists", "plain/text");
-        return;
-    }
-
     const std::optional success{
-        db.update_video_title(video_id, video_title)
+        db.update_video(video_id, video_title, video_opt_date, place_opt_id)
+            .and_then([&](int id) -> std::optional<int> {
+                return db.update_video_authors(id, author_ids) ? std::optional(id) : std::nullopt;
+            })
+            .and_then([&](int id) -> std::optional<int> {
+                return db.update_video_tags(id, tag_ids) ? std::optional(id) : std::nullopt;
+            })
             .and_then([&](int id) -> std::optional<int> {
                 return db.update_video_group_rights(id, group_ids) ? std::optional(id) : std::nullopt;
             })
@@ -1072,8 +1152,7 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     if (!success.value_or(false)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the video", "plain/text");
-        const std::string old_video_title{ db.video_title(video_id) };
-        logging::error{ R"(Fail to update video "{}")", old_video_title };
+        logging::error{ R"(Fail to update video "{}")", video_id };
         return;
     }
 
@@ -1090,8 +1169,7 @@ inline void server::admin_delete_video(const httplib::Request& req, httplib::Res
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
     if (!db.delete_video(video_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        const std::string video_title{ db.video_title(video_id) };
-        logging::error{ R"(Fail to delete video "{}")", video_title };
+        logging::error{ R"(Fail to delete video "{}")", video_id };
         return;
     }
 
@@ -1116,6 +1194,182 @@ inline void server::admin_download_video(const httplib::Request& req, httplib::R
     res.set_content(content, "video/mp4");
 }
 
+inline void server::admin_place_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const std::vector places{ db.place_list() };
+    res.set_content(nlohmann::json(places).dump(), "application/json");
+}
+
+inline void server::admin_add_place(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const std::string place{ su::trim(req.get_param_value("name")) };
+
+    if (!validate_field(res, place)) {
+        return;
+    }
+
+    if (db.place_exists(place)) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Place already exists", "plain/text");
+        return;
+    }
+
+    const std::optional place_id{ db.add_place(place) };
+    if (!place_id) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to add the place", "plain/text");
+        logging::error{ R"(Fail to add place "{}")", place };
+        return;
+    }
+
+    res.set_content(nlohmann::json({ { "id", *place_id } }).dump(), "application/json");
+}
+
+inline void server::admin_delete_place(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int place_id{ su::string_to_int(req.path_params.at("place_id")) };
+    if (!db.delete_place(place_id)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        const std::optional place{ db.place(place_id) };
+        logging::error{ R"(Fail to delete place "{}")", place ? place->name : std::format("with id \"{}\"", place_id) };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::admin_author_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const std::vector authors{ db.author_list() };
+    res.set_content(nlohmann::json(authors).dump(), "application/json");
+}
+
+inline void server::admin_add_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const std::string author{ su::trim(req.get_param_value("name")) };
+
+    if (!validate_field(res, author)) {
+        return;
+    }
+
+    if (db.author_exists(author)) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Author already exists", "plain/text");
+        return;
+    }
+
+    const std::optional author_id{ db.add_author(author) };
+    if (!author_id) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to add the author", "plain/text");
+        logging::error{ R"(Fail to add author "{}")", author };
+        return;
+    }
+
+    res.set_content(nlohmann::json({ { "id", *author_id } }).dump(), "application/json");
+}
+
+inline void server::admin_delete_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+    const int author_id{ su::string_to_int(req.path_params.at("author_id")) };
+    if (!db.delete_author(author_id)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        const std::optional author{ db.author(author_id) };
+        logging::error{ R"(Fail to delete author "{}")", author ? author->name : std::format("with id \"{}\"", author_id) };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
+inline void server::admin_tag_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const std::vector tags{ db.tag_list() };
+    res.set_content(nlohmann::json(tags).dump(), "application/json");
+}
+
+inline void server::admin_add_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const std::string tag{ su::trim(req.get_param_value("name")) };
+
+    if (!validate_field(res, tag)) {
+        return;
+    }
+
+    if (db.tag_exists(tag)) {
+        res.status = httplib::StatusCode::Conflict_409;
+        res.set_content("Tag already exists", "plain/text");
+        return;
+    }
+
+    const std::optional tag_id{ db.add_tag(tag) };
+    if (!tag_id) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to add the tag", "plain/text");
+        logging::error{ R"(Fail to add tag "{}")", tag };
+        return;
+    }
+
+    res.set_content(nlohmann::json({ { "id", *tag_id } }).dump(), "application/json");
+}
+
+inline void server::admin_delete_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    const int tag_id{ su::string_to_int(req.path_params.at("tag_id")) };
+    if (!db.delete_tag(tag_id)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        const std::optional tag{ db.tag(tag_id) };
+        logging::error{ R"(Fail to delete tag "{}")", tag ? tag->name : std::format("with id \"{}\"", tag_id) };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
 // Admin - Admins
 
 inline void server::admin_admin_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
@@ -1132,7 +1386,7 @@ inline void server::admin_admin_list(const httplib::Request& req, httplib::Respo
             .id = admin.id,
             .name = admin.name,
             .is_super_admin = db.is_super_admin(admin.id),
-            .is_logged_once = db.user_password(admin.id).has_value(),
+            .is_logged_once = admin.password.has_value(),
             .is_deactivated = db.deactivated_user(admin.id)
         };
     });
@@ -1148,17 +1402,17 @@ inline void server::admin_admin(const httplib::Request& req, httplib::Response& 
     }
 
     const int admin_id{ su::string_to_int(req.path_params.at("admin_id")) };
-    const std::string admin_name{ db.user_name(admin_id) };
-    if (admin_name.empty()) {
+    const std::optional admin{ db.user(admin_id) };
+    if (!admin) {
         res.status = httplib::StatusCode::NotFound_404;
         return;
     }
 
     const AdminAdminInfo admin_admin{
         .id = admin_id,
-        .name = admin_name,
+        .name = admin->name,
         .is_super_admin = db.is_super_admin(admin_id),
-        .is_logged_once = db.user_password(admin_id).has_value(),
+        .is_logged_once = admin->password.has_value(),
         .is_deactivated = db.deactivated_user(admin_id)
     };
 
@@ -1215,7 +1469,7 @@ inline void server::admin_update_admin(const httplib::Request& req, httplib::Res
         return;
     }
 
-    const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
+    const int user_id{ su::string_to_int(req.path_params.at("admin_id")) };
     const std::string username{ su::trim(req.get_param_value("username")) };
 
     if (!validate_field(res, username)) {
@@ -1231,8 +1485,7 @@ inline void server::admin_update_admin(const httplib::Request& req, httplib::Res
     if (!db.update_username(user_id, username)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the user", "plain/text");
-        const std::string old_username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to update user "{}")", old_username };
+        logging::error{ R"(Fail to update user "{}")", user_id };
         return;
     }
 
@@ -1256,7 +1509,7 @@ inline void server::admin_user_list(const httplib::Request& req, httplib::Respon
             .name = user.name,
             .groups = db.user_group_list(user.id),
             .videos = db.unique_user_video_list(user.id),
-            .is_logged_once = db.user_password(user.id).has_value(),
+            .is_logged_once = user.password.has_value(),
             .is_deactivated = db.deactivated_user(user.id)
         };
     });
@@ -1272,18 +1525,18 @@ inline void server::admin_user(const httplib::Request& req, httplib::Response& r
     }
 
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
-    const std::string user_name{ db.user_name(user_id) };
-    if (user_name.empty()) {
+    const std::optional user{ db.user(user_id) };
+    if (!user) {
         res.status = httplib::StatusCode::NotFound_404;
         return;
     }
 
     const AdminUserInfo admin_user{
         .id = user_id,
-        .name = user_name,
+        .name = user->name,
         .groups = db.user_group_list(user_id),
         .videos = db.unique_user_video_list(user_id),
-        .is_logged_once = db.user_password(user_id).has_value(),
+        .is_logged_once = user->password.has_value(),
         .is_deactivated = db.deactivated_user(user_id)
     };
 
@@ -1381,8 +1634,7 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
     if (!success.value_or(false)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the user", "plain/text");
-        const std::string old_username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to update user "{}")", old_username };
+        logging::error{ R"(Fail to update user "{}")", user_id };
         return;
     }
 
@@ -1401,8 +1653,7 @@ inline void server::admin_deactivate_user(const httplib::Request& req, httplib::
 
     if (!db.deactivate_user(user_id, deactivated)) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        const std::string username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to deactivate "{}" user "{}")", deactivated, username };
+        logging::error{ R"(Fail to deactivate "{}" user "{}")", deactivated, user_id };
         return;
     }
 
@@ -1419,8 +1670,7 @@ inline void server::admin_reset_user_password(const httplib::Request& req, httpl
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
     if (!db.clear_password(user_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        const std::string username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to reset user password "{}")", username };
+        logging::error{ R"(Fail to reset user password "{}")", user_id };
         return;
     }
 
@@ -1437,8 +1687,7 @@ inline void server::admin_delete_user(const httplib::Request& req, httplib::Resp
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
     if (!db.delete_user(user_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        const std::string username{ db.user_name(user_id) };
-        logging::error{ R"(Fail to delete user "{}")", username };
+        logging::error{ R"(Fail to delete user "{}")", user_id };
         return;
     }
 
@@ -1476,15 +1725,15 @@ inline void server::admin_group(const httplib::Request& req, httplib::Response& 
     }
 
     const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
-    const std::string group_name{ db.group_name(group_id) };
-    if (group_name.empty()) {
+    const std::optional group{ db.group(group_id) };
+    if (!group) {
         res.status = httplib::StatusCode::NotFound_404;
         return;
     }
 
     const AdminGroupInfo admin_group{
         .id = group_id,
-        .name = group_name,
+        .name = group->name,
         .users = db.group_user_list(group_id),
         .videos = db.group_video_list(group_id)
     };
@@ -1580,8 +1829,7 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
     if (!success.value_or(false)) {
         res.status = httplib::StatusCode::InternalServerError_500;
         res.set_content("Fail to update the group", "plain/text");
-        const std::string old_group_name{ db.group_name(group_id) };
-        logging::error{ R"(Fail to update group "{}")", old_group_name };
+        logging::error{ R"(Fail to update group "{}")", group_id };
         return;
     }
 
@@ -1598,8 +1846,7 @@ inline void server::admin_delete_group(const httplib::Request& req, httplib::Res
     const int group_id{ su::string_to_int(req.path_params.at("group_id")) };
     if (!db.delete_group(group_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        const std::string group_name{ db.group_name(group_id) };
-        logging::error{ R"(Fail to delete group "{}")", group_name };
+        logging::error{ R"(Fail to delete group "{}")", group_id };
         return;
     }
 
