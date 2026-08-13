@@ -6,7 +6,7 @@ import { useLoader } from '../hook/useLoader.js';
 import { selectedGroup, users, videos, loadGroup, loadUsers, loadVideos, invalidateAdminLists } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form } from '../component/Form.js';
-import { MultiSelectDropDown } from '../component/MultiSelectDropDown.js';
+import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { confirm } from '../component/ConfirmDialog.js';
 import { validateField } from '../utils/validation.js';

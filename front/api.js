@@ -41,21 +41,20 @@ export const api = {
   logsPath: () => BASE + `/logs`,
   logs: (logData) => fetchApi('POST', '/logs', JSON.stringify(logData)),
 
-  login: (username, password) => {
-    return fetchApi(
+  login: (username, password) =>
+    fetchApi(
       'POST',
       '/login',
       new URLSearchParams({
         username: username,
         password: password,
       })
-    );
-  },
+    ),
   refresh: () => fetchApi('GET', '/refresh'),
   logout: () => fetchApi('POST', '/logout'),
 
-  addPassword: (username, password, confirmPassword) => {
-    return fetchApi(
+  addPassword: (username, password, confirmPassword) =>
+    fetchApi(
       'POST',
       '/add-password',
       new URLSearchParams({
@@ -63,8 +62,7 @@ export const api = {
         password: password,
         confirmPassword: confirmPassword,
       })
-    );
-  },
+    ),
 
   updateUsername: (username, password) =>
     fetchApi(
@@ -100,25 +98,66 @@ export const api = {
 
   adminVideoList: () => fetchApi('GET', '/admin/video-list'),
   adminVideo: (videoId) => fetchApi('GET', `/admin/video/${videoId}`),
-  adminAddVideo: (video, title, groupIds, userIds) => {
+  adminAddVideo: (video, title, date, placeId, authorIds, tagIds, groupIds, userIds) => {
     const form = new FormData();
     form.append('title', title);
     form.append('video', video);
+    form.append('date', date);
+    form.append('placeId', placeId);
+    form.append('authorIds', authorIds);
+    form.append('tagIds', tagIds);
     form.append('groupIds', groupIds);
     form.append('userIds', userIds);
     return fetchApi('POST', '/admin/add-video', form);
   },
-  adminUpdateVideo: (videoId, title, groupIds, userIds) =>
+  adminUpdateVideo: (videoId, title, date, placeId, authorIds, tagIds, groupIds, userIds) =>
     fetchApi(
       'POST',
       `/admin/update-video/${videoId}`,
       new URLSearchParams({
         title: title,
+        date: date,
+        placeId: placeId,
+        authorIds: authorIds,
+        tagIds: tagIds,
         groupIds: groupIds,
         userIds: userIds,
       })
     ),
   adminDeleteVideo: (videoId) => fetchApi('POST', `/admin/delete-video/${videoId}`),
+
+  adminPlaceList: () => fetchApi('GET', '/admin/place-list'),
+  adminAddPlace: (name) =>
+    fetchApi(
+      'POST',
+      '/admin/add-place',
+      new URLSearchParams({
+        name: name,
+      })
+    ),
+  adminDeletePlace: (placeId) => fetchApi('POST', `/admin/delete-place/${placeId}`),
+
+  adminAuthorList: () => fetchApi('GET', '/admin/author-list'),
+  adminAddAuthor: (name) =>
+    fetchApi(
+      'POST',
+      '/admin/add-author',
+      new URLSearchParams({
+        name: name,
+      })
+    ),
+  adminDeleteAuthor: (authorId) => fetchApi('POST', `/admin/delete-author/${authorId}`),
+
+  adminTagList: () => fetchApi('GET', '/admin/tag-list'),
+  adminAddTag: (name) =>
+    fetchApi(
+      'POST',
+      '/admin/add-tag',
+      new URLSearchParams({
+        name: name,
+      })
+    ),
+  adminDeleteTag: (tagId) => fetchApi('POST', `/admin/delete-tag/${tagId}`),
 
   adminAdminList: () => fetchApi('GET', '/admin/admin-list'),
   adminAdmin: (adminId) => fetchApi('GET', `/admin/admin/${adminId}`),

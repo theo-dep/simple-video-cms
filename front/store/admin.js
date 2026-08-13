@@ -8,6 +8,10 @@ export const groups = signal(null);
 export const users = signal(null);
 export const videos = signal(null);
 
+export const places = signal(null);
+export const authors = signal(null);
+export const tags = signal(null);
+
 export const selectedAdmin = signal(null);
 export const selectedGroup = signal(null);
 export const selectedUser = signal(null);
@@ -47,6 +51,10 @@ export const loadGroups = () => load(groups, api.adminGroupList);
 export const loadUsers = () => load(users, api.adminUserList);
 export const loadVideos = () => load(videos, api.adminVideoList);
 
+export const loadPlaces = () => load(places, api.adminPlaceList);
+export const loadAuthors = () => load(authors, api.adminAuthorList);
+export const loadTags = () => load(tags, api.adminTagList);
+
 export const loadAdmin = (adminId) => load(selectedAdmin, api.adminAdmin, adminId);
 export const loadGroup = (groupId) => load(selectedGroup, api.adminGroup, groupId);
 export const loadUser = (userId) => load(selectedUser, api.adminUser, userId);
@@ -66,4 +74,41 @@ export function invalidateAdminLists() {
   users.value = null;
   groups.value = null;
   videos.value = null;
+}
+
+async function addValue(list, apiCall, value) {
+  const { json } = await apiCall(value);
+  if (!json) return null;
+  const { id } = json;
+  list.value = [...list.value, { id, name: value }];
+  return id;
+}
+
+async function deleteValue(list, apiCall, id) {
+  await apiCall(id);
+  list.value = list.value.filter((l) => String(l.id) !== id);
+}
+
+export async function onAddedPlace(value) {
+  return await addValue(places, api.adminAddPlace, value);
+}
+
+export async function onDeletedPlace(id) {
+  await deleteValue(places, api.adminDeletePlace, id);
+}
+
+export async function onAddedAuthor(value) {
+  return await addValue(authors, api.adminAddAuthor, value);
+}
+
+export async function onDeletedAuthor(id) {
+  await deleteValue(authors, api.adminDeleteAuthor, id);
+}
+
+export async function onAddedTag(value) {
+  return await addValue(tags, api.adminAddTag, value);
+}
+
+export async function onDeletedTag(id) {
+  await deleteValue(tags, api.adminDeleteTag, id);
 }

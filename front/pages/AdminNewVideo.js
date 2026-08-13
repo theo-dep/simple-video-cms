@@ -6,19 +6,43 @@ import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { useSearch } from '../hook/useSearch.js';
 import { refreshRequested } from '../store/auth.js';
-import { groups, users, videos, loadGroups, loadUsers, loadVideos, invalidateVideos } from '../store/admin.js';
+import {
+  groups,
+  users,
+  places,
+  authors,
+  tags,
+  videos,
+  loadGroups,
+  loadUsers,
+  loadPlaces,
+  loadAuthors,
+  loadTags,
+  loadVideos,
+  invalidateVideos,
+  onAddedPlace,
+  onDeletedPlace,
+  onAddedAuthor,
+  onDeletedAuthor,
+  onAddedTag,
+  onDeletedTag,
+} from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form } from '../component/Form.js';
-import { MultiSelectDropDown } from '../component/MultiSelectDropDown.js';
+import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { Dropdown } from '../component/DropDown.js';
 import { validateField } from '../utils/validation.js';
+import { formatVideo } from '../utils/formatVideo.js';
 
 export default function AdminNewVideo() {
   const { route } = useLocation();
   const [fileName, setFileName] = useState('');
   const [title, setTitle] = useState('');
   const { results, search } = useSearch(videos.value, ['title']);
+  const { isLoading: isPlacesLoading } = useLoader(loadPlaces, Array.isArray(places.value));
+  const { isLoading: isAuthorsLoading } = useLoader(loadAuthors, Array.isArray(authors.value));
+  const { isLoading: isTagsLoading } = useLoader(loadTags, Array.isArray(tags.value));
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
   const { isLoading: isVideosLoading } = useLoader(loadVideos, Array.isArray(videos.value));
@@ -47,12 +71,19 @@ export default function AdminNewVideo() {
     const video = fileInput.files[0] || null;
     const title = form.elements['title'].value.trim();
     validateField(title);
-
+    const date = form.elements['date'].value.trim();
+    const placeSelect = form.elements['place-id'];
+    const placeId = placeSelect ? placeSelect.value : null;
+    const authorSelect = form.elements['author-ids'];
+    const authorIds = authorSelect ? Array.from(authorSelect.selectedOptions).map((o) => o.value) : [];
+    const tagSelect = form.elements['tag-ids'];
+    const tagIds = tagSelect ? Array.from(tagSelect.selectedOptions).map((o) => o.value) : [];
     const groupSelect = form.elements['group-ids'];
-    const userSelect = form.elements['user-ids'];
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];
+    const userSelect = form.elements['user-ids'];
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
-    await api.adminAddVideo(video, title, groupIds, userIds);
+
+    await api.adminAddVideo(video, title, date, placeId, authorIds, tagIds, groupIds, userIds);
     invalidateVideos(); // force to refresh the video list and stats
     refreshRequested.value = true; // add this video to the admin video list (current user)
     route('/admin/video-list');
@@ -62,7 +93,7 @@ export default function AdminNewVideo() {
     <${AdminNav} />
 
     ${
-      isGroupsLoading || isUsersLoading
+      isPlacesLoading || isAuthorsLoading || isTagsLoading || isGroupsLoading || isUsersLoading
         ? html`<${Loader} />`
         : html`
             <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
@@ -106,13 +137,51 @@ export default function AdminNewVideo() {
                     liElements=${results.slice(0, 3).map(
                       (v) => html`
                         <li>
-                          <a href=${'/video/' + v.id} target="_blank">${v.title}</a>
+                          <a href=${'/video/' + v.id} target="_blank">${formatVideo(v)}</a>
                         </li>
                       `
                     )}
                   />
                 </div>`
               }
+
+              <div class="pure-control-group">
+                <input class="pure-input-1" type="text" name="date" id="date" placeholder="Video date (optional)" />
+              </div>
+
+              <div class="pure-control-group">
+                <${SingleSelectEditableDropDown}
+                  name="place-id"
+                  placeholder="Video place (optional)"
+                  onAddedOption=${onAddedPlace}
+                  onDeletedOption=${onDeletedPlace}
+                >
+                  ${places.value.map((p) => html`<option key=${p.id} value=${p.id}>${p.name}</option>`)}
+                <//>
+              </div>
+
+              <div class="pure-control-group">
+                <${MultiSelectEditableDropDown}
+                  name="author-ids"
+                  placeholder="Add authors to video (optional)"
+                  onAddedOption=${onAddedAuthor}
+                  onDeletedOption=${onDeletedAuthor}
+                >
+                  ${authors.value.map((a) => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}
+                <//>
+              </div>
+
+              <div class="pure-control-group">
+                <${MultiSelectEditableDropDown}
+                  name="tag-ids"
+                  placeholder="Add tags to video (optional)"
+                  onAddedOption=${onAddedTag}
+                  onDeletedOption=${onDeletedTag}
+                >
+                  ${tags.value.map((t) => html`<option key=${t.id} value=${t.id}>${t.name}</option>`)}
+                <//>
+              </div>
+
               ${
                 !!groups.value.length &&
                 html`

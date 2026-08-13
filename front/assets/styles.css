@@ -5,8 +5,13 @@
 
   /* Text colors */
   --color-text: #c9c9c9;
+  --color-text-disable: #757575;
   --color-text-white: white;
   --color-text-black: black;
+
+  /* Alert colors */
+  --color-alert: #dc3545;
+  --color-alert-dark: #ad2936;
 
   /* Background colors */
   --color-bg-dark: rgba(0, 0, 0, 0.9);

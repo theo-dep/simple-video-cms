@@ -3,7 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
-import { selectedGroup, groups, invalidateGroups, loadGroups } from '../store/admin.js';
+import { selectedGroup, groups, loadGroups, invalidateGroups } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Drawer } from '../component/Drawer.js';
