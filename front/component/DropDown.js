@@ -1,8 +1,8 @@
 import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
 
-export function Dropdown({ title, liElements }) {
-  const [isOpen, setIsOpen] = useState(true);
+export function Dropdown({ title, open = true, liElements }) {
+  const [isOpen, setIsOpen] = useState(open);
 
   function onClick(e) {
     e.preventDefault();
