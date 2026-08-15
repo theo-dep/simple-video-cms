@@ -1,5 +1,5 @@
 import { html } from 'htm/preact';
-import { useState, useRef } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
@@ -17,7 +17,6 @@ export default function AdminNewVideo() {
   const { route } = useLocation();
   const [fileName, setFileName] = useState('');
   const [title, setTitle] = useState('');
-  const titleRef = useRef(null);
   const { results, search } = useSearch(videos.value, ['title']);
   const selectGroupsRef = useMultiSelect([users.value, groups.value]);
   const selectUsersRef = useMultiSelect([users.value, groups.value]);
@@ -31,8 +30,8 @@ export default function AdminNewVideo() {
     const file = e.target.files[0];
     setFileName(file.name);
 
-    if (titleRef.current && !titleRef.current.value) {
-      titleRef.current.value = file.name.replace(/\.[^/.]+$/, '');
+    if (!title.value) {
+      setTitle(file.name.replace(/\.[^/.]+$/, ''));
     }
     e.target.closest('.file-drop-area')?.classList.remove('is-active');
   }
@@ -87,7 +86,6 @@ export default function AdminNewVideo() {
               </div>
               <div class="pure-control-group">
                 <input
-                  ref=${titleRef}
                   onInput=${onTitleInput}
                   value="${title}"
                   class="pure-input-1"
