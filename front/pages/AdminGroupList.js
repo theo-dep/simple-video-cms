@@ -6,7 +6,6 @@ import { useLoader } from '../hook/useLoader.js';
 import { selectedGroup, groups, loadGroups, invalidateGroups } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
-import { Drawer } from '../component/Drawer.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
 import { GroupAddIcon } from '../svg/GroupAddIcon.js';
@@ -40,39 +39,43 @@ export default function AdminGroupList() {
           ? html`<${Loader} />`
           : html`<${ListTable}
               title="List of groups"
-              icon="${html`<title>Add group</title> <${GroupAddIcon} />`}"
+              addContent="${html`<svg class="svg-button"><${GroupAddIcon} /></svg> New group`}"
               addLink="/admin/new-group"
-              columns="${[{ label: 'Name', key: 'name' }]}"
+              columns="${[{ key: 'name', label: 'Name', sortValue: (g) => g.name }]}"
               items="${groups.value}"
               searchKeys="${['name']}"
-              renderRow="${(g) => html`
-                <tr key=${g.id}>
-                  <td>${g.name}</td>
-                  <td>
-                    <div class="pure-g">
-                      <div class="table-button pure-u-1 pure-u-sm-1-3">
-                        ${
-                          (!!g.users?.length || !!g.videos?.length) &&
-                          html`<${Drawer}
-                            label="Users and Rights"
-                            items=${[
-                              { label: 'Group Users', elements: g.users.map((u) => u.name) ?? [] },
-                              { label: 'Video Rights', elements: g.videos.map((v) => v.title) ?? [] },
-                            ]}
-                          />`
-                        }
-                      </div>
-                      <div class="table-button pure-u-1 pure-u-sm-1-3">
-                        <a onClick=${() => updateGroup(g)}>Update</a>
-                      </div>
-                      <div class="table-button pure-u-1 pure-u-sm-1-3">
-                        <a onClick=${() => deleteGroup(g.id)}>Delete</a>
-                      </div>
+              renderExpanded="${(g) => html`
+                <div class="list-expanded-actions">
+                  <a onClick=${() => updateGroup(g)}>Update</a>
+                  <a onClick=${() => deleteGroup(g.id)}>Delete</a>
+                </div>
+                ${
+                  (!!g.users?.length || !!g.videos?.length) &&
+                  html`
+                    <div class="list-expanded-info">
+                      ${
+                        !!g.users?.length &&
+                        html`
+                          <div class="list-expanded-info-row">
+                            <h4>Users</h4>
+                            ${g.users?.map((u) => html`<p>${u.name}</p>`)}
+                          </div>
+                        `
+                      }
+                      ${
+                        !!g.videos?.length &&
+                        html`
+                          <div class="list-expanded-info-row">
+                            <h4>Video Rights</h4>
+                            ${g.videos?.map((v) => html`<p>${v.title}</p>`)}
+                          </div>
+                        `
+                      }
                     </div>
-                  </td>
-                </tr>
+                  `
+                }
               `}"
-            /> `
+            />`
       }
     <//>
   `;

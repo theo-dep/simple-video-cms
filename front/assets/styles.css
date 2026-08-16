@@ -177,39 +177,6 @@ hr {
   background-color: var(--color-bg-hover);
 }
 
-.table-header-content {
-  display: flex;
-}
-
-.table-header-content > *:last-child {
-  margin-left: auto;
-}
-
-.table-sort-button {
-  color: var(--color-primary);
-  cursor: pointer;
-}
-
-.table-sort-button:hover {
-  color: var(--color-primary-dark);
-}
-
-.table-sort-icon {
-  margin-left: 0.5em;
-  transform: translateY(-2px);
-  width: 0.5em;
-  height: 0.5em;
-}
-
-.table-sorted-asc {
-  transform: translateY(-2px) rotate(180deg);
-}
-
-.table-button {
-  cursor: pointer;
-  text-align: center;
-}
-
 /* --- Content --- */
 .content {
   margin: 2em 1em;

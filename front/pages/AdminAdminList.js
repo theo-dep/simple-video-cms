@@ -53,37 +53,21 @@ export default function AdminAdminList() {
           ? html`<${Loader} />`
           : html`<${ListTable}
               title="List of administrators"
-              icon="${html`<title>Add admin</title> <${PersonAddIcon} />`}"
+              addContent="${html`<svg class="svg-button"><${PersonAddIcon} /></svg> New admin`}"
               addLink="/admin/new-admin"
-              columns="${[{ label: 'Username', key: 'name' }]}"
+              columns="${[{ key: 'name', label: 'Username', sortValue: (a) => a.name }]}"
               items="${admins.value}"
               searchKeys="${['name']}"
-              renderRow="${(a) => html`
-                <tr key=${a.id}>
-                  <td>${a.name}</td>
-                  <td>
-                    ${
-                      !a.isSuperAdmin &&
-                      html`
-                        <div class="pure-g">
-                          <div class="table-button pure-u-1 pure-u-sm-1-4">
-                            <a onClick=${() => updateAdmin(a)}>Update</a>
-                          </div>
-                          <div class="table-button pure-u-1 pure-u-sm-1-4">
-                            <a onClick=${() => deactivateUser(a.id, !a.isDeactivated)}> ${a.isDeactivated ? 'Activate' : 'Deactivate'} </a>
-                          </div>
-                          <div class="table-button pure-u-1 pure-u-sm-1-4">
-                            ${a.isLoggedOnce && html` <a onClick=${() => resetUser(a.id)}>Reset password</a>`}
-                          </div>
-                          <div class="table-button pure-u-1 pure-u-sm-1-4">
-                            <a onClick=${() => deleteUser(a.id)}>Delete</a>
-                          </div>
-                        </div>
-                      `
-                    }
-                  </td>
-                </tr>
-              `}"
+              renderExpanded="${(a) =>
+                !a.isSuperAdmin &&
+                html`
+                  <div class="list-expanded-actions">
+                    <a onClick=${() => updateAdmin(a)}>Update</a>
+                    <a onClick=${() => deactivateUser(a.id, !a.isDeactivated)}>${a.isDeactivated ? 'Activate' : 'Deactivate'}</a>
+                    ${a.isLoggedOnce && html`<a onClick=${() => resetUser(a.id)}>Reset password</a>`}
+                    <a onClick=${() => deleteUser(a.id)}>Delete</a>
+                  </div>
+                `}"
             />`
       }
     <//>
