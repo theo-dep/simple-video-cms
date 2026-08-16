@@ -31,7 +31,7 @@ export function ListTable({ title, icon, addLink, columns, items, searchKeys, re
   return html`
     <h2>${title}</h2>
     <div class="pure-g">
-      <div class="search-content pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
+      <div class="pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
         <${SearchInput} onSearch=${search} />
       </div>
     </div>

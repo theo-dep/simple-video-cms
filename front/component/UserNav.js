@@ -54,9 +54,8 @@ function BurgerToggle({ isOpen, onToggle }) {
   </a> `;
 }
 
-export function UserNav({ children, videoId = null }) {
+export function UserNav({ videoId = null }) {
   const { route } = useLocation();
-  const hasChildren = !!children;
   const [isOpen, setIsOpen] = useBurgerMenu();
 
   function onLoginClicked() {
@@ -81,17 +80,13 @@ export function UserNav({ children, videoId = null }) {
         <a href="/" class="menu-link pure-menu-heading pure-menu-link">${websiteName}</a>
         <${BurgerToggle} isOpen=${isOpen} onToggle=${() => setIsOpen((v) => !v)} />
       </div>
-      <div
-        class=${'pure-u-1 menu-burger-wrapper' + (isOpen ? ' menu-burger-open' : '') + (hasChildren ? ' pure-u-md-1-2' : ' pure-u-md-3-4')}
-        onClick=${() => setIsOpen(false)}
-      >
+      <div class=${'pure-u-1 pure-u-md-3-4 menu-burger-wrapper' + (isOpen ? ' menu-burger-open' : '')} onClick=${() => setIsOpen(false)}>
         <div class="pure-menu pure-menu-horizontal">
           <ul class="menu-list pure-menu-list">
             <${NavLinks} pages=${pages} />
           </ul>
         </div>
       </div>
-      ${hasChildren && html`<div class="pure-u-1 pure-u-md-1-4">${children}</div>`}
     </div>
   `;
 }

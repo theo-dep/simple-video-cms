@@ -120,7 +120,7 @@ function SearchInput({ editable, value, onInput, onAdd }) {
 
 // multiple: allow several selections + Select All row
 // editable: search box can add new options + delete existing ones, single-select auto-closes on pick
-function SelectDropDown({ name, placeholder, children, multiple = false, editable = false, onAddedOption, onDeletedOption }) {
+function SelectDropDown({ name, placeholder, children, multiple = false, editable = false, onChange, onAddedOption, onDeletedOption }) {
   const singleSelect = !multiple;
   const autoClose = editable && singleSelect;
 
@@ -191,6 +191,7 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
     Array.from(nativeSelectRef.current.options).forEach((opt) => {
       opt.selected = selectedValues.has(opt.value);
     });
+    onChange?.([...selectedValues]);
   }, [selectedValues]);
 
   useEffect(() => {
@@ -334,8 +335,8 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
   `;
 }
 
-export function MultiSelectDropDown({ name, placeholder, children }) {
-  return html`<${SelectDropDown} name=${name} placeholder=${placeholder || 'Select item(s)'} multiple=${true}>${children}<//>`;
+export function MultiSelectDropDown({ name, placeholder, onChange, children }) {
+  return html`<${SelectDropDown} name=${name} placeholder=${placeholder || 'Select item(s)'} multiple=${true} onChange=${onChange}>${children}<//>`;
 }
 
 export function SingleSelectEditableDropDown({ name, placeholder, children, onAddedOption, onDeletedOption }) {
