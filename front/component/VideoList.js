@@ -11,6 +11,10 @@ import { VideoThumbnail } from '../component/VideoThumbnail.js';
 import { Loader } from '../component/Loader.js';
 import { BookmarkButton } from '../component/BookmarkButton.js';
 import { ArrowDownIcon } from '../svg/ArrowDownIcon.js';
+import { TagIcon } from '../svg/TagIcon.js';
+import { CalendarIcon } from '../svg/CalendarIcon.js';
+import { LocationIcon } from '../svg/LocationIcon.js';
+import { PencilIcon } from '../svg/PencilIcon.js';
 
 function unique(items) {
   return [...new Set(items)].sort();
@@ -101,7 +105,22 @@ export function VideoList({ title, filterCondition }) {
                       <${VideoThumbnail} id=${v.id} title=${v.title} />
                       ${user.isLogged.value && html`<${BookmarkButton} videoId=${v.id} isBookmarked=${v.bookmarked} location="home" />`}
                     </div>
-                    <h4 class="video-title">${v.title}</h4>
+                    <div class="video-info">
+                      <h4 class="video-title">${v.title}</h4>
+                      ${
+                        (v.date || v.place || !!v.authors?.length || !!v.tags?.length) &&
+                        html`
+                          <div class="video-meta">
+                            ${v.date && html`<span class="meta-item meta-date"><${CalendarIcon} /> ${v.date}</span>`}
+                            ${v.place && html`<span class="meta-item meta-place"><${LocationIcon} /> ${v.place}</span>`}
+                            ${!!v.authors?.length && html`<span class="meta-item meta-authors"><${PencilIcon} /> ${v.authors.join(', ')}</span>`}
+                          </div>
+                          <div class="video-meta">
+                            ${!!v.tags?.length && v.tags.map((t) => html`<span class="meta-item meta-tag"><${TagIcon} /> ${t}</span>`)}
+                          </div>
+                        `
+                      }
+                    </div>
                   </a>
                 </div>`
             )
