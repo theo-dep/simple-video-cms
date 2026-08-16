@@ -98,26 +98,26 @@ export const api = {
 
   adminVideoList: () => fetchApi('GET', '/admin/video-list'),
   adminVideo: (videoId) => fetchApi('GET', `/admin/video/${videoId}`),
-  adminAddVideo: (video, title, date, placeId, authorIds, tagIds, groupIds, userIds) => {
+  adminAddVideo: (video, title, date, locationId, authorIds, tagIds, groupIds, userIds) => {
     const form = new FormData();
     form.append('title', title);
     form.append('video', video);
     form.append('date', date);
-    form.append('placeId', placeId);
+    form.append('locationId', locationId);
     form.append('authorIds', authorIds);
     form.append('tagIds', tagIds);
     form.append('groupIds', groupIds);
     form.append('userIds', userIds);
     return fetchApi('POST', '/admin/add-video', form);
   },
-  adminUpdateVideo: (videoId, title, date, placeId, authorIds, tagIds, groupIds, userIds) =>
+  adminUpdateVideo: (videoId, title, date, locationId, authorIds, tagIds, groupIds, userIds) =>
     fetchApi(
       'POST',
       `/admin/update-video/${videoId}`,
       new URLSearchParams({
         title: title,
         date: date,
-        placeId: placeId,
+        locationId: locationId,
         authorIds: authorIds,
         tagIds: tagIds,
         groupIds: groupIds,
@@ -126,16 +126,16 @@ export const api = {
     ),
   adminDeleteVideo: (videoId) => fetchApi('POST', `/admin/delete-video/${videoId}`),
 
-  adminPlaceList: () => fetchApi('GET', '/admin/place-list'),
-  adminAddPlace: (name) =>
+  adminLocationList: () => fetchApi('GET', '/admin/location-list'),
+  adminAddLocation: (name) =>
     fetchApi(
       'POST',
-      '/admin/add-place',
+      '/admin/add-location',
       new URLSearchParams({
         name: name,
       })
     ),
-  adminDeletePlace: (placeId) => fetchApi('POST', `/admin/delete-place/${placeId}`),
+  adminDeleteLocation: (locationId) => fetchApi('POST', `/admin/delete-location/${locationId}`),
 
   adminAuthorList: () => fetchApi('GET', '/admin/author-list'),
   adminAddAuthor: (name) =>

@@ -9,19 +9,19 @@ import { refreshRequested } from '../store/auth.js';
 import {
   groups,
   users,
-  places,
+  locations,
   authors,
   tags,
   videos,
   loadGroups,
   loadUsers,
-  loadPlaces,
+  loadLocations,
   loadAuthors,
   loadTags,
   loadVideos,
   invalidateVideos,
-  onAddedPlace,
-  onDeletedPlace,
+  onAddedLocation,
+  onDeletedLocation,
   onAddedAuthor,
   onDeletedAuthor,
   onAddedTag,
@@ -40,7 +40,7 @@ export default function AdminNewVideo() {
   const [fileName, setFileName] = useState('');
   const [title, setTitle] = useState('');
   const { results, search } = useSearch(videos.value, ['title']);
-  const { isLoading: isPlacesLoading } = useLoader(loadPlaces, Array.isArray(places.value));
+  const { isLoading: isLocationsLoading } = useLoader(loadLocations, Array.isArray(locations.value));
   const { isLoading: isAuthorsLoading } = useLoader(loadAuthors, Array.isArray(authors.value));
   const { isLoading: isTagsLoading } = useLoader(loadTags, Array.isArray(tags.value));
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
@@ -72,8 +72,8 @@ export default function AdminNewVideo() {
     const title = form.elements['title'].value.trim();
     validateField(title);
     const date = form.elements['date'].value.trim();
-    const placeSelect = form.elements['place-id'];
-    const placeId = placeSelect ? placeSelect.value : null;
+    const locationSelect = form.elements['location-id'];
+    const locationId = locationSelect ? locationSelect.value : null;
     const authorSelect = form.elements['author-ids'];
     const authorIds = authorSelect ? Array.from(authorSelect.selectedOptions).map((o) => o.value) : [];
     const tagSelect = form.elements['tag-ids'];
@@ -83,7 +83,7 @@ export default function AdminNewVideo() {
     const userSelect = form.elements['user-ids'];
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
 
-    await api.adminAddVideo(video, title, date, placeId, authorIds, tagIds, groupIds, userIds);
+    await api.adminAddVideo(video, title, date, locationId, authorIds, tagIds, groupIds, userIds);
     invalidateVideos(); // force to refresh the video list and stats
     refreshRequested.value = true; // add this video to the admin video list (current user)
     route('/admin/video-list');
@@ -93,7 +93,7 @@ export default function AdminNewVideo() {
     <${AdminNav} />
 
     ${
-      isPlacesLoading || isAuthorsLoading || isTagsLoading || isGroupsLoading || isUsersLoading
+      isLocationsLoading || isAuthorsLoading || isTagsLoading || isGroupsLoading || isUsersLoading
         ? html`<${Loader} />`
         : html`
             <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
@@ -151,12 +151,12 @@ export default function AdminNewVideo() {
 
               <div class="pure-control-group">
                 <${SingleSelectEditableDropDown}
-                  name="place-id"
-                  placeholder="Video place (optional)"
-                  onAddedOption=${onAddedPlace}
-                  onDeletedOption=${onDeletedPlace}
+                  name="location-id"
+                  placeholder="Video location (optional)"
+                  onAddedOption=${onAddedLocation}
+                  onDeletedOption=${onDeletedLocation}
                 >
-                  ${places.value.map((p) => html`<option key=${p.id} value=${p.id}>${p.name}</option>`)}
+                  ${locations.value.map((p) => html`<option key=${p.id} value=${p.id}>${p.name}</option>`)}
                 <//>
               </div>
 

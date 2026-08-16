@@ -81,13 +81,13 @@ public:
     static std::string hls_video_name(int video_id);
     std::filesystem::path hls_video_path(int video_id) const;
 
-    [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::optional<std::string>& date, const std::optional<int>& place_id, const std::string& video_content) const;
+    [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::optional<std::string>& date, const std::optional<int>& location_id, const std::string& video_content) const;
     [[nodiscard]] std::optional<int> add_video_thumbnail(int video_id, const std::string& thumbnail_content) const;
     [[nodiscard]] bool add_video_authors(int video_id, const std::vector<int>& author_ids) const;
     [[nodiscard]] bool add_video_tags(int video_id, const std::vector<int>& tag_ids) const;
     [[nodiscard]] bool add_video_group_rights(int video_id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool add_video_user_rights(int video_id, const std::vector<int>& user_ids) const;
-    [[nodiscard]] std::optional<int> update_video(int video_id, const std::string& title, const std::optional<std::string>& date, const std::optional<int>& place_id) const;
+    [[nodiscard]] std::optional<int> update_video(int video_id, const std::string& title, const std::optional<std::string>& date, const std::optional<int>& location_id) const;
     [[nodiscard]] bool update_video_authors(int video_id, const std::vector<int>& author_ids) const;
     [[nodiscard]] bool update_video_tags(int video_id, const std::vector<int>& tag_ids) const;
     [[nodiscard]] bool update_video_group_rights(int video_id, const std::vector<int>& group_ids) const;
@@ -96,20 +96,18 @@ public:
     bool has_video_right(int video_id) const;
     bool has_video_right(int video_id, int user_id) const;
 
-    std::vector<Place> place_list() const;
-    std::optional<Place> place(int place_id) const;
-    bool place_exists(const std::string& name) const;
-    [[nodiscard]] std::optional<int> add_place(const std::string& name) const;
-    [[nodiscard]] bool delete_place(int place_id) const;
+    std::vector<Location> location_list() const;
+    std::optional<Location> location(int location_id) const;
+    bool location_exists(const std::string& name) const;
+    [[nodiscard]] std::optional<int> add_location(const std::string& name) const;
+    [[nodiscard]] bool delete_location(int location_id) const;
 
     std::vector<Author> author_list() const;
-    std::optional<Author> author(int author_id) const;
     bool author_exists(const std::string& name) const;
     [[nodiscard]] std::optional<int> add_author(const std::string& name) const;
     [[nodiscard]] bool delete_author(int author_id) const;
 
     std::vector<Tag> tag_list() const;
-    std::optional<Tag> tag(int tag_id) const;
     bool tag_exists(const std::string& name) const;
     [[nodiscard]] std::optional<int> add_tag(const std::string& name) const;
     [[nodiscard]] bool delete_tag(int tag_id) const;

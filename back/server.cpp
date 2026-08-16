@@ -68,9 +68,9 @@ namespace server
     void admin_delete_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_download_video(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
-    void admin_place_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
-    void admin_add_place(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
-    void admin_delete_place(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_location_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_add_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_delete_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
     void admin_author_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
@@ -205,9 +205,9 @@ int server::start()
         .Post("/api/admin/delete-video/:video_id", sc::serve(admin_delete_video, std::cref(session), std::cref(db)))
         .Get("/api/admin/download-video/:video_id", sc::serve(admin_download_video, std::cref(session), std::cref(db)))
 
-        .Get("/api/admin/place-list", sc::serve(admin_place_list, std::cref(session), std::cref(db)))
-        .Post("/api/admin/add-place", sc::serve(admin_add_place, std::cref(session), std::cref(db)))
-        .Post("/api/admin/delete-place/:place_id", sc::serve(admin_delete_place, std::cref(session), std::cref(db)))
+        .Get("/api/admin/location-list", sc::serve(admin_location_list, std::cref(session), std::cref(db)))
+        .Post("/api/admin/add-location", sc::serve(admin_add_location, std::cref(session), std::cref(db)))
+        .Post("/api/admin/delete-location/:location_id", sc::serve(admin_delete_location, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/author-list", sc::serve(admin_author_list, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-author", sc::serve(admin_add_author, std::cref(session), std::cref(db)))
@@ -508,11 +508,11 @@ namespace server
                std::ranges::to<std::vector<int>>();
     }
 
-    inline std::optional<std::string> place_id_to_name(const Database& db, const std::optional<int>& place_id)
+    inline std::optional<std::string> location_id_to_name(const Database& db, const std::optional<int>& location_id)
     {
-        return place_id
-            .and_then([&db](int id) { return db.place(id); })
-            .transform([](const Place& place) { return place.name; });
+        return location_id
+            .and_then([&db](int id) { return db.location(id); })
+            .transform([](const Location& location) { return location.name; });
     }
 
     template <typename T, typename P>
@@ -532,7 +532,7 @@ namespace server
                 .id = video.id,
                 .title = video.title,
                 .date = video.date,
-                .place = place_id_to_name(db, video.place_id),
+                .location = location_id_to_name(db, video.location_id),
                 .authors = types_to_elements(db.video_author_list(video.id), &Author::name),
                 .tags = types_to_elements(db.video_tag_list(video.id), &Tag::name)
             };
@@ -550,7 +550,7 @@ namespace server
                 .title = video.title,
                 .bookmarked = db.bookmarked(user_id, video.id),
                 .date = video.date,
-                .place = place_id_to_name(db, video.place_id),
+                .location = location_id_to_name(db, video.location_id),
                 .authors = types_to_elements(db.video_author_list(video.id), &Author::name),
                 .tags = types_to_elements(db.video_tag_list(video.id), &Tag::name)
             };
@@ -997,7 +997,7 @@ inline void server::admin_video_list(const httplib::Request& req, httplib::Respo
             .id = video.id,
             .title = video.title,
             .date = video.date,
-            .place = video.place_id.and_then([&db](int place_id) { return db.place(place_id); }),
+            .location = video.location_id.and_then([&db](int location_id) { return db.location(location_id); }),
             .authors = db.video_author_list(video.id),
             .tags = db.video_tag_list(video.id),
             .groups = db.video_group_right_list(video.id),
@@ -1026,7 +1026,7 @@ inline void server::admin_video(const httplib::Request& req, httplib::Response& 
         .id = video_id,
         .title = video->title,
         .date = video->date,
-        .place = video->place_id.and_then([&db](int place_id) { return db.place(place_id); }),
+        .location = video->location_id.and_then([&db](int location_id) { return db.location(location_id); }),
         .authors = db.video_author_list(video_id),
         .tags = db.video_tag_list(video_id),
         .groups = db.video_group_right_list(video_id),
@@ -1058,8 +1058,8 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
     const std::string video_title{ su::trim(req.form.get_field("title")) };
     const std::string video_date{ su::trim(req.form.get_field("date")) };
     const std::optional video_opt_date{ video_date.empty() ? std::nullopt : std::optional(video_date) };
-    const int place_id{ su::string_to_int(req.form.get_field("placeId")) };
-    const std::optional place_opt_id{ place_id == 0 ? std::nullopt : std::optional(place_id) };
+    const int location_id{ su::string_to_int(req.form.get_field("locationId")) };
+    const std::optional location_opt_id{ location_id == 0 ? std::nullopt : std::optional(location_id) };
     const std::string video_content{ req.form.get_file("video").content };
     const std::string thumbnail_content{ video::thumbnail(video_content) };
     const std::vector author_ids{ extract_ids(req.form.get_field("authorIds")) };
@@ -1072,7 +1072,7 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
     }
 
     const std::optional video_id{
-        db.add_video(video_title, video_opt_date, place_opt_id, video_content)
+        db.add_video(video_title, video_opt_date, location_opt_id, video_content)
             .and_then([&](int video_id) -> std::optional<int> {
                 const std::filesystem::path video_path{ db.hls_video_path(video_id) };
                 const bool converted{ video::convert_to_hls(video_content, video_path.string(), Database::hls_video_name(video_id)) };
@@ -1122,8 +1122,8 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     const std::string video_title{ su::trim(req.get_param_value("title")) };
     const std::string video_date{ su::trim(req.get_param_value("date")) };
     const std::optional video_opt_date{ video_date.empty() ? std::nullopt : std::optional(video_date) };
-    const int place_id{ su::string_to_int(req.get_param_value("placeId")) };
-    const std::optional place_opt_id{ place_id == 0 ? std::nullopt : std::optional(place_id) };
+    const int location_id{ su::string_to_int(req.get_param_value("locationId")) };
+    const std::optional location_opt_id{ location_id == 0 ? std::nullopt : std::optional(location_id) };
     const std::vector author_ids{ extract_ids(req.get_param_value("authorIds")) };
     const std::vector tag_ids{ extract_ids(req.get_param_value("tagIds")) };
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
@@ -1134,7 +1134,7 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     }
 
     const std::optional success{
-        db.update_video(video_id, video_title, video_opt_date, place_opt_id)
+        db.update_video(video_id, video_title, video_opt_date, location_opt_id)
             .and_then([&](int id) -> std::optional<int> {
                 return db.update_video_authors(id, author_ids) ? std::optional(id) : std::nullopt;
             })
@@ -1194,59 +1194,58 @@ inline void server::admin_download_video(const httplib::Request& req, httplib::R
     res.set_content(content, "video/mp4");
 }
 
-inline void server::admin_place_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+inline void server::admin_location_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
 
-    const std::vector places{ db.place_list() };
-    res.set_content(nlohmann::json(places).dump(), "application/json");
+    const std::vector locations{ db.location_list() };
+    res.set_content(nlohmann::json(locations).dump(), "application/json");
 }
 
-inline void server::admin_add_place(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+inline void server::admin_add_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
 
-    const std::string place{ su::trim(req.get_param_value("name")) };
+    const std::string location{ su::trim(req.get_param_value("name")) };
 
-    if (!validate_field(res, place)) {
+    if (!validate_field(res, location)) {
         return;
     }
 
-    if (db.place_exists(place)) {
+    if (db.location_exists(location)) {
         res.status = httplib::StatusCode::Conflict_409;
-        res.set_content("Place already exists", "plain/text");
+        res.set_content("Location already exists", "plain/text");
         return;
     }
 
-    const std::optional place_id{ db.add_place(place) };
-    if (!place_id) {
+    const std::optional location_id{ db.add_location(location) };
+    if (!location_id) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        res.set_content("Fail to add the place", "plain/text");
-        logging::error{ R"(Fail to add place "{}")", place };
+        res.set_content("Fail to add the location", "plain/text");
+        logging::error{ R"(Fail to add location "{}")", location };
         return;
     }
 
-    res.set_content(nlohmann::json({ { "id", *place_id } }).dump(), "application/json");
+    res.set_content(nlohmann::json({ { "id", *location_id } }).dump(), "application/json");
 }
 
-inline void server::admin_delete_place(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+inline void server::admin_delete_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
 
-    const int place_id{ su::string_to_int(req.path_params.at("place_id")) };
-    if (!db.delete_place(place_id)) {
+    const int location_id{ su::string_to_int(req.path_params.at("location_id")) };
+    if (!db.delete_location(location_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        const std::optional place{ db.place(place_id) };
-        logging::error{ R"(Fail to delete place "{}")", place ? place->name : std::format("with id \"{}\"", place_id) };
+        logging::error{ R"(Fail to delete location "{}")", location_id };
         return;
     }
 
@@ -1303,8 +1302,7 @@ inline void server::admin_delete_author(const httplib::Request& req, httplib::Re
     const int author_id{ su::string_to_int(req.path_params.at("author_id")) };
     if (!db.delete_author(author_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        const std::optional author{ db.author(author_id) };
-        logging::error{ R"(Fail to delete author "{}")", author ? author->name : std::format("with id \"{}\"", author_id) };
+        logging::error{ R"(Fail to delete author "{}")", author_id };
         return;
     }
 
@@ -1362,8 +1360,7 @@ inline void server::admin_delete_tag(const httplib::Request& req, httplib::Respo
     const int tag_id{ su::string_to_int(req.path_params.at("tag_id")) };
     if (!db.delete_tag(tag_id)) {
         res.status = httplib::StatusCode::InternalServerError_500;
-        const std::optional tag{ db.tag(tag_id) };
-        logging::error{ R"(Fail to delete tag "{}")", tag ? tag->name : std::format("with id \"{}\"", tag_id) };
+        logging::error{ R"(Fail to delete tag "{}")", tag_id };
         return;
     }
 

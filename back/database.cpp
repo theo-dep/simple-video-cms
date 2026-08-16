@@ -64,8 +64,8 @@ inline auto database::storage(const std::filesystem::path& path)
                    make_column("id", &Video::id, primary_key().autoincrement()),
                    make_column("title", &Video::title),
                    make_column("date", &Video::date),
-                   make_column("location_id", &Video::place_id),
-                   foreign_key(&Video::place_id).references(&Place::id).on_delete.set_null()),
+                   make_column("location_id", &Video::location_id),
+                   foreign_key(&Video::location_id).references(&Location::id).on_delete.set_null()),
         make_table(::GroupUser::table_name,
                    make_column("group_id", &GroupUser::group_id),
                    make_column("user_id", &GroupUser::user_id),
@@ -99,9 +99,9 @@ inline auto database::storage(const std::filesystem::path& path)
                    primary_key(&VideoAuthor::video_id, &VideoAuthor::author_id),
                    foreign_key(&VideoAuthor::video_id).references(&Video::id).on_delete.cascade(),
                    foreign_key(&VideoAuthor::author_id).references(&Author::id).on_delete.cascade()),
-        make_table(::Place::table_name,
-                   make_column("id", &Place::id, primary_key().autoincrement()),
-                   make_column("name", &Place::name, unique(), collate_nocase())),
+        make_table(::Location::table_name,
+                   make_column("id", &Location::id, primary_key().autoincrement()),
+                   make_column("name", &Location::name, unique(), collate_nocase())),
         make_table(::Tag::table_name,
                    make_column("id", &Tag::id, primary_key().autoincrement()),
                    make_column("name", &Tag::name, unique(), collate_nocase())),
@@ -125,8 +125,8 @@ namespace database
 {
     using StorageType = decltype(database::storage({}));
 
-    constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title, &Video::date, &Video::place_id);
-    constexpr auto place_struct = struct_<Place>(&Place::id, &Place::name);
+    constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title, &Video::date, &Video::location_id);
+    constexpr auto location_struct = struct_<Location>(&Location::id, &Location::name);
     constexpr auto author_struct = struct_<Author>(&Author::id, &Author::name);
     constexpr auto tag_struct = struct_<Tag>(&Tag::id, &Tag::name);
     constexpr auto group_struct = struct_<Group>(&Group::id, &Group::name);
@@ -236,7 +236,7 @@ bool Database::create_tables() const
             const std::tuple backup{
                 std::tuple_cat(
                     std::make_tuple(migrated_users, migrated_videos),
-                    database::backup<Group, Place, Author, Tag, SessionInfo,
+                    database::backup<Group, Location, Author, Tag, SessionInfo,
                                      SuperAdmin, Admin, GroupUser, UserVideoBookmark,
                                      VideoUserRight, VideoGroupRight, VideoAuthor, VideoTag>(storage, table_names))
             };
@@ -921,7 +921,7 @@ std::vector<Video> Database::unique_user_video_list(int user_id) const
         order_by(&Video::title).asc());
 }
 
-std::optional<int> Database::add_video(const std::string& title, const std::optional<std::string>& date, const std::optional<int>& place_id, const std::string& video_content) const
+std::optional<int> Database::add_video(const std::string& title, const std::optional<std::string>& date, const std::optional<int>& location_id, const std::string& video_content) const
 {
     if (!filesystem::create(video_path())) {
         return std::nullopt;
@@ -930,7 +930,7 @@ std::optional<int> Database::add_video(const std::string& title, const std::opti
     Video video{
         .title = title,
         .date = date,
-        .place_id = place_id
+        .location_id = location_id
     };
 
     const std::unique_lock lock(_mutex);
@@ -990,7 +990,7 @@ bool Database::add_video_user_rights(int video_id, const std::vector<int>& user_
     return true;
 }
 
-std::optional<int> Database::update_video(int video_id, const std::string& title, const std::optional<std::string>& date, const std::optional<int>& place_id) const
+std::optional<int> Database::update_video(int video_id, const std::string& title, const std::optional<std::string>& date, const std::optional<int>& location_id) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
@@ -999,7 +999,7 @@ std::optional<int> Database::update_video(int video_id, const std::string& title
             .and_then([&](Video video) -> std::optional<int> {
                 video.title = title;
                 video.date = date;
-                video.place_id = place_id;
+                video.location_id = location_id;
                 storage.update(video);
                 return video_id;
             })
@@ -1103,54 +1103,54 @@ bool Database::has_video_right(int video_id, int user_id) const
                 .empty();
 }
 
-std::vector<Place> Database::place_list() const
+std::vector<Location> Database::location_list() const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     return storage.select(
-        distinct(database::place_struct), from<Place>(),
-        order_by(&Place::name).asc());
+        distinct(database::location_struct), from<Location>(),
+        order_by(&Location::name).asc());
 }
 
-std::optional<Place> Database::place(int place_id) const
+std::optional<Location> Database::location(int location_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    return storage.get_optional<Place>(place_id);
+    return storage.get_optional<Location>(location_id);
 }
 
-bool Database::place_exists(const std::string& name) const
+bool Database::location_exists(const std::string& name) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::vector places{ storage.select(&Place::id, where(c(&Place::name) == name)) };
+    const std::vector places{ storage.select(&Location::id, where(c(&Location::name) == name)) };
     return places.size() == 1;
 }
 
-std::optional<int> Database::add_place(const std::string& name) const
+std::optional<int> Database::add_location(const std::string& name) const
 {
-    Place place{
+    Location location{
         .name = name
     };
 
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    place.id = storage.insert(place);
-    return place.id;
+    location.id = storage.insert(location);
+    return location.id;
 }
 
-bool Database::delete_place(int place_id) const
+bool Database::delete_location(int location_id) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
     const std::optional success{
-        storage.get_optional<Place>(place_id)
-            .transform([&](const Place& place) -> bool {
-                storage.remove<Place>(place.id);
+        storage.get_optional<Location>(location_id)
+            .transform([&](const Location& location) -> bool {
+                storage.remove<Location>(location.id);
                 return true;
             })
             .or_else([&] -> std::optional<bool> {
-                logging::error{ R"(Fail to delete place "{}")", place_id };
+                logging::error{ R"(Fail to delete location "{}")", location_id };
                 return false;
             })
     };
@@ -1164,13 +1164,6 @@ std::vector<Author> Database::author_list() const
     return storage.select(
         distinct(database::author_struct), from<Author>(),
         order_by(&Author::name).asc());
-}
-
-std::optional<Author> Database::author(int author_id) const
-{
-    const std::shared_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    return storage.get_optional<Author>(author_id);
 }
 
 bool Database::author_exists(const std::string& name) const
@@ -1218,13 +1211,6 @@ std::vector<Tag> Database::tag_list() const
     return storage.select(
         distinct(database::tag_struct), from<Tag>(),
         order_by(&Tag::name).asc());
-}
-
-std::optional<Tag> Database::tag(int tag_id) const
-{
-    const std::shared_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    return storage.get_optional<Tag>(tag_id);
 }
 
 bool Database::tag_exists(const std::string& name) const

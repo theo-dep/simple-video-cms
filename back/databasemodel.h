@@ -41,7 +41,7 @@ struct Video
     int id{ 0 };
     std::string title;
     std::optional<std::string> date{ std::nullopt };
-    std::optional<int> place_id{ std::nullopt };
+    std::optional<int> location_id{ std::nullopt };
 
     static constexpr auto table_name = "videos";
 };
@@ -94,12 +94,12 @@ struct VideoAuthor
     static constexpr auto table_name = "video_authors";
 };
 
-struct Place
+struct Location
 {
     int id{ 0 };
     std::string name;
 
-    static constexpr auto table_name = "places";
+    static constexpr auto table_name = "locations";
 };
 
 struct Tag

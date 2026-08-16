@@ -11,7 +11,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Video, id, title)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Group, id, name)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(User, id, name)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Author, id, name)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Place, id, name)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Location, id, name)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(Tag, id, name)
 
 struct VideoInfo
@@ -20,12 +20,12 @@ struct VideoInfo
     std::string title;
     bool bookmarked{ false };
     std::optional<std::string> date;
-    std::optional<std::string> place;
+    std::optional<std::string> location;
     std::vector<std::string> authors;
     std::vector<std::string> tags;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(VideoInfo, id, title, bookmarked, date, place, authors, tags)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(VideoInfo, id, title, bookmarked, date, location, authors, tags)
 
 struct ConnectedUser
 {
@@ -101,11 +101,11 @@ struct AdminVideoInfo
     int id{ 0 };
     std::string title;
     std::optional<std::string> date;
-    std::optional<Place> place;
+    std::optional<Location> location;
     std::vector<Author> authors;
     std::vector<Tag> tags;
     std::vector<Group> groups;
     std::vector<User> users;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminVideoInfo, id, title, date, place, authors, tags, groups, users)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_ONLY_SERIALIZE(AdminVideoInfo, id, title, date, location, authors, tags, groups, users)

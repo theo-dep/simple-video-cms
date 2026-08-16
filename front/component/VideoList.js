@@ -23,28 +23,28 @@ function unique(items) {
 export function VideoList({ title, filterCondition }) {
   const allVideos = useMemo(() => user.videos.value.filter(filterCondition), [user.videos.value, filterCondition]);
 
-  const { results, search } = useSearch(allVideos, ['title', 'date', 'place', 'authors', 'tags']);
+  const { results, search } = useSearch(allVideos, ['title', 'date', 'location', 'authors', 'tags']);
 
-  const [places, setPlaces] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [authors, setAuthors] = useState([]);
   const [tags, setTags] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const placeOptions = useMemo(() => unique(allVideos.map((v) => v.place).filter(Boolean)), [allVideos]);
+  const locationOptions = useMemo(() => unique(allVideos.map((v) => v.location).filter(Boolean)), [allVideos]);
   const authorOptions = useMemo(() => unique(allVideos.flatMap((v) => v.authors ?? [])), [allVideos]);
   const tagOptions = useMemo(() => unique(allVideos.flatMap((v) => v.tags ?? [])), [allVideos]);
 
-  const activeFilterCount = places.length + authors.length + tags.length;
+  const activeFilterCount = locations.length + authors.length + tags.length;
 
   const filtered = useMemo(
     () =>
       results.filter(
         (v) =>
-          (!places.length || places.includes(v.place)) &&
+          (!locations.length || locations.includes(v.location)) &&
           (!authors.length || v.authors?.some((a) => authors.includes(a))) &&
           (!tags.length || v.tags?.some((t) => tags.includes(t)))
       ),
-    [results, places, authors, tags]
+    [results, locations, authors, tags]
   );
 
   const isLoading = !refreshed.value;
@@ -75,8 +75,8 @@ export function VideoList({ title, filterCondition }) {
           html`
             <div class="search-filters pure-g">
               <div class="search-filter pure-u-1 pure-u-md-1-3 pure-u-lg-1-4">
-                <${MultiSelectDropDown} name="place-filter" placeholder="Places" onChange=${setPlaces}>
-                  ${placeOptions.map((p) => html`<option key=${p} value=${p}>${p}</option>`)}
+                <${MultiSelectDropDown} name="location-filter" placeholder="Locations" onChange=${setLocations}>
+                  ${locationOptions.map((p) => html`<option key=${p} value=${p}>${p}</option>`)}
                 <//>
               </div>
               <div class="search-filter pure-u-1 pure-u-md-1-3 pure-u-lg-1-4">
@@ -108,11 +108,11 @@ export function VideoList({ title, filterCondition }) {
                     <div class="video-info">
                       <h4 class="video-title">${v.title}</h4>
                       ${
-                        (v.date || v.place || !!v.authors?.length || !!v.tags?.length) &&
+                        (v.date || v.location || !!v.authors?.length || !!v.tags?.length) &&
                         html`
                           <div class="video-meta">
                             ${v.date && html`<span class="meta-item meta-date"><${CalendarIcon} /> ${v.date}</span>`}
-                            ${v.place && html`<span class="meta-item meta-place"><${LocationIcon} /> ${v.place}</span>`}
+                            ${v.location && html`<span class="meta-item meta-location"><${LocationIcon} /> ${v.location}</span>`}
                             ${!!v.authors?.length && html`<span class="meta-item meta-authors"><${PencilIcon} /> ${v.authors.join(', ')}</span>`}
                           </div>
                           <div class="video-meta">

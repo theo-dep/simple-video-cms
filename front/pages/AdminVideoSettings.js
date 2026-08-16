@@ -10,20 +10,20 @@ import {
   selectedVideo,
   groups,
   users,
-  places,
+  locations,
   authors,
   tags,
   videos,
   loadVideo,
   loadGroups,
   loadUsers,
-  loadPlaces,
+  loadLocations,
   loadAuthors,
   loadTags,
   loadVideos,
   invalidateAdminLists,
-  onAddedPlace,
-  onDeletedPlace,
+  onAddedLocation,
+  onDeletedLocation,
   onAddedAuthor,
   onDeletedAuthor,
   onAddedTag,
@@ -45,7 +45,7 @@ export default function AdminUpdateVideo({ videoId }) {
   const { results, search } = useSearch(videos.value, ['title']);
   const dateRef = useRef(null);
   const { isLoading: isVideoLoading } = useLoader(() => loadVideo(videoId), selectedVideo.value?.id === videoId, [videoId]);
-  const { isLoading: isPlacesLoading } = useLoader(loadPlaces, Array.isArray(places.value));
+  const { isLoading: isLocationsLoading } = useLoader(loadLocations, Array.isArray(locations.value));
   const { isLoading: isAuthorsLoading } = useLoader(loadAuthors, Array.isArray(authors.value));
   const { isLoading: isTagsLoading } = useLoader(loadTags, Array.isArray(tags.value));
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
@@ -54,7 +54,7 @@ export default function AdminUpdateVideo({ videoId }) {
 
   useTitle(`${selectedVideo.value?.title || 'Video'} Settings`);
 
-  const isLoading = isVideoLoading || isPlacesLoading || isAuthorsLoading || isTagsLoading || isGroupsLoading || isUsersLoading;
+  const isLoading = isVideoLoading || isLocationsLoading || isAuthorsLoading || isTagsLoading || isGroupsLoading || isUsersLoading;
 
   useEffect(() => {
     if (selectedVideo.value && dateRef.current && !isVideoLoading) {
@@ -63,8 +63,8 @@ export default function AdminUpdateVideo({ videoId }) {
     }
   }, [selectedVideo.value, dateRef.current, isVideoLoading, isLoading]);
 
-  function isPlaceSelected(placeId) {
-    return selectedVideo.value?.place?.id === placeId;
+  function isLocationSelected(locationId) {
+    return selectedVideo.value?.location?.id === locationId;
   }
 
   function isAuthorSelected(authorId) {
@@ -99,8 +99,8 @@ export default function AdminUpdateVideo({ videoId }) {
     if (!(await confirm(confirmMessage))) return;
 
     const date = form.elements['date'].value.trim();
-    const placeSelect = form.elements['place-id'];
-    const placeId = placeSelect ? placeSelect.value : null;
+    const locationSelect = form.elements['location-id'];
+    const locationId = locationSelect ? locationSelect.value : null;
     const authorSelect = form.elements['author-ids'];
     const authorIds = authorSelect ? Array.from(authorSelect.selectedOptions).map((o) => o.value) : [];
     const tagSelect = form.elements['tag-ids'];
@@ -110,7 +110,7 @@ export default function AdminUpdateVideo({ videoId }) {
     const userSelect = form.elements['user-ids'];
     const userIds = userSelect ? Array.from(userSelect.selectedOptions).map((o) => o.value) : [];
 
-    await api.adminUpdateVideo(videoId, title, date, placeId, authorIds, tagIds, groupIds, userIds);
+    await api.adminUpdateVideo(videoId, title, date, locationId, authorIds, tagIds, groupIds, userIds);
     invalidateAdminLists(); // force to refresh the video, user and group list
     refreshRequested.value = true; // update this video to the admin video list (current user)
     route('/admin/video-list');
@@ -165,12 +165,12 @@ export default function AdminUpdateVideo({ videoId }) {
 
               <div class="pure-control-group">
                 <${SingleSelectEditableDropDown}
-                  name="place-id"
-                  placeholder="Video place (optional)"
-                  onAddedOption=${onAddedPlace}
-                  onDeletedOption=${onDeletedPlace}
+                  name="location-id"
+                  placeholder="Video location (optional)"
+                  onAddedOption=${onAddedLocation}
+                  onDeletedOption=${onDeletedLocation}
                 >
-                  ${places.value.map((p) => html`<option key=${p.id} value=${p.id} selected=${isPlaceSelected(p.id)}>${p.name}</option>`)}
+                  ${locations.value.map((p) => html`<option key=${p.id} value=${p.id} selected=${isLocationSelected(p.id)}>${p.name}</option>`)}
                 <//>
               </div>
 

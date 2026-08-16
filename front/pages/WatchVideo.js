@@ -63,7 +63,7 @@ export default function WatchVideo({ videoId }) {
                     </div>
                     <div class="video-footer-left-content">
                       ${video.date && html`<span class="meta-item meta-date"><${CalendarIcon} /> ${video.date}</span>`}
-                      ${video.place && html`<span class="meta-item meta-place"><${LocationIcon} /> ${video.place}</span>`}
+                      ${video.location && html`<span class="meta-item meta-location"><${LocationIcon} /> ${video.location}</span>`}
                       ${!!video.authors.length && html`<span class="meta-item meta-authors"><${PencilIcon} /> ${video.authors.join(', ')}</span>`}
                       <div class="video-meta-tags">
                         ${!!video.tags.length && html`${video.tags.map((t) => html`<span class="meta-item meta-tag"><${TagIcon} /> ${t}</span>`)} `}

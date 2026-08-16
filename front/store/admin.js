@@ -8,7 +8,7 @@ export const groups = signal(null);
 export const users = signal(null);
 export const videos = signal(null);
 
-export const places = signal(null);
+export const locations = signal(null);
 export const authors = signal(null);
 export const tags = signal(null);
 
@@ -51,7 +51,7 @@ export const loadGroups = () => load(groups, api.adminGroupList);
 export const loadUsers = () => load(users, api.adminUserList);
 export const loadVideos = () => load(videos, api.adminVideoList);
 
-export const loadPlaces = () => load(places, api.adminPlaceList);
+export const loadLocations = () => load(locations, api.adminLocationList);
 export const loadAuthors = () => load(authors, api.adminAuthorList);
 export const loadTags = () => load(tags, api.adminTagList);
 
@@ -89,12 +89,12 @@ async function deleteValue(list, apiCall, id) {
   list.value = list.value.filter((l) => String(l.id) !== id);
 }
 
-export async function onAddedPlace(value) {
-  return await addValue(places, api.adminAddPlace, value);
+export async function onAddedLocation(value) {
+  return await addValue(locations, api.adminAddLocation, value);
 }
 
-export async function onDeletedPlace(id) {
-  await deleteValue(places, api.adminDeletePlace, id);
+export async function onDeletedLocation(id) {
+  await deleteValue(locations, api.adminDeleteLocation, id);
 }
 
 export async function onAddedAuthor(value) {
