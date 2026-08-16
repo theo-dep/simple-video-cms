@@ -10,7 +10,7 @@ vi.mock('../api.js', () => ({
 }));
 
 import { refreshRequested, user } from '../store/auth.js';
-import { videoIdRedirected } from '../store/redirect.js';
+import { previousRoute } from '../store/redirect.js';
 
 describe('auth store', () => {
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe('auth store', () => {
     user.isLogged.value = false;
     user.isAdmin.value = false;
     user.videos.value = [];
-    videoIdRedirected.value = '';
+    previousRoute.value = '';
   });
 
   it('updates user state after refresh success', async () => {
@@ -65,10 +65,10 @@ describe('auth store', () => {
   });
 
   it('keeps redirect signal writable for post-login flow', () => {
-    videoIdRedirected.value = '15';
-    expect(videoIdRedirected.value).toBe('15');
+    previousRoute.value = '/video/15';
+    expect(previousRoute.value).toBe('/video/15');
 
-    videoIdRedirected.value = '';
-    expect(videoIdRedirected.value).toBe('');
+    previousRoute.value = '';
+    expect(previousRoute.value).toBe('');
   });
 });

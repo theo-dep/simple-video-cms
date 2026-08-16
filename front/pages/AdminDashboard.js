@@ -4,7 +4,7 @@ import { useLoader } from '../hook/useLoader.js';
 import { stats, loadStats } from '../store/admin.js';
 import { websiteName } from '../store/env.js';
 import { Content } from '../component/Content.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { Loader } from '../component/Loader.js';
 
 export default function AdminDashboard() {

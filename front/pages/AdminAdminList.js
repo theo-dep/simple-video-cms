@@ -5,7 +5,7 @@ import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { selectedAdmin, admins, loadAdmins, invalidateAdmins } from '../store/admin.js';
 import { Content } from '../component/Content.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
 import { PersonAddIcon } from '../svg/PersonAddIcon.js';

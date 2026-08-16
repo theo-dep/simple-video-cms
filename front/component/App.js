@@ -1,13 +1,29 @@
 import { html } from 'htm/preact';
 import { Fragment } from 'preact';
 import { useEffect } from 'preact/hooks';
-import { LocationProvider, Router, lazy } from 'preact-iso';
+import { LocationProvider, Router, lazy, useLocation } from 'preact-iso';
 import { firstRefreshed } from '../store/auth.js';
+import { previousRoute } from '../store/redirect.js';
 import { swReady } from '../store/sw.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
 import { Redirect } from './Redirect.js';
 import { OfflineWatcher } from './OfflineWatcher.js';
+
+// useLocation only work inside LocationProvider component
+function RedirectUpdater() {
+  const { path } = useLocation();
+
+  const EXCLUDED_ROUTES = ['/login', '/logout', '/reset-password', '/403'];
+
+  function isExcluded(pathname) {
+    return EXCLUDED_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'));
+  }
+
+  useEffect(() => {
+    if (!isExcluded(path)) previousRoute.value = path;
+  }, [path]);
+}
 
 export function App() {
   const isLoading = !firstRefreshed.value || !swReady.value;
@@ -45,6 +61,7 @@ export function App() {
           <${OfflineWatcher} />
           <${ConfirmDialog} />
           <${LocationProvider}>
+            <${RedirectUpdater} />
             <${Router}>
               <${lazy(() => import('../pages/Home.js'))} path="/" />
               <${lazy(() => import('../pages/Bookmarks.js'))} path="/bookmarks" />

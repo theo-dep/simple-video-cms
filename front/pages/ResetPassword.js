@@ -4,7 +4,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { InfoContent } from '../component/InfoContent.js';
-import { UserNav } from '../component/UserNav.js';
+import { UserNav } from '../component/HeaderNav.js';
 import { PasswordInput } from '../component/PasswordInput.js';
 import { SubmitButton } from '../component/SubmitButton.js';
 import { Alert } from '../component/Alert.js';

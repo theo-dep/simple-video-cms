@@ -6,7 +6,7 @@ import { useLoader } from '../hook/useLoader.js';
 import { refreshRequested } from '../store/auth.js';
 import { selectedVideo, videos, loadVideos, invalidateVideos } from '../store/admin.js';
 import { Content } from '../component/Content.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
 import { CloudPlusIcon } from '../svg/CloudPlusIcon.js';

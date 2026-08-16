@@ -15,7 +15,7 @@ import {
   loadVideos,
   invalidateAdminLists,
 } from '../store/admin.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';

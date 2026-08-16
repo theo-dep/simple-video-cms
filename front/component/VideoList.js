@@ -5,7 +5,7 @@ import { useSearch } from '../hook/useSearch.js';
 import { useTitle } from '../hook/useTitle.js';
 import { user, refreshed } from '../store/auth.js';
 import { Content } from '../component/Content.js';
-import { UserNav } from './UserNav.js';
+import { UserNav } from './HeaderNav.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { SearchInput } from '../component/SearchInput.js';
 import { VideoThumbnail } from '../component/VideoThumbnail.js';

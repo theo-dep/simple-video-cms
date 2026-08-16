@@ -2,7 +2,6 @@ import { html } from 'htm/preact';
 import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { user } from '../store/auth.js';
-import { videoIdRedirected } from '../store/redirect.js';
 import { websiteName } from '../store/env.js';
 
 function NavLinks({ pages }) {
@@ -54,14 +53,11 @@ function BurgerToggle({ isOpen, onToggle }) {
   </a> `;
 }
 
-export function UserNav({ videoId = null }) {
+export function UserNav() {
   const { route } = useLocation();
   const [isOpen, setIsOpen] = useBurgerMenu();
 
   function onLoginClicked() {
-    if (videoId) {
-      videoIdRedirected.value = videoId;
-    }
     route('/login');
   }
 

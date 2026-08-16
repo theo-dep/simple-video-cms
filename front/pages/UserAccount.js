@@ -2,7 +2,7 @@ import { html } from 'htm/preact';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { user, refreshRequested } from '../store/auth.js';
-import { UserNav } from '../component/UserNav.js';
+import { UserNav } from '../component/HeaderNav.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { FormContent } from '../component/Form.js';
 import { validateField } from '../utils/validation.js';

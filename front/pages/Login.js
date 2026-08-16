@@ -1,12 +1,12 @@
 import { html } from 'htm/preact';
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { refreshRequested } from '../store/auth.js';
-import { videoIdRedirected } from '../store/redirect.js';
+import { previousRoute } from '../store/redirect.js';
 import { InfoContent } from '../component/InfoContent.js';
-import { UserNav } from '../component/UserNav.js';
+import { UserNav } from '../component/HeaderNav.js';
 import { PasswordInput } from '../component/PasswordInput.js';
 import { SubmitButton } from '../component/SubmitButton.js';
 import { Alert } from '../component/Alert.js';
@@ -16,6 +16,7 @@ export default function Login() {
   const [alert, setAlert] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [loginDone, setLoginDone] = useState(false);
 
   useTitle('Login');
 
@@ -34,18 +35,25 @@ export default function Login() {
         return;
       }
       refreshRequested.value = true; // update the user
-      if (videoIdRedirected.value === '') {
-        route('/');
-      } else {
-        route('/video/' + videoIdRedirected.value);
-        videoIdRedirected.value = '';
-      }
+      setLoginDone(true);
     } catch (err) {
       setAlert(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    // wait for refresh done if previousRoute is admin route
+    if (loginDone && !refreshRequested.value) {
+      if (previousRoute.value === '') {
+        route('/');
+      } else {
+        route(previousRoute.value);
+        previousRoute.value = '';
+      }
+    }
+  }, [loginDone, refreshRequested.value]);
 
   async function onFirstConnection(e) {
     e.preventDefault();

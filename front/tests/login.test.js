@@ -31,11 +31,11 @@ vi.mock('../store/auth.js', () => ({
 }));
 
 vi.mock('../store/redirect.js', () => ({
-  videoIdRedirected: { value: '' },
+  previousRoute: { value: '' },
 }));
 
 import Login from '../pages/Login.js';
-import { videoIdRedirected } from '../store/redirect.js';
+import { previousRoute } from '../store/redirect.js';
 import { refreshRequested } from '../store/auth.js';
 
 describe('Login page', () => {
@@ -43,7 +43,7 @@ describe('Login page', () => {
     routeMock.mockReset();
     loginMock.mockReset();
     refreshRequested.value = false;
-    videoIdRedirected.value = '';
+    previousRoute.value = '';
   });
 
   it('shows API error message on failed login', async () => {
@@ -75,7 +75,7 @@ describe('Login page', () => {
 
   it('redirects to video and clears redirect store on successful login', async () => {
     loginMock.mockResolvedValue({ status: 200 });
-    videoIdRedirected.value = '99';
+    previousRoute.value = '/video/99';
 
     render(h(Login, {}));
 
@@ -85,8 +85,11 @@ describe('Login page', () => {
 
     await waitFor(() => {
       expect(refreshRequested.value).toBe(true);
+    });
+    refreshRequested.value = false; // need a refresh before to route
+    await waitFor(() => {
       expect(routeMock).toHaveBeenCalledWith('/video/99');
     });
-    expect(videoIdRedirected.value).toBe('');
+    expect(previousRoute.value).toBe('');
   });
 });
