@@ -1,5 +1,6 @@
 import { html } from 'htm/preact';
-import { useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
 import { useSearch } from '../hook/useSearch.js';
 import { useTitle } from '../hook/useTitle.js';
 import { user, refreshed } from '../store/auth.js';
@@ -21,6 +22,8 @@ function unique(items) {
 }
 
 export function VideoList({ title, filterCondition }) {
+  const { path, query, route } = useLocation();
+
   const allVideos = useMemo(() => user.videos.value.filter(filterCondition), [user.videos.value, filterCondition]);
 
   const { results, search } = useSearch(allVideos, ['title', 'date', 'location', 'authors', 'tags']);
@@ -29,6 +32,46 @@ export function VideoList({ title, filterCondition }) {
   const [authors, setAuthors] = useState([]);
   const [tags, setTags] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useEffect(() => {
+    setLocations(query?.locations ? query.locations.split(';') : []);
+    setAuthors(query?.authors ? query.authors.split(';') : []);
+    setTags(query?.tags ? query.tags.split(';') : []);
+  }, [query]);
+
+  function routeSearch(key, value) {
+    const params = new URLSearchParams(query);
+    value.length ? params.set(key, value.join(';')) : params.delete(key);
+    const paramQuery = params.size ? `?${params}` : '';
+    route(`${path}${paramQuery}`, /*replace*/ true);
+  }
+
+  function onLocationChange(values) {
+    setLocations(values);
+    routeSearch('locations', values);
+  }
+
+  function onAuthorsChange(values) {
+    setAuthors(values);
+    routeSearch('authors', values);
+  }
+
+  function onTagsChange(values) {
+    setTags(values);
+    routeSearch('tags', values);
+  }
+
+  function isLocationSelected(location) {
+    return locations.includes(location);
+  }
+
+  function isAuthorSelected(author) {
+    return authors.includes(author);
+  }
+
+  function isTagSelected(tag) {
+    return tags.includes(tag);
+  }
 
   const locationOptions = useMemo(() => unique(allVideos.map((v) => v.location).filter(Boolean)), [allVideos]);
   const authorOptions = useMemo(() => unique(allVideos.flatMap((v) => v.authors ?? [])), [allVideos]);
@@ -75,18 +118,18 @@ export function VideoList({ title, filterCondition }) {
           html`
             <div class="search-filters pure-g">
               <div class="search-filter pure-u-1 pure-u-md-1-3 pure-u-lg-1-4">
-                <${MultiSelectDropDown} name="location-filter" placeholder="Locations" onChange=${setLocations}>
-                  ${locationOptions.map((p) => html`<option key=${p} value=${p}>${p}</option>`)}
+                <${MultiSelectDropDown} name="location-filter" placeholder="Locations" onChange=${onLocationChange}>
+                  ${locationOptions.map((p) => html`<option key=${p} value=${p} selected=${isLocationSelected(p)}>${p}</option>`)}
                 <//>
               </div>
               <div class="search-filter pure-u-1 pure-u-md-1-3 pure-u-lg-1-4">
-                <${MultiSelectDropDown} name="author-filter" placeholder="Authors" onChange=${setAuthors}>
-                  ${authorOptions.map((a) => html`<option key=${a} value=${a}>${a}</option>`)}
+                <${MultiSelectDropDown} name="author-filter" placeholder="Authors" onChange=${onAuthorsChange}>
+                  ${authorOptions.map((a) => html`<option key=${a} value=${a} selected=${isAuthorSelected(a)}>${a}</option>`)}
                 <//>
               </div>
               <div class="search-filter pure-u-1 pure-u-md-1-3 pure-u-lg-1-4">
-                <${MultiSelectDropDown} name="tag-filter" placeholder="Tags" onChange=${setTags}>
-                  ${tagOptions.map((t) => html`<option key=${t} value=${t}>${t}</option>`)}
+                <${MultiSelectDropDown} name="tag-filter" placeholder="Tags" onChange=${onTagsChange}>
+                  ${tagOptions.map((t) => html`<option key=${t} value=${t} selected=${isTagSelected(t)}>${t}</option>`)}
                 <//>
               </div>
             </div>

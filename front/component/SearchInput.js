@@ -1,19 +1,35 @@
 import { html } from 'htm/preact';
-import { useState, useRef } from 'preact/hooks';
+import { useState, useRef, useEffect } from 'preact/hooks';
+import { useLocation } from 'preact-iso';
 
 export function SearchInput({ onSearch }) {
+  const { path, query: locationQuery, route } = useLocation();
   const [query, setQuery] = useState('');
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    setQuery(locationQuery?.search || '');
+    onSearch(locationQuery?.search || '');
+  }, [locationQuery]);
+
+  function routeSearch(value) {
+    const params = new URLSearchParams(locationQuery);
+    value ? params.set('search', value) : params.delete('search');
+    const paramQuery = params.size ? `?${params}` : '';
+    route(`${path}${paramQuery}`, /*replace*/ true);
+  }
 
   function handleInput(e) {
     const value = e.target.value;
     setQuery(value);
     onSearch(value);
+    routeSearch(value);
   }
 
   function handleClear() {
     setQuery('');
     onSearch('');
+    routeSearch('');
     inputRef.current?.focus();
   }
 
