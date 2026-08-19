@@ -1,13 +1,16 @@
 import { html } from 'htm/preact';
+import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
+import { useSearch } from '../hook/useSearch.js';
 import { refreshRequested } from '../store/auth.js';
-import { selectedVideo, groups, users, loadVideo, loadGroups, loadUsers, invalidateAdminLists } from '../store/admin.js';
+import { selectedVideo, groups, users, videos, loadVideo, loadGroups, loadUsers, loadVideos, invalidateAdminLists } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
 import { Form, useMultiSelect } from '../component/Form.js';
 import { Loader } from '../component/Loader.js';
+import { Dropdown } from '../component/DropDown.js';
 import { confirm } from '../component/ConfirmDialog.js';
 import { validateField } from '../utils/validation.js';
 
@@ -16,11 +19,18 @@ export default function AdminUpdateVideo({ videoId }) {
   const { route } = useLocation();
   const selectGroupsRef = useMultiSelect([selectedVideo.value, users.value, groups.value]);
   const selectUsersRef = useMultiSelect([selectedVideo.value, users.value, groups.value]);
+  const [title, setTitle] = useState('');
+  const { results, search } = useSearch(videos.value, ['title']);
   const { isLoading: isVideoLoading } = useLoader(() => loadVideo(videoId), selectedVideo.value?.id === videoId, [videoId]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, Array.isArray(groups.value));
   const { isLoading: isUsersLoading } = useLoader(loadUsers, Array.isArray(users.value));
+  const { isLoading: isVideosLoading } = useLoader(loadVideos, Array.isArray(videos.value));
 
   useTitle(`${selectedVideo.value?.title || 'Video'} Settings`);
+
+  useEffect(() => {
+    if (selectedVideo.value) setTitle(selectedVideo.value.title);
+  }, [selectedVideo.value]);
 
   function isGroupSelected(groupId) {
     return selectedVideo.value?.groups?.find((g) => g.id === groupId);
@@ -28,6 +38,12 @@ export default function AdminUpdateVideo({ videoId }) {
 
   function isUserSelected(userId) {
     return selectedVideo.value?.users?.find((u) => u.id === userId);
+  }
+
+  function onTitleInput(e) {
+    const value = e.target.value;
+    setTitle(value);
+    search(value);
   }
 
   async function onVideoSubmit(e) {
@@ -58,8 +74,39 @@ export default function AdminUpdateVideo({ videoId }) {
         : html`
             <${Form} title="Change video title, group and user rights" buttonTitle="Update" onSubmitAction=${onVideoSubmit}>
               <div class="pure-control-group">
-                <input class="pure-input-1" type="text" name="title" value=${selectedVideo.value.title} placeholder="Video title" required />
+                <input
+                  onInput=${onTitleInput}
+                  value="${title}"
+                  class="pure-input-1"
+                  type="text"
+                  name="title"
+                  id="title"
+                  placeholder="Video title"
+                  required
+                />
               </div>
+
+              ${
+                !isVideosLoading &&
+                title &&
+                !!results.length &&
+                html` <div class="pure-control-group">
+                  <${Dropdown}
+                    title="Similar videos"
+                    open="${false}"
+                    liElements=${results
+                      .filter((v) => v.title !== selectedVideo.value?.title)
+                      .slice(0, 3)
+                      .map(
+                        (v) => html`
+                          <li>
+                            <a href=${'/video/' + v.id} target="_blank">${v.title}</a>
+                          </li>
+                        `
+                      )}
+                  />
+                </div>`
+              }
               ${
                 !!groups.value.length &&
                 html`

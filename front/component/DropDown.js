@@ -1,12 +1,17 @@
 import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
 
-export function Dropdown({ title, liElements }) {
-  const [isOpen, setIsOpen] = useState(true);
+export function Dropdown({ title, open = true, liElements }) {
+  const [isOpen, setIsOpen] = useState(open);
+
+  function onClick(e) {
+    e.preventDefault();
+    setIsOpen(!isOpen);
+  }
 
   return html`
     <div class="dropdown">
-      <button class="dropdown-toggle dropdown-toggle-${isOpen ? 'opened' : 'closed'}" onClick=${() => setIsOpen(!isOpen)}>
+      <button class="dropdown-toggle dropdown-toggle-${isOpen ? 'opened' : 'closed'}" onClick=${onClick}>
         ${title}
         <svg
           class="dropdown-arrow dropdown-arrow-${isOpen ? 'opened' : 'closed'}"
