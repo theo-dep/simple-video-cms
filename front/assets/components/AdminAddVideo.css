@@ -1,0 +1,47 @@
+.file-drop-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 2em;
+  border: 1px dashed var(--color-border-dashed);
+  border-radius: 4px;
+  transition: 0.2s;
+}
+
+.file-drop-area.is-active {
+  background-color: var(--color-bg-light);
+}
+
+.fake-button {
+  flex-shrink: 0;
+  background-color: var(--color-bg-lighter);
+  border: 1px solid var(--color-border-light);
+  border-radius: 4px;
+  padding: 0.5em 1em;
+  margin-right: 0.5em;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.file-message {
+  font-size: small;
+  font-weight: 300;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.file-input:focus {
+  outline: none;
+}

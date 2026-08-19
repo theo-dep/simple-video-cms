@@ -1,0 +1,26 @@
+.button {
+  color: var(--color-text-white);
+  cursor: pointer;
+  background-color: var(--color-primary);
+  border-radius: 4px;
+  height: 100%;
+}
+
+.button:hover {
+  background-color: var(--color-primary-dark);
+}
+
+.svg-button {
+  fill: var(--color-primary);
+  width: 1em;
+  height: 1em;
+}
+
+.svg-button:hover {
+  fill: var(--color-primary-dark);
+}
+
+.button-spinner {
+  padding-top: 0.3em;
+  padding-bottom: 0.1em;
+}

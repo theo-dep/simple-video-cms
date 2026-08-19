@@ -1,12 +1,8 @@
 import { html } from 'htm/preact';
 import { useEffect, useState, useMemo } from 'preact/hooks';
 import { useSearch } from '../hook/useSearch.js';
-import { useStyleSheet } from '../hook/useStyleSheet.js';
 import { SearchInput } from './SearchInput.js';
 import { ArrowDownIcon } from '../svg/ArrowDownIcon.js';
-import { Loader } from './Loader.js';
-
-import ListTableStyleSheet from './ListTable.css' with { type: 'css' };
 
 function ChevronRightIcon({ class: className }) {
   return html`
@@ -34,11 +30,6 @@ export function ListTable({ title, addContent, addLink, columns, items, searchKe
       return String(va).localeCompare(String(vb), undefined, { numeric: true }) * sort.dir;
     });
   }, [results, sort]);
-
-  const isAdoptedStyleSheets = useStyleSheet(ListTableStyleSheet);
-  if (!isAdoptedStyleSheets) {
-    return html`<${Loader} />`;
-  }
 
   function toggleSort(col) {
     if (!col) return;

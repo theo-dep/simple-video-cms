@@ -1,12 +1,8 @@
 import { html } from 'htm/preact';
 import { useState, useEffect, useRef, useMemo } from 'preact/hooks';
 import { useSearch } from '../hook/useSearch.js';
-import { useStyleSheet } from '../hook/useStyleSheet.js';
 import { ArrowDownIcon } from '../svg/ArrowDownIcon.js';
 import { XIcon } from '../svg/XIcon.js';
-import { Loader } from './Loader.js';
-
-import SelectDropDownStyleSheet from './SelectDropDown.css' with { type: 'css' };
 
 const plusSquareIcon = html` <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -144,11 +140,6 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
       })),
     [optionSignature]
   );
-
-  const isAdoptedStyleSheets = useStyleSheet(SelectDropDownStyleSheet);
-  if (!isAdoptedStyleSheets) {
-    return html`<${Loader} />`;
-  }
 
   // pre-selections, pending auto-select, prune stale values
   useEffect(() => {

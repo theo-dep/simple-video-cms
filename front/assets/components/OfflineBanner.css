@@ -1,0 +1,31 @@
+.offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1em;
+  flex-wrap: wrap;
+  padding: 0.5em 0.5em;
+  background-color: var(--color-primary);
+  color: var(--color-text-white);
+  text-align: center;
+  -webkit-box-shadow:
+    0 1px 3px 0 var(--color-border),
+    0 1px 2px 0 var(--color-border);
+  -moz-box-shadow:
+    0 1px 3px 0 var(--color-border),
+    0 1px 2px 0 var(--color-border);
+  box-shadow:
+    0 1px 3px 0 var(--color-border),
+    0 1px 2px 0 var(--color-border);
+}
+
+.offline-banner span {
+  font-size: 0.9em;
+}
+
+@media only screen and (max-width: 35.5em) {
+  .offline-banner {
+    flex-direction: column;
+    gap: 0.5em;
+  }
+}

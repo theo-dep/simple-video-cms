@@ -2,25 +2,13 @@ import { html } from 'htm/preact';
 import { useEffect, useRef } from 'preact/hooks';
 import videojs from 'video.js';
 import { api } from '../api.js';
-import { useStyleSheet } from '../hook/useStyleSheet.js';
-import { Loader } from './Loader.js';
 
 import 'videojs-yt-style';
 import 'videojs-mobile-ui';
 
-import VideoJSStyleSheet from 'video.js/dist/video-js.css' with { type: 'css' };
-import VideoJSMobileUIStyleSheet from 'videojs-mobile-ui/dist/videojs-mobile-ui.css' with { type: 'css' };
-import VideoJSYtStyleSheet from 'videojs-yt-style/dist/videojs-yt-style.css' with { type: 'css' };
-import VideoStyleSheet from './Video.css' with { type: 'css' };
-
 export default function Video({ videoId }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
-
-  const isAdoptedStyleSheets = useStyleSheet([VideoJSStyleSheet, VideoJSMobileUIStyleSheet, VideoJSYtStyleSheet, VideoStyleSheet]);
-  if (!isAdoptedStyleSheets) {
-    return html`<${Loader} />`;
-  }
 
   useEffect(() => {
     if (!videoRef.current) return;

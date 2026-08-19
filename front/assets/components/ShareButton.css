@@ -1,0 +1,26 @@
+.share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  border-radius: 20px;
+  padding: 0.4em 0.9em;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.share-button:hover {
+  border-color: var(--color-primary-dark);
+  color: var(--color-primary-dark);
+}
+
+.share-button svg {
+  fill: var(--color-primary);
+}
+
+.share-button:hover svg {
+  fill: var(--color-primary-dark);
+}

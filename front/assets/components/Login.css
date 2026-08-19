@@ -1,0 +1,24 @@
+.forgot-password {
+  text-align: right;
+}
+
+.lined {
+  display: flex;
+}
+
+.lined::before,
+.lined::after {
+  background-color: var(--color-text);
+  content: '';
+  flex: 1;
+  border-bottom: groove 1px;
+  margin: auto;
+}
+
+.lined::before {
+  margin-right: 0.5em;
+}
+
+.lined::after {
+  margin-left: 0.5em;
+}

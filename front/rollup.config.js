@@ -4,7 +4,6 @@ import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
 import { rollupPluginHTML as html } from '@web/rollup-plugin-html';
-import css from 'rollup-plugin-import-css';
 import babel from '@rollup/plugin-babel';
 import { videojsEntries } from './rollup.shared.js';
 
@@ -209,9 +208,6 @@ export default [
         extensions: ['.js', '.mjs'],
       }),
       commonjs(),
-      css({
-        minify: true,
-      }),
       terser({
         ...terserOptions,
         module: true,
