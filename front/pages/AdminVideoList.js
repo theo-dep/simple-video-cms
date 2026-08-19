@@ -7,7 +7,6 @@ import { refreshRequested } from '../store/auth.js';
 import { selectedVideo, videos, loadVideos, invalidateVideos } from '../store/admin.js';
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
-import { Drawer } from '../component/Drawer.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
 import { CloudPlusIcon } from '../svg/CloudPlusIcon.js';
@@ -43,49 +42,68 @@ export default function AdminVideoList() {
           ? html`<${Loader} />`
           : html`<${ListTable}
               title="List of videos"
-              icon="${html`<title>Add video</title> <${CloudPlusIcon} />`}"
+              addContent="${html`<svg class="svg-button"><${CloudPlusIcon} /></svg> New video`}"
               addLink="/admin/new-video"
-              columns="${[null, { label: 'Video Name', key: 'title' }]}"
+              columns="${[
+                { key: 'title', label: 'Title', sortValue: (v) => v.title, render: (v) => html`<a href=${'/video/' + v.id}>${v.title}</a>` },
+                { key: 'date', label: 'Date', sortValue: (v) => v.date, render: (v) => v.date },
+                { key: 'location', label: 'Location', sortValue: (v) => v.location?.name, render: (v) => v.location?.name },
+              ]}"
               items="${videos.value}"
-              searchKeys="${['title']}"
-              renderRow="${(v) => html`
-                <tr key=${v.id}>
-                  <td>
-                    <a href=${api.adminDownloadVideoPath(v.id)} download=${v.title + '.mp4'}>
-                      <svg class="svg-button">
-                        <title>Download</title>
-                        <${CloudArrowDownIcon} />
-                      </svg>
-                    </a>
-                  </td>
-                  <td><a href=${'/video/' + v.id}>${v.title}</a></td>
-                  <td>
-                    <div class="pure-g">
-                      <div class="table-button pure-u-1 pure-u-lg-1-3">
-                        ${
-                          (!!v.groups?.length || !!v.users?.length) &&
-                          html`
-                            <${Drawer}
-                              label="Rights"
-                              items=${[
-                                { label: 'Group Rights', elements: v.groups?.map((g) => g.name) ?? [] },
-                                { label: 'User Rights', elements: v.users?.map((u) => u.name) ?? [] },
-                              ]}
-                            />
-                          `
-                        }
-                      </div>
-                      <div class="table-button pure-u-1 pure-u-lg-1-3">
-                        <a onClick=${() => updateVideo(v)}>Update</a>
-                      </div>
-                      <div class="table-button pure-u-1 pure-u-lg-1-3">
-                        <a onClick=${() => deleteVideo(v.id)}>Delete</a>
-                      </div>
+              searchKeys="${['title', 'date', 'location.name', 'authors.name', 'tags.name']}"
+              renderExpanded="${(v) => html`
+                <div class="list-expanded-actions">
+                  <a href=${api.adminDownloadVideoPath(v.id)} download=${v.title + '.mp4'}>
+                    <svg class="svg-button"><${CloudArrowDownIcon} /></svg> Download
+                  </a>
+                  <a onClick=${() => updateVideo(v)}>Update</a>
+                  <a onClick=${() => deleteVideo(v.id)}>Delete</a>
+                </div>
+                ${
+                  (!!v.authors.length || !!v.tags.length || !!v.groups?.length || !!v.users?.length) &&
+                  html`
+                    <div class="list-expanded-info">
+                      ${
+                        !!v.authors?.length &&
+                        html`
+                          <div class="list-expanded-info-row">
+                            <h4>Authors</h4>
+                            ${v.authors?.map((a) => html`<p>${a.name}</p>`)}
+                          </div>
+                        `
+                      }
+                      ${
+                        !!v.tags?.length &&
+                        html`
+                          <div class="list-expanded-info-row">
+                            <h4>Tags</h4>
+                            ${v.tags?.map((t) => html`<p>${t.name}</p>`)}
+                          </div>
+                        `
+                      }
+                      ${
+                        !!v.groups?.length &&
+                        html`
+                          <div class="list-expanded-info-row">
+                            <h4>Group Rights</h4>
+                            ${v.groups?.map((g) => html`<p>${g.name}</p>`)}
+                          </div>
+                        `
+                      }
+                      ${
+                        !!v.users?.length &&
+                        html`
+                          <div class="list-expanded-info-row">
+                            <h4>User Rights</h4>
+                            ${v.users?.map((u) => html`<p>${u.name}</p>`)}
+                          </div>
+                        `
+                      }
                     </div>
-                  </td>
-                </tr>
+                  `
+                }
               `}"
-            /> `
+            />`
       }
     <//>
   `;

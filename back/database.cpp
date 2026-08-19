@@ -27,46 +27,15 @@ namespace database
     struct Version
     {
         int value;
-    };
-    static constexpr Version current_version{ .value = 2 };
 
-    inline auto version_table()
-    {
-        return make_table("version",
-                          make_column("value", &Version::value));
-    }
+        static constexpr auto table_name = "version";
+    };
+    static constexpr Version current_version{ .value = 3 };
 
     namespace v1
     {
-        struct User
-        {
-            int id{ 0 };
-            std::string name;
-            std::optional<std::string> password{ std::nullopt };
-            std::string salt;
-        };
-
-        inline auto user_table()
-        {
-            return make_table("users",
-                              make_column("id", &User::id, primary_key().autoincrement()),
-                              make_column("name", &User::name, unique(), collate_nocase()),
-                              make_column("password", &User::password),
-                              make_column("salt", &User::salt));
-        }
-    }
-
-    namespace v2
-    {
-        inline auto user_table()
-        {
-            return make_table("users",
-                              make_column("id", &User::id, primary_key().autoincrement()),
-                              make_column("name", &User::name, unique(), collate_nocase()),
-                              make_column("password", &User::password),
-                              make_column("salt", &User::salt),
-                              make_column("deactivated", &User::deactivated));
-        }
+        constexpr auto user_struct = struct_<User>(&User::id, &User::name, &User::password, &User::salt);
+        constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title);
     }
 }
 
@@ -74,50 +43,80 @@ inline auto database::storage(const std::filesystem::path& path)
 {
     return make_storage(
         path.string(),
-        version_table(),
-        v2::user_table(),
-        make_table("super_admins",
+        make_table(Version::table_name,
+                   make_column("value", &Version::value)),
+        make_table(::User::table_name,
+                   make_column("id", &User::id, primary_key().autoincrement()),
+                   make_column("name", &User::name, unique(), collate_nocase()),
+                   make_column("password", &User::password),
+                   make_column("salt", &User::salt),
+                   make_column("deactivated", &User::deactivated)),
+        make_table(::SuperAdmin::table_name,
                    make_column("id", &SuperAdmin::id, primary_key()),
                    foreign_key(&SuperAdmin::id).references(&User::id).on_delete.cascade()),
-        make_table("admins",
+        make_table(::Admin::table_name,
                    make_column("id", &Admin::id, primary_key()),
                    foreign_key(&Admin::id).references(&User::id).on_delete.cascade()),
-        make_table("groups",
+        make_table(::Group::table_name,
                    make_column("id", &Group::id, primary_key().autoincrement()),
                    make_column("name", &Group::name, unique(), collate_nocase())),
-        make_table("videos",
+        make_table(::Video::table_name,
                    make_column("id", &Video::id, primary_key().autoincrement()),
-                   make_column("title", &Video::title, unique(), collate_nocase())),
-        make_table("user_groups",
+                   make_column("title", &Video::title),
+                   make_column("date", &Video::date),
+                   make_column("location_id", &Video::location_id),
+                   foreign_key(&Video::location_id).references(&Location::id).on_delete.set_null()),
+        make_table(::GroupUser::table_name,
                    make_column("group_id", &GroupUser::group_id),
                    make_column("user_id", &GroupUser::user_id),
                    primary_key(&GroupUser::group_id, &GroupUser::user_id),
                    foreign_key(&GroupUser::group_id).references(&Group::id).on_delete.cascade(),
                    foreign_key(&GroupUser::user_id).references(&User::id).on_delete.cascade()),
-        make_table("video_user_rights",
+        make_table(::VideoUserRight::table_name,
                    make_column("video_id", &VideoUserRight::video_id),
                    make_column("user_id", &VideoUserRight::user_id),
                    primary_key(&VideoUserRight::video_id, &VideoUserRight::user_id),
                    foreign_key(&VideoUserRight::video_id).references(&Video::id).on_delete.cascade(),
                    foreign_key(&VideoUserRight::user_id).references(&User::id).on_delete.cascade()),
-        make_table("video_group_rights",
+        make_table(::VideoGroupRight::table_name,
                    make_column("video_id", &VideoGroupRight::video_id),
                    make_column("group_id", &VideoGroupRight::group_id),
                    primary_key(&VideoGroupRight::video_id, &VideoGroupRight::group_id),
                    foreign_key(&VideoGroupRight::video_id).references(&Video::id).on_delete.cascade(),
                    foreign_key(&VideoGroupRight::group_id).references(&Group::id).on_delete.cascade()),
-        make_table("user_video_bookmarks",
+        make_table(::UserVideoBookmark::table_name,
                    make_column("user_id", &UserVideoBookmark::user_id),
                    make_column("video_id", &UserVideoBookmark::video_id),
                    primary_key(&UserVideoBookmark::user_id, &UserVideoBookmark::video_id),
                    foreign_key(&UserVideoBookmark::user_id).references(&User::id).on_delete.cascade(),
                    foreign_key(&UserVideoBookmark::video_id).references(&Video::id).on_delete.cascade()),
-        make_table("sessions",
+        make_table(::Author::table_name,
+                   make_column("id", &Author::id, primary_key().autoincrement()),
+                   make_column("name", &Author::name, unique(), collate_nocase())),
+        make_table(::VideoAuthor::table_name,
+                   make_column("video_id", &VideoAuthor::video_id),
+                   make_column("author_id", &VideoAuthor::author_id),
+                   primary_key(&VideoAuthor::video_id, &VideoAuthor::author_id),
+                   foreign_key(&VideoAuthor::video_id).references(&Video::id).on_delete.cascade(),
+                   foreign_key(&VideoAuthor::author_id).references(&Author::id).on_delete.cascade()),
+        make_table(::Location::table_name,
+                   make_column("id", &Location::id, primary_key().autoincrement()),
+                   make_column("name", &Location::name, unique(), collate_nocase())),
+        make_table(::Tag::table_name,
+                   make_column("id", &Tag::id, primary_key().autoincrement()),
+                   make_column("name", &Tag::name, unique(), collate_nocase())),
+        make_table(::VideoTag::table_name,
+                   make_column("video_id", &VideoTag::video_id),
+                   make_column("tag_id", &VideoTag::tag_id),
+                   primary_key(&VideoTag::video_id, &VideoTag::tag_id),
+                   foreign_key(&VideoTag::video_id).references(&Video::id).on_delete.cascade(),
+                   foreign_key(&VideoTag::tag_id).references(&Tag::id).on_delete.cascade()),
+        make_table(::SessionInfo::table_name,
                    make_column("id", &SessionInfo::id, primary_key()),
                    make_column("user_id", &SessionInfo::user_id),
                    make_column("creation_date", &SessionInfo::creation_date),
                    make_column("max_age_time", &SessionInfo::max_age_time),
-                   foreign_key(&UserVideoBookmark::user_id).references(&User::id).on_delete.cascade()));
+                   foreign_key(&SessionInfo::user_id).references(&User::id).on_delete.cascade()));
     // make virtual table with FTS5 for search?
     // https://www.sqlite.org/fts5.html
 }
@@ -126,9 +125,75 @@ namespace database
 {
     using StorageType = decltype(database::storage({}));
 
-    constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title);
+    constexpr auto video_struct = struct_<Video>(&Video::id, &Video::title, &Video::date, &Video::location_id);
+    constexpr auto location_struct = struct_<Location>(&Location::id, &Location::name);
+    constexpr auto author_struct = struct_<Author>(&Author::id, &Author::name);
+    constexpr auto tag_struct = struct_<Tag>(&Tag::id, &Tag::name);
     constexpr auto group_struct = struct_<Group>(&Group::id, &Group::name);
-    constexpr auto user_struct = struct_<User>(&User::id, &User::name);
+    constexpr auto user_struct = struct_<User>(&User::id, &User::name, &User::password, &User::salt);
+
+    template <typename Table, typename Struct>
+    std::vector<Table> backup(StorageType& storage, const Struct& db_struct, const std::vector<std::string>& table_names);
+
+    template <typename Table>
+    std::vector<Table> backup(StorageType& storage, const std::vector<std::string>& table_names);
+
+    template <typename... Tables>
+        requires(sizeof...(Tables) > 1)
+    std::tuple<std::vector<Tables>...> backup(StorageType& storage, const std::vector<std::string>& table_names);
+
+    template <typename... Tables>
+    void drop_tables(StorageType& storage, const std::tuple<std::vector<Tables>...>& /*unused*/);
+
+    template <typename... Tables>
+    void restore_backup(StorageType& storage, const std::tuple<std::vector<Tables>...>& backup);
+}
+
+template <typename Table, typename Struct>
+std::vector<Table> database::backup(StorageType& storage, const Struct& db_struct, const std::vector<std::string>& table_names)
+{
+    return std::ranges::contains(table_names, Table::table_name)
+               ? storage.select(db_struct, from<Table>())
+               : std::vector<Table>{};
+}
+
+template <typename Table>
+inline std::vector<Table> database::backup(StorageType& storage, const std::vector<std::string>& table_names)
+{
+    return std::ranges::contains(table_names, Table::table_name)
+               ? storage.get_all<Table>()
+               : std::vector<Table>{};
+}
+
+template <typename... Tables>
+    requires(sizeof...(Tables) > 1)
+inline std::tuple<std::vector<Tables>...> database::backup(StorageType& storage, const std::vector<std::string>& table_names)
+{
+    return std::make_tuple(backup<Tables>(storage, table_names)...);
+}
+
+template <typename... Tables>
+inline void database::drop_tables(StorageType& storage, const std::tuple<std::vector<Tables>...>& /*unused*/)
+{
+    // drop in reverse order to avoid foreign key constraint violations
+    constexpr std::array table_names{ Tables::table_name... };
+    for (const auto& name : table_names | std::views::reverse) {
+        storage.drop_table_if_exists(name);
+    }
+}
+
+template <typename... Tables>
+inline void database::restore_backup(StorageType& storage, const std::tuple<std::vector<Tables>...>& backup)
+{
+    std::apply(
+        [&storage](const auto&... vecs) {
+            (..., [&storage](const auto& vec) {
+                for (const auto& item : vec) {
+                    storage.replace(item);
+                }
+            }(vecs));
+        },
+        backup);
 }
 
 Database::Database(std::filesystem::path path)
@@ -141,84 +206,57 @@ bool Database::create_tables() const
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
 
-    auto version_storage = make_storage(_path.string(), database::version_table());
-    version_storage.sync_schema();
+    const std::vector table_names{ storage.table_names() };
 
-    const std::vector versions{ version_storage.get_all<database::Version>() };
-    if (!versions.empty() && versions.back().value == database::current_version.value) {
+    const std::vector versions{ database::backup<database::Version>(storage, table_names) };
+    if (table_names.empty() || (!versions.empty() && versions.back().value == database::current_version.value)) {
         storage.sync_schema();
         return true;
     }
 
-    if (versions.empty()) {
-        static constexpr database::Version v1_version{ .value = 1 };
-        storage.replace(v1_version);
-    }
+    // start migration
+    const int current_version{ versions.empty() ? 0 : versions.back().value };
 
-    if (versions.empty() || versions.back().value == 1) { // to v2
-        auto user_v1_storage = make_storage(_path.string(), database::v1::user_table());
-        user_v1_storage.sync_schema();
-        const std::vector v1_users{ user_v1_storage.get_all<database::v1::User>() };
+    return storage.transaction([&] {
+        try {
+            logging::info{ "Migrating database from v{} to v3", current_version };
 
-        auto user_v2_storage = make_storage(_path.string(), database::v2::user_table());
-        user_v2_storage.drop_table("users");
-        user_v2_storage.sync_schema();
-
-        for (const database::v1::User& v1_user : v1_users) {
-            const User v2_user{
-                .id = v1_user.id,
-                .name = v1_user.name,
-                .password = v1_user.password,
-                .salt = v1_user.salt
+            const std::vector migrated_users{
+                current_version <= 1 // to v2
+                    ? database::backup<User>(storage, database::v1::user_struct, table_names)
+                    : database::backup<User>(storage, table_names)
             };
-            user_v2_storage.replace(v2_user);
+
+            const std::vector migrated_videos{
+                current_version <= 2 // to v3
+                    ? database::backup<Video>(storage, database::v1::video_struct, table_names)
+                    : database::backup<Video>(storage, table_names)
+            };
+
+            const std::tuple backup{
+                std::tuple_cat(
+                    std::make_tuple(migrated_users, migrated_videos),
+                    database::backup<Group, Location, Author, Tag, SessionInfo,
+                                     SuperAdmin, Admin, GroupUser, UserVideoBookmark,
+                                     VideoUserRight, VideoGroupRight, VideoAuthor, VideoTag>(storage, table_names))
+            };
+
+            database::drop_tables(storage, backup);
+
+            storage.sync_schema();
+
+            database::restore_backup(storage, backup);
+
+            storage.replace(database::current_version);
+
+            logging::info{ "Migration done" };
+        } catch (const std::exception& e) {
+            logging::error{ "Migration failed: {}", e.what() };
+            throw;
         }
-    }
-
-    // sync to add new tables
-    storage.sync_schema();
-
-    // auto-migrate
-    storage.transaction([&] {
-        const std::vector users{ storage.get_all<User>() };
-        const std::vector super_admins{ storage.get_all<SuperAdmin>() };
-        const std::vector admins{ storage.get_all<Admin>() };
-        const std::vector groups{ storage.get_all<Group>() };
-        const std::vector videos{ storage.get_all<Video>() };
-        const std::vector user_groups{ storage.get_all<GroupUser>() };
-        const std::vector video_user_rights{ storage.get_all<VideoUserRight>() };
-        const std::vector video_group_rights{ storage.get_all<VideoGroupRight>() };
-        const std::vector user_video_bookmarks{ storage.get_all<UserVideoBookmark>() };
-        const std::vector sessions{ storage.get_all<SessionInfo>() };
-
-        for (const std::string& table : {
-                 "sessions", "user_video_bookmarks",
-                 "video_group_rights", "video_user_rights", "user_groups",
-                 "videos", "groups", "admins", "super_admins", "users" }) {
-            storage.drop_table(table);
-        }
-
-        storage.sync_schema();
-
-        const std::tuple vecs{
-            std::tie(users, super_admins, admins, groups, videos,
-                     user_groups, video_user_rights, video_group_rights,
-                     user_video_bookmarks, sessions)
-        };
-        std::apply(
-            [&storage](const auto&... vecs) { ([&storage](const auto& vec) {
-                                                  for (const auto& item : vec) {
-                                                      storage.replace(item);
-                                                  }
-                                              }(vecs),
-                                               ...); }, vecs);
-
-        storage.replace(database::current_version);
 
         return true;
     });
-
-    return true;
 }
 
 std::vector<Video> Database::admin_video_list() const
@@ -294,37 +332,11 @@ bool Database::set_bookmark(int user_id, int video_id, bool bookmarked) const
     return true;
 }
 
-bool Database::video_exists(const std::string& title) const
+std::optional<Video> Database::video(int video_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::vector videos{ storage.select(&Video::id, where(c(&Video::title) == title)) };
-    return videos.size() == 1;
-}
-
-bool Database::video_exists(int video_id, const std::string& title) const
-{
-    const std::shared_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::vector videos{ storage.select(&Video::id, where(c(&Video::title) == title and c(&Video::id) != video_id)) };
-    return videos.size() == 1;
-}
-
-std::string Database::video_title(int video_id) const
-{
-    const std::shared_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::optional video_title{
-        storage.get_optional<Video>(video_id)
-            .transform([](const Video& video) -> std::string {
-                return video.title;
-            })
-            .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch video title "{}")", video_id };
-                return std::string{};
-            })
-    };
-    return video_title.value_or(std::string{});
+    return storage.get_optional<Video>(video_id);
 }
 
 int Database::video_size(int video_id) const
@@ -603,17 +615,9 @@ bool Database::delete_user(int user_id) const
     return success.value_or(false);
 }
 
-int Database::user_id(const std::string& name) const
-{
-    const std::shared_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::vector users{ storage.select(&User::id, where(c(&User::name) == name)) };
-    return users.size() == 1 ? users.at(0) : -1;
-}
-
 bool Database::user_exists(const std::string& name) const
 {
-    return user_id(name) != -1;
+    return user(name).has_value();
 }
 
 bool Database::user_exists(int user_id, const std::string& name) const
@@ -624,56 +628,19 @@ bool Database::user_exists(int user_id, const std::string& name) const
     return users.size() == 1;
 }
 
-std::string Database::user_name(int user_id) const
+std::optional<User> Database::user(const std::string& name) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional user_name{
-        storage.get_optional<User>(user_id)
-            .transform([](const User& user) -> std::string {
-                return user.name;
-            })
-            .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch user name "{}")", user_id };
-                return std::string{};
-            })
-    };
-    return user_name.value_or(std::string{});
+    const std::vector users{ storage.select(database::user_struct, where(c(&User::name) == name)) };
+    return users.size() == 1 ? std::optional(users.at(0)) : std::nullopt;
 }
 
-std::optional<std::string> Database::user_password(int user_id) const
+std::optional<User> Database::user(int user_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional user_password{
-        storage.get_optional<User>(user_id)
-            .and_then([](const User& user) -> std::optional<std::string> {
-                return user.password;
-            })
-        // can be null
-        //.or_else([&] -> std::optional<std::string> {
-        //    logging::error{ R"(Fail to fetch user password "{}")", user_id };
-        //    return std::nullopt;
-        //})
-    };
-    return user_password;
-}
-
-std::string Database::user_salt(int user_id) const
-{
-    const std::shared_lock lock(_mutex);
-    database::StorageType storage{ database::storage(_path) };
-    const std::optional user_salt{
-        storage.get_optional<User>(user_id)
-            .transform([](const User& user) -> std::string {
-                return user.salt;
-            })
-            .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch user salt "{}")", user_id };
-                return std::string{};
-            })
-    };
-    return user_salt.value_or(std::string{});
+    return storage.get_optional<User>(user_id);
 }
 
 bool Database::deactivated_user(int user_id) const
@@ -762,21 +729,11 @@ bool Database::group_exists(int group_id, const std::string& name) const
     return groups.size() == 1;
 }
 
-std::string Database::group_name(int group_id) const
+std::optional<Group> Database::group(int group_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional group_name{
-        storage.get_optional<Group>(group_id)
-            .transform([](const Group& group) -> std::string {
-                return group.name;
-            })
-            .or_else([&] -> std::optional<std::string> {
-                logging::error{ R"(Fail to fetch group name "{}")", group_id };
-                return std::string{};
-            })
-    };
-    return group_name.value_or(std::string{});
+    return storage.get_optional<Group>(group_id);
 }
 
 std::optional<int> Database::add_group(const std::string& name) const
@@ -964,14 +921,16 @@ std::vector<Video> Database::unique_user_video_list(int user_id) const
         order_by(&Video::title).asc());
 }
 
-std::optional<int> Database::add_video(const std::string& title, const std::string& video_content) const
+std::optional<int> Database::add_video(const std::string& title, const std::optional<std::string>& date, const std::optional<int>& location_id, const std::string& video_content) const
 {
     if (!filesystem::create(video_path())) {
         return std::nullopt;
     }
 
     Video video{
-        .title = title
+        .title = title,
+        .date = date,
+        .location_id = location_id
     };
 
     const std::unique_lock lock(_mutex);
@@ -1031,7 +990,7 @@ bool Database::add_video_user_rights(int video_id, const std::vector<int>& user_
     return true;
 }
 
-std::optional<int> Database::update_video_title(int video_id, const std::string& title) const
+std::optional<int> Database::update_video(int video_id, const std::string& title, const std::optional<std::string>& date, const std::optional<int>& location_id) const
 {
     const std::unique_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
@@ -1039,6 +998,8 @@ std::optional<int> Database::update_video_title(int video_id, const std::string&
         storage.get_optional<Video>(video_id)
             .and_then([&](Video video) -> std::optional<int> {
                 video.title = title;
+                video.date = date;
+                video.location_id = location_id;
                 storage.update(video);
                 return video_id;
             })
@@ -1048,6 +1009,26 @@ std::optional<int> Database::update_video_title(int video_id, const std::string&
             })
     };
     return id;
+}
+
+bool Database::update_video_authors(int video_id, const std::vector<int>& author_ids) const
+{
+    {
+        const std::unique_lock lock(_mutex);
+        database::StorageType storage{ database::storage(_path) };
+        storage.remove_all<VideoAuthor>(where(c(&VideoAuthor::video_id) == video_id));
+    }
+    return add_video_authors(video_id, author_ids);
+}
+
+bool Database::update_video_tags(int video_id, const std::vector<int>& tag_ids) const
+{
+    {
+        const std::unique_lock lock(_mutex);
+        database::StorageType storage{ database::storage(_path) };
+        storage.remove_all<VideoTag>(where(c(&VideoTag::video_id) == video_id));
+    }
+    return add_video_tags(video_id, tag_ids);
 }
 
 bool Database::update_video_group_rights(int video_id, const std::vector<int>& group_ids) const
@@ -1122,6 +1103,202 @@ bool Database::has_video_right(int video_id, int user_id) const
                 .empty();
 }
 
+std::vector<Location> Database::location_list() const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(
+        distinct(database::location_struct), from<Location>(),
+        order_by(&Location::name).asc());
+}
+
+std::optional<Location> Database::location(int location_id) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.get_optional<Location>(location_id);
+}
+
+bool Database::location_exists(const std::string& name) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector places{ storage.select(&Location::id, where(c(&Location::name) == name)) };
+    return places.size() == 1;
+}
+
+std::optional<int> Database::add_location(const std::string& name) const
+{
+    Location location{
+        .name = name
+    };
+
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    location.id = storage.insert(location);
+    return location.id;
+}
+
+bool Database::delete_location(int location_id) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional success{
+        storage.get_optional<Location>(location_id)
+            .transform([&](const Location& location) -> bool {
+                storage.remove<Location>(location.id);
+                return true;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to delete location "{}")", location_id };
+                return false;
+            })
+    };
+    return success.value_or(false);
+}
+
+std::vector<Author> Database::author_list() const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(
+        distinct(database::author_struct), from<Author>(),
+        order_by(&Author::name).asc());
+}
+
+bool Database::author_exists(const std::string& name) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector authors{ storage.select(&Author::id, where(c(&Author::name) == name)) };
+    return authors.size() == 1;
+}
+
+std::optional<int> Database::add_author(const std::string& name) const
+{
+    Author author{
+        .name = name
+    };
+
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    author.id = storage.insert(author);
+    return author.id;
+}
+
+bool Database::delete_author(int author_id) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional success{
+        storage.get_optional<Author>(author_id)
+            .transform([&](const Author& author) -> bool {
+                storage.remove<Author>(author.id);
+                return true;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to delete author "{}")", author_id };
+                return false;
+            })
+    };
+    return success.value_or(false);
+}
+
+std::vector<Tag> Database::tag_list() const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(
+        distinct(database::tag_struct), from<Tag>(),
+        order_by(&Tag::name).asc());
+}
+
+bool Database::tag_exists(const std::string& name) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::vector tags{ storage.select(&Tag::id, where(c(&Tag::name) == name)) };
+    return tags.size() == 1;
+}
+
+std::optional<int> Database::add_tag(const std::string& name) const
+{
+    Tag tag{
+        .name = name
+    };
+
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    tag.id = storage.insert(tag);
+    return tag.id;
+}
+
+bool Database::delete_tag(int tag_id) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional success{
+        storage.get_optional<Tag>(tag_id)
+            .transform([&](const Tag& t) -> bool {
+                storage.remove<Tag>(t.id);
+                return true;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to delete tag "{}")", tag_id };
+                return false;
+            })
+    };
+    return success.value_or(false);
+}
+
+bool Database::add_video_authors(int video_id, const std::vector<int>& author_ids) const
+{
+    std::vector<VideoAuthor> video_authors(author_ids.size());
+    std::ranges::transform(author_ids, video_authors.begin(), [&video_id](int author_id) -> VideoAuthor {
+        return VideoAuthor{ .video_id = video_id, .author_id = author_id };
+    });
+
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    storage.replace_range(video_authors.cbegin(), video_authors.cend());
+    return true;
+}
+
+bool Database::add_video_tags(int video_id, const std::vector<int>& tag_ids) const
+{
+    std::vector<VideoTag> video_tags(tag_ids.size());
+    std::ranges::transform(tag_ids, video_tags.begin(), [&video_id](int tag_id) -> VideoTag {
+        return VideoTag{ .video_id = video_id, .tag_id = tag_id };
+    });
+
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    storage.replace_range(video_tags.cbegin(), video_tags.cend());
+    return true;
+}
+
+std::vector<Author> Database::video_author_list(int video_id) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(
+        distinct(database::author_struct), from<Author>(),
+        where(
+            in(&Author::id, select(distinct(&VideoAuthor::author_id), where(c(&VideoAuthor::video_id) == video_id)))),
+        order_by(&Author::name).asc());
+}
+
+std::vector<Tag> Database::video_tag_list(int video_id) const
+{
+    const std::shared_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    return storage.select(
+        distinct(database::tag_struct), from<Tag>(),
+        where(
+            in(&Tag::id, select(distinct(&VideoTag::tag_id), where(c(&VideoTag::video_id) == video_id)))),
+        order_by(&Tag::name).asc());
+}
+
 std::vector<Group> Database::video_group_right_list(int video_id) const
 {
     const std::shared_lock lock(_mutex);
@@ -1151,21 +1328,11 @@ std::vector<std::tuple<std::string, int, std::string, std::string>> Database::se
     return storage.select(asterisk<SessionInfo>());
 }
 
-int Database::session_user_id(const std::string& session_id) const
+std::optional<SessionInfo> Database::session(const std::string& session_id) const
 {
     const std::shared_lock lock(_mutex);
     database::StorageType storage{ database::storage(_path) };
-    const std::optional user_id{
-        storage.get_optional<SessionInfo>(session_id)
-            .transform([](const SessionInfo& session) -> int {
-                return session.user_id;
-            })
-            .or_else([&] -> std::optional<int> {
-                logging::error{ R"(Fail to fetch session user id "{}")", session_id };
-                return -1;
-            })
-    };
-    return user_id.value_or(-1);
+    return storage.get_optional<SessionInfo>(session_id);
 }
 
 void Database::add_session(const std::string& session_id, int user_id, const std::string& creation_date, const std::string& max_age_time) const

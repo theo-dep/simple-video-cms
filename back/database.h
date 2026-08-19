@@ -23,9 +23,7 @@ public:
     bool bookmarked(int user_id, int video_id) const;
     bool set_bookmark(int user_id, int video_id, bool bookmarked) const;
 
-    bool video_exists(const std::string& title) const;
-    bool video_exists(int video_id, const std::string& title) const;
-    std::string video_title(int video_id) const;
+    std::optional<Video> video(int video_id) const;
     int video_size(int video_id) const;
     std::string video(int video_id, std::size_t offset, std::size_t length) const;
     std::string video_playlist(int video_id) const;
@@ -45,12 +43,10 @@ public:
     [[nodiscard]] std::optional<int> deactivate_user(int user_id, bool deactivated) const;
     [[nodiscard]] bool delete_user(int user_id) const;
 
-    int user_id(const std::string& name) const;
     bool user_exists(const std::string& name) const;
     bool user_exists(int user_id, const std::string& name) const;
-    std::string user_name(int user_id) const;
-    std::optional<std::string> user_password(int user_id) const;
-    std::string user_salt(int user_id) const;
+    std::optional<User> user(const std::string& name) const;
+    std::optional<User> user(int user_id) const;
     bool deactivated_user(int user_id) const;
 
     int user_count() const;
@@ -64,7 +60,7 @@ public:
 
     bool group_exists(const std::string& name) const;
     bool group_exists(int group_id, const std::string& name) const;
-    std::string group_name(int group_id) const;
+    std::optional<Group> group(int group_id) const;
     [[nodiscard]] std::optional<int> add_group(const std::string& name) const;
     [[nodiscard]] bool add_group_users(int group_id, const std::vector<int>& user_ids) const;
     [[nodiscard]] bool add_group_video_rights(int group_id, const std::vector<int>& video_ids) const;
@@ -82,25 +78,48 @@ public:
     std::vector<Group> user_group_list(int user_id) const;
     std::vector<Video> unique_user_video_list(int user_id) const;
 
-    [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::string& video_content) const;
     static std::string hls_video_name(int video_id);
     std::filesystem::path hls_video_path(int video_id) const;
 
+    [[nodiscard]] std::optional<int> add_video(const std::string& title, const std::optional<std::string>& date, const std::optional<int>& location_id, const std::string& video_content) const;
     [[nodiscard]] std::optional<int> add_video_thumbnail(int video_id, const std::string& thumbnail_content) const;
+    [[nodiscard]] bool add_video_authors(int video_id, const std::vector<int>& author_ids) const;
+    [[nodiscard]] bool add_video_tags(int video_id, const std::vector<int>& tag_ids) const;
     [[nodiscard]] bool add_video_group_rights(int video_id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool add_video_user_rights(int video_id, const std::vector<int>& user_ids) const;
-    [[nodiscard]] std::optional<int> update_video_title(int video_id, const std::string& title) const;
+    [[nodiscard]] std::optional<int> update_video(int video_id, const std::string& title, const std::optional<std::string>& date, const std::optional<int>& location_id) const;
+    [[nodiscard]] bool update_video_authors(int video_id, const std::vector<int>& author_ids) const;
+    [[nodiscard]] bool update_video_tags(int video_id, const std::vector<int>& tag_ids) const;
     [[nodiscard]] bool update_video_group_rights(int video_id, const std::vector<int>& group_ids) const;
     [[nodiscard]] bool update_video_user_rights(int video_id, const std::vector<int>& user_ids) const;
     [[nodiscard]] bool delete_video(int video_id) const;
     bool has_video_right(int video_id) const;
     bool has_video_right(int video_id, int user_id) const;
 
+    std::vector<Location> location_list() const;
+    std::optional<Location> location(int location_id) const;
+    bool location_exists(const std::string& name) const;
+    [[nodiscard]] std::optional<int> add_location(const std::string& name) const;
+    [[nodiscard]] bool delete_location(int location_id) const;
+
+    std::vector<Author> author_list() const;
+    bool author_exists(const std::string& name) const;
+    [[nodiscard]] std::optional<int> add_author(const std::string& name) const;
+    [[nodiscard]] bool delete_author(int author_id) const;
+
+    std::vector<Tag> tag_list() const;
+    bool tag_exists(const std::string& name) const;
+    [[nodiscard]] std::optional<int> add_tag(const std::string& name) const;
+    [[nodiscard]] bool delete_tag(int tag_id) const;
+
+    std::vector<Author> video_author_list(int video_id) const;
+    std::vector<Tag> video_tag_list(int video_id) const;
+
     std::vector<Group> video_group_right_list(int video_id) const;
     std::vector<User> video_user_right_list(int video_id) const;
 
     std::vector<std::tuple<std::string, int, std::string, std::string>> session_list() const;
-    int session_user_id(const std::string& session_id) const;
+    std::optional<SessionInfo> session(const std::string& session_id) const;
     void add_session(const std::string& session_id, int user_id, const std::string& creation_date, const std::string& max_age_time) const;
     [[nodiscard]] bool delete_session(const std::string& session_id) const;
 

@@ -7,7 +7,6 @@ import { selectedUser, users, loadUsers, invalidateUsers } from '../store/admin.
 import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/UserNav.js';
 import { ListTable } from '../component/ListTable.js';
-import { Drawer } from '../component/Drawer.js';
 import { Loader } from '../component/Loader.js';
 import { PersonAddIcon } from '../svg/PersonAddIcon.js';
 import { confirm } from '../component/ConfirmDialog.js';
@@ -54,45 +53,45 @@ export default function AdminUserList() {
           ? html`<${Loader} />`
           : html`<${ListTable}
               title="List of users"
-              icon="${html`<title>Add user</title> <${PersonAddIcon} />`}"
+              addContent="${html`<svg class="svg-button"><${PersonAddIcon} /></svg> New user`}"
               addLink="/admin/new-user"
-              columns="${[{ label: 'Username', key: 'name' }]}"
+              columns="${[{ key: 'name', label: 'Username', sortValue: (u) => u.name }]}"
               items="${users.value}"
               searchKeys="${['name']}"
-              renderRow="${(u) => html`
-                <tr key=${u.id}>
-                  <td>${u.name}</td>
-                  <td>
-                    <div class="pure-g">
-                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
-                        ${
-                          (!!u.groups?.length || !!u.videos?.length) &&
-                          html`<${Drawer}
-                            label="Groups and Rights"
-                            items=${[
-                              { label: 'User Groups', elements: u.groups.map((g) => g.name) ?? [] },
-                              { label: 'Video Rights', elements: u.videos.map((v) => v.title) ?? [] },
-                            ]}
-                          />`
-                        }
-                      </div>
-                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
-                        <a onClick=${() => updateUser(u)}>Update</a>
-                      </div>
-                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
-                        <a onClick=${() => deactivateUser(u.id, !u.isDeactivated)}> ${u.isDeactivated ? 'Activate' : 'Deactivate'} </a>
-                      </div>
-                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
-                        ${u.isLoggedOnce && html` <a onClick=${() => resetUser(u.id)}>Reset password</a>`}
-                      </div>
-                      <div class="table-button pure-u-1 pure-u-sm-1-3 pure-u-md-1-5">
-                        <a onClick=${() => deleteUser(u.id)}>Delete</a>
-                      </div>
+              renderExpanded="${(u) => html`
+                <div class="list-expanded-actions">
+                  <a onClick=${() => updateUser(u)}>Update</a>
+                  <a onClick=${() => deactivateUser(u.id, !u.isDeactivated)}>${u.isDeactivated ? 'Activate' : 'Deactivate'}</a>
+                  ${u.isLoggedOnce && html`<a onClick=${() => resetUser(u.id)}>Reset password</a>`}
+                  <a onClick=${() => deleteUser(u.id)}>Delete</a>
+                </div>
+                ${
+                  (!!u.groups?.length || !!u.videos?.length) &&
+                  html`
+                    <div class="list-expanded-info">
+                      ${
+                        !!u.groups?.length &&
+                        html`
+                          <div class="list-expanded-info-row">
+                            <h4>Groups</h4>
+                            ${u.groups?.map((g) => html`<p>${g.name}</p>`)}
+                          </div>
+                        `
+                      }
+                      ${
+                        !!u.videos?.length &&
+                        html`
+                          <div class="list-expanded-info-row">
+                            <h4>Video Rights</h4>
+                            ${u.videos?.map((v) => html`<p>${v.title}</p>`)}
+                          </div>
+                        `
+                      }
                     </div>
-                  </td>
-                </tr>
+                  `
+                }
               `}"
-            /> `
+            />`
       }
     <//>
   `;

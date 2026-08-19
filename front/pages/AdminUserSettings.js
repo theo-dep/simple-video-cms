@@ -16,7 +16,8 @@ import {
   invalidateAdminLists,
 } from '../store/admin.js';
 import { AdminNav } from '../component/UserNav.js';
-import { Form, useMultiSelect } from '../component/Form.js';
+import { Form } from '../component/Form.js';
+import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { confirm } from '../component/ConfirmDialog.js';
 import { validateField } from '../utils/validation.js';
@@ -25,8 +26,6 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
   userId = Number(userId);
   const { route } = useLocation();
   const currentUser = isAdmin ? selectedAdmin : selectedUser;
-  const selectGroupRef = useMultiSelect([currentUser.value, groups.value, videos.value]);
-  const selectVideoRef = useMultiSelect([currentUser.value, groups.value, videos.value]);
   const loadUserCall = isAdmin ? loadAdmin : loadUser;
   const { isLoading: isUserLoading } = useLoader(() => loadUserCall(userId), currentUser.value?.id === userId, [isAdmin, userId]);
   const { isLoading: isGroupsLoading } = useLoader(loadGroups, isAdmin || Array.isArray(groups.value), [isAdmin]);
@@ -86,16 +85,9 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
                 !!groups.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select
-                      ref=${selectGroupRef}
-                      name="group-ids"
-                      class="pure-input-1"
-                      data-placeholder="Add groups to user (optional)"
-                      multiple
-                      data-multi-select
-                    >
+                    <${MultiSelectDropDown} name="group-ids" placeholder="Add groups to user (optional)">
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id} selected=${isGroupSelected(g.id)}>${g.name}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }
@@ -104,16 +96,9 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
                 !!videos.value.length &&
                 html`
                   <div class="pure-control-group">
-                    <select
-                      ref=${selectVideoRef}
-                      name="video-ids"
-                      class="pure-input-1"
-                      data-placeholder="Add videos to user (optional)"
-                      multiple
-                      data-multi-select
-                    >
+                    <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to user (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id} selected=${isVideoSelected(v.id)}>${v.title}</option>`)}
-                    </select>
+                    <//>
                   </div>
                 `
               }
