@@ -7,7 +7,7 @@ export function VideoThumbnail({ id, title }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const placeholderIcon = html`
-    <svg xmlns="http://www.w3.org/2000/svg" class="thumbnail pure-img" width="320" height="180" viewBox="0 0 320 180">
+    <svg xmlns="http://www.w3.org/2000/svg" class="thumbnail" width="320" height="180" viewBox="0 0 320 180">
       <g transform="translate(149.25232,36.610007)">
         <g transform="matrix(0.17347479,0,0,0.14661392,-62.75114,4.2097066)">
           <rect style="fill:#323232" width="2000" height="1500" x="-500" y="-300" />
@@ -38,5 +38,5 @@ export function VideoThumbnail({ id, title }) {
     };
   }, [id]);
 
-  return isLoading ? placeholderIcon : html`<img src=${thumbnailBlobUrl} class="thumbnail pure-img" alt=${title} /> `;
+  return isLoading ? placeholderIcon : html`<img src=${thumbnailBlobUrl} class="thumbnail" alt=${title} /> `;
 }

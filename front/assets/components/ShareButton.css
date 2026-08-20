@@ -5,7 +5,7 @@
   background-color: transparent;
   color: var(--color-primary);
   border: 1px solid var(--color-primary);
-  border-radius: 20px;
+  border-radius: var(--border-radius);
   padding: 0.4em 0.9em;
   font-size: 0.9em;
   cursor: pointer;

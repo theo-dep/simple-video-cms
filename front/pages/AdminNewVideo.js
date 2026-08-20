@@ -98,7 +98,7 @@ export default function AdminNewVideo() {
         : html`
             <${Form} title="Upload video" buttonTitle="Upload" onSubmitAction=${onVideoSubmit}>
               <div
-                class="pure-control-group file-drop-area"
+                class="form-control-group file-drop-area"
                 onDragEnter=${(e) => e.currentTarget.classList.add('is-active')}
                 onDragLeave=${(e) => e.currentTarget.classList.remove('is-active')}
                 onDrop=${(e) => e.currentTarget.classList.remove('is-active')}
@@ -106,7 +106,7 @@ export default function AdminNewVideo() {
                 <span class="fake-button">Choose file</span>
                 <span class="file-message">${fileName || 'or drag a video here'}</span>
                 <input
-                  class="pure-input-1 file-input"
+                  class="input-1 file-input"
                   type="file"
                   accept="video/mp4,video/webm,video/ogg,video/quicktime"
                   name="file"
@@ -114,11 +114,11 @@ export default function AdminNewVideo() {
                   required
                 />
               </div>
-              <div class="pure-control-group">
+              <div class="form-control-group">
                 <input
                   onInput=${onTitleInput}
                   value="${title}"
-                  class="pure-input-1"
+                  class="input"
                   type="text"
                   name="title"
                   id="title"
@@ -131,7 +131,7 @@ export default function AdminNewVideo() {
                 !isVideosLoading &&
                 title &&
                 !!results.length &&
-                html` <div class="pure-control-group">
+                html` <div class="form-control-group">
                   <${Dropdown}
                     title="Similar videos"
                     liElements=${results.slice(0, 3).map(
@@ -145,11 +145,11 @@ export default function AdminNewVideo() {
                 </div>`
               }
 
-              <div class="pure-control-group">
-                <input class="pure-input-1" type="text" name="date" id="date" placeholder="Video date (optional)" />
+              <div class="form-control-group">
+                <input class="input" type="text" name="date" id="date" placeholder="Video date (optional)" />
               </div>
 
-              <div class="pure-control-group">
+              <div class="form-control-group">
                 <${SingleSelectEditableDropDown}
                   name="location-id"
                   placeholder="Video location (optional)"
@@ -160,7 +160,7 @@ export default function AdminNewVideo() {
                 <//>
               </div>
 
-              <div class="pure-control-group">
+              <div class="form-control-group">
                 <${MultiSelectEditableDropDown}
                   name="author-ids"
                   placeholder="Add authors to video (optional)"
@@ -171,7 +171,7 @@ export default function AdminNewVideo() {
                 <//>
               </div>
 
-              <div class="pure-control-group">
+              <div class="form-control-group">
                 <${MultiSelectEditableDropDown}
                   name="tag-ids"
                   placeholder="Add tags to video (optional)"
@@ -185,7 +185,7 @@ export default function AdminNewVideo() {
               ${
                 !!groups.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="group-ids" placeholder="Add groups to video (optional)">
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
                     <//>
@@ -195,7 +195,7 @@ export default function AdminNewVideo() {
               ${
                 !!users.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="user-ids" placeholder="Add users to video (optional)">
                       ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
                     <//>

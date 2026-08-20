@@ -66,16 +66,16 @@ export default function Login() {
     <${UserNav} />
 
     <${InfoContent}>
-      <form class="pure-form pure-form-aligned" onSubmit=${onLogin}>
+      <form class="form" onSubmit=${onLogin}>
         <fieldset>
           <${Alert} message=${alert} />
-          <div class="pure-control-group">
-            <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
+          <div class="form-control-group">
+            <input class="input" type="text" name="username" placeholder="username" required autofocus />
           </div>
-          <div class="pure-control-group">
+          <div class="form-control-group">
             <${PasswordInput} name="password" placeholder="password" />
           </div>
-          <div class="pure-control-group">
+          <div class="form-control-group">
             <${SubmitButton} label="Login" loading=${loading} id="login-button" />
           </div>
         </fieldset>
@@ -89,11 +89,11 @@ export default function Login() {
       <h4 class="lined">Or</h4>
       <h3>First connection?</h3>
 
-      <form class="pure-form pure-form-aligned" onSubmit=${onFirstConnection}>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="text" name="username" placeholder="enter a valid username" />
+      <form class="form" onSubmit=${onFirstConnection}>
+        <div class="form-control-group">
+          <input class="input" type="text" name="username" placeholder="enter a valid username" />
         </div>
-        <div class="pure-control-group">
+        <div class="form-control-group">
           <${SubmitButton} label="Create" loading=${loading} id="add-password-button" />
         </div>
       </form>

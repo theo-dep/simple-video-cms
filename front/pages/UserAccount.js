@@ -37,23 +37,23 @@ export default function UserAccount() {
 
     <${InfoContent}>
       <${FormContent} title="Change username" buttonTitle="Update" successMessage="Username updated!" onSubmitAction=${onUsernameSubmit}>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="text" name="username" placeholder="username" value=${user.name.value} required />
+        <div class="form-control-group">
+          <input class="input" type="text" name="username" placeholder="username" value=${user.name.value} required />
         </div>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="password" name="password" placeholder="confirm password" required autofocus />
+        <div class="form-control-group">
+          <input class="input" type="password" name="password" placeholder="confirm password" required autofocus />
         </div>
       <//>
 
       <${FormContent} title="Change password" buttonTitle="Update" successMessage="Password updated!" onSubmitAction=${onPasswordSubmit}>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="password" name="old-password" placeholder="old password" required />
+        <div class="form-control-group">
+          <input class="input" type="password" name="old-password" placeholder="old password" required />
         </div>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="password" name="new-password" placeholder="new password" required />
+        <div class="form-control-group">
+          <input class="input" type="password" name="new-password" placeholder="new password" required />
         </div>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="password" name="confirm-password" placeholder="confirm new password" required />
+        <div class="form-control-group">
+          <input class="input" type="password" name="confirm-password" placeholder="confirm new password" required />
         </div>
       <//>
     <//>

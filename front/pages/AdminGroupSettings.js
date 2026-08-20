@@ -56,13 +56,13 @@ export default function AdminGroupSettings({ groupId }) {
         ? html`<${Loader} />`
         : html`
             <${Form} title="Change group name and users" buttonTitle="Update" onSubmitAction=${onGroupSubmit}>
-              <div class="pure-control-group">
-                <input class="pure-input-1" type="text" name="name" value=${selectedGroup.value.name} placeholder="name" required />
+              <div class="form-control-group">
+                <input class="input" type="text" name="name" value=${selectedGroup.value.name} placeholder="name" required />
               </div>
               ${
                 !!users.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="user-ids" placeholder="Add users to group (optional)">
                       ${users.value.map((u) => html`<option key=${u.id} value=${u.id} selected=${isUserSelected(u.id)}>${u.name}</option>`)}
                     <//>
@@ -72,7 +72,7 @@ export default function AdminGroupSettings({ groupId }) {
               ${
                 !!videos.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to group (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id} selected=${isVideoSelected(v.id)}>${v.title}</option>`)}
                     <//>

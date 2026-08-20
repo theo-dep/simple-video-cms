@@ -23,6 +23,11 @@
   align-self: flex-start;
 }
 
+video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
 @media only screen and (min-width: 35.5em) {
   .video-footer-content {
     flex-direction: row;
@@ -38,11 +43,6 @@
   .video-footer-right-content {
     order: 1;
   }
-}
-
-video {
-  width: 100%;
-  aspect-ratio: 16 / 9;
 }
 
 @media only screen and (min-width: 48em) {

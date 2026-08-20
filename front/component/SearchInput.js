@@ -43,16 +43,8 @@ export function SearchInput({ onSearch }) {
   `;
 
   return html`
-    <div class="form-search pure-form">
-      <input
-        ref=${inputRef}
-        type="text"
-        name="search"
-        class="pure-input-rounded pure-input-1"
-        placeholder="Search"
-        value=${query}
-        onInput=${handleInput}
-      />
+    <div class="input-search form">
+      <input ref=${inputRef} type="text" name="search" class="input" placeholder="Search" value=${query} onInput=${handleInput} />
       ${query && html` <span class="search-field-icon" onClick=${handleClear} aria-label="Clear search"> ${xCircle} </span> `}
     </div>
   `;

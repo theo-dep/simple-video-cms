@@ -2,8 +2,8 @@ import { html } from 'htm/preact';
 
 export function Footer() {
   return html`
-    <div class="footer pure-g">
-      <div class="pure-u-1 pure-u-sm-1-2">
+    <div class="footer">
+      <div class="footer-column">
         <p class="legal-license">
           This site is built with ❤️ using ${html``}
           <a href="https://preactjs.com/">preact</a>, <a href="https://yhirose.github.io/cpp-httplib/">cpp-httplib</a>, ${html``}
@@ -14,7 +14,7 @@ export function Footer() {
           <a href="https://gitlab.devau.co/theo/simple-video-cms/-/blob/prod/LICENSE">GPLv3</a> ${html``} unless otherwise stated.
         </p>
       </div>
-      <div class="pure-u-1 pure-u-sm-1-2">
+      <div class="footer-column">
         <br />
         <p class="legal-link">
           <a href="https://gitlab.devau.co/theo/simple-video-cms">Open Source Project</a>

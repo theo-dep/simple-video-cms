@@ -2,11 +2,16 @@
 @import url('./components/_variables.css');
 @import url('./components/_base.css');
 
+/* Form styles */
+@import url('./components/_form.css');
+
 /* Components */
 @import url('./components/Alert.css');
+@import url('./components/AdminAddVideo.css');
 @import url('./components/Button.css');
-@import url('./components/Content.css');
+@import url('./components/BookmarkButton.css');
 @import url('./components/ConfirmDialog.css');
+@import url('./components/Content.css');
 @import url('./components/DropDown.css');
 @import url('./components/Footer.css');
 @import url('./components/HeaderNav.css');
@@ -20,6 +25,7 @@
 @import url('./components/ShareButton.css');
 @import url('./components/Table.css');
 @import url('./components/Video.css');
+@import url('./components/VideoList.css');
 @import url('./components/VideoPlayer.css');
-@import url('./components/AdminAddVideo.css');
+@import url('./components/VideoThumbnail.css');
 @import url('./components/WatchVideo.css');

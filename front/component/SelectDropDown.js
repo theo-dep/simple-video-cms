@@ -319,7 +319,7 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
           </div>
         `
       }
-      <select ref=${nativeSelectRef} name=${name} class="pure-input-1" multiple=${multiple} style="display:none;" tabindex="-1" aria-hidden="true">
+      <select ref=${nativeSelectRef} name=${name} class="input" multiple=${multiple} style="display:none;" tabindex="-1" aria-hidden="true">
         ${rawOptions.map((o) => html`<option key=${o.value} value=${o.value}>${o.label}</option>`)}
       </select>
     </div>

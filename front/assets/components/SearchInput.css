@@ -1,4 +1,4 @@
-.form-search {
+.input-search {
   margin: 0.5em;
   font-size: clamp(85%, 2vw, 100%);
 }
@@ -7,13 +7,13 @@
   float: right;
   position: relative;
   margin-right: 0.6em;
-  margin-top: -1.85em;
+  margin-top: -2.2em;
   z-index: 2;
   cursor: pointer;
 }
 
 .filter-toggle {
-  margin-top: 0.5em;
+  margin: 0.5em;
   width: 8em;
 }
 
@@ -33,33 +33,28 @@
 }
 
 .search-filter .select-dropdown {
-  padding-right: 0.5em;
+  padding-top: 0.5em;
+  padding-right: 0em;
 }
 
-@media only screen and (max-width: 35.5em) {
-  .filter-toggle {
-    margin-left: 0.5em;
-    margin-top: 0;
+@media only screen and (min-width: 35.5em) {
+  .input-search {
+    width: 50%;
   }
 }
 
-@media only screen and (max-width: 48em) {
-  .form-search {
+@media only screen and (min-width: 48em) {
+  .input-search {
     font-size: 100%;
   }
 
   .search-field-icon {
-    margin-top: -1.8em;
-  }
-
-  .search-filter .select-dropdown {
-    padding-top: 0.5em;
-    padding-right: 0em;
+    margin-top: -1.85em;
   }
 }
 
-@media only screen and (max-width: 30em) {
-  .search-field-icon {
-    margin-top: -2.1em;
+@media only screen and (min-width: 64em) {
+  .input-search {
+    width: 33.33%;
   }
 }

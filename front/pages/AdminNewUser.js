@@ -49,14 +49,14 @@ function AdminNewUserBase({ isAdmin }) {
         ? html`<${Loader} />`
         : html`
             <${Form} title="${title}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
-              <div class="pure-control-group">
-                <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
+              <div class="form-control-group">
+                <input class="input" type="text" name="username" placeholder="username" required autofocus />
               </div>
               ${
                 !isAdmin &&
                 !!groups.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="group-ids" placeholder="Add groups to user (optional)">
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
                     <//>
@@ -67,7 +67,7 @@ function AdminNewUserBase({ isAdmin }) {
                 !isAdmin &&
                 !!videos.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to user (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id}>${v.title}</option>`)}
                     <//>

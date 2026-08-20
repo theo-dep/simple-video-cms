@@ -41,13 +41,13 @@ export default function AdminNewGroup() {
         ? html`<${Loader} />`
         : html`
             <${Form} title="Add a new group" buttonTitle="Create" onSubmitAction=${onGroupSubmit}>
-              <div class="pure-control-group">
-                <input class="pure-input-1" type="text" name="name" placeholder="name" required autofocus />
+              <div class="form-control-group">
+                <input class="input" type="text" name="name" placeholder="name" required autofocus />
               </div>
               ${
                 !!users.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="user-ids" placeholder="Add users to group (optional)">
                       ${users.value.map((u) => html`<option key=${u.id} value=${u.id}>${u.name}</option>`)}
                     <//>
@@ -57,7 +57,7 @@ export default function AdminNewGroup() {
               ${
                 !!videos.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to group (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id}>${v.title}</option>`)}
                     <//>

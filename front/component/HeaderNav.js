@@ -7,10 +7,10 @@ import { websiteName } from '../store/env.js';
 function NavLinks({ pages }) {
   return pages.map(
     (p) => html`
-      <li class="pure-menu-item" key=${p.href}>
+      <li class="menu-item" key=${p.href}>
         <a
           ...${p.href ? { href: p.href } : { onClick: () => p.onClick(), style: 'cursor: pointer;' }}
-          class=${'menu-link pure-menu-link' + (document.location.pathname === p.href ? ' menu-selected pure-menu-selected' : '')}
+          class=${'menu-link' + (document.location.pathname === p.href ? ' menu-selected' : '')}
         >
           ${p.label}
         </a>
@@ -71,17 +71,15 @@ export function UserNav() {
     : [{ onClick: onLoginClicked, label: 'Login' }];
 
   return html`
-    <div class="header pure-g">
-      <div class="pure-u-1 pure-u-md-1-4 pure-menu pure-menu-horizontal">
-        <a href="/" class="menu-link pure-menu-heading pure-menu-link">${websiteName}</a>
+    <div class="header">
+      <div class="header-brand menu">
+        <a href="/" class="menu-link menu-heading">${websiteName}</a>
         <${BurgerToggle} isOpen=${isOpen} onToggle=${() => setIsOpen((v) => !v)} />
       </div>
-      <div class=${'pure-u-1 pure-u-md-3-4 menu-burger-wrapper' + (isOpen ? ' menu-burger-open' : '')} onClick=${() => setIsOpen(false)}>
-        <div class="pure-menu pure-menu-horizontal">
-          <ul class="menu-list pure-menu-list">
-            <${NavLinks} pages=${pages} />
-          </ul>
-        </div>
+      <div class=${'header-menu-wrapper menu-burger-wrapper' + (isOpen ? ' menu-burger-open' : '')} onClick=${() => setIsOpen(false)}>
+        <ul class="menu">
+          <${NavLinks} pages=${pages} />
+        </ul>
       </div>
     </div>
   `;
@@ -100,17 +98,15 @@ export function AdminNav() {
   ];
 
   return html`
-    <div class="header pure-g">
-      <div class="pure-u-1 pure-u-md-1-5 pure-menu pure-menu-horizontal">
-        <a href="/" class="menu-link pure-menu-heading pure-menu-link">${websiteName}</a>
+    <div class="header">
+      <div class="header-brand menu">
+        <a href="/" class="menu-link menu-heading">${websiteName}</a>
         <${BurgerToggle} isOpen=${isOpen} onToggle=${() => setIsOpen((v) => !v)} />
       </div>
-      <div class=${'pure-u-1 pure-u-md-4-5 menu-burger-wrapper' + (isOpen ? ' menu-burger-open' : '')} onClick=${() => setIsOpen(false)}>
-        <div class="pure-menu pure-menu-horizontal">
-          <ul class="menu-scrollable-list pure-menu-list">
-            <${NavLinks} pages=${pages} />
-          </ul>
-        </div>
+      <div class=${'header-menu-wrapper menu-burger-wrapper' + (isOpen ? ' menu-burger-open' : '')} onClick=${() => setIsOpen(false)}>
+        <ul class="menu">
+          <${NavLinks} pages=${pages} />
+        </ul>
       </div>
     </div>
   `;

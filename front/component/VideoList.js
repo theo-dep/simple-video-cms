@@ -97,37 +97,32 @@ export function VideoList({ title, filterCondition }) {
   return html`
     <${UserNav} />
 
-    <${Content} class="pure-g">
-      <div class="pure-u-1">
-        <div class="pure-g">
-          <div class="pure-u-1 pure-u-sm-3-4 pure-u-md-1-2 pure-u-lg-1-3">
+    <${Content}>
+      <div class="video-list-search">
+        <div class="video-list-search-row">
+          <div class="video-list-search-input">
             <${SearchInput} onSearch=${search} />
           </div>
-          <button
-            type="button"
-            class="pure-button button filter-toggle ${filtersOpen ? 'is-open' : ''}"
-            onClick=${() => setFiltersOpen(!filtersOpen)}
-          >
+          <button type="button" class="button filter-toggle ${filtersOpen ? 'is-open' : ''}" onClick=${() => setFiltersOpen(!filtersOpen)}>
             Filters ${!!activeFilterCount && html`<span class="filter-badge">${activeFilterCount}</span>`}
             <${ArrowDownIcon} class="filter-toggle-arrow" />
           </button>
         </div>
-
         ${
           filtersOpen &&
           html`
-            <div class="search-filters pure-g">
-              <div class="search-filter pure-u-1 pure-u-md-1-3 pure-u-lg-1-4">
+            <div class="video-list-filters">
+              <div class="video-list-filter">
                 <${MultiSelectDropDown} name="location-filter" placeholder="Locations" onChange=${onLocationChange}>
                   ${locationOptions.map((p) => html`<option key=${p} value=${p} selected=${isLocationSelected(p)}>${p}</option>`)}
                 <//>
               </div>
-              <div class="search-filter pure-u-1 pure-u-md-1-3 pure-u-lg-1-4">
+              <div class="video-list-filter">
                 <${MultiSelectDropDown} name="author-filter" placeholder="Authors" onChange=${onAuthorsChange}>
                   ${authorOptions.map((a) => html`<option key=${a} value=${a} selected=${isAuthorSelected(a)}>${a}</option>`)}
                 <//>
               </div>
-              <div class="search-filter pure-u-1 pure-u-md-1-3 pure-u-lg-1-4">
+              <div class="video-list-filter">
                 <${MultiSelectDropDown} name="tag-filter" placeholder="Tags" onChange=${onTagsChange}>
                   ${tagOptions.map((t) => html`<option key=${t} value=${t} selected=${isTagSelected(t)}>${t}</option>`)}
                 <//>
@@ -140,10 +135,10 @@ export function VideoList({ title, filterCondition }) {
       ${
         isLoading
           ? html`<${Loader} />`
-          : filtered.map(
-              (v) =>
-                html` <div key=${v.id} class="pure-u-1 pure-u-sm-1-2 pure-u-lg-1-3 pure-u-xl-1-4">
-                  <a href=${'/video/' + v.id} class="video-card">
+          : html`<div class="video-grid">
+              ${filtered.map(
+                (v) => html`
+                  <a key=${v.id} href=${'/video/' + v.id} class="video-card">
                     <div class="video-card-thumb">
                       <${VideoThumbnail} id=${v.id} title=${v.title} />
                       ${user.isLogged.value && html`<${BookmarkButton} videoId=${v.id} isBookmarked=${v.bookmarked} location="home" />`}
@@ -165,8 +160,9 @@ export function VideoList({ title, filterCondition }) {
                       }
                     </div>
                   </a>
-                </div>`
-            )
+                `
+              )}
+            </div>`
       }
     <//>
   `;

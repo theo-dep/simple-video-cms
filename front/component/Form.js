@@ -26,11 +26,11 @@ export function FormContent({ title, buttonTitle, successMessage, onSubmitAction
   return html`
     <h3>${title}</h3>
 
-    <form class="pure-form pure-form-aligned" onSubmit=${onSubmit}>
+    <form class="form" onSubmit=${onSubmit}>
       <fieldset>
         <${Alert} message=${alert} />
         ${children}
-        <div class="pure-control-group">
+        <div class="form-control-group">
           <${SubmitButton} label="${buttonTitle}" loading=${loading} id="submit-button" />
         </div>
       </fieldset>

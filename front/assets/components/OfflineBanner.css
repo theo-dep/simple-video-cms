@@ -1,8 +1,9 @@
 .offline-banner {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1em;
+  gap: 0.5em;
   flex-wrap: wrap;
   padding: 0.5em 0.5em;
   background-color: var(--color-primary);
@@ -23,9 +24,9 @@
   font-size: 0.9em;
 }
 
-@media only screen and (max-width: 35.5em) {
+@media only screen and (min-width: 35.5em) {
   .offline-banner {
-    flex-direction: column;
-    gap: 0.5em;
+    flex-direction: row;
+    gap: 1em;
   }
 }

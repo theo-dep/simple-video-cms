@@ -40,10 +40,10 @@ export function PasswordInput({ name, placeholder, autofocus, onKeydown }) {
   </svg>`;
 
   return html`
-    <div class="pure-form">
+    <div class="form">
       <input
         ref=${inputRef}
-        class="pure-input-1"
+        class="input"
         type=${visible ? 'text' : 'password'}
         name=${name}
         placeholder=${placeholder}

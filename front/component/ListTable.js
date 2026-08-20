@@ -59,12 +59,12 @@ export function ListTable({ title, addContent, addLink, columns, items, searchKe
 
   return html`
     <h2>${title}</h2>
-    <div class="pure-g">
-      <div class="pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
+    <div class="list-table-toolbar">
+      <div class="list-search">
         <${SearchInput} onSearch=${search} />
       </div>
 
-      <div class="list-toolbar pure-u-1 pure-u-md-1-2 pure-u-lg-2-3">
+      <div class="list-toolbar">
         <a class="list-collapse-toggle" onClick=${toggleAll}>${expanded.size ? 'Collapse all' : 'Expand all'}</a>
         <a class="list-add-button" href="${addLink}"> ${addContent} </a>
       </div>
@@ -89,7 +89,10 @@ export function ListTable({ title, addContent, addLink, columns, items, searchKe
         return html`
           <div class="list-row" key=${id}>
             <div class="list-row-summary ${!expandedContent ? 'is-disabled' : ''}" onClick=${() => expandedContent && toggleRow(id)}>
-              ${primaryColumns.map((col) => html`<div class="list-row-cell">${col.render ? col.render(item) : item[col.key]}</div>`)}
+              ${primaryColumns.map((col) => {
+                const itemContent = col.render ? col.render(item) : item[col.key];
+                return itemContent && html`<div class="list-row-cell">${itemContent}</div>`;
+              })}
               ${expandedContent && html`<${ChevronRightIcon} class="list-row-chevron ${isOpen ? 'is-open' : ''}" />`}
             </div>
             ${isOpen && expandedContent && html`<div class="list-row-expanded">${expandedContent}</div>`}

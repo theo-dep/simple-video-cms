@@ -12,8 +12,8 @@ export function Alert({ message }) {
   if (!message || !visible) return null;
 
   return html`
-    <div class="pure-form pure-form-aligned">
-      <div class="alert pure-control-group" onClick=${() => setVisible(false)}>
+    <div class="form">
+      <div class="alert form-control-group" onClick=${() => setVisible(false)}>
         <svg class="close-button">
           <title>Close</title>
           <${XIcon} />
