@@ -5,7 +5,7 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[cpp]": {
-    "editor.defaultFormatter": "ms-vscode.cpptools"
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
   },
   "files.associations": {
     "*docker*.yaml": "dockercompose",
@@ -31,5 +31,7 @@
   "prettier.configPath": "prettier.config.js",
   "prettier.requireConfig": true,
   "prettier.useEditorConfig": false,
-  "C_Cpp.default.compileCommands": ["${workspaceFolder}/build/vcpkg/compile_commands.json"]
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "C_Cpp.default.compileCommands": ["${workspaceFolder}/build/vcpkg/compile_commands.json"],
+  "clangd.arguments": ["--compile-commands-dir=${workspaceFolder}/build/vcpkg", "--background-index", "--clang-tidy"]
 }

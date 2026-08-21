@@ -6,8 +6,7 @@
 
 std::vector<std::string> su::split(const std::string& str, char delim)
 {
-    const std::vector list(std::views::split(str, delim) | std::ranges::to<std::vector<std::string>>());
-    return list;
+    return std::views::split(str, delim) | std::ranges::to<std::vector<std::string>>();
 }
 
 std::string su::trim(const std::string& str)

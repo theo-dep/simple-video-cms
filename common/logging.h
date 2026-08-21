@@ -19,7 +19,7 @@ namespace logging
     // https://cor3ntin.github.io/posts/variadic/
     // https://en.cppreference.com/w/cpp/language/class_template_argument_deduction#User-defined_deduction_guides
     template <class... Args>
-    struct info
+    struct info // NOLINT(readability-identifier-naming): used as a function
     {
         info(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current());
     };
@@ -34,7 +34,7 @@ namespace logging
     info(const std::string& message) -> info<std::string>;
 
     template <class... Args>
-    struct error
+    struct error // NOLINT(readability-identifier-naming): used as a function
     {
         error(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current());
     };
@@ -49,7 +49,7 @@ namespace logging
     error(const std::string& message) -> error<std::string>;
 
     template <class... Args>
-    struct debug
+    struct debug // NOLINT(readability-identifier-naming): used as a function
     {
         debug(std::format_string<Args...> fmt, Args&&... args, const std::source_location& location = std::source_location::current());
     };

@@ -8,8 +8,14 @@
 class VideoSession
 {
 public:
-    // Constructor
     VideoSession() = default;
+    ~VideoSession() = default;
+
+    // prevent copy/move
+    VideoSession(const VideoSession&) = delete;
+    VideoSession& operator=(const VideoSession&) = delete;
+    VideoSession(VideoSession&&) = delete;
+    VideoSession& operator=(VideoSession&&) = delete;
 
     void add_session(const std::string& session_id, const std::string& video_id);
     void start_session(const std::string& session_id, const std::string& video_id);
@@ -53,10 +59,4 @@ private:
 
     std::unordered_map<Key, State, KeyHash> _sessions; // session_id, video_id -> state
     mutable std::shared_mutex _mutex;
-
-    // prevent copy/move
-    VideoSession(const VideoSession&) = delete;
-    VideoSession& operator=(const VideoSession&) = delete;
-    VideoSession(VideoSession&&) = delete;
-    VideoSession& operator=(VideoSession&&) = delete;
 };
