@@ -104,7 +104,7 @@ All third party files are available offline.
 #### zlib
 
 - https://github.com/madler/zlib/
-- Copyright
+- zlib License
 
 #### libpng
 
@@ -116,11 +116,31 @@ All third party files are available offline.
 - https://www.openssl.org/
 - Apache-2.0
 
+#### Catch2
+
+- https://github.com/catchorg/Catch2
+- BSL-1.0
+
 ### Javascript and CSS
+
+#### @preact/signals
+
+- https://github.com/preactjs/signals
+- MIT License
 
 #### preact
 
 - https://github.com/preactjs/preact
+- MIT License
+
+#### preact-iso
+
+- https://github.com/preactjs/preact-iso
+- MIT License
+
+#### htm
+
+- https://github.com/developit/htm
 - MIT License
 
 #### Fuse.js
@@ -128,10 +148,10 @@ All third party files are available offline.
 - https://github.com/krisk/fuse
 - Apache License Version 2.0
 
-#### Pure.css
+#### bootstrap-icons
 
-- https://github.com/pure-css/pure
-- BSD Yahoo! Inc. License
+- https://github.com/twbs/icons
+- MIT License
 
 #### Video.js
 
@@ -147,16 +167,6 @@ All third party files are available offline.
 
 - https://github.com/paidless/videojs-yt-style
 - Unlicensed
-
-#### Bootstrap Icons
-
-- https://github.com/twbs/icons
-- MIT License
-
-#### MultiSelect
-
-- https://github.com/codeshackio/multi-select-dropdown-js
-- MIT License
 
 #### SVG-Spinners
 

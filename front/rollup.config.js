@@ -13,15 +13,27 @@ const PROD_HTML_FILE = 'index-prod.html';
 const PROD_HTML = `front/${PROD_HTML_FILE}`;
 const DIST_DIR = 'dist';
 
+const BOOTSTRAP_ICONS_FILE = 'node_modules/bootstrap-icons/font/bootstrap-icons.css';
+const FIXED_BOOTSTRAP_ICONS_FILE = 'node_modules/bootstrap-icons/font/bootstrap-icons-fixed.css';
+
 const collectedAssetUrls = new Set();
 
+// remove bootstrap-icons font url query string
+{
+  const bootstrapIconsContent = readFileSync(BOOTSTRAP_ICONS_FILE, 'utf-8');
+  const fixedBootstrapIconsContent = bootstrapIconsContent.replace(/(\.\/fonts\/bootstrap-icons\.(woff2|woff))\?[^"']*/g, '$1');
+  writeFileSync(FIXED_BOOTSTRAP_ICONS_FILE, fixedBootstrapIconsContent);
+}
+
 // prepare index.html without absolute path for html plugin
+// and with bootstrap-icons fixed
 {
   const src = readFileSync(SRC_HTML, 'utf-8');
   const prod = src
     .replace(/href="\/assets\//g, 'href="./assets/')
     .replace(/href="\/manifest\.json"/g, 'href="./manifest.json"')
-    .replace(/src="\/index\.js"/g, 'src="./index.js"');
+    .replace(/src="\/index\.js"/g, 'src="./index.js"')
+    .replace(BOOTSTRAP_ICONS_FILE, FIXED_BOOTSTRAP_ICONS_FILE);
   writeFileSync(PROD_HTML, prod);
 }
 
@@ -40,8 +52,14 @@ function deleteProdHtmlFile() {
   return {
     name: 'delete-prod-html-file',
     closeBundle() {
+      unlinkSync(FIXED_BOOTSTRAP_ICONS_FILE);
       unlinkSync(PROD_HTML);
-      renameSync(`${DIST_DIR}/${PROD_HTML_FILE}`, `${DIST_DIR}/${SRC_HTML_FILE}`);
+
+      const distProd = `${DIST_DIR}/${PROD_HTML_FILE}`;
+      if (existsSync(distProd)) {
+        // build ends successfully
+        renameSync(distProd, `${DIST_DIR}/${SRC_HTML_FILE}`);
+      }
     },
   };
 }

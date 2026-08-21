@@ -8,7 +8,7 @@ import { Content } from '../component/Content.js';
 import { AdminNav } from '../component/HeaderNav.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
-import { GroupAddIcon } from '../svg/GroupAddIcon.js';
+import { Icon } from '../component/Icon.js';
 import { confirm } from '../component/ConfirmDialog.js';
 
 export default function AdminGroupList() {
@@ -39,7 +39,7 @@ export default function AdminGroupList() {
           ? html`<${Loader} />`
           : html`<${ListTable}
               title="List of groups"
-              addContent="${html`<svg class="svg-button"><${GroupAddIcon} /></svg> New group`}"
+              addContent="${html`<${Icon} name="people" class="svg-button" /> New group`}"
               addLink="/admin/new-group"
               columns="${[{ key: 'name', label: 'Name', sortValue: (g) => g.name }]}"
               items="${groups.value}"

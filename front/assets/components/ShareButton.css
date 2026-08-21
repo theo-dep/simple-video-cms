@@ -17,10 +17,10 @@
   color: var(--color-primary-dark);
 }
 
-.share-button svg {
-  fill: var(--color-primary);
+.share-button {
+  color: var(--color-primary);
 }
 
-.share-button:hover svg {
-  fill: var(--color-primary-dark);
+.share-button:hover .svg-button {
+  color: var(--color-primary-dark);
 }

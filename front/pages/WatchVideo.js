@@ -11,10 +11,7 @@ import { Footer } from '../component/Footer.js';
 import { Loader } from '../component/Loader.js';
 import { ShareButton } from '../component/ShareButton.js';
 import { BookmarkButton } from '../component/BookmarkButton.js';
-import { LocationIcon } from '../svg/LocationIcon.js';
-import { CalendarIcon } from '../svg/CalendarIcon.js';
-import { PencilIcon } from '../svg/PencilIcon.js';
-import { TagIcon } from '../svg/TagIcon.js';
+import { Icon } from '../component/Icon.js';
 
 // video.js can be long to load
 const Video = lazy(() => import('../component/Video.js'));
@@ -60,11 +57,11 @@ export default function WatchVideo({ videoId }) {
                       <${ShareButton} />
                     </div>
                     <div class="video-footer-left-content">
-                      ${video.date && html`<span class="meta-item meta-date"><${CalendarIcon} /> ${video.date}</span>`}
-                      ${video.location && html`<span class="meta-item meta-location"><${LocationIcon} /> ${video.location}</span>`}
-                      ${!!video.authors.length && html`<span class="meta-item meta-authors"><${PencilIcon} /> ${video.authors.join(', ')}</span>`}
+                      ${video.date && html`<span class="meta-item meta-date"><${Icon} name="calendar-date" /> ${video.date}</span>`}
+                      ${video.location && html`<span class="meta-item meta-location"><${Icon} name="geo" /> ${video.location}</span>`}
+                      ${!!video.authors.length && html`<span class="meta-item meta-authors"><${Icon} name="pencil-square" /> ${video.authors.join(', ')}</span>`}
                       <div class="video-meta-tags">
-                        ${!!video.tags.length && html`${video.tags.map((t) => html`<span class="meta-item meta-tag"><${TagIcon} /> ${t}</span>`)} `}
+                        ${!!video.tags.length && html`${video.tags.map((t) => html`<span class="meta-item meta-tag"><${Icon} name="tag" /> ${t}</span>`)} `}
                       </div>
                     </div>
                   </div>

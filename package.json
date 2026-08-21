@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@preact/signals": "^2.10.0",
+    "bootstrap-icons": "^1.13.1",
     "fuse.js": "^7.5.0",
     "htm": "^3.1.1",
     "preact": "^10.29.7",

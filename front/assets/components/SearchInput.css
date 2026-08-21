@@ -7,9 +7,11 @@
   float: right;
   position: relative;
   margin-right: 0.6em;
-  margin-top: -2.2em;
+  margin-top: -2em;
+  font-size: 1.2em;
   z-index: 2;
   cursor: pointer;
+  color: var(--color-text-black);
 }
 
 .filter-toggle {
@@ -18,14 +20,15 @@
 }
 
 .filter-toggle-arrow {
+  display: inline-block;
   margin-left: 0.5em;
-  width: 0.6em;
-  height: 0.6em;
   transition: transform 0.2s;
+  transform-origin: center;
+  vertical-align: middle;
 }
 
 .filter-toggle.is-open .filter-toggle-arrow {
-  transform: rotate(180deg);
+  transform: translateY(-2px) rotate(180deg);
 }
 
 .search-filters {
@@ -49,7 +52,8 @@
   }
 
   .search-field-icon {
-    margin-top: -1.85em;
+    font-size: 1em;
+    margin-top: -2em;
   }
 }
 

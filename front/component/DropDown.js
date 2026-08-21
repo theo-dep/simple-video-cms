@@ -1,6 +1,6 @@
 import { html } from 'htm/preact';
 import { useState } from 'preact/hooks';
-import { ArrowDownIcon } from '../svg/ArrowDownIcon.js';
+import { Icon } from './Icon.js';
 
 export function Dropdown({ title, open = true, liElements }) {
   const [isOpen, setIsOpen] = useState(open);
@@ -14,7 +14,7 @@ export function Dropdown({ title, open = true, liElements }) {
     <div class="dropdown">
       <button class="dropdown-toggle dropdown-toggle-${isOpen ? 'opened' : 'closed'}" onClick=${onClick}>
         ${title}
-        <${ArrowDownIcon} class="dropdown-arrow dropdown-arrow-${isOpen ? 'opened' : 'closed'}" />
+        <${Icon} name="chevron-down" class="dropdown-arrow dropdown-arrow-${isOpen ? 'opened' : 'closed'}" />
       </button>
       ${
         isOpen &&

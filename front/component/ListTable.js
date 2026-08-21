@@ -2,17 +2,10 @@ import { html } from 'htm/preact';
 import { useEffect, useState, useMemo } from 'preact/hooks';
 import { useSearch } from '../hook/useSearch.js';
 import { SearchInput } from './SearchInput.js';
-import { ArrowDownIcon } from '../svg/ArrowDownIcon.js';
+import { Icon } from './Icon.js';
 
 function ChevronRightIcon({ class: className }) {
-  return html`
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right ${className}" viewBox="0 0 16 16">
-      <path
-        fill-rule="evenodd"
-        d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"
-      />
-    </svg>
-  `;
+  return html`<${Icon} name="chevron-right" class="${className}" />`;
 }
 
 export function ListTable({ title, addContent, addLink, columns, items, searchKeys, idKey = 'id', renderExpanded }) {
@@ -76,7 +69,10 @@ export function ListTable({ title, addContent, addLink, columns, items, searchKe
           (col) => html`
             <div class="list-header-cell" onClick=${() => toggleSort(col)}>
               ${col.label}
-              <${ArrowDownIcon} class="list-sort-icon list-sorted-${sort.col?.key === col.key ? (sort.dir === 1 ? 'asc' : 'desc') : 'asc'}" />
+              <${Icon}
+                name="chevron-down"
+                class="list-sort-icon list-sorted-${sort.col?.key === col.key ? (sort.dir === 1 ? 'asc' : 'desc') : 'asc'}"
+              />
             </div>
           `
         )}

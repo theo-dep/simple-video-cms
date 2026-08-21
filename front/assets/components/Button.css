@@ -30,13 +30,13 @@
 }
 
 .svg-button {
-  fill: var(--color-primary);
-  width: 1em;
-  height: 1em;
+  color: var(--color-primary);
+  font-size: 1em;
+  line-height: 1;
 }
 
 .svg-button:hover {
-  fill: var(--color-primary-dark);
+  color: var(--color-primary-dark);
 }
 
 .button-spinner {
