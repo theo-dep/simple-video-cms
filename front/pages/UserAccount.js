@@ -5,6 +5,7 @@ import { user, refreshRequested } from '../store/auth.js';
 import { UserNav } from '../component/HeaderNav.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { FormContent } from '../component/Form.js';
+import { PasswordInput } from '../component/PasswordInput.js';
 import { validateField } from '../utils/validation.js';
 
 export default function UserAccount() {
@@ -41,7 +42,7 @@ export default function UserAccount() {
           <input class="input" type="text" name="username" placeholder="username" value=${user.name.value} required />
         </div>
         <div class="form-control-group">
-          <input class="input" type="password" name="password" placeholder="confirm password" required autofocus />
+          <${PasswordInput} name="password" placeholder="confirm password" autofocus />
         </div>
       <//>
 
@@ -50,10 +51,10 @@ export default function UserAccount() {
           <input class="input" type="password" name="old-password" placeholder="old password" required />
         </div>
         <div class="form-control-group">
-          <input class="input" type="password" name="new-password" placeholder="new password" required />
+          <${PasswordInput} name="new-password" placeholder="new password" />
         </div>
         <div class="form-control-group">
-          <input class="input" type="password" name="confirm-password" placeholder="confirm new password" required />
+          <${PasswordInput} name="confirm-password" placeholder="confirm new password" />
         </div>
       <//>
     <//>

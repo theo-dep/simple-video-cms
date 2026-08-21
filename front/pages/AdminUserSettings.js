@@ -109,9 +109,9 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
 }
 
 export function AdminUserSettings({ userId }) {
-  return html`<${AdminUserSettingsBase} userId=${userId} isAdmin=${false} />`;
+  return html`<${AdminUserSettingsBase} userId=${userId} !isAdmin />`;
 }
 
 export function AdminAdminSettings({ adminId }) {
-  return html`<${AdminUserSettingsBase} userId=${adminId} isAdmin=${true} />`;
+  return html`<${AdminUserSettingsBase} userId=${adminId} isAdmin />`;
 }

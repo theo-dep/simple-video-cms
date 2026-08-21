@@ -300,14 +300,14 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
 }
 
 export function MultiSelectDropDown({ name, placeholder, onChange, children }) {
-  return html`<${SelectDropDown} name=${name} placeholder=${placeholder || 'Select item(s)'} multiple=${true} onChange=${onChange}>${children}<//>`;
+  return html`<${SelectDropDown} name=${name} placeholder=${placeholder || 'Select item(s)'} multiple onChange=${onChange}>${children}<//>`;
 }
 
 export function SingleSelectEditableDropDown({ name, placeholder, children, onAddedOption, onDeletedOption }) {
   return html`<${SelectDropDown}
     name=${name}
     placeholder=${placeholder || 'Select item'}
-    editable=${true}
+    editable
     onAddedOption=${onAddedOption}
     onDeletedOption=${onDeletedOption}
     >${children}<//
@@ -318,8 +318,8 @@ export function MultiSelectEditableDropDown({ name, placeholder, children, onAdd
   return html`<${SelectDropDown}
     name=${name}
     placeholder=${placeholder || 'Select item(s)'}
-    multiple=${true}
-    editable=${true}
+    multiple
+    editable
     onAddedOption=${onAddedOption}
     onDeletedOption=${onDeletedOption}
     >${children}<//

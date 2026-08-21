@@ -1,6 +1,9 @@
 import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { signal } from '@preact/signals';
 import { Icon } from './Icon.js';
+
+const visibleField = signal(null);
 
 export function PasswordInput({ name, placeholder, autofocus, onKeydown }) {
   const [value, setValue] = useState('');
@@ -21,8 +24,13 @@ export function PasswordInput({ name, placeholder, autofocus, onKeydown }) {
     onKeydown?.(e);
   }
 
+  function handleClickVisible() {
+    setVisible(!visible);
+    setTimeout(() => setVisible(false), 5 * 1000);
+  }
+
   return html`
-    <div class="form">
+    <div class="form form-password">
       <input
         ref=${inputRef}
         class="input"
@@ -33,10 +41,15 @@ export function PasswordInput({ name, placeholder, autofocus, onKeydown }) {
         value=${value}
         onInput=${(e) => setValue(e.target.value)}
         onKeydown=${handleKeydown}
+        onClick=${() => (visibleField.value = inputRef.current)}
       />
-      <span class="field-icon" onClick=${() => setVisible(!visible)}>
-        ${visible ? html`<${Icon} name="eye-slash" />` : html`<${Icon} name="eye" />`}
-      </span>
+      ${
+        visibleField.value &&
+        visibleField.value == inputRef.current &&
+        html` <span class="field-icon" onClick=${handleClickVisible}>
+          ${visible ? html`<${Icon} name="eye-slash" />` : html`<${Icon} name="eye" />`}
+        </span>`
+      }
     </div>
   `;
 }

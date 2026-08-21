@@ -81,9 +81,9 @@ function AdminNewUserBase({ isAdmin }) {
 }
 
 export function AdminNewUser() {
-  return html`<${AdminNewUserBase} isAdmin=${false} />`;
+  return html`<${AdminNewUserBase} !isAdmin />`;
 }
 
 export function AdminNewAdmin() {
-  return html`<${AdminNewUserBase} isAdmin=${true} />`;
+  return html`<${AdminNewUserBase} isAdmin />`;
 }
