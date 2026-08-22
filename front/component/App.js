@@ -33,24 +33,29 @@ export function App() {
   }, [isLoading]);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      // Remove old service worker (v1)
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((reg) => {
-          if (reg.active?.scriptURL.includes('videoserviceworker.js')) {
-            reg.unregister();
-          }
+    /* global __BUILD_ENV__ */
+    if (typeof __BUILD_ENV__ !== 'undefined' && __BUILD_ENV__ === 'production') {
+      if ('serviceWorker' in navigator) {
+        // Remove old service worker (v1)
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((reg) => {
+            if (reg.active?.scriptURL.includes('videoserviceworker.js')) {
+              reg.unregister();
+            }
+          });
         });
-      });
 
-      // Scope must be "/" for clients.claim() to work without a reload:
-      // clients.claim() matches the registration scope against the client's
-      // CREATION URL (the initial navigation that loaded the document), not
-      // the current SPA route (pushState). Since this app is always loaded
-      // from "/", only scope="/" can match and grant immediate control.
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((_registration) => {
-        swReady.value = true;
-      });
+        // Scope must be "/" for clients.claim() to work without a reload:
+        // clients.claim() matches the registration scope against the client's
+        // CREATION URL (the initial navigation that loaded the document), not
+        // the current SPA route (pushState). Since this app is always loaded
+        // from "/", only scope="/" can match and grant immediate control.
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((_registration) => {
+          swReady.value = true;
+        });
+      }
+    } else {
+      swReady.value = true;
     }
   }, []);
 
