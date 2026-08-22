@@ -192,10 +192,6 @@
         const env = typeof __ENV_PLACEHOLDER__ !== 'undefined' ? __ENV_PLACEHOLDER__ : { websiteName: 'Simple Video CMS' };
         window.__ENV__ = env;
         document.title = `${document.title} | ${env.websiteName}`;
-
-        if (env.iconPath) {
-          document.querySelector('link[rel="icon"]').href = env.iconPath;
-        }
       })();
     </script>
     <script type="module" src="/index.js"></script>

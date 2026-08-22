@@ -5,7 +5,6 @@ import '@testing-library/jest-dom/vitest';
 if (!window.__ENV__) {
   window.__ENV__ = {
     websiteName: 'Simple Video CMS',
-    iconPath: '/front/assets/img/icon.svg',
   };
 }
 
