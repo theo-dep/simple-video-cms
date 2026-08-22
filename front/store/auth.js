@@ -44,6 +44,9 @@ async function refreshAuth() {
 }
 
 effect(() => {
-  if (apiOffline.value) return;
+  if (apiOffline.value) {
+    firstRefreshed.value = true; // mark done to skip the boot-loader when offline
+    return;
+  }
   if (refreshRequested.value) refreshAuth();
 });

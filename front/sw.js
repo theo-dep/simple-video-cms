@@ -1,15 +1,18 @@
+import { BackgroundSyncPlugin } from 'workbox-background-sync';
 import { cacheNames, clientsClaim } from 'workbox-core';
 import { precache, getCacheKeyForURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { CacheOnly, StaleWhileRevalidate, CacheFirst, NetworkFirst } from 'workbox-strategies';
+import { CacheOnly, StaleWhileRevalidate, CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
 
 const VIDEO_ROUTE_PATTERN = [/^\/api\/video\/\d+\/playlist$/, /^\/api\/video\/\d+\/\d+_\d+\.ts$/];
 const THUMBNAIL_ROUTE_PATTERN = /^\/api\/thumbnail\/\d+$/;
+const BOOKMARK_ROUTE_PATTERN = /^\/api\/bookmark\/\d+$/;
 const REFRESH_ROUTE_PATTERN = /^\/api\/refresh$/;
 const API_ROUTE_PATTERN = /^\/api\/.*/;
 
 const isVideoRoute = (url) => VIDEO_ROUTE_PATTERN.some((p) => p.test(url.pathname));
 const isThumbnailRoute = (url) => THUMBNAIL_ROUTE_PATTERN.test(url.pathname);
+const isBookmarkRoute = (url) => BOOKMARK_ROUTE_PATTERN.test(url.pathname);
 const isRefreshRoute = (url) => REFRESH_ROUTE_PATTERN.test(url.pathname);
 const isAPIRoute = (url) => API_ROUTE_PATTERN.test(url.pathname);
 
@@ -81,6 +84,19 @@ registerRoute(({ url }) => isRefreshRoute(url), new NetworkFirst({ cacheName: 'a
 registerRoute(
   ({ url }) => isAPIRoute(url) && !isRefreshRoute(url) && !isVideoRoute(url) && !isThumbnailRoute(url),
   new NetworkFirst({ cacheName: 'api', networkTimeoutSeconds: 7, plugins: [logPlugin('api')] })
+);
+
+// API POST (bookmark): allow background sync
+registerRoute(
+  ({ url }) => isBookmarkRoute(url),
+  new NetworkOnly({
+    plugins: [
+      new BackgroundSyncPlugin('bookmarkQueue', {
+        maxRetentionTime: 24 * 60, // retry for max of 24 Hours (specified in minutes)
+      }),
+    ],
+  }),
+  'POST'
 );
 
 // index.html: NetworkFirst, never precached (must always fetch latest shell)
