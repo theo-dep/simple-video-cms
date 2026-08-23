@@ -35,7 +35,7 @@ This will generates server binary in `build/vcpkg/Release/back`. Build with `vcp
 Server can be run using VS Code and CMake extension or with commands `just start-dev` or `just start-prod`.
 
 > [!NOTE]
-> Configure CMake with `-DCMAKE_CXX_FLAGS_RELEASE=-DNO_SECURE` to define `NO_SECURE` cookie in Release mode.
+> Configure CMake with `-DNO_SECURE=ON` to define `NO_SECURE` cookie in Release mode.
 > This allow to test the production bundle in local environment (like with a phone).
 
 ## Container

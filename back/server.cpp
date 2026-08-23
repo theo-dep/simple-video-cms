@@ -15,6 +15,7 @@
 #include <httplib.h>
 #include <nlohmann/json.hpp>
 
+#include <regex>
 #include <stacktrace>
 
 #ifdef _DEBUG // debug, allow reload of static files
@@ -386,15 +387,33 @@ inline void server::video(const httplib::Request& req, httplib::Response& res, c
                   .url = video_url });
 }
 
+namespace server
+{
+    struct StaticFile
+    {
+        std::string path;
+        std::string cache_control;
+    };
+}
+
 inline void server::static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
 {
     STATIC const std::map bundle_files{
         [&bundle_dir] {
-            std::map<std::string, std::string> files;
+            std::map<std::string, StaticFile> files;
             for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(bundle_dir)) {
                 if (entry.is_regular_file() && entry.path().filename() != "index.html") {
                     const std::string rel{ "/" + std::filesystem::relative(entry.path(), bundle_dir).string() };
-                    files.emplace(rel, entry.path().string());
+
+                    static const std::regex hash_file_regex("^[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]{8,}\\.[a-z]+$");
+                    const StaticFile file{
+                        .path = entry.path().string(),
+                        .cache_control = std::regex_match(entry.path().filename().string(), hash_file_regex)
+                                             ? "public, max-age=31536000, immutable" // 1 year
+                                             : std::string{}
+                    };
+
+                    files.emplace(rel, file);
                 }
             }
             return files;
@@ -408,7 +427,13 @@ inline void server::static_file(const httplib::Request& req, httplib::Response& 
         return;
     }
 
-    res.set_file_content(bundle_file_it->second);
+    const StaticFile& file{ bundle_file_it->second };
+
+    if (!file.cache_control.empty()) {
+        res.set_header("Cache-Control", file.cache_control);
+    }
+
+    res.set_file_content(file.path);
 }
 
 inline void server::index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)
