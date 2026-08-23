@@ -1,10 +1,10 @@
 import { html } from 'htm/preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { api } from '../api.js';
 
-export function VideoThumbnail({ id, title }) {
-  const [thumbnailBlobUrl, setThumbnailBlobUrl] = useState(null);
+export function VideoThumbnail({ id, title, priority = false }) {
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   const placeholderIcon = html`
     <svg xmlns="http://www.w3.org/2000/svg" class="thumbnail" width="320" height="180" viewBox="0 0 320 180">
@@ -20,23 +20,22 @@ export function VideoThumbnail({ id, title }) {
     </svg>
   `;
 
-  useEffect(() => {
-    api
-      .thumbnail(id)
-      .then((response) => response.blob())
-      .then((blob) => {
-        const blobUrl = URL.createObjectURL(blob);
-        setThumbnailBlobUrl(blobUrl);
-        setIsLoading(false);
-      })
-      .catch((error) => console.error(`Fail to load thumbnail id ${id} for ${title}: ${error}`));
+  if (hasError) return placeholderIcon;
 
-    return () => {
-      if (thumbnailBlobUrl) {
-        URL.revokeObjectURL(thumbnailBlobUrl);
-      }
-    };
-  }, [id]);
-
-  return isLoading ? placeholderIcon : html`<img src=${thumbnailBlobUrl} class="thumbnail" alt=${title} /> `;
+  return html`
+    <div class="thumbnail-wrapper">
+      ${isLoading ? placeholderIcon : ''}
+      <img
+        src=${api.thumbnailPath(id)}
+        class="thumbnail"
+        alt=${title}
+        loading=${priority ? 'eager' : 'lazy'}
+        fetchpriority=${priority ? 'high' : 'auto'}
+        decoding="async"
+        style=${isLoading ? 'visibility:hidden' : ''}
+        onload=${() => setIsLoading(false)}
+        onerror=${() => setHasError(true)}
+      />
+    </div>
+  `;
 }

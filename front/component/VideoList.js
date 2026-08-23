@@ -133,10 +133,10 @@ export function VideoList({ title, filterCondition }) {
           ? html`<${Loader} />`
           : html`<div class="video-grid">
               ${filtered.map(
-                (v) => html`
+                (v, i) => html`
                   <a key=${v.id} href=${'/video/' + v.id} class="video-card">
                     <div class="video-card-thumb">
-                      <${VideoThumbnail} id=${v.id} title=${v.title} />
+                      <${VideoThumbnail} id=${v.id} title=${v.title} priority=${i < 4} />
                       ${user.isLogged.value && html`<${BookmarkButton} videoId=${v.id} isBookmarked=${v.bookmarked} location="home" />`}
                     </div>
                     <div class="video-info">
