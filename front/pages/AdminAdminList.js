@@ -5,10 +5,10 @@ import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { selectedAdmin, admins, loadAdmins, invalidateAdmins } from '../store/admin.js';
 import { Content } from '../component/Content.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
-import { PersonAddIcon } from '../svg/PersonAddIcon.js';
+import { Icon } from '../component/Icon.js';
 import { confirm } from '../component/ConfirmDialog.js';
 
 export default function AdminAdminList() {
@@ -53,7 +53,7 @@ export default function AdminAdminList() {
           ? html`<${Loader} />`
           : html`<${ListTable}
               title="List of administrators"
-              addContent="${html`<svg class="svg-button"><${PersonAddIcon} /></svg> New admin`}"
+              addContent="${html`<${Icon} name="person-add" class="svg-button" /> New admin`}"
               addLink="/admin/new-admin"
               columns="${[{ key: 'name', label: 'Username', sortValue: (a) => a.name }]}"
               items="${admins.value}"

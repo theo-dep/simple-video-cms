@@ -1,7 +1,7 @@
 import { html } from 'htm/preact';
 import { useTitle } from '../hook/useTitle.js';
 import { InfoContent } from '../component/InfoContent.js';
-import { UserNav } from '../component/UserNav.js';
+import { UserNav } from '../component/HeaderNav.js';
 
 export default function NotFound() {
   useTitle('Not Found');

@@ -11,6 +11,7 @@
     "@rollup/plugin-babel": "^7.1.0",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-terser": "^1.0.0",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/preact": "^3.2.4",
@@ -23,16 +24,16 @@
     "jsdom": "^29.1.1",
     "prettier": "^3.9.6",
     "rollup": "^4.62.3",
-    "rollup-plugin-import-css": "^4.2.1",
+    "rollup-plugin-workbox": "^9.0.0",
     "vitest": "^4.1.10"
   },
   "dependencies": {
     "@preact/signals": "^2.10.0",
+    "bootstrap-icons": "^1.13.1",
     "fuse.js": "^7.5.0",
     "htm": "^3.1.1",
     "preact": "^10.29.7",
     "preact-iso": "^2.12.1",
-    "purecss": "^3.0.0",
     "video.js": "^8.23.9",
     "videojs-mobile-ui": "^1.2.7",
     "videojs-yt-style": "^0.1.8"

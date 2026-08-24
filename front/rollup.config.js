@@ -1,11 +1,11 @@
 import { readFileSync, writeFileSync, unlinkSync, renameSync, readdirSync, existsSync, copyFileSync, mkdirSync } from 'fs';
-import { createHash } from 'crypto';
 import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import terser from '@rollup/plugin-terser';
 import { rollupPluginHTML as html } from '@web/rollup-plugin-html';
-import css from 'rollup-plugin-import-css';
 import babel from '@rollup/plugin-babel';
+import replace from '@rollup/plugin-replace';
+import { injectManifest } from 'rollup-plugin-workbox';
 import { videojsEntries } from './rollup.shared.js';
 
 const SRC_HTML_FILE = 'index.html';
@@ -14,26 +14,35 @@ const PROD_HTML_FILE = 'index-prod.html';
 const PROD_HTML = `front/${PROD_HTML_FILE}`;
 const DIST_DIR = 'dist';
 
-const collectedAssetUrls = new Set();
+const BOOTSTRAP_ICONS_FILE = 'node_modules/bootstrap-icons/font/bootstrap-icons.css';
+const FIXED_BOOTSTRAP_ICONS_FILE = 'node_modules/bootstrap-icons/font/bootstrap-icons-fixed.css';
+
+// remove bootstrap-icons font url query string
+{
+  const bootstrapIconsContent = readFileSync(BOOTSTRAP_ICONS_FILE, 'utf-8');
+  const fixedBootstrapIconsContent = bootstrapIconsContent.replace(/(\.\/fonts\/bootstrap-icons\.(woff2|woff))\?[^"']*/g, '$1');
+  writeFileSync(FIXED_BOOTSTRAP_ICONS_FILE, fixedBootstrapIconsContent);
+}
 
 // prepare index.html without absolute path for html plugin
+// and with bootstrap-icons fixed
 {
   const src = readFileSync(SRC_HTML, 'utf-8');
   const prod = src
-    .replace(/href="\/assets\//g, 'href="./assets/')
-    .replace(/href="\/manifest\.json"/g, 'href="./manifest.json"')
-    .replace(/src="\/index\.js"/g, 'src="./index.js"');
+    .replace(/href="\/assets\//g, 'href="assets/')
+    .replace(/href="\/manifest\.json"/g, 'href="manifest.json"')
+    .replace(/src="\/index\.js"/g, 'src="index.js"')
+    .replace(BOOTSTRAP_ICONS_FILE, FIXED_BOOTSTRAP_ICONS_FILE);
   writeFileSync(PROD_HTML, prod);
 }
 
-// Copy PWA files to dist
+// copy manifest files to dist
 {
   mkdirSync(`${DIST_DIR}/assets/icons`, { recursive: true });
   copyFileSync('front/manifest.json', `${DIST_DIR}/manifest.json`);
   const icons = readdirSync('front/assets/icons').filter((f) => !f.startsWith('apple-touch'));
   for (const icon of icons) {
     copyFileSync(`front/assets/icons/${icon}`, `${DIST_DIR}/assets/icons/${icon}`);
-    collectedAssetUrls.add(`/assets/icons/${icon}`);
   }
 }
 
@@ -41,8 +50,14 @@ function deleteProdHtmlFile() {
   return {
     name: 'delete-prod-html-file',
     closeBundle() {
+      unlinkSync(FIXED_BOOTSTRAP_ICONS_FILE);
       unlinkSync(PROD_HTML);
-      renameSync(`${DIST_DIR}/${PROD_HTML_FILE}`, `${DIST_DIR}/${SRC_HTML_FILE}`);
+
+      const distProd = `${DIST_DIR}/${PROD_HTML_FILE}`;
+      if (existsSync(distProd)) {
+        // build ends successfully
+        renameSync(distProd, `${DIST_DIR}/${SRC_HTML_FILE}`);
+      }
     },
   };
 }
@@ -52,11 +67,6 @@ const terserOptions = {
   warnings: true,
   compress: { passes: 2 },
 };
-
-const withTerser = (entry) => ({
-  ...entry,
-  plugins: [...entry.plugins, terser({ ...terserOptions, module: true })],
-});
 
 // external video.js and its plugins are hashed
 function hashPathsPlugin() {
@@ -85,74 +95,10 @@ function hashPathsPlugin() {
   };
 }
 
-const withHashPaths = (entry) => ({
-  ...entry,
-  plugins: [...entry.plugins, hashPathsPlugin()],
-});
-
-const withCollectAssetUrls = (entry) => ({
-  ...entry,
-  plugins: [...entry.plugins, collectAssetUrlsPlugin()],
-});
-
-function collectAssetUrlsPlugin() {
-  return {
-    name: 'collect-asset-urls',
-    generateBundle(_outputOptions, bundle) {
-      for (const item of Object.values(bundle)) {
-        if (item.type !== 'asset' && item.type !== 'chunk') {
-          continue;
-        }
-
-        const fileName = item.fileName;
-        if (
-          fileName === 'sw.js' ||
-          fileName === PROD_HTML_FILE ||
-          fileName === SRC_HTML_FILE ||
-          fileName === 'manifest.json' ||
-          fileName.endsWith('.map') ||
-          fileName.endsWith('.html')
-        ) {
-          continue;
-        }
-
-        collectedAssetUrls.add(`/${fileName}`);
-      }
-    },
-  };
-}
-
-function buildServiceWorkerPlugin() {
-  return {
-    name: 'build-service-worker',
-    transform(code, _id, _options) {
-      const assetUrls = [...collectedAssetUrls].sort();
-      const assetsVersion = createHash('sha256').update(assetUrls.join('\n')).digest('hex').slice(0, 12);
-      const swTemplate = code;
-
-      if (!swTemplate.includes('__ASSETS_MANIFEST__')) {
-        throw new Error('Missing service worker placeholder: __ASSETS_MANIFEST__');
-      }
-
-      if (!swTemplate.includes("'__ASSETS_CACHE_VERSION__'")) {
-        throw new Error("Missing service worker placeholder: '__ASSETS_CACHE_VERSION__'");
-      }
-
-      const swBuilt = swTemplate
-        .replaceAll('__ASSETS_MANIFEST__', JSON.stringify(assetUrls))
-        .replace("'__ASSETS_CACHE_VERSION__'", `'${assetsVersion}'`); // keep replace first for check dev/prod
-
-      return {
-        code: swBuilt,
-        map: null,
-      };
-    },
-  };
-}
-
 export default [
   ...videojsEntries.map((entry) => ({
-    ...withCollectAssetUrls(withHashPaths(withTerser(entry))),
+    ...entry,
+    plugins: [...entry.plugins, hashPathsPlugin(), terser({ ...terserOptions, module: true })],
     output: {
       dir: `${DIST_DIR}`,
       format: 'es',
@@ -184,13 +130,17 @@ export default [
               // remove importmap
               .replace(/<script type="importmap">[\s\S]*?<\/script>/, '')
               // restore absolute path from html plugin
-              .replace(/href="(\w)/g, 'href="/$1')
-              .replace(/src="(\w)/g, 'src="/$1')
-              .replace(/src="\.\/index-(.*)\.js"/g, 'src="/index-$1.js"')
+              .replace(/href="(?:\.\/)?(\w)/g, 'href="/$1')
+              .replace(/src="(?:\.\/)?(\w)/g, 'src="/$1')
           );
         },
       }),
       deleteProdHtmlFile(),
+      replace({
+        values: { __BUILD_ENV__: JSON.stringify('production') },
+        preventAssignment: true,
+        objectGuards: true,
+      }),
       babel({
         babelHelpers: 'bundled',
         exclude: ['**/node_modules/**'],
@@ -209,29 +159,18 @@ export default [
         extensions: ['.js', '.mjs'],
       }),
       commonjs(),
-      css({
-        minify: true,
-      }),
       terser({
         ...terserOptions,
         module: true,
       }),
-      collectAssetUrlsPlugin(),
-    ],
-  },
-
-  // Service worker
-  {
-    input: 'front/sw.js',
-    output: {
-      file: `${DIST_DIR}/sw.js`,
-      format: 'iife',
-    },
-    plugins: [
-      buildServiceWorkerPlugin(),
-      terser({
-        ...terserOptions,
-        module: false,
+      // Workbox plugin: must be last, after asset-emitting plugins
+      injectManifest({
+        swSrc: 'front/sw.js',
+        swDest: `${DIST_DIR}/sw.js`,
+        globDirectory: DIST_DIR,
+        globPatterns: ['**/*.{js,css,svg,png,woff,woff2}'],
+        globIgnores: ['sw.js', 'assets/**'],
+        dontCacheBustURLsMatching: /-[a-zA-Z0-9_-]{8,}\./,
       }),
     ],
   },

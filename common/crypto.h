@@ -6,6 +6,7 @@ namespace crypto
 {
     std::string sha512(const std::string& str);
 
-    std::string random_string(std::string::size_type length = 16);
+    static constexpr auto default_string_length = 16;
+    std::string random_string(std::string::size_type length = default_string_length);
     std::string password(const std::string& raw_password, const std::string& salt);
 }

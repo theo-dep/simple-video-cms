@@ -16,7 +16,9 @@ export default defineConfig([
       'no-unused-vars': [
         'error',
         {
-          argsIgnorePattern: '^_', // ignore parameter begins by _
+          // ignore parameter begins by _
+          argsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
         },
       ],
     },

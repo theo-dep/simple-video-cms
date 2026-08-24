@@ -1,0 +1,22 @@
+.alert {
+  padding: 0.5em;
+  border-radius: 4px;
+  background-color: var(--color-primary-dark);
+  color: var(--color-text-white);
+  cursor: pointer;
+}
+
+.close-button {
+  width: 1em;
+  height: 1em;
+  margin-left: 0.5em;
+  line-height: 0.5em;
+  fill: var(--color-text-white);
+  float: right;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.close-button:hover {
+  fill: var(--color-text-black);
+}

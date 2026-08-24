@@ -2,9 +2,10 @@ import { html } from 'htm/preact';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { user, refreshRequested } from '../store/auth.js';
-import { UserNav } from '../component/UserNav.js';
+import { UserNav } from '../component/HeaderNav.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { FormContent } from '../component/Form.js';
+import { PasswordInput } from '../component/PasswordInput.js';
 import { validateField } from '../utils/validation.js';
 
 export default function UserAccount() {
@@ -37,23 +38,23 @@ export default function UserAccount() {
 
     <${InfoContent}>
       <${FormContent} title="Change username" buttonTitle="Update" successMessage="Username updated!" onSubmitAction=${onUsernameSubmit}>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="text" name="username" placeholder="username" value=${user.name.value} required />
+        <div class="form-control-group">
+          <input class="input" type="text" name="username" placeholder="username" value=${user.name.value} required />
         </div>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="password" name="password" placeholder="confirm password" required autofocus />
+        <div class="form-control-group">
+          <${PasswordInput} name="password" placeholder="confirm password" autofocus />
         </div>
       <//>
 
       <${FormContent} title="Change password" buttonTitle="Update" successMessage="Password updated!" onSubmitAction=${onPasswordSubmit}>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="password" name="old-password" placeholder="old password" required />
+        <div class="form-control-group">
+          <input class="input" type="password" name="old-password" placeholder="old password" required />
         </div>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="password" name="new-password" placeholder="new password" required />
+        <div class="form-control-group">
+          <${PasswordInput} name="new-password" placeholder="new password" />
         </div>
-        <div class="pure-control-group">
-          <input class="pure-input-1" type="password" name="confirm-password" placeholder="confirm new password" required />
+        <div class="form-control-group">
+          <${PasswordInput} name="confirm-password" placeholder="confirm new password" />
         </div>
       <//>
     <//>

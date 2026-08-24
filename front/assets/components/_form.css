@@ -1,0 +1,40 @@
+.form {
+  margin: 0 0 1em 0;
+}
+
+.form fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.form .form-control-group {
+  margin-bottom: 1em;
+}
+
+.form-control-group {
+  margin-bottom: 1em;
+}
+
+.input {
+  width: 100%;
+  min-height: var(--input-min-height);
+  padding: 0.5em;
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-larger);
+  color: var(--text-color-dark);
+  background-color: var(--color-bg-input);
+  box-sizing: border-box;
+}
+
+.input:hover,
+.input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: none;
+}
+
+.input:invalid {
+  border-color: var(--color-alert);
+}

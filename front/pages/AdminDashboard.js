@@ -4,7 +4,7 @@ import { useLoader } from '../hook/useLoader.js';
 import { stats, loadStats } from '../store/admin.js';
 import { websiteName } from '../store/env.js';
 import { Content } from '../component/Content.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { Loader } from '../component/Loader.js';
 
 export default function AdminDashboard() {
@@ -21,7 +21,7 @@ export default function AdminDashboard() {
           ? html`<${Loader} />`
           : html`
               <h2>${websiteName} Statistics</h2>
-              <table class="table pure-table pure-table-horizontal">
+              <table class="table">
                 <tbody>
                   <tr>
                     <td>Total number of users registered</td>

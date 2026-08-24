@@ -1,0 +1,18 @@
+.video-meta {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0.5em;
+  font-size: 0.85rem;
+  color: var(--color-text);
+}
+
+.meta-item {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px 6px;
+  line-height: 1.4;
+}
+
+.meta-tag {
+  font-style: italic;
+}

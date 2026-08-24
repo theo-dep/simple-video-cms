@@ -1,0 +1,73 @@
+:root {
+  /* Primary colors */
+  --color-primary: #16a085;
+  --color-primary-dark: #0d5b4c;
+
+  /* Text colors */
+  --color-text: #c9c9c9;
+  --color-text-disable: #757575;
+  --color-text-white: white;
+  --color-text-black: black;
+
+  /* Alert colors */
+  --color-alert: #dc3545;
+  --color-alert-dark: #ad2936;
+
+  /* Background colors */
+  --color-bg-dark: rgba(0, 0, 0, 0.9);
+  --color-bg-card: #323232;
+  --color-bg-hover: #464646;
+  --color-bg-drawer: #464646cc;
+  --color-bg-input: white;
+
+  /* Border/Shadow colors */
+  --color-border: #464646;
+  --color-border-dark: #5a5a5a;
+  --color-shadow: rgba(0, 0, 0, 0.1);
+  --color-shadow-dark: rgba(0, 0, 0, 0.5);
+  --color-shadow-overlay: rgba(0, 0, 0, 0.7);
+
+  /* Utility colors */
+  --color-border-dashed: rgba(255, 255, 255, 0.4);
+  --color-bg-light: rgba(255, 255, 255, 0.05);
+  --color-bg-lighter: rgba(255, 255, 255, 0.04);
+  --color-border-light: rgba(255, 255, 255, 0.1);
+
+  /* Text colors for inputs */
+  --text-color-dark: #212529;
+  --text-color-light: #65727e;
+
+  /* Input colors */
+  --input-border: #dee2e6;
+  --input-border-active: #c1c9d0;
+  --option-background: #f3f4f7;
+  --checkbox-border: #ced4da;
+  --checkbox-background: #ffffff;
+  --checkbox-active: #ffffff;
+
+  /* Scrollbar colors */
+  --scrollbar-track: #e9e9ed;
+  --scrollbar-thumb: #bebebe;
+
+  /* Sizes */
+  --input-min-height: 2.5rem;
+  --options-height: 40dvh;
+  --border-radius: 0.5rem;
+  --icon-size: 0.75rem;
+  --icon-space: 2rem;
+  --checkbox-size: 1rem;
+  --checkbox-radius: 0.25rem;
+  --checkbox-thickness: 0.1rem;
+
+  /* Spacings */
+  --spacing-smaller: 0.25rem;
+  --spacing-small: 0.25rem;
+  --spacing-medium: 0.5rem;
+  --spacing-large: 0.75rem;
+
+  /* Font */
+  --font-size-small: 0.9rem;
+  --font-size-large: 1rem;
+  --font-size-larger: 1rem;
+  --line-height-larger: 1.25rem;
+}

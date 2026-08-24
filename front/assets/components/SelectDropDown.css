@@ -17,8 +17,6 @@
   --input-min-height: 2.8125rem;
   --options-height: 40dvh;
   --border-radius: 0.3125rem;
-  --icon-size: 0.75rem;
-  --icon-space: 1.875rem;
   --checkbox-size: 1rem;
   --checkbox-radius: 0.25rem;
   --checkbox-thickness: 0.125rem;
@@ -46,18 +44,25 @@
   background-color: var(--color-text-white);
   border: 1px solid var(--input-border);
   padding: var(--spacing-medium) var(--spacing-large);
+  padding-right: calc(var(--spacing-large) * 2 + 1em);
   overflow: hidden;
   gap: var(--spacing-medium);
   min-height: var(--input-min-height);
+  position: relative;
 }
 
 .select-dropdown .select-dropdown-arrow {
+  position: absolute;
+  right: var(--spacing-large);
+  top: 50%;
+  transform: translateY(-50%);
   flex-shrink: 0;
   margin-left: auto;
-  height: var(--icon-size);
-  width: var(--icon-size);
   color: var(--color-text);
   transition: transform 0.2s;
+  transform-origin: center;
+  vertical-align: middle;
+  pointer-events: none;
 }
 
 .select-dropdown .select-dropdown-header:hover {
@@ -73,7 +78,7 @@
 }
 
 .select-dropdown .select-dropdown-header.select-dropdown-header-active .select-dropdown-arrow {
-  transform: rotate(180deg);
+  transform: translateY(calc(-50% - 2px)) rotate(180deg);
 }
 
 .select-dropdown .select-dropdown-header .select-dropdown-placeholder {
@@ -248,9 +253,9 @@
   font-size: 1.5rem;
 }
 
-.select-dropdown .select-dropdown-add-btn svg {
-  width: 1.5rem;
-  height: 1.5rem;
+.select-dropdown .select-dropdown-add-btn {
+  font-size: 1.5rem;
+  line-height: 1;
 }
 
 .select-dropdown .select-dropdown-add-btn:hover {

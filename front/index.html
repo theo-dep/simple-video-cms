@@ -16,9 +16,43 @@
     <link rel="apple-touch-icon" sizes="76x76" href="/assets/icons/apple-touch-icon-x76.png" />
     <link rel="apple-touch-icon" sizes="60x60" href="/assets/icons/apple-touch-icon-x60.png" />
     <link rel="apple-touch-startup-image" href="/assets/icons/apple-touch-startup-image.png" />
-    <link rel="stylesheet" href="/node_modules/purecss/build/pure-min.css" />
-    <link rel="stylesheet" href="/node_modules/purecss/build/grids-responsive-min.css" />
-    <link rel="stylesheet" href="/assets/styles.css" />
+
+    <link rel="stylesheet" href="/node_modules/bootstrap-icons/font/bootstrap-icons.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/node_modules/video.js/dist/video-js.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/node_modules/videojs-mobile-ui/dist/videojs-mobile-ui.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/node_modules/videojs-yt-style/dist/videojs-yt-style.css" media="print" onload="this.media = 'all'" />
+
+    <!-- Variables and base must come first -->
+    <link rel="stylesheet" href="/assets/components/_variables.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/_base.css" media="print" onload="this.media = 'all'" />
+
+    <!-- Form styles -->
+    <link rel="stylesheet" href="/assets/components/_form.css" media="print" onload="this.media = 'all'" />
+
+    <!-- Components -->
+    <link rel="stylesheet" href="/assets/components/Alert.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/AdminAddVideo.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/Button.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/BookmarkButton.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/ConfirmDialog.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/Content.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/DropDown.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/Footer.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/HeaderNav.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/InfoContent.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/ListTable.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/Login.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/OfflineBanner.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/PasswordInput.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/SearchInput.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/SelectDropDown.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/ShareButton.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/Table.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/Video.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/VideoList.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/VideoPlayer.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/VideoThumbnail.css" media="print" onload="this.media = 'all'" />
+    <link rel="stylesheet" href="/assets/components/WatchVideo.css" media="print" onload="this.media = 'all'" />
     <link rel="icon" href="/assets/img/icon.svg" type="image/png" />
     <script type="importmap">
       {
@@ -34,11 +68,6 @@
           "@preact/signals": "/node_modules/@preact/signals/dist/signals.mjs",
           "@preact/signals-core": "/node_modules/@preact/signals-core/dist/signals-core.mjs",
           "fuse.js": "/node_modules/fuse.js/dist/fuse.mjs",
-          "multi-select-dropdown-js/MultiSelect.css": "/node_modules/multi-select-dropdown-js/MultiSelect.css",
-          "multi-select-dropdown-js/MultiSelect.js": "/node_modules/multi-select-dropdown-js/MultiSelect.js",
-          "video.js/dist/video-js.css": "/node_modules/video.js/dist/video-js.css",
-          "videojs-mobile-ui/dist/videojs-mobile-ui.css": "/node_modules/videojs-mobile-ui/dist/videojs-mobile-ui.css",
-          "videojs-yt-style/dist/videojs-yt-style.css": "/node_modules/videojs-yt-style/dist/videojs-yt-style.css",
           "video.js": "/build/video.es.js",
           "videojs-yt-style": "/build/videojs-yt-style.js",
           "videojs-mobile-ui": "/build/videojs-mobile-ui.js"
@@ -47,6 +76,11 @@
     </script>
     <!-- loader inline style to show fast -->
     <style>
+      /* duplicate body background color style to avoid flickering */
+      body {
+        background: rgba(0, 0, 0, 0.9);
+      }
+
       .svg-wrapper {
         position: fixed;
         top: 0;
@@ -194,12 +228,8 @@
         const env = typeof __ENV_PLACEHOLDER__ !== 'undefined' ? __ENV_PLACEHOLDER__ : { websiteName: 'Simple Video CMS' };
         window.__ENV__ = env;
         document.title = `${document.title} | ${env.websiteName}`;
-
-        if (env.iconPath) {
-          document.querySelector('link[rel="icon"]').href = env.iconPath;
-        }
       })();
     </script>
-    <script type="module" src="/index.js"></script>
+    <script rel="modulepreload" as="script" type="module" src="/index.js"></script>
   </body>
 </html>

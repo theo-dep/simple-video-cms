@@ -4,7 +4,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { InfoContent } from '../component/InfoContent.js';
-import { UserNav } from '../component/UserNav.js';
+import { UserNav } from '../component/HeaderNav.js';
 import { PasswordInput } from '../component/PasswordInput.js';
 import { SubmitButton } from '../component/SubmitButton.js';
 import { Alert } from '../component/Alert.js';
@@ -41,19 +41,19 @@ export default function ResetPassword({ username = '' }) {
     <${InfoContent}>
       <h3>Set a new password</h3>
 
-      <form class="pure-form pure-form-aligned" onSubmit=${onSubmit}>
+      <form class="form" onSubmit=${onSubmit}>
         <fieldset>
           <${Alert} message=${alert} />
-          <div class="pure-control-group">
-            <input class="pure-input-1" type="text" name="username" placeholder="username" value=${username} required />
+          <div class="form-control-group">
+            <input class="input" type="text" name="username" placeholder="username" value=${username} required />
           </div>
-          <div class="pure-control-group">
+          <div class="form-control-group">
             <${PasswordInput} name="password" placeholder="password" autofocus />
           </div>
-          <div class="pure-control-group">
+          <div class="form-control-group">
             <${PasswordInput} name="confirm-password" placeholder="confirm password" />
           </div>
-          <div class="pure-control-group">
+          <div class="form-control-group">
             <${SubmitButton} label="Create" loading=${loading} id="create-button" />
           </div>
         </fieldset>

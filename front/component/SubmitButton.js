@@ -57,14 +57,8 @@ export function SubmitButton({ label, loading, id = 'submit-btn' }) {
   }
 
   return html`
-    <div class="pure-form">
-      <button
-        id=${id}
-        class=${'pure-input-1 button pure-button' + (loading ? ' button-spinner' : '')}
-        disabled=${loading}
-        type="button"
-        onClick=${handleClick}
-      >
+    <div class="form">
+      <button id=${id} class=${'input-1 button' + (loading ? ' button-spinner' : '')} disabled=${loading} type="button" onClick=${handleClick}>
         ${loading ? spinnerSvg : label}
       </button>
     </div>

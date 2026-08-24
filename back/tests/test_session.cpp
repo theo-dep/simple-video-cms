@@ -26,7 +26,8 @@ TEST_CASE("Session::create_session")
         const std::string session_id{ session.create_session(42, max_age) };
         std::this_thread::sleep_for(10ms);
 
-        session.create_session(100); // trigger cleanup of expired sessions
+        const auto user_id = 100;
+        session.create_session(user_id); // trigger cleanup of expired sessions
 
         REQUIRE(session.user_from_session(session_id) == Session::invalid_user_id());
     }

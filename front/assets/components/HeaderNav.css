@@ -1,0 +1,161 @@
+.header {
+  text-align: left;
+  box-shadow: 0 1px 1px var(--color-shadow);
+  padding: 0.3em;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  align-items: center;
+}
+
+.menu {
+  float: unset;
+  display: flex;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu-item {
+  display: inline-block;
+}
+
+.menu-link {
+  display: block;
+  padding: 0.5em 1em;
+  color: var(--color-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.menu-link:hover,
+.menu-link:focus {
+  color: var(--color-text-white);
+  text-shadow: none;
+  background-color: var(--color-primary-dark);
+  border-radius: 4px;
+}
+
+.menu-selected {
+  font-weight: bold;
+  text-shadow: 0px 0px 1px var(--color-primary);
+}
+
+.menu-heading {
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.menu-burger-toggle {
+  display: block;
+  width: 34px;
+  height: 34px;
+  position: absolute;
+  right: 0.5em;
+}
+
+.menu-burger-toggle .bar {
+  background-color: var(--color-primary);
+  display: block;
+  width: 22px;
+  height: 2px;
+  border-radius: 100px;
+  position: absolute;
+  right: 6px;
+  transition: all 0.3s;
+}
+
+.menu-burger-toggle .bar:nth-child(1) {
+  top: 10px;
+}
+
+.menu-burger-toggle .bar:nth-child(2) {
+  top: 17px;
+}
+
+.menu-burger-toggle .bar:nth-child(3) {
+  top: 24px;
+}
+
+.menu-burger-toggle.is-active .bar:nth-child(1) {
+  top: 17px;
+  transform: rotate(45deg);
+}
+
+.menu-burger-toggle.is-active .bar:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-burger-toggle.is-active .bar:nth-child(3) {
+  top: 17px;
+  transform: rotate(-45deg);
+}
+
+.menu-burger-wrapper {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.4s ease;
+}
+
+.menu-burger-wrapper.menu-burger-open {
+  max-height: 20em;
+}
+
+.menu-burger-wrapper .menu {
+  float: unset;
+  display: block;
+}
+
+.menu-burger-wrapper .menu-item {
+  display: block;
+}
+
+.header-brand {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.header-menu-wrapper {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media only screen and (min-width: 50em) {
+  .menu {
+    float: right;
+  }
+
+  .menu-burger-toggle {
+    display: none;
+  }
+
+  .menu-burger-wrapper {
+    max-height: none;
+  }
+
+  .menu-burger-wrapper .menu {
+    float: right;
+    display: flex;
+  }
+
+  .menu-burger-wrapper .menu-item {
+    display: inline-block;
+  }
+
+  .header {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  .header-brand {
+    flex: 0 0 auto;
+  }
+
+  .header-menu-wrapper {
+    flex: 0 0 auto;
+    text-align: right;
+  }
+}

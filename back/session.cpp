@@ -62,8 +62,8 @@ std::string Session::remove_session_reset_cookie(const std::string& session_id)
     const std::unique_lock lock(_mutex);
     _sessions.erase(session_id);
 
-    if (remove_function) {
-        remove_function(session_id);
+    if (_remove_function) {
+        _remove_function(session_id);
     }
 
     return cookie::insert_to_cookie(session::cookie_key(), std::string{}, std::chrono::seconds{ 0 });
@@ -85,10 +85,10 @@ std::string Session::insert_session_id_to_cookie(const std::string& session_id)
 
     it_session_data->second.creation = std::chrono::system_clock::now();
 
-    if (insert_function) {
-        insert_function(session_id, it_session_data->second.user_id,
-                        su::time_point_to_string(it_session_data->second.creation),
-                        su::seconds_to_string(it_session_data->second.max_age));
+    if (_insert_function) {
+        _insert_function(session_id, it_session_data->second.user_id,
+                         su::time_point_to_string(it_session_data->second.creation),
+                         su::seconds_to_string(it_session_data->second.max_age));
     }
 
     return cookie::insert_to_cookie(session::cookie_key(), session_id, it_session_data->second.max_age);
@@ -98,7 +98,7 @@ void Session::clean_expired_sessions()
 {
     const std::unique_lock lock(_mutex);
     std::erase_if(_sessions,
-                  [now{ std::chrono::system_clock::now() }, remove_function{ remove_function }](const std::pair<std::string, Data>& session) {
+                  [now{ std::chrono::system_clock::now() }, remove_function{ _remove_function }](const std::pair<std::string, Data>& session) {
                       if (now - session.second.creation > session.second.max_age) {
                           if (remove_function) {
                               remove_function(session.first);

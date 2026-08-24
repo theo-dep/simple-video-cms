@@ -29,7 +29,7 @@ import {
   onAddedTag,
   onDeletedTag,
 } from '../store/admin.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { Form } from '../component/Form.js';
 import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
@@ -124,11 +124,11 @@ export default function AdminUpdateVideo({ videoId }) {
         ? html`<${Loader} />`
         : html`
             <${Form} title="Change video title, group and user rights" buttonTitle="Update" onSubmitAction=${onVideoSubmit}>
-              <div class="pure-control-group">
+              <div class="form-control-group">
                 <input
                   onInput=${onTitleInput}
                   value="${title}"
-                  class="pure-input-1"
+                  class="input"
                   type="text"
                   name="title"
                   id="title"
@@ -141,7 +141,7 @@ export default function AdminUpdateVideo({ videoId }) {
                 !isVideosLoading &&
                 title &&
                 !!results.length &&
-                html` <div class="pure-control-group">
+                html` <div class="form-control-group">
                   <${Dropdown}
                     title="Similar videos"
                     open="${false}"
@@ -159,11 +159,11 @@ export default function AdminUpdateVideo({ videoId }) {
                 </div>`
               }
 
-              <div class="pure-control-group">
-                <input ref=${dateRef} class="pure-input-1" type="text" name="date" id="date" placeholder="Video date (optional)" />
+              <div class="form-control-group">
+                <input ref=${dateRef} class="input" type="text" name="date" id="date" placeholder="Video date (optional)" />
               </div>
 
-              <div class="pure-control-group">
+              <div class="form-control-group">
                 <${SingleSelectEditableDropDown}
                   name="location-id"
                   placeholder="Video location (optional)"
@@ -174,7 +174,7 @@ export default function AdminUpdateVideo({ videoId }) {
                 <//>
               </div>
 
-              <div class="pure-control-group">
+              <div class="form-control-group">
                 <${MultiSelectEditableDropDown}
                   name="author-ids"
                   placeholder="Add authors to video (optional)"
@@ -185,7 +185,7 @@ export default function AdminUpdateVideo({ videoId }) {
                 <//>
               </div>
 
-              <div class="pure-control-group">
+              <div class="form-control-group">
                 <${MultiSelectEditableDropDown}
                   name="tag-ids"
                   placeholder="Add tags to video (optional)"
@@ -199,7 +199,7 @@ export default function AdminUpdateVideo({ videoId }) {
               ${
                 !!groups.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="group-ids" placeholder="Add groups to video (optional)">
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id} selected=${isGroupSelected(g.id)}>${g.name}</option>`)}
                     <//>
@@ -209,7 +209,7 @@ export default function AdminUpdateVideo({ videoId }) {
               ${
                 !!users.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="user-ids" placeholder="Add users to video (optional)">
                       ${users.value.map((u) => html`<option key=${u.id} value=${u.id} selected=${isUserSelected(u.id)}>${u.name}</option>`)}
                     <//>

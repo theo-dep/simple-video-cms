@@ -6,11 +6,10 @@ import { useLoader } from '../hook/useLoader.js';
 import { refreshRequested } from '../store/auth.js';
 import { selectedVideo, videos, loadVideos, invalidateVideos } from '../store/admin.js';
 import { Content } from '../component/Content.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { ListTable } from '../component/ListTable.js';
 import { Loader } from '../component/Loader.js';
-import { CloudPlusIcon } from '../svg/CloudPlusIcon.js';
-import { CloudArrowDownIcon } from '../svg/CloudArrowDownIcon.js';
+import { Icon } from '../component/Icon.js';
 import { confirm } from '../component/ConfirmDialog.js';
 
 export default function AdminVideoList() {
@@ -42,7 +41,7 @@ export default function AdminVideoList() {
           ? html`<${Loader} />`
           : html`<${ListTable}
               title="List of videos"
-              addContent="${html`<svg class="svg-button"><${CloudPlusIcon} /></svg> New video`}"
+              addContent="${html`<${Icon} name="cloud-plus" class="svg-button" /> New video`}"
               addLink="/admin/new-video"
               columns="${[
                 { key: 'title', label: 'Title', sortValue: (v) => v.title, render: (v) => html`<a href=${'/video/' + v.id}>${v.title}</a>` },
@@ -54,7 +53,7 @@ export default function AdminVideoList() {
               renderExpanded="${(v) => html`
                 <div class="list-expanded-actions">
                   <a href=${api.adminDownloadVideoPath(v.id)} download=${v.title + '.mp4'}>
-                    <svg class="svg-button"><${CloudArrowDownIcon} /></svg> Download
+                    <${Icon} name="cloud-arrow-down" class="svg-button" /> Download
                   </a>
                   <a onClick=${() => updateVideo(v)}>Update</a>
                   <a onClick=${() => deleteVideo(v.id)}>Delete</a>

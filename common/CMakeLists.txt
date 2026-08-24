@@ -14,6 +14,7 @@ set(payload_max_length 1610612736) # 1.5 GB
 
 target_compile_definitions(${target_name} PUBLIC
     $<$<CONFIG:Debug>:_DEBUG DEBUG_LOG>
+    $<$<AND:$<CONFIG:Release>,$<BOOL:${NO_SECURE}>>:NO_SECURE>
     CPPHTTPLIB_USE_POLL CPPHTTPLIB_ZLIB_SUPPORT
     CPPHTTPLIB_PAYLOAD_MAX_LENGTH=${payload_max_length}
     CPPHTTPLIB_FORM_URL_ENCODED_PAYLOAD_MAX_LENGTH=${payload_max_length}

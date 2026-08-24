@@ -15,7 +15,7 @@ import {
   loadVideos,
   invalidateAdminLists,
 } from '../store/admin.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
@@ -77,14 +77,14 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
         ? html`<${Loader} />`
         : html`
             <${Form} title="${title}" buttonTitle="Update" onSubmitAction=${onUserSubmit}>
-              <div class="pure-control-group">
-                <input class="pure-input-1" type="text" name="username" placeholder="username" value=${currentUser.value.name} required />
+              <div class="form-control-group">
+                <input class="input" type="text" name="username" placeholder="username" value=${currentUser.value.name} required />
               </div>
               ${
                 !isAdmin &&
                 !!groups.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="group-ids" placeholder="Add groups to user (optional)">
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id} selected=${isGroupSelected(g.id)}>${g.name}</option>`)}
                     <//>
@@ -95,7 +95,7 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
                 !isAdmin &&
                 !!videos.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to user (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id} selected=${isVideoSelected(v.id)}>${v.title}</option>`)}
                     <//>
@@ -109,9 +109,9 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
 }
 
 export function AdminUserSettings({ userId }) {
-  return html`<${AdminUserSettingsBase} userId=${userId} isAdmin=${false} />`;
+  return html`<${AdminUserSettingsBase} userId=${userId} !isAdmin />`;
 }
 
 export function AdminAdminSettings({ adminId }) {
-  return html`<${AdminUserSettingsBase} userId=${adminId} isAdmin=${true} />`;
+  return html`<${AdminUserSettingsBase} userId=${adminId} isAdmin />`;
 }

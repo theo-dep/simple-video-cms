@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { useLoader } from '../hook/useLoader.js';
 import { groups, videos, loadGroups, loadVideos, invalidateUsers, invalidateAdmins } from '../store/admin.js';
-import { AdminNav } from '../component/UserNav.js';
+import { AdminNav } from '../component/HeaderNav.js';
 import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
@@ -49,14 +49,14 @@ function AdminNewUserBase({ isAdmin }) {
         ? html`<${Loader} />`
         : html`
             <${Form} title="${title}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
-              <div class="pure-control-group">
-                <input class="pure-input-1" type="text" name="username" placeholder="username" required autofocus />
+              <div class="form-control-group">
+                <input class="input" type="text" name="username" placeholder="username" required autofocus />
               </div>
               ${
                 !isAdmin &&
                 !!groups.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="group-ids" placeholder="Add groups to user (optional)">
                       ${groups.value.map((g) => html`<option key=${g.id} value=${g.id}>${g.name}</option>`)}
                     <//>
@@ -67,7 +67,7 @@ function AdminNewUserBase({ isAdmin }) {
                 !isAdmin &&
                 !!videos.value.length &&
                 html`
-                  <div class="pure-control-group">
+                  <div class="form-control-group">
                     <${MultiSelectDropDown} name="video-ids" placeholder="Add videos to user (optional)">
                       ${videos.value.map((v) => html`<option key=${v.id} value=${v.id}>${v.title}</option>`)}
                     <//>
@@ -81,9 +81,9 @@ function AdminNewUserBase({ isAdmin }) {
 }
 
 export function AdminNewUser() {
-  return html`<${AdminNewUserBase} isAdmin=${false} />`;
+  return html`<${AdminNewUserBase} !isAdmin />`;
 }
 
 export function AdminNewAdmin() {
-  return html`<${AdminNewUserBase} isAdmin=${true} />`;
+  return html`<${AdminNewUserBase} isAdmin />`;
 }

@@ -13,6 +13,8 @@ endif()
 option(BUILD_TESTS "Build tests" OFF)
 option(BUILD_COVERAGE "Enable coverage instrumentation" OFF)
 
+option(NO_SECURE "Build release without secure cookie to test production server" OFF)
+
 find_package(httplib REQUIRED)
 find_package(nlohmann_json REQUIRED)
 

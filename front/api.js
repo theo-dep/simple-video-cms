@@ -86,7 +86,7 @@ export const api = {
 
   videoPlaylistPath: (videoId) => BASE + `/video/${videoId}/playlist`,
   adminDownloadVideoPath: (videoId) => BASE + `/admin/download-video/${videoId}`,
-  thumbnail: (videoId) => fetchApiResponse('GET', `/thumbnail/${videoId}`),
+  thumbnailPath: (videoId) => BASE + `/thumbnail/${videoId}`,
 
   bookmark: (videoId, bookmarked) => fetchApi('POST', `/bookmark/${videoId}`, new URLSearchParams({ bookmarked })),
 

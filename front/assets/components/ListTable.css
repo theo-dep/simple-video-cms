@@ -1,4 +1,18 @@
+.list-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-bottom: 0.5em;
+}
+
+.list-search {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
 .list-toolbar {
+  flex: 1 1 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -6,11 +20,22 @@
   padding: 0.5em 0;
 }
 
+@media only screen and (min-width: 35.5em) {
+  .list-search {
+    flex: 1 1 auto;
+  }
+
+  .list-toolbar {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+}
+
 .list-collapse-toggle {
   padding: 0.3em 0.8em;
   height: 100%;
   border: 1px solid var(--color-border-dark);
-  border-radius: 20px;
+  border-radius: var(--border-radius);
   font-size: 0.85em;
   transition: 0.2s;
 }
@@ -26,7 +51,7 @@
   gap: 0.4em;
   padding: 0.3em 0.8em;
   border: 1px solid var(--color-border-dark);
-  border-radius: 20px;
+  border-radius: var(--border-radius);
   font-size: 0.85em;
   transition: 0.2s;
 }
@@ -36,15 +61,20 @@
 }
 
 .list-add-button .svg-button {
-  width: 1.5em;
-  height: 1.2em;
+  font-size: 1.2em;
+}
+
+.list-add-button:hover .svg-button {
+  color: var(--color-primary-dark);
 }
 
 .list-sort-icon {
+  display: inline-block;
   margin-left: 0.5em;
-  transform: translateY(-2px);
-  width: 0.5em;
-  height: 0.5em;
+  font-size: 0.8em;
+  line-height: 1;
+  transform-origin: center;
+  vertical-align: middle;
 }
 
 .list-sorted-asc {
@@ -112,12 +142,12 @@
 }
 
 .list-row-chevron {
-  width: 0.7em;
-  height: 0.7em;
   flex-shrink: 0;
   margin-left: auto;
   align-self: center;
   transition: transform 0.2s;
+  font-size: 0.7em;
+  line-height: 1;
 }
 
 .list-row-chevron.is-open {
@@ -142,18 +172,22 @@
   gap: 0.4em;
   padding: 0.3em 0.8em;
   border: 1px solid var(--color-border-dark);
-  border-radius: 20px;
+  border-radius: var(--border-radius);
   font-size: 0.85em;
   transition: 0.2s;
 }
 
 .list-expanded-actions .svg-button {
-  width: 1.5em;
-  height: 1.1em;
+  font-size: 1.5em;
+  line-height: 1.1;
 }
 
 .list-expanded-actions a:hover {
   border-color: var(--color-primary);
+}
+
+.list-expanded-actions a:hover .svg-button {
+  color: var(--color-primary-dark);
 }
 
 .list-expanded-info {
