@@ -23,7 +23,7 @@
     "globals": "^17.8.0",
     "jsdom": "^29.1.1",
     "prettier": "^3.9.6",
-    "rollup": "^4.62.3",
+    "rollup": "^4.62.5",
     "rollup-plugin-workbox": "^9.0.0",
     "vitest": "^4.1.10"
   },
