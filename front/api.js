@@ -135,6 +135,14 @@ export const api = {
         name: name,
       })
     ),
+  adminUpdateLocation: (locationId, name) =>
+    fetchApi(
+      'POST',
+      `/admin/update-location/${locationId}`,
+      new URLSearchParams({
+        name: name,
+      })
+    ),
   adminDeleteLocation: (locationId) => fetchApi('POST', `/admin/delete-location/${locationId}`),
 
   adminAuthorList: () => fetchApi('GET', '/admin/author-list'),
@@ -146,6 +154,14 @@ export const api = {
         name: name,
       })
     ),
+  adminUpdateAuthor: (authorId, name) =>
+    fetchApi(
+      'POST',
+      `/admin/update-author/${authorId}`,
+      new URLSearchParams({
+        name: name,
+      })
+    ),
   adminDeleteAuthor: (authorId) => fetchApi('POST', `/admin/delete-author/${authorId}`),
 
   adminTagList: () => fetchApi('GET', '/admin/tag-list'),
@@ -153,6 +169,14 @@ export const api = {
     fetchApi(
       'POST',
       '/admin/add-tag',
+      new URLSearchParams({
+        name: name,
+      })
+    ),
+  adminUpdateTag: (tagId, name) =>
+    fetchApi(
+      'POST',
+      `/admin/update-tag/${tagId}`,
       new URLSearchParams({
         name: name,
       })

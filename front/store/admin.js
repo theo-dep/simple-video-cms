@@ -1,5 +1,6 @@
 import { signal } from '@preact/signals';
 import { api } from '../api.js';
+import { validateField } from '../utils/validation.js';
 
 export const stats = signal(null);
 
@@ -77,6 +78,8 @@ export function invalidateAdminLists() {
 }
 
 async function addValue(list, apiCall, value) {
+  value = value.trim();
+  validateField(value);
   const { json } = await apiCall(value);
   if (!json) return null;
   const { id } = json;
@@ -84,13 +87,27 @@ async function addValue(list, apiCall, value) {
   return id;
 }
 
+async function updateValue(list, apiCall, id, value) {
+  const current = list.value?.find((l) => String(l.id) === String(id));
+  value = value.trim();
+  if (current !== null && current.name !== value) {
+    validateField(value);
+    await apiCall(id, value);
+    list.value = list.value.map((l) => (String(l.id) === id ? { ...l, name: value } : l));
+  }
+}
+
 async function deleteValue(list, apiCall, id) {
   await apiCall(id);
-  list.value = list.value.filter((l) => String(l.id) !== id);
+  list.value = list.value.filter((l) => String(l.id) !== String(id));
 }
 
 export async function onAddedLocation(value) {
   return await addValue(locations, api.adminAddLocation, value);
+}
+
+export async function onEditLocation(id, value) {
+  await updateValue(locations, api.adminUpdateLocation, id, value);
 }
 
 export async function onDeletedLocation(id) {
@@ -101,12 +118,20 @@ export async function onAddedAuthor(value) {
   return await addValue(authors, api.adminAddAuthor, value);
 }
 
+export async function onEditAuthor(id, value) {
+  await updateValue(authors, api.adminUpdateAuthor, id, value);
+}
+
 export async function onDeletedAuthor(id) {
   await deleteValue(authors, api.adminDeleteAuthor, id);
 }
 
 export async function onAddedTag(value) {
   return await addValue(tags, api.adminAddTag, value);
+}
+
+export async function onEditTag(id, value) {
+  await updateValue(tags, api.adminUpdateTag, id, value);
 }
 
 export async function onDeletedTag(id) {

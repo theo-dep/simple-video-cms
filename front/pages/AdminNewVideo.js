@@ -21,10 +21,13 @@ import {
   loadVideos,
   invalidateVideos,
   onAddedLocation,
+  onEditLocation,
   onDeletedLocation,
   onAddedAuthor,
+  onEditAuthor,
   onDeletedAuthor,
   onAddedTag,
+  onEditTag,
   onDeletedTag,
 } from '../store/admin.js';
 import { AdminNav } from '../component/HeaderNav.js';
@@ -155,6 +158,7 @@ export default function AdminNewVideo() {
                   placeholder="Video location (optional)"
                   onAddedOption=${onAddedLocation}
                   onDeletedOption=${onDeletedLocation}
+                  onEditOption=${onEditLocation}
                 >
                   ${locations.value.map((p) => html`<option key=${p.id} value=${p.id}>${p.name}</option>`)}
                 <//>
@@ -166,6 +170,7 @@ export default function AdminNewVideo() {
                   placeholder="Add authors to video (optional)"
                   onAddedOption=${onAddedAuthor}
                   onDeletedOption=${onDeletedAuthor}
+                  onEditOption=${onEditAuthor}
                 >
                   ${authors.value.map((a) => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}
                 <//>
@@ -177,6 +182,7 @@ export default function AdminNewVideo() {
                   placeholder="Add tags to video (optional)"
                   onAddedOption=${onAddedTag}
                   onDeletedOption=${onDeletedTag}
+                  onEditOption=${onEditTag}
                 >
                   ${tags.value.map((t) => html`<option key=${t.id} value=${t.id}>${t.name}</option>`)}
                 <//>

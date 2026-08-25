@@ -1139,6 +1139,25 @@ std::optional<int> Database::add_location(const std::string& name) const
     return location.id;
 }
 
+bool Database::update_location_name(int location_id, const std::string& name) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional success{
+        storage.get_optional<Location>(location_id)
+            .transform([&](Location location) -> bool {
+                location.name = name;
+                storage.update(location);
+                return true;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to update location name "{}")", location_id };
+                return false;
+            })
+    };
+    return success.value_or(false);
+}
+
 bool Database::delete_location(int location_id) const
 {
     const std::unique_lock lock(_mutex);
@@ -1186,6 +1205,25 @@ std::optional<int> Database::add_author(const std::string& name) const
     return author.id;
 }
 
+bool Database::update_author_name(int author_id, const std::string& name) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional success{
+        storage.get_optional<Author>(author_id)
+            .transform([&](Author author) -> bool {
+                author.name = name;
+                storage.update(author);
+                return true;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to update author name "{}")", author_id };
+                return false;
+            })
+    };
+    return success.value_or(false);
+}
+
 bool Database::delete_author(int author_id) const
 {
     const std::unique_lock lock(_mutex);
@@ -1231,6 +1269,25 @@ std::optional<int> Database::add_tag(const std::string& name) const
     database::StorageType storage{ database::storage(_path) };
     tag.id = storage.insert(tag);
     return tag.id;
+}
+
+bool Database::update_tag_name(int tag_id, const std::string& name) const
+{
+    const std::unique_lock lock(_mutex);
+    database::StorageType storage{ database::storage(_path) };
+    const std::optional success{
+        storage.get_optional<Tag>(tag_id)
+            .transform([&](Tag tag) -> bool {
+                tag.name = name;
+                storage.update(tag);
+                return true;
+            })
+            .or_else([&] -> std::optional<bool> {
+                logging::error{ R"(Fail to update tag name "{}")", tag_id };
+                return false;
+            })
+    };
+    return success.value_or(false);
 }
 
 bool Database::delete_tag(int tag_id) const

@@ -16,31 +16,147 @@ function SelectedTags({ items, onRemove }) {
   );
 }
 
-function SelectAllRow({ checked, onClick }) {
+function SelectAllRow({ checked, onClick, deletable, editable }) {
   return html`
-    <div class="select-dropdown-option select-dropdown-option-all${checked ? ' select-dropdown-option-selected' : ''}" onClick=${onClick}>
+    <div
+      class="select-dropdown-option select-dropdown-option-all${checked ? ' select-dropdown-option-selected' : ''} ${editable || deletable ? 'select-dropdown-option-all-shift' : ''}"
+      onClick=${onClick}
+    >
       <span class="select-dropdown-option-checkbox"></span>
       <span class="select-dropdown-option-text">Select All</span>
     </div>
   `;
 }
 
-function OptionRow({ item, selected, onSelect, deletable, onDelete }) {
+function OptionRow({ item, selected, onSelect, deletable, onDelete, editable, onEdit }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(item.label);
+  const inputRef = useRef(null);
+  const optionRef = useRef(null);
+
+  function startEditing(e) {
+    e.stopPropagation();
+    setEditValue(item.label);
+    setIsEditing(true);
+  }
+
+  function stopEditing(e) {
+    e.stopPropagation();
+    setIsEditing(false);
+  }
+
+  function handleEditKeyDown(e) {
+    if (e.key === 'Enter') {
+      handleSave(e);
+    }
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      setIsEditing(false);
+    }
+  }
+
+  function handleSave(e) {
+    e.stopPropagation();
+    onEdit?.(item.value, editValue.trim());
+    setIsEditing(false);
+  }
+
+  function handleDelete(e) {
+    onDelete?.(e, item.value);
+  }
+
+  function handleSelect(e) {
+    e.stopPropagation();
+    onSelect(item.value);
+  }
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    function handleClickOutside(e) {
+      if (optionRef.current && !optionRef.current.contains(e.target)) {
+        setIsEditing(false);
+      }
+    }
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isEditing]);
+
   return html`
     <div
+      ref=${optionRef}
       class="select-dropdown-option${selected ? ' select-dropdown-option-selected' : ''}"
       data-value=${item.value}
-      onClick=${(e) => {
-        e.stopPropagation();
-        onSelect(item.value);
-      }}
+      onClick=${handleSelect}
     >
       <span class="select-dropdown-option-checkbox"></span>
-      <span class="select-dropdown-option-text">${item.label}</span>
+      ${
+        isEditing
+          ? html`
+              <input
+                ref=${inputRef}
+                type="text"
+                class="select-dropdown-option-input"
+                value=${editValue}
+                onInput=${(e) => setEditValue(e.target.value)}
+                onKeyDown=${handleEditKeyDown}
+                onClick=${(e) => e.stopPropagation()}
+              />
+            `
+          : html`<span class="select-dropdown-option-text">${item.label}</span>`
+      }
+      ${
+        editable &&
+        html`
+          ${
+            isEditing
+              ? html`
+                  <button
+                    type="button"
+                    class="select-dropdown-option-button select-dropdown-option-save"
+                    onClick=${handleSave}
+                    aria-label="Save ${item.label}"
+                  >
+                    <${Icon} name="check-square" />
+                  </button>
+                  <button
+                    type="button"
+                    class="select-dropdown-option-button select-dropdown-option-cancel"
+                    onClick=${stopEditing}
+                    aria-label="Cancel"
+                  >
+                    <${Icon} name="x-square" />
+                  </button>
+                `
+              : html`
+                  <button
+                    type="button"
+                    class="select-dropdown-option-button select-dropdown-option-edit"
+                    onClick=${startEditing}
+                    aria-label="Edit ${item.label}"
+                  >
+                    <${Icon} name="pencil-square" />
+                  </button>
+                `
+          }
+        `
+      }
       ${
         deletable &&
+        !isEditing &&
         html`
-          <button type="button" class="select-dropdown-option-delete" onClick=${(e) => onDelete(e, item.value)} aria-label="Delete ${item.label}">
+          <button
+            type="button"
+            class="select-dropdown-option-button select-dropdown-option-delete"
+            onClick=${handleDelete}
+            aria-label="Delete ${item.label}"
+          >
             <${Icon} name="trash" fill />
           </button>
         `
@@ -89,7 +205,7 @@ function SearchInput({ editable, value, onInput, onAdd }) {
 
 // multiple: allow several selections + Select All row
 // editable: search box can add new options + delete existing ones, single-select auto-closes on pick
-function SelectDropDown({ name, placeholder, children, multiple = false, editable = false, onChange, onAddedOption, onDeletedOption }) {
+function SelectDropDown({ name, placeholder, children, multiple = false, editable = false, onChange, onAddedOption, onDeletedOption, onEditOption }) {
   const singleSelect = !multiple;
   const autoClose = editable && singleSelect;
 
@@ -277,7 +393,7 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
               }}
               onAdd=${addOption}
             />
-            ${multiple && html`<${SelectAllRow} checked=${allFilteredSelected} onClick=${selectAll} />`}
+            ${multiple && html`<${SelectAllRow} checked=${allFilteredSelected} onClick=${selectAll} editable=${editable} deletable=${editable} />`}
             ${filteredItems.map(
               (item) =>
                 html`<${OptionRow}
@@ -285,6 +401,8 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
                   item=${item}
                   selected=${!!selectedValues?.has(item.value)}
                   onSelect=${selectValue}
+                  editable=${editable}
+                  onEdit=${onEditOption}
                   deletable=${editable}
                   onDelete=${deleteOption}
                 />`
@@ -303,18 +421,19 @@ export function MultiSelectDropDown({ name, placeholder, onChange, children }) {
   return html`<${SelectDropDown} name=${name} placeholder=${placeholder || 'Select item(s)'} multiple onChange=${onChange}>${children}<//>`;
 }
 
-export function SingleSelectEditableDropDown({ name, placeholder, children, onAddedOption, onDeletedOption }) {
+export function SingleSelectEditableDropDown({ name, placeholder, children, onAddedOption, onDeletedOption, onEditOption }) {
   return html`<${SelectDropDown}
     name=${name}
     placeholder=${placeholder || 'Select item'}
     editable
     onAddedOption=${onAddedOption}
     onDeletedOption=${onDeletedOption}
+    onEditOption=${onEditOption}
     >${children}<//
   >`;
 }
 
-export function MultiSelectEditableDropDown({ name, placeholder, children, onAddedOption, onDeletedOption }) {
+export function MultiSelectEditableDropDown({ name, placeholder, children, onAddedOption, onDeletedOption, onEditOption }) {
   return html`<${SelectDropDown}
     name=${name}
     placeholder=${placeholder || 'Select item(s)'}
@@ -322,6 +441,7 @@ export function MultiSelectEditableDropDown({ name, placeholder, children, onAdd
     editable
     onAddedOption=${onAddedOption}
     onDeletedOption=${onDeletedOption}
+    onEditOption=${onEditOption}
     >${children}<//
   >`;
 }

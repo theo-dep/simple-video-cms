@@ -71,14 +71,17 @@ namespace server
 
     void admin_location_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_update_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_delete_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
     void admin_author_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_update_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_delete_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
     void admin_tag_list(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_add_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void admin_update_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
     void admin_delete_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
     // Admin - admins
@@ -208,14 +211,17 @@ int server::start()
 
         .Get("/api/admin/location-list", sc::serve(admin_location_list, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-location", sc::serve(admin_add_location, std::cref(session), std::cref(db)))
+        .Post("/api/admin/update-location/:location_id", sc::serve(admin_update_location, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-location/:location_id", sc::serve(admin_delete_location, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/author-list", sc::serve(admin_author_list, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-author", sc::serve(admin_add_author, std::cref(session), std::cref(db)))
+        .Post("/api/admin/update-author/:author_id", sc::serve(admin_update_author, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-author/:author_id", sc::serve(admin_delete_author, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/tag-list", sc::serve(admin_tag_list, std::cref(session), std::cref(db)))
         .Post("/api/admin/add-tag", sc::serve(admin_add_tag, std::cref(session), std::cref(db)))
+        .Post("/api/admin/update-tag/:tag_id", sc::serve(admin_update_tag, std::cref(session), std::cref(db)))
         .Post("/api/admin/delete-tag/:tag_id", sc::serve(admin_delete_tag, std::cref(session), std::cref(db)))
 
         .Get("/api/admin/admin-list", sc::serve(admin_admin_list, std::cref(session), std::cref(db)))
@@ -1260,6 +1266,36 @@ inline void server::admin_add_location(const httplib::Request& req, httplib::Res
     res.set_content(nlohmann::json({ { "id", *location_id } }).dump(), "application/json");
 }
 
+inline void server::admin_update_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("name")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing location name field", "plain/text");
+        return;
+    }
+
+    const int location_id{ su::string_to_int(req.path_params.at("location_id")) };
+    const std::string location_name{ su::trim(req.get_param_value("name")) };
+
+    if (!validate_field(res, location_name)) {
+        return;
+    }
+
+    if (!db.update_location_name(location_id, location_name)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the location", "plain/text");
+        logging::error{ R"(Fail to update location "{}")", location_id };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
 inline void server::admin_delete_location(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
@@ -1318,6 +1354,36 @@ inline void server::admin_add_author(const httplib::Request& req, httplib::Respo
     res.set_content(nlohmann::json({ { "id", *author_id } }).dump(), "application/json");
 }
 
+inline void server::admin_update_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("name")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing author name field", "plain/text");
+        return;
+    }
+
+    const int author_id{ su::string_to_int(req.path_params.at("author_id")) };
+    const std::string author_name{ su::trim(req.get_param_value("name")) };
+
+    if (!validate_field(res, author_name)) {
+        return;
+    }
+
+    if (!db.update_author_name(author_id, author_name)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the author", "plain/text");
+        logging::error{ R"(Fail to update author "{}")", author_id };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
+}
+
 inline void server::admin_delete_author(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
 {
     if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
@@ -1373,6 +1439,36 @@ inline void server::admin_add_tag(const httplib::Request& req, httplib::Response
     }
 
     res.set_content(nlohmann::json({ { "id", *tag_id } }).dump(), "application/json");
+}
+
+inline void server::admin_update_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+{
+    if (authenticated_admin(req, session, db) == Session::invalid_user_id()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    if (!req.has_param("name")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Missing tag name field", "plain/text");
+        return;
+    }
+
+    const int tag_id{ su::string_to_int(req.path_params.at("tag_id")) };
+    const std::string tag_name{ su::trim(req.get_param_value("name")) };
+
+    if (!validate_field(res, tag_name)) {
+        return;
+    }
+
+    if (!db.update_tag_name(tag_id, tag_name)) {
+        res.status = httplib::StatusCode::InternalServerError_500;
+        res.set_content("Fail to update the tag", "plain/text");
+        logging::error{ R"(Fail to update tag "{}")", tag_id };
+        return;
+    }
+
+    res.status = httplib::StatusCode::OK_200;
 }
 
 inline void server::admin_delete_tag(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
