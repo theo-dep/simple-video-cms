@@ -718,7 +718,7 @@ inline void server::logout(const httplib::Request& req, httplib::Response& res, 
 
 namespace server
 {
-    inline bool validate_field(httplib::Response& res, const std::string& field)
+    inline bool validate_text(httplib::Response& res, const std::string& field)
     {
         static const std::regex allow_list(R"(^[a-zA-Z0-9\s.,!?'"()\-_:;\x80-\xFF]*$)");
         if (std::regex_match(field, allow_list)) {
@@ -726,7 +726,19 @@ namespace server
         }
 
         res.status = httplib::StatusCode::BadRequest_400;
-        res.set_content("Unauthorized character set", "plain/text");
+        res.set_content("Special characters not allowed except: . , ! ? ' \" ( ) - _ : ;", "plain/text");
+        return false;
+    }
+
+    inline bool validate_date(httplib::Response& res, const std::string& field)
+    {
+        static const std::regex allow_list(R"(^[0-9/\-]*$)");
+        if (std::regex_match(field, allow_list)) {
+            return true;
+        }
+
+        res.status = httplib::StatusCode::BadRequest_400;
+        res.set_content("Date format invalid: only numbers, / and - allowed", "plain/text");
         return false;
     }
 }
@@ -749,7 +761,7 @@ inline void server::update_username(const httplib::Request& req, httplib::Respon
         return;
     }
 
-    if (!validate_field(res, username)) {
+    if (!validate_text(res, username)) {
         return;
     }
 
@@ -1098,7 +1110,11 @@ inline void server::admin_add_video(const httplib::Request& req, httplib::Respon
     const std::vector group_ids{ extract_ids(req.form.get_field("groupIds")) };
     const std::vector user_ids{ extract_ids(req.form.get_field("userIds")) };
 
-    if (!validate_field(res, video_title)) {
+    if (!validate_text(res, video_title)) {
+        return;
+    }
+
+    if (!validate_date(res, video_date)) {
         return;
     }
 
@@ -1160,7 +1176,11 @@ inline void server::admin_update_video(const httplib::Request& req, httplib::Res
     const std::vector<int> group_ids{ extract_ids(req.get_param_value("groupIds")) };
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
 
-    if (!validate_field(res, video_title)) {
+    if (!validate_text(res, video_title)) {
+        return;
+    }
+
+    if (!validate_date(res, video_date)) {
         return;
     }
 
@@ -1245,7 +1265,7 @@ inline void server::admin_add_location(const httplib::Request& req, httplib::Res
 
     const std::string location{ su::trim(req.get_param_value("name")) };
 
-    if (!validate_field(res, location)) {
+    if (!validate_text(res, location)) {
         return;
     }
 
@@ -1282,7 +1302,7 @@ inline void server::admin_update_location(const httplib::Request& req, httplib::
     const int location_id{ su::string_to_int(req.path_params.at("location_id")) };
     const std::string location_name{ su::trim(req.get_param_value("name")) };
 
-    if (!validate_field(res, location_name)) {
+    if (!validate_text(res, location_name)) {
         return;
     }
 
@@ -1333,7 +1353,7 @@ inline void server::admin_add_author(const httplib::Request& req, httplib::Respo
 
     const std::string author{ su::trim(req.get_param_value("name")) };
 
-    if (!validate_field(res, author)) {
+    if (!validate_text(res, author)) {
         return;
     }
 
@@ -1370,7 +1390,7 @@ inline void server::admin_update_author(const httplib::Request& req, httplib::Re
     const int author_id{ su::string_to_int(req.path_params.at("author_id")) };
     const std::string author_name{ su::trim(req.get_param_value("name")) };
 
-    if (!validate_field(res, author_name)) {
+    if (!validate_text(res, author_name)) {
         return;
     }
 
@@ -1420,7 +1440,7 @@ inline void server::admin_add_tag(const httplib::Request& req, httplib::Response
 
     const std::string tag{ su::trim(req.get_param_value("name")) };
 
-    if (!validate_field(res, tag)) {
+    if (!validate_text(res, tag)) {
         return;
     }
 
@@ -1457,7 +1477,7 @@ inline void server::admin_update_tag(const httplib::Request& req, httplib::Respo
     const int tag_id{ su::string_to_int(req.path_params.at("tag_id")) };
     const std::string tag_name{ su::trim(req.get_param_value("name")) };
 
-    if (!validate_field(res, tag_name)) {
+    if (!validate_text(res, tag_name)) {
         return;
     }
 
@@ -1552,7 +1572,7 @@ inline void server::admin_add_admin(const httplib::Request& req, httplib::Respon
 
     const std::string username{ su::trim(req.get_param_value("username")) };
 
-    if (!validate_field(res, username)) {
+    if (!validate_text(res, username)) {
         return;
     }
 
@@ -1590,7 +1610,7 @@ inline void server::admin_update_admin(const httplib::Request& req, httplib::Res
     const int user_id{ su::string_to_int(req.path_params.at("admin_id")) };
     const std::string username{ su::trim(req.get_param_value("username")) };
 
-    if (!validate_field(res, username)) {
+    if (!validate_text(res, username)) {
         return;
     }
 
@@ -1676,7 +1696,7 @@ inline void server::admin_add_user(const httplib::Request& req, httplib::Respons
 
     const std::string username{ su::trim(req.get_param_value("username")) };
 
-    if (!validate_field(res, username)) {
+    if (!validate_text(res, username)) {
         return;
     }
 
@@ -1726,7 +1746,7 @@ inline void server::admin_update_user(const httplib::Request& req, httplib::Resp
     const int user_id{ su::string_to_int(req.path_params.at("user_id")) };
     const std::string username{ su::trim(req.get_param_value("username")) };
 
-    if (!validate_field(res, username)) {
+    if (!validate_text(res, username)) {
         return;
     }
 
@@ -1876,7 +1896,7 @@ inline void server::admin_add_group(const httplib::Request& req, httplib::Respon
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
     const std::vector<int> video_ids{ extract_ids(req.get_param_value("videoIds")) };
 
-    if (!validate_field(res, group_name)) {
+    if (!validate_text(res, group_name)) {
         return;
     }
 
@@ -1924,7 +1944,7 @@ inline void server::admin_update_group(const httplib::Request& req, httplib::Res
     const std::vector<int> user_ids{ extract_ids(req.get_param_value("userIds")) };
     const std::vector<int> video_ids{ extract_ids(req.get_param_value("videoIds")) };
 
-    if (!validate_field(res, group_name)) {
+    if (!validate_text(res, group_name)) {
         return;
     }
 

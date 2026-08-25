@@ -20,7 +20,7 @@ import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { confirm } from '../component/ConfirmDialog.js';
-import { validateField } from '../utils/validation.js';
+import { validateText } from '../utils/validation.js';
 
 function AdminUserSettingsBase({ userId, isAdmin }) {
   userId = Number(userId);
@@ -44,7 +44,7 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
   async function onUserSubmit(e) {
     const form = e.target;
     const username = form.elements['username'].value.trim();
-    validateField(username);
+    validateText(username);
 
     const oldName = currentUser.value?.name ?? 'this ' + (isAdmin ? 'admin' : 'user');
     const confirmMessage = username === oldName ? `Update ${username}?` : `Update ${oldName} to ${username}?`;

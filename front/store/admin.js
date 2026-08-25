@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals';
 import { api } from '../api.js';
-import { validateField } from '../utils/validation.js';
+import { validateText } from '../utils/validation.js';
 
 export const stats = signal(null);
 
@@ -79,7 +79,7 @@ export function invalidateAdminLists() {
 
 async function addValue(list, apiCall, value) {
   value = value.trim();
-  validateField(value);
+  validateText(value);
   const { json } = await apiCall(value);
   if (!json) return null;
   const { id } = json;
@@ -91,7 +91,7 @@ async function updateValue(list, apiCall, id, value) {
   const current = list.value?.find((l) => String(l.id) === String(id));
   value = value.trim();
   if (current !== null && current.name !== value) {
-    validateField(value);
+    validateText(value);
     await apiCall(id, value);
     list.value = list.value.map((l) => (String(l.id) === id ? { ...l, name: value } : l));
   }

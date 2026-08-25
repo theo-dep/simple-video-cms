@@ -35,7 +35,7 @@ import { Form } from '../component/Form.js';
 import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { Dropdown } from '../component/DropDown.js';
-import { validateField } from '../utils/validation.js';
+import { validateText, validateDate } from '../utils/validation.js';
 import { formatVideo } from '../utils/formatVideo.js';
 
 export default function AdminNewVideo() {
@@ -73,8 +73,9 @@ export default function AdminNewVideo() {
     const fileInput = form.elements['file'];
     const video = fileInput.files[0] || null;
     const title = form.elements['title'].value.trim();
-    validateField(title);
+    validateText(title);
     const date = form.elements['date'].value.trim();
+    validateDate(date);
     const locationSelect = form.elements['location-id'];
     const locationId = locationSelect ? locationSelect.value : null;
     const authorSelect = form.elements['author-ids'];

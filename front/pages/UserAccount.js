@@ -6,7 +6,7 @@ import { UserNav } from '../component/HeaderNav.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { FormContent } from '../component/Form.js';
 import { PasswordInput } from '../component/PasswordInput.js';
-import { validateField } from '../utils/validation.js';
+import { validateText } from '../utils/validation.js';
 
 export default function UserAccount() {
   useTitle(`${user.name.value} Account`);
@@ -15,7 +15,7 @@ export default function UserAccount() {
     const form = e.target;
     const username = form.elements['username'].value.trim();
     const password = form.elements['password'].value;
-    validateField(username);
+    validateText(username);
 
     await api.updateUsername(username, password);
     refreshRequested.value = true; // refresh the current user id

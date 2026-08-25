@@ -38,7 +38,7 @@ import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableD
 import { Loader } from '../component/Loader.js';
 import { Dropdown } from '../component/DropDown.js';
 import { confirm } from '../component/ConfirmDialog.js';
-import { validateField } from '../utils/validation.js';
+import { validateText, validateDate } from '../utils/validation.js';
 import { formatVideo } from '../utils/formatVideo.js';
 
 export default function AdminUpdateVideo({ videoId }) {
@@ -95,13 +95,14 @@ export default function AdminUpdateVideo({ videoId }) {
   async function onVideoSubmit(e) {
     const form = e.target;
     const title = form.elements['title'].value.trim();
-    validateField(title);
+    validateText(title);
 
     const oldTitle = selectedVideo.value?.title ?? 'this video';
     const confirmMessage = title === oldTitle ? `Update ${title} video?` : `Update ${oldTitle} video name to ${title}?`;
     if (!(await confirm(confirmMessage))) return;
 
     const date = form.elements['date'].value.trim();
+    validateDate(date);
     const locationSelect = form.elements['location-id'];
     const locationId = locationSelect ? locationSelect.value : null;
     const authorSelect = form.elements['author-ids'];

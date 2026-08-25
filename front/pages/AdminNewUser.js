@@ -8,7 +8,7 @@ import { AdminNav } from '../component/HeaderNav.js';
 import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
-import { validateField } from '../utils/validation.js';
+import { validateText } from '../utils/validation.js';
 
 function AdminNewUserBase({ isAdmin }) {
   const { route } = useLocation();
@@ -20,7 +20,7 @@ function AdminNewUserBase({ isAdmin }) {
   async function onUserSubmit(e) {
     const form = e.target;
     const username = form.elements['username'].value.trim();
-    validateField(username);
+    validateText(username);
 
     const groupSelect = form.elements['group-ids'];
     const groupIds = groupSelect ? Array.from(groupSelect.selectedOptions).map((o) => o.value) : [];
