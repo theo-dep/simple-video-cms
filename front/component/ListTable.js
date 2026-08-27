@@ -81,13 +81,15 @@ export function ListTable({ title, addContent, addLink, columns, items, searchKe
       ${sorted?.map((item) => {
         const id = item[idKey];
         const isOpen = expanded.has(id);
+        const primaryContents = primaryColumns.map((col) => (col.render ? col.render(item) : item[col.key]));
+        // check if there are multiple primary contents, so we can render empty cells for alignment
+        const hasMultiplePrimaryContent = primaryContents.slice(1).some((primaryContent) => primaryContent != null && primaryContent !== '');
         const expandedContent = renderExpanded(item);
         return html`
           <div class="list-row" key=${id}>
             <div class="list-row-summary ${!expandedContent ? 'is-disabled' : ''}" onClick=${() => expandedContent && toggleRow(id)}>
-              ${primaryColumns.map((col) => {
-                const itemContent = col.render ? col.render(item) : item[col.key];
-                return itemContent && html`<div class="list-row-cell">${itemContent}</div>`;
+              ${primaryContents.map((primaryContent) => {
+                return (primaryContent || hasMultiplePrimaryContent) && html`<div class="list-row-cell">${primaryContent || ''}</div>`;
               })}
               ${expandedContent && html`<${ChevronRightIcon} class="list-row-chevron ${isOpen ? 'is-open' : ''}" />`}
             </div>
