@@ -181,6 +181,7 @@
 .select-dropdown .select-dropdown-option-all {
   border-bottom: 1px solid var(--border-color-light);
   border-radius: 0;
+  justify-content: center;
 }
 
 .select-dropdown .select-dropdown-option .select-dropdown-option-checkbox,
@@ -192,6 +193,10 @@
   min-width: var(--checkbox-size);
   border: 1px solid var(--checkbox-border);
   border-radius: var(--checkbox-radius);
+}
+
+.select-dropdown .select-dropdown-option-all-shift .select-dropdown-option-text {
+  margin-right: 2.5em;
 }
 
 .select-dropdown .select-dropdown-option .select-dropdown-option-text,
@@ -262,18 +267,65 @@
   color: var(--color-primary-dark);
 }
 
-.select-dropdown .select-dropdown-option-delete {
+.select-dropdown .select-dropdown-option-input {
+  flex: 1;
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius);
+  padding: 0.25rem var(--spacing-small);
+  font-size: var(--font-size-large);
+  color: var(--text-color-dark);
+  background-color: var(--color-text-white);
+  box-sizing: border-box;
+  margin: 0 var(--spacing-small);
+}
+
+.select-dropdown .select-dropdown-option-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.select-dropdown .select-dropdown-option-button {
   flex-shrink: 0;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
-  margin-left: auto;
+  padding: 0.25rem;
   line-height: 1;
+  font-size: var(--font-size-larger);
+}
+
+.select-dropdown .select-dropdown-option-save,
+.select-dropdown .select-dropdown-option-edit {
+  margin-right: var(--spacing-large);
+  color: var(--color-primary);
+}
+
+.select-dropdown .select-dropdown-option-save:hover,
+.select-dropdown .select-dropdown-option-edit:hover {
+  color: var(--color-primary-dark);
+}
+
+.select-dropdown .select-dropdown-option-cancel {
   color: var(--color-alert);
-  font-size: var(--font-size-large);
+}
+
+.select-dropdown .select-dropdown-option-cancel:hover {
+  color: var(--color-alert-dark);
+}
+
+.select-dropdown .select-dropdown-option-delete {
+  margin-left: auto;
+  color: var(--color-alert);
 }
 
 .select-dropdown .select-dropdown-option-delete:hover {
   color: var(--color-alert-dark);
+}
+
+@media only screen and (min-width: 48em) {
+  /* make more space between button on mobile */
+  .select-dropdown .select-dropdown-option-edit,
+  .select-dropdown .select-dropdown-option-save {
+    margin-right: var(--spacing-medium);
+  }
 }

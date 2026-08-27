@@ -21,10 +21,13 @@ import {
   loadVideos,
   invalidateVideos,
   onAddedLocation,
+  onEditLocation,
   onDeletedLocation,
   onAddedAuthor,
+  onEditAuthor,
   onDeletedAuthor,
   onAddedTag,
+  onEditTag,
   onDeletedTag,
 } from '../store/admin.js';
 import { AdminNav } from '../component/HeaderNav.js';
@@ -32,7 +35,7 @@ import { Form } from '../component/Form.js';
 import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { Dropdown } from '../component/DropDown.js';
-import { validateField } from '../utils/validation.js';
+import { validateText, validateDate } from '../utils/validation.js';
 import { formatVideo } from '../utils/formatVideo.js';
 
 export default function AdminNewVideo() {
@@ -70,10 +73,11 @@ export default function AdminNewVideo() {
     const fileInput = form.elements['file'];
     const video = fileInput.files[0] || null;
     const title = form.elements['title'].value.trim();
-    validateField(title);
+    validateText(title);
     const date = form.elements['date'].value.trim();
+    validateDate(date);
     const locationSelect = form.elements['location-id'];
-    const locationId = locationSelect ? locationSelect.value : null;
+    const locationId = locationSelect ? locationSelect.selectedOptions[0]?.value || null : null;
     const authorSelect = form.elements['author-ids'];
     const authorIds = authorSelect ? Array.from(authorSelect.selectedOptions).map((o) => o.value) : [];
     const tagSelect = form.elements['tag-ids'];
@@ -155,6 +159,7 @@ export default function AdminNewVideo() {
                   placeholder="Video location (optional)"
                   onAddedOption=${onAddedLocation}
                   onDeletedOption=${onDeletedLocation}
+                  onEditOption=${onEditLocation}
                 >
                   ${locations.value.map((p) => html`<option key=${p.id} value=${p.id}>${p.name}</option>`)}
                 <//>
@@ -166,6 +171,7 @@ export default function AdminNewVideo() {
                   placeholder="Add authors to video (optional)"
                   onAddedOption=${onAddedAuthor}
                   onDeletedOption=${onDeletedAuthor}
+                  onEditOption=${onEditAuthor}
                 >
                   ${authors.value.map((a) => html`<option key=${a.id} value=${a.id}>${a.name}</option>`)}
                 <//>
@@ -177,6 +183,7 @@ export default function AdminNewVideo() {
                   placeholder="Add tags to video (optional)"
                   onAddedOption=${onAddedTag}
                   onDeletedOption=${onDeletedTag}
+                  onEditOption=${onEditTag}
                 >
                   ${tags.value.map((t) => html`<option key=${t.id} value=${t.id}>${t.name}</option>`)}
                 <//>

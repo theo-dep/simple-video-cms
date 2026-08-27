@@ -23,10 +23,13 @@ import {
   loadVideos,
   invalidateAdminLists,
   onAddedLocation,
+  onEditLocation,
   onDeletedLocation,
   onAddedAuthor,
+  onEditAuthor,
   onDeletedAuthor,
   onAddedTag,
+  onEditTag,
   onDeletedTag,
 } from '../store/admin.js';
 import { AdminNav } from '../component/HeaderNav.js';
@@ -35,7 +38,7 @@ import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableD
 import { Loader } from '../component/Loader.js';
 import { Dropdown } from '../component/DropDown.js';
 import { confirm } from '../component/ConfirmDialog.js';
-import { validateField } from '../utils/validation.js';
+import { validateText, validateDate } from '../utils/validation.js';
 import { formatVideo } from '../utils/formatVideo.js';
 
 export default function AdminUpdateVideo({ videoId }) {
@@ -92,15 +95,16 @@ export default function AdminUpdateVideo({ videoId }) {
   async function onVideoSubmit(e) {
     const form = e.target;
     const title = form.elements['title'].value.trim();
-    validateField(title);
+    validateText(title);
 
     const oldTitle = selectedVideo.value?.title ?? 'this video';
     const confirmMessage = title === oldTitle ? `Update ${title} video?` : `Update ${oldTitle} video name to ${title}?`;
     if (!(await confirm(confirmMessage))) return;
 
     const date = form.elements['date'].value.trim();
+    validateDate(date);
     const locationSelect = form.elements['location-id'];
-    const locationId = locationSelect ? locationSelect.value : null;
+    const locationId = locationSelect ? locationSelect.selectedOptions[0]?.value || null : null;
     const authorSelect = form.elements['author-ids'];
     const authorIds = authorSelect ? Array.from(authorSelect.selectedOptions).map((o) => o.value) : [];
     const tagSelect = form.elements['tag-ids'];
@@ -169,6 +173,7 @@ export default function AdminUpdateVideo({ videoId }) {
                   placeholder="Video location (optional)"
                   onAddedOption=${onAddedLocation}
                   onDeletedOption=${onDeletedLocation}
+                  onEditOption=${onEditLocation}
                 >
                   ${locations.value.map((p) => html`<option key=${p.id} value=${p.id} selected=${isLocationSelected(p.id)}>${p.name}</option>`)}
                 <//>
@@ -180,6 +185,7 @@ export default function AdminUpdateVideo({ videoId }) {
                   placeholder="Add authors to video (optional)"
                   onAddedOption=${onAddedAuthor}
                   onDeletedOption=${onDeletedAuthor}
+                  onEditOption=${onEditAuthor}
                 >
                   ${authors.value.map((a) => html`<option key=${a.id} value=${a.id} selected=${isAuthorSelected(a.id)}>${a.name}</option>`)}
                 <//>
@@ -191,6 +197,7 @@ export default function AdminUpdateVideo({ videoId }) {
                   placeholder="Add tags to video (optional)"
                   onAddedOption=${onAddedTag}
                   onDeletedOption=${onDeletedTag}
+                  onEditOption=${onEditTag}
                 >
                   ${tags.value.map((t) => html`<option key=${t.id} value=${t.id} selected=${isTagSelected(t.id)}>${t.name}</option>`)}
                 <//>

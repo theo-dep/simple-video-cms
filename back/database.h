@@ -99,16 +99,19 @@ public:
     std::optional<Location> location(int location_id) const;
     bool location_exists(const std::string& name) const;
     [[nodiscard]] std::optional<int> add_location(const std::string& name) const;
+    [[nodiscard]] bool update_location_name(int location_id, const std::string& name) const;
     [[nodiscard]] bool delete_location(int location_id) const;
 
     std::vector<Author> author_list() const;
     bool author_exists(const std::string& name) const;
     [[nodiscard]] std::optional<int> add_author(const std::string& name) const;
+    [[nodiscard]] bool update_author_name(int author_id, const std::string& name) const;
     [[nodiscard]] bool delete_author(int author_id) const;
 
     std::vector<Tag> tag_list() const;
     bool tag_exists(const std::string& name) const;
     [[nodiscard]] std::optional<int> add_tag(const std::string& name) const;
+    [[nodiscard]] bool update_tag_name(int tag_id, const std::string& name) const;
     [[nodiscard]] bool delete_tag(int tag_id) const;
 
     std::vector<Author> video_author_list(int video_id) const;
