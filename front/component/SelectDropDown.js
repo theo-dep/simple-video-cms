@@ -269,7 +269,7 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
   useEffect(() => {
     if (!nativeSelectRef.current || selectedValues === null) return;
     Array.from(nativeSelectRef.current.options).forEach((opt) => {
-      opt.selected = selectedValues.has(opt.value);
+      opt.selected = singleSelect && opt.value === '' ? selectedValues.size === 0 : selectedValues.has(opt.value);
     });
     onChange?.([...selectedValues]);
   }, [selectedValues]);
@@ -411,6 +411,7 @@ function SelectDropDown({ name, placeholder, children, multiple = false, editabl
         `
       }
       <select ref=${nativeSelectRef} name=${name} class="input" multiple=${multiple} style="display:none;" tabindex="-1" aria-hidden="true">
+        ${singleSelect && html`<option value=""></option>`}
         ${rawOptions.map((o) => html`<option key=${o.value} value=${o.value}>${o.label}</option>`)}
       </select>
     </div>

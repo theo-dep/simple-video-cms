@@ -104,7 +104,7 @@ export default function AdminUpdateVideo({ videoId }) {
     const date = form.elements['date'].value.trim();
     validateDate(date);
     const locationSelect = form.elements['location-id'];
-    const locationId = locationSelect ? locationSelect.value : null;
+    const locationId = locationSelect ? locationSelect.selectedOptions[0]?.value || null : null;
     const authorSelect = form.elements['author-ids'];
     const authorIds = authorSelect ? Array.from(authorSelect.selectedOptions).map((o) => o.value) : [];
     const tagSelect = form.elements['tag-ids'];
