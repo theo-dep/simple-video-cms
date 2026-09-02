@@ -49,7 +49,7 @@ export default function UserAccount() {
 
       <${FormContent} title="Change password" buttonTitle="Update" successMessage="Password updated!" onSubmitAction=${onPasswordSubmit}>
         <div class="form-control-group">
-          <input class="input" type="password" name="old-password" placeholder="old password" required />
+          <${PasswordInput} name="old-password" placeholder="old password" />
         </div>
         <div class="form-control-group">
           <${PasswordInput} name="new-password" placeholder="new password" />
