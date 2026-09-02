@@ -20,7 +20,8 @@ import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { confirm } from '../component/ConfirmDialog.js';
-import { validateText } from '../utils/validation.js';
+import { RestrictedInput } from '../component/RestrictedInput.js';
+import { validateText, TEXT_VALIDATION_TOOLTIP } from '../utils/validation.js';
 
 function AdminUserSettingsBase({ userId, isAdmin }) {
   userId = Number(userId);
@@ -78,7 +79,13 @@ function AdminUserSettingsBase({ userId, isAdmin }) {
         : html`
             <${Form} title="${title}" buttonTitle="Update" onSubmitAction=${onUserSubmit}>
               <div class="form-control-group">
-                <input class="input" type="text" name="username" placeholder="username" value=${currentUser.value.name} required />
+                <${RestrictedInput}
+                  name="username"
+                  placeholder="Username"
+                  value=${currentUser.value.name}
+                  tooltip=${TEXT_VALIDATION_TOOLTIP}
+                  required
+                />
               </div>
               ${
                 !isAdmin &&

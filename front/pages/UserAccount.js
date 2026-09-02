@@ -6,7 +6,8 @@ import { UserNav } from '../component/HeaderNav.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { FormContent } from '../component/Form.js';
 import { PasswordInput } from '../component/PasswordInput.js';
-import { validateText } from '../utils/validation.js';
+import { RestrictedInput } from '../component/RestrictedInput.js';
+import { validateText, TEXT_VALIDATION_TOOLTIP } from '../utils/validation.js';
 
 export default function UserAccount() {
   useTitle(`${user.name.value} Account`);
@@ -39,7 +40,7 @@ export default function UserAccount() {
     <${InfoContent}>
       <${FormContent} title="Change username" buttonTitle="Update" successMessage="Username updated!" onSubmitAction=${onUsernameSubmit}>
         <div class="form-control-group">
-          <input class="input" type="text" name="username" placeholder="username" value=${user.name.value} required />
+          <${RestrictedInput} name="username" placeholder="Username" value=${user.name.value} tooltip=${TEXT_VALIDATION_TOOLTIP} required />
         </div>
         <div class="form-control-group">
           <${PasswordInput} name="password" placeholder="confirm password" autofocus />

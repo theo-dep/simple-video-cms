@@ -38,7 +38,8 @@ import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableD
 import { Loader } from '../component/Loader.js';
 import { Dropdown } from '../component/DropDown.js';
 import { confirm } from '../component/ConfirmDialog.js';
-import { validateText, validateDate } from '../utils/validation.js';
+import { RestrictedInput } from '../component/RestrictedInput.js';
+import { validateText, validateDate, TEXT_VALIDATION_TOOLTIP, DATE_VALIDATION_TOOLTIP } from '../utils/validation.js';
 import { formatVideo } from '../utils/formatVideo.js';
 
 export default function AdminUpdateVideo({ videoId }) {
@@ -130,14 +131,13 @@ export default function AdminUpdateVideo({ videoId }) {
         : html`
             <${Form} title="Change video title, group and user rights" buttonTitle="Update" onSubmitAction=${onVideoSubmit}>
               <div class="form-control-group">
-                <input
+                <${RestrictedInput}
                   onInput=${onTitleInput}
                   value="${title}"
-                  class="input"
-                  type="text"
                   name="title"
                   id="title"
                   placeholder="Video title"
+                  tooltip=${TEXT_VALIDATION_TOOLTIP}
                   required
                 />
               </div>
@@ -165,7 +165,7 @@ export default function AdminUpdateVideo({ videoId }) {
               }
 
               <div class="form-control-group">
-                <input ref=${dateRef} class="input" type="text" name="date" id="date" placeholder="Video date (optional)" />
+                <${RestrictedInput} ref=${dateRef} name="date" id="date" placeholder="Video date (optional)" tooltip=${DATE_VALIDATION_TOOLTIP} />
               </div>
 
               <div class="form-control-group">

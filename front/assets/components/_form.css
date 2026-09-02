@@ -38,3 +38,54 @@
 .input:invalid {
   border-color: var(--color-alert);
 }
+
+/* Form containers with field icons */
+.form-password,
+.form-restricted-input {
+  position: relative;
+}
+
+.form-password .input,
+.form-restricted-input .input {
+  padding-right: 2.5em;
+}
+
+.field-icon {
+  position: absolute;
+  right: 0.5em;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: var(--color-text-black);
+  z-index: 1;
+  line-height: 1;
+}
+
+.input-tooltip {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 0.5em;
+  width: min(60vw, 360px);
+  padding: 0.5em 0.75em;
+  background-color: var(--color-bg-input);
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size);
+  color: var(--text-color-dark);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  z-index: 100;
+  box-shadow: 0 2px 4px var(--color-shadow);
+}
+
+.input-tooltip::before {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 6px solid transparent;
+  border-left-color: var(--input-border);
+}
