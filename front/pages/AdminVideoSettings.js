@@ -62,6 +62,7 @@ export default function AdminUpdateVideo({ videoId }) {
   useEffect(() => {
     if (selectedVideo.value && dateRef.current && !isVideoLoading) {
       setTitle(selectedVideo.value.title);
+      search(selectedVideo.value.title);
       dateRef.current.value = selectedVideo.value.date ?? '';
     }
   }, [selectedVideo.value, dateRef.current, isVideoLoading, isLoading]);
