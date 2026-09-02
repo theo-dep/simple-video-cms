@@ -1,10 +1,12 @@
 {
-  "builtin-baseline": "30ef65cad98f08e7197c9a1656fbd871bcb72f2d",
+  "builtin-baseline": "9e593bb18ea69cc5095e012465dcd675a822ed0d",
   "dependencies": [
     {
       "name": "cpp-httplib",
       "default-features": false,
-      "features": ["zlib"]
+      "features": [
+        "zlib"
+      ]
     },
     {
       "name": "ffmpeg",
@@ -51,7 +53,9 @@
     {
       "name": "sqlite3",
       "default-features": false,
-      "features": ["unicode"]
+      "features": [
+        "unicode"
+      ]
     },
     "zlib",
     "catch2"
