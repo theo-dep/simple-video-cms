@@ -35,7 +35,8 @@ import { Form } from '../component/Form.js';
 import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { Dropdown } from '../component/DropDown.js';
-import { validateText, validateDate } from '../utils/validation.js';
+import { RestrictedInput } from '../component/RestrictedInput.js';
+import { validateText, validateDate, TEXT_VALIDATION_TOOLTIP, DATE_VALIDATION_TOOLTIP } from '../utils/validation.js';
 import { formatVideo } from '../utils/formatVideo.js';
 
 export default function AdminNewVideo() {
@@ -119,14 +120,13 @@ export default function AdminNewVideo() {
                 />
               </div>
               <div class="form-control-group">
-                <input
+                <${RestrictedInput}
                   onInput=${onTitleInput}
                   value="${title}"
-                  class="input"
-                  type="text"
                   name="title"
                   id="title"
                   placeholder="Video title"
+                  tooltip=${TEXT_VALIDATION_TOOLTIP}
                   required
                 />
               </div>
@@ -150,7 +150,7 @@ export default function AdminNewVideo() {
               }
 
               <div class="form-control-group">
-                <input class="input" type="text" name="date" id="date" placeholder="Video date (optional)" />
+                <${RestrictedInput} name="date" id="date" placeholder="Video date (optional)" tooltip=${DATE_VALIDATION_TOOLTIP} />
               </div>
 
               <div class="form-control-group">

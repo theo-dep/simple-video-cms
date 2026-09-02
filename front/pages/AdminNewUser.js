@@ -8,7 +8,8 @@ import { AdminNav } from '../component/HeaderNav.js';
 import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
-import { validateText } from '../utils/validation.js';
+import { RestrictedInput } from '../component/RestrictedInput.js';
+import { validateText, TEXT_VALIDATION_TOOLTIP } from '../utils/validation.js';
 
 function AdminNewUserBase({ isAdmin }) {
   const { route } = useLocation();
@@ -50,7 +51,7 @@ function AdminNewUserBase({ isAdmin }) {
         : html`
             <${Form} title="${title}" buttonTitle="Create" onSubmitAction=${onUserSubmit}>
               <div class="form-control-group">
-                <input class="input" type="text" name="username" placeholder="username" required autofocus />
+                <${RestrictedInput} name="username" placeholder="Username" tooltip=${TEXT_VALIDATION_TOOLTIP} required autofocus />
               </div>
               ${
                 !isAdmin &&

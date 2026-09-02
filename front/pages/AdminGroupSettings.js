@@ -9,7 +9,8 @@ import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
 import { confirm } from '../component/ConfirmDialog.js';
-import { validateText } from '../utils/validation.js';
+import { RestrictedInput } from '../component/RestrictedInput.js';
+import { validateText, TEXT_VALIDATION_TOOLTIP } from '../utils/validation.js';
 
 export default function AdminGroupSettings({ groupId }) {
   groupId = Number(groupId);
@@ -57,7 +58,7 @@ export default function AdminGroupSettings({ groupId }) {
         : html`
             <${Form} title="Change group name and users" buttonTitle="Update" onSubmitAction=${onGroupSubmit}>
               <div class="form-control-group">
-                <input class="input" type="text" name="name" value=${selectedGroup.value.name} placeholder="name" required />
+                <${RestrictedInput} name="name" value=${selectedGroup.value.name} placeholder="Name" tooltip=${TEXT_VALIDATION_TOOLTIP} required />
               </div>
               ${
                 !!users.value.length &&

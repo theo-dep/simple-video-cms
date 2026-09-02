@@ -8,7 +8,8 @@ import { AdminNav } from '../component/HeaderNav.js';
 import { Form } from '../component/Form.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { Loader } from '../component/Loader.js';
-import { validateText } from '../utils/validation.js';
+import { RestrictedInput } from '../component/RestrictedInput.js';
+import { validateText, TEXT_VALIDATION_TOOLTIP } from '../utils/validation.js';
 
 export default function AdminNewGroup() {
   const { route } = useLocation();
@@ -42,7 +43,7 @@ export default function AdminNewGroup() {
         : html`
             <${Form} title="Add a new group" buttonTitle="Create" onSubmitAction=${onGroupSubmit}>
               <div class="form-control-group">
-                <input class="input" type="text" name="name" placeholder="name" required autofocus />
+                <${RestrictedInput} name="name" placeholder="Name" tooltip=${TEXT_VALIDATION_TOOLTIP} required autofocus />
               </div>
               ${
                 !!users.value.length &&
