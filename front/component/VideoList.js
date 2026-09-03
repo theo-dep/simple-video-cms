@@ -24,26 +24,34 @@ export function VideoList({ title, filterCondition }) {
 
   const { results, search } = useSearch(allVideos, ['title', 'date', 'location', 'authors', 'tags']);
 
+  const [titles, setTitles] = useState([]);
   const [locations, setLocations] = useState([]);
   const [authors, setAuthors] = useState([]);
   const [tags, setTags] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  const titleOptions = useMemo(() => unique(allVideos.map((v) => v.title).filter(Boolean)), [allVideos]);
   const locationOptions = useMemo(() => unique(allVideos.map((v) => v.location).filter(Boolean)), [allVideos]);
   const authorOptions = useMemo(() => unique(allVideos.flatMap((v) => v.authors ?? [])), [allVideos]);
   const tagOptions = useMemo(() => unique(allVideos.flatMap((v) => v.tags ?? [])), [allVideos]);
 
   useEffect(() => {
+    setTitles(query?.titles ? query.titles.split(';').filter((t) => titleOptions.includes(t)) : []);
     setLocations(query?.locations ? query.locations.split(';').filter((l) => locationOptions.includes(l)) : []);
     setAuthors(query?.authors ? query.authors.split(';').filter((a) => authorOptions.includes(a)) : []);
     setTags(query?.tags ? query.tags.split(';').filter((t) => tagOptions.includes(t)) : []);
-  }, [query, locationOptions, authorOptions, tagOptions]);
+  }, [query, titleOptions, locationOptions, authorOptions, tagOptions]);
 
   function routeSearch(key, value) {
     const params = new URLSearchParams(query);
     value.length ? params.set(key, value.join(';')) : params.delete(key);
     const paramQuery = params.size ? `?${params}` : '';
     route(`${path}${paramQuery}`, /*replace*/ true);
+  }
+
+  function onTitleChange(values) {
+    setTitles(values);
+    routeSearch('titles', values);
   }
 
   function onLocationChange(values) {
@@ -61,6 +69,10 @@ export function VideoList({ title, filterCondition }) {
     routeSearch('tags', values);
   }
 
+  function isTitleSelected(title) {
+    return titles.includes(title);
+  }
+
   function isLocationSelected(location) {
     return locations.includes(location);
   }
@@ -73,17 +85,18 @@ export function VideoList({ title, filterCondition }) {
     return tags.includes(tag);
   }
 
-  const activeFilterCount = locations.length + authors.length + tags.length;
+  const activeFilterCount = titles.length + locations.length + authors.length + tags.length;
 
   const filtered = useMemo(
     () =>
       results.filter(
         (v) =>
+          (!titles.length || titles.includes(v.title)) &&
           (!locations.length || locations.includes(v.location)) &&
           (!authors.length || v.authors?.some((a) => authors.includes(a))) &&
           (!tags.length || v.tags?.some((t) => tags.includes(t)))
       ),
-    [results, locations, authors, tags]
+    [results, titles, locations, authors, tags]
   );
 
   const isLoading = !refreshed.value;
@@ -109,8 +122,13 @@ export function VideoList({ title, filterCondition }) {
           html`
             <div class="video-list-filters">
               <div class="video-list-filter">
+                <${MultiSelectDropDown} name="title-filter" placeholder="Titles" onChange=${onTitleChange}>
+                  ${titleOptions.map((t) => html`<option key=${t} value=${t} selected=${isTitleSelected(t)}>${t}</option>`)}
+                <//>
+              </div>
+              <div class="video-list-filter">
                 <${MultiSelectDropDown} name="location-filter" placeholder="Locations" onChange=${onLocationChange}>
-                  ${locationOptions.map((p) => html`<option key=${p} value=${p} selected=${isLocationSelected(p)}>${p}</option>`)}
+                  ${locationOptions.map((l) => html`<option key=${l} value=${l} selected=${isLocationSelected(l)}>${l}</option>`)}
                 <//>
               </div>
               <div class="video-list-filter">
