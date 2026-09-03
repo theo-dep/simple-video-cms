@@ -1,5 +1,5 @@
 import { html } from 'htm/preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
@@ -47,7 +47,6 @@ export default function AdminUpdateVideo({ videoId }) {
   const { route } = useLocation();
   const [title, setTitle] = useState('');
   const { results, search } = useSearch(videos.value, ['title']);
-  const dateRef = useRef(null);
   const { isLoading: isVideoLoading } = useLoader(() => loadVideo(videoId), selectedVideo.value?.id === videoId, [videoId]);
   const { isLoading: isLocationsLoading } = useLoader(loadLocations, Array.isArray(locations.value));
   const { isLoading: isAuthorsLoading } = useLoader(loadAuthors, Array.isArray(authors.value));
@@ -61,12 +60,11 @@ export default function AdminUpdateVideo({ videoId }) {
   const isLoading = isVideoLoading || isLocationsLoading || isAuthorsLoading || isTagsLoading || isGroupsLoading || isUsersLoading;
 
   useEffect(() => {
-    if (selectedVideo.value && dateRef.current && !isVideoLoading) {
+    if (selectedVideo.value && !isVideoLoading) {
       setTitle(selectedVideo.value.title);
       search(selectedVideo.value.title);
-      dateRef.current.value = selectedVideo.value.date ?? '';
     }
-  }, [selectedVideo.value, dateRef.current, isVideoLoading, isLoading]);
+  }, [selectedVideo.value, isVideoLoading]);
 
   function isLocationSelected(locationId) {
     return selectedVideo.value?.location?.id === locationId;
@@ -165,7 +163,13 @@ export default function AdminUpdateVideo({ videoId }) {
               }
 
               <div class="form-control-group">
-                <${RestrictedInput} ref=${dateRef} name="date" id="date" placeholder="Video date (optional)" tooltip=${DATE_VALIDATION_TOOLTIP} />
+                <${RestrictedInput}
+                  value=${selectedVideo.value?.date ?? ''}
+                  name="date"
+                  id="date"
+                  placeholder="Video date (optional)"
+                  tooltip=${DATE_VALIDATION_TOOLTIP}
+                />
               </div>
 
               <div class="form-control-group">
