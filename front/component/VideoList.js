@@ -100,7 +100,7 @@ export function VideoList({ title, filterCondition }) {
             <${SearchInput} onSearch=${search} />
           </div>
           <button type="button" class="button filter-toggle ${filtersOpen ? 'is-open' : ''}" onClick=${() => setFiltersOpen(!filtersOpen)}>
-            Filters ${!!activeFilterCount && html`<span class="filter-badge">${activeFilterCount}</span>`}
+            Filters ${!!activeFilterCount && html`<span class="filter-badge">(${activeFilterCount})</span>`}
             <${Icon} name="chevron-down" class="filter-toggle-arrow" />
           </button>
         </div>
