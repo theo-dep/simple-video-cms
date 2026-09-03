@@ -1,5 +1,5 @@
 import { html } from 'htm/preact';
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { useSearch } from '../hook/useSearch.js';
 import { useTitle } from '../hook/useTitle.js';
@@ -29,6 +29,11 @@ export function VideoList({ title, filterCondition }) {
   const [authors, setAuthors] = useState([]);
   const [tags, setTags] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const titleFilterRef = useRef(null);
+  const locationFilterRef = useRef(null);
+  const authorFilterRef = useRef(null);
+  const tagFilterRef = useRef(null);
 
   const titleOptions = useMemo(() => unique(allVideos.map((v) => v.title).filter(Boolean)), [allVideos]);
   const locationOptions = useMemo(() => unique(allVideos.map((v) => v.location).filter(Boolean)), [allVideos]);
@@ -67,6 +72,22 @@ export function VideoList({ title, filterCondition }) {
   function onTagsChange(values) {
     setTags(values);
     routeSearch('tags', values);
+  }
+
+  function clearAllFilters() {
+    titleFilterRef.current?.clear();
+    locationFilterRef.current?.clear();
+    authorFilterRef.current?.clear();
+    tagFilterRef.current?.clear();
+
+    // update already set query value (in case of reload)
+    const params = new URLSearchParams(query);
+    params.delete('titles');
+    params.delete('locations');
+    params.delete('authors');
+    params.delete('tags');
+    const paramQuery = params.size ? `?${params}` : '';
+    route(`${path}${paramQuery}`, /*replace*/ true);
   }
 
   function isTitleSelected(title) {
@@ -116,28 +137,36 @@ export function VideoList({ title, filterCondition }) {
             Filters ${!!activeFilterCount && html`<span class="filter-badge">(${activeFilterCount})</span>`}
             <${Icon} name="chevron-down" class="filter-toggle-arrow" />
           </button>
+          ${
+            !!activeFilterCount &&
+            html`
+              <button type="button" class="button clear-video-filters-button" onClick=${clearAllFilters} title="Clear all filters">
+                <${Icon} name="x-circle" /> Clear
+              </button>
+            `
+          }
         </div>
         ${
           filtersOpen &&
           html`
             <div class="video-list-filters">
               <div class="video-list-filter">
-                <${MultiSelectDropDown} name="title-filter" placeholder="Titles" onChange=${onTitleChange}>
+                <${MultiSelectDropDown} ref=${titleFilterRef} name="title-filter" placeholder="Titles" onChange=${onTitleChange}>
                   ${titleOptions.map((t) => html`<option key=${t} value=${t} selected=${isTitleSelected(t)}>${t}</option>`)}
                 <//>
               </div>
               <div class="video-list-filter">
-                <${MultiSelectDropDown} name="location-filter" placeholder="Locations" onChange=${onLocationChange}>
+                <${MultiSelectDropDown} ref=${locationFilterRef} name="location-filter" placeholder="Locations" onChange=${onLocationChange}>
                   ${locationOptions.map((l) => html`<option key=${l} value=${l} selected=${isLocationSelected(l)}>${l}</option>`)}
                 <//>
               </div>
               <div class="video-list-filter">
-                <${MultiSelectDropDown} name="author-filter" placeholder="Authors" onChange=${onAuthorsChange}>
+                <${MultiSelectDropDown} ref=${authorFilterRef} name="author-filter" placeholder="Authors" onChange=${onAuthorsChange}>
                   ${authorOptions.map((a) => html`<option key=${a} value=${a} selected=${isAuthorSelected(a)}>${a}</option>`)}
                 <//>
               </div>
               <div class="video-list-filter">
-                <${MultiSelectDropDown} name="tag-filter" placeholder="Tags" onChange=${onTagsChange}>
+                <${MultiSelectDropDown} ref=${tagFilterRef} name="tag-filter" placeholder="Tags" onChange=${onTagsChange}>
                   ${tagOptions.map((t) => html`<option key=${t} value=${t} selected=${isTagSelected(t)}>${t}</option>`)}
                 <//>
               </div>

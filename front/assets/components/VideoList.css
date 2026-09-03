@@ -2,6 +2,11 @@
   margin-bottom: 1em;
 }
 
+.clear-video-filters-button {
+  margin: 0.5em 0;
+  width: fit-content;
+}
+
 .video-list-search-row {
   display: flex;
   flex-wrap: wrap;
@@ -11,6 +16,10 @@
 .video-list-search-input {
   flex: 1 1 100%;
   min-width: 0;
+}
+
+.video-list-search-input .input-search {
+  width: 100%;
 }
 
 .video-list-filters {
@@ -28,16 +37,18 @@
 @media only screen and (min-width: 35.5em) {
   .video-list-search-input {
     width: 50%;
-    flex: 0 0 auto;
+    flex: 0 0 calc(50% - 1em);
     margin-right: 1em;
-  }
-
-  .video-list-search-input .input-search {
-    width: 100%;
   }
 
   .video-list-filter {
     flex: 1 1 calc(50% - 1em);
+  }
+}
+
+@media only screen and (min-width: 48em) {
+  .video-list-search-input {
+    flex: 0 0 auto;
   }
 }
 
