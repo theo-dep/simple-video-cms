@@ -29,11 +29,15 @@ export function VideoList({ title, filterCondition }) {
   const [tags, setTags] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  const locationOptions = useMemo(() => unique(allVideos.map((v) => v.location).filter(Boolean)), [allVideos]);
+  const authorOptions = useMemo(() => unique(allVideos.flatMap((v) => v.authors ?? [])), [allVideos]);
+  const tagOptions = useMemo(() => unique(allVideos.flatMap((v) => v.tags ?? [])), [allVideos]);
+
   useEffect(() => {
-    setLocations(query?.locations ? query.locations.split(';') : []);
-    setAuthors(query?.authors ? query.authors.split(';') : []);
-    setTags(query?.tags ? query.tags.split(';') : []);
-  }, [query]);
+    setLocations(query?.locations ? query.locations.split(';').filter((l) => locationOptions.includes(l)) : []);
+    setAuthors(query?.authors ? query.authors.split(';').filter((a) => authorOptions.includes(a)) : []);
+    setTags(query?.tags ? query.tags.split(';').filter((t) => tagOptions.includes(t)) : []);
+  }, [query, locationOptions, authorOptions, tagOptions]);
 
   function routeSearch(key, value) {
     const params = new URLSearchParams(query);
@@ -68,10 +72,6 @@ export function VideoList({ title, filterCondition }) {
   function isTagSelected(tag) {
     return tags.includes(tag);
   }
-
-  const locationOptions = useMemo(() => unique(allVideos.map((v) => v.location).filter(Boolean)), [allVideos]);
-  const authorOptions = useMemo(() => unique(allVideos.flatMap((v) => v.authors ?? [])), [allVideos]);
-  const tagOptions = useMemo(() => unique(allVideos.flatMap((v) => v.tags ?? [])), [allVideos]);
 
   const activeFilterCount = locations.length + authors.length + tags.length;
 
