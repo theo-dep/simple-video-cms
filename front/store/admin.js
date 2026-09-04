@@ -83,7 +83,7 @@ async function addValue(list, apiCall, value) {
   const { json } = await apiCall(value);
   if (!json) return null;
   const { id } = json;
-  list.value = [...list.value, { id, name: value }];
+  list.value = [...list.value, { id, name: value }].sort((a, b) => a.name.localeCompare(b.name));
   return id;
 }
 
@@ -93,7 +93,7 @@ async function updateValue(list, apiCall, id, value) {
   if (current !== null && current.name !== value) {
     validateText(value);
     await apiCall(id, value);
-    list.value = list.value.map((l) => (String(l.id) === id ? { ...l, name: value } : l));
+    list.value = list.value.map((l) => (String(l.id) === id ? { ...l, name: value } : l)).sort((a, b) => a.name.localeCompare(b.name));
   }
 }
 

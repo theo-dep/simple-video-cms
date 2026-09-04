@@ -12,17 +12,18 @@ import { OfflineWatcher } from './OfflineWatcher.js';
 
 // useLocation only work inside LocationProvider component
 function RedirectUpdater() {
-  const { path } = useLocation();
+  const { url } = useLocation();
 
   const EXCLUDED_ROUTES = ['/login', '/logout', '/reset-password', '/403'];
 
-  function isExcluded(pathname) {
-    return EXCLUDED_ROUTES.some((r) => pathname === r || pathname.startsWith(r + '/'));
+  function isExcluded(url) {
+    const path = url.split('?')[0] ?? '';
+    return EXCLUDED_ROUTES.some((r) => path === r || path.startsWith(r + '/'));
   }
 
   useEffect(() => {
-    if (!isExcluded(path)) previousRoute.value = path;
-  }, [path]);
+    if (!isExcluded(url)) previousRoute.value = url;
+  }, [url]);
 }
 
 export function App() {
