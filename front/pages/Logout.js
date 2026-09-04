@@ -3,6 +3,7 @@ import { useLocation } from 'preact-iso';
 import { api } from '../api.js';
 import { useTitle } from '../hook/useTitle.js';
 import { user, refreshRequested } from '../store/auth.js';
+import { swReady, postToServiceWorker } from '../store/sw.js';
 
 export default function Logout() {
   const { route } = useLocation();
@@ -16,6 +17,10 @@ export default function Logout() {
       user.isAdmin.value = false;
       user.name.value = '';
       user.id.value = null;
+
+      if (swReady.value) {
+        postToServiceWorker('disableVideoCaching');
+      }
 
       refreshRequested.value = true; // update the user
       route('/');
