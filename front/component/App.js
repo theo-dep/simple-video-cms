@@ -2,9 +2,9 @@ import { html } from 'htm/preact';
 import { Fragment } from 'preact';
 import { useEffect } from 'preact/hooks';
 import { LocationProvider, Router, lazy, useLocation } from 'preact-iso';
-import { firstRefreshed } from '../store/auth.js';
+import { firstRefreshed, user } from '../store/auth.js';
 import { previousRoute } from '../store/redirect.js';
-import { swReady } from '../store/sw.js';
+import { swReady, postToServiceWorker } from '../store/sw.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
 import { Redirect } from './Redirect.js';
@@ -32,6 +32,15 @@ export function App() {
   useEffect(() => {
     if (!isLoading) document.getElementById('boot-loader')?.remove();
   }, [isLoading]);
+
+  useEffect(() => {
+    if (!swReady.value) return;
+    if (user.isLogged.value) {
+      postToServiceWorker('enableVideoCaching');
+    } else {
+      postToServiceWorker('disableVideoCaching');
+    }
+  }, [swReady.value, user.isLogged.value]);
 
   useEffect(() => {
     /* global __BUILD_ENV__ */

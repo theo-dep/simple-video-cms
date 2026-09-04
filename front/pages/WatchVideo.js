@@ -1,10 +1,8 @@
 import { html } from 'htm/preact';
 import { lazy, Suspense } from 'preact/compat';
-import { useEffect } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { useTitle } from '../hook/useTitle.js';
 import { refreshed, user } from '../store/auth.js';
-import { swReady, postToServiceWorker } from '../store/sw.js';
 import { InfoContent } from '../component/InfoContent.js';
 import { UserNav } from '../component/HeaderNav.js';
 import { Footer } from '../component/Footer.js';
@@ -26,18 +24,6 @@ export default function WatchVideo({ videoId }) {
   function onLoginClicked() {
     route('/login');
   }
-
-  useEffect(() => {
-    if (!swReady.value) return;
-
-    if (user.isLogged.value) {
-      postToServiceWorker('enableVideoCaching');
-    }
-
-    return () => {
-      postToServiceWorker('disableVideoCaching');
-    };
-  }, [swReady.value, user.isLogged.value]);
 
   return html`
     <${UserNav} />
