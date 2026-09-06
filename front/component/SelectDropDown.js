@@ -251,11 +251,6 @@ const SelectDropDown = forwardRef(
           return new Set(rawOptions.filter((o) => o.defaultSelected).map((o) => o.value));
         }
         const next = new Set(prev);
-        if (!singleSelect) {
-          rawOptions.forEach((o) => {
-            if (o.defaultSelected) next.add(o.value);
-          });
-        }
         for (const v of pendingAutoSelectRef.current) {
           if (rawOptions.find((o) => o.value === v)) {
             if (singleSelect) next.clear();
