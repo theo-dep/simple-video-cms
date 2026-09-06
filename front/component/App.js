@@ -34,16 +34,18 @@ export function App() {
   }, [isLoading]);
 
   useEffect(() => {
-    if (!swReady.value) return;
-    if (user.isLogged.value) {
-      postToServiceWorker('enableVideoCaching');
-    } else {
-      postToServiceWorker('disableVideoCaching');
+    /* global __BUILD_ENV__ */
+    if (typeof __BUILD_ENV__ !== 'undefined' && __BUILD_ENV__ === 'production') {
+      if (!swReady.value) return;
+      if (user.isLogged.value) {
+        postToServiceWorker('enableVideoCaching');
+      } else {
+        postToServiceWorker('disableVideoCaching');
+      }
     }
   }, [swReady.value, user.isLogged.value]);
 
   useEffect(() => {
-    /* global __BUILD_ENV__ */
     if (typeof __BUILD_ENV__ !== 'undefined' && __BUILD_ENV__ === 'production') {
       if ('serviceWorker' in navigator) {
         // Remove old service worker (v1)

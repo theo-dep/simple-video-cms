@@ -46,6 +46,7 @@ export default function AdminUpdateVideo({ videoId }) {
   videoId = Number(videoId);
   const { route } = useLocation();
   const [title, setTitle] = useState('');
+  const [date, setDate] = useState('');
   const { results, search } = useSearch(videos.value, ['title']);
   const { isLoading: isVideoLoading } = useLoader(() => loadVideo(videoId), selectedVideo.value?.id === videoId, [videoId]);
   const { isLoading: isLocationsLoading } = useLoader(loadLocations, Array.isArray(locations.value));
@@ -63,6 +64,7 @@ export default function AdminUpdateVideo({ videoId }) {
     if (selectedVideo.value && !isVideoLoading) {
       setTitle(selectedVideo.value.title);
       search(selectedVideo.value.title);
+      setDate(selectedVideo.value.date ?? '');
     }
   }, [selectedVideo.value, isVideoLoading]);
 
@@ -90,6 +92,11 @@ export default function AdminUpdateVideo({ videoId }) {
     const value = e.target.value;
     setTitle(value);
     search(value);
+  }
+
+  function onDateInput(e) {
+    const value = e.target.value;
+    setDate(value);
   }
 
   async function onVideoSubmit(e) {
@@ -164,7 +171,8 @@ export default function AdminUpdateVideo({ videoId }) {
 
               <div class="form-control-group">
                 <${RestrictedInput}
-                  value=${selectedVideo.value?.date ?? ''}
+                  onInput=${onDateInput}
+                  value=${date}
                   name="date"
                   id="date"
                   placeholder="Video date (optional)"
