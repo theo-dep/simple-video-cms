@@ -251,11 +251,6 @@ const SelectDropDown = forwardRef(
           return new Set(rawOptions.filter((o) => o.defaultSelected).map((o) => o.value));
         }
         const next = new Set(prev);
-        if (!singleSelect) {
-          rawOptions.forEach((o) => {
-            if (o.defaultSelected) next.add(o.value);
-          });
-        }
         for (const v of pendingAutoSelectRef.current) {
           if (rawOptions.find((o) => o.value === v)) {
             if (singleSelect) next.clear();
@@ -433,29 +428,35 @@ export const MultiSelectDropDown = forwardRef(({ name, placeholder, onChange, ch
   >`;
 });
 
-export const SingleSelectEditableDropDown = forwardRef(({ name, placeholder, children, onAddedOption, onDeletedOption, onEditOption }, ref) => {
-  return html`<${SelectDropDown}
-    ref=${ref}
-    name=${name}
-    placeholder=${placeholder || 'Select item'}
-    editable
-    onAddedOption=${onAddedOption}
-    onDeletedOption=${onDeletedOption}
-    onEditOption=${onEditOption}
-    >${children}<//
-  >`;
-});
+export const SingleSelectEditableDropDown = forwardRef(
+  ({ name, placeholder, children, onChange, onAddedOption, onDeletedOption, onEditOption }, ref) => {
+    return html`<${SelectDropDown}
+      ref=${ref}
+      name=${name}
+      placeholder=${placeholder || 'Select item'}
+      editable
+      onChange=${onChange}
+      onAddedOption=${onAddedOption}
+      onDeletedOption=${onDeletedOption}
+      onEditOption=${onEditOption}
+      >${children}<//
+    >`;
+  }
+);
 
-export const MultiSelectEditableDropDown = forwardRef(({ name, placeholder, children, onAddedOption, onDeletedOption, onEditOption }, ref) => {
-  return html`<${SelectDropDown}
-    ref=${ref}
-    name=${name}
-    placeholder=${placeholder || 'Select item(s)'}
-    multiple
-    editable
-    onAddedOption=${onAddedOption}
-    onDeletedOption=${onDeletedOption}
-    onEditOption=${onEditOption}
-    >${children}<//
-  >`;
-});
+export const MultiSelectEditableDropDown = forwardRef(
+  ({ name, placeholder, children, onChange, onAddedOption, onDeletedOption, onEditOption }, ref) => {
+    return html`<${SelectDropDown}
+      ref=${ref}
+      name=${name}
+      placeholder=${placeholder || 'Select item(s)'}
+      multiple
+      editable
+      onChange=${onChange}
+      onAddedOption=${onAddedOption}
+      onDeletedOption=${onDeletedOption}
+      onEditOption=${onEditOption}
+      >${children}<//
+    >`;
+  }
+);
