@@ -18,7 +18,7 @@
     "@vitest/coverage-v8": "^4.1.9",
     "@web/rollup-plugin-html": "^4.0.0",
     "babel-plugin-htm": "^3.0.0",
-    "eslint": "^10.9.1",
+    "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
     "jsdom": "^30.0.1",
