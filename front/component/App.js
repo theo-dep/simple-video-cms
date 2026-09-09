@@ -4,7 +4,8 @@ import { useEffect } from 'preact/hooks';
 import { LocationProvider, Router, lazy, useLocation } from 'preact-iso';
 import { firstRefreshed, user } from '../store/auth.js';
 import { previousRoute } from '../store/redirect.js';
-import { swReady, postToServiceWorker } from '../store/sw.js';
+import { swReady, initWorkbox } from '../store/wb.js';
+import { enableVideoCaching, disableVideoCaching, refreshCachedVideos } from '../store/cache.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
 import { Redirect } from './Redirect.js';
@@ -34,13 +35,19 @@ export function App() {
   }, [isLoading]);
 
   useEffect(() => {
-    if (!swReady.value) return;
-    if (user.isLogged.value) {
-      postToServiceWorker('enableVideoCaching');
-    } else {
-      postToServiceWorker('disableVideoCaching');
-    }
-  }, [swReady.value, user.isLogged.value]);
+    const init = async () => {
+      await initWorkbox();
+
+      if (user.isLogged.value) {
+        enableVideoCaching();
+        await refreshCachedVideos();
+      } else {
+        disableVideoCaching();
+      }
+    };
+
+    init();
+  }, [user.isLogged.value]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -51,15 +58,6 @@ export function App() {
             reg.unregister();
           }
         });
-      });
-
-      // Scope must be "/" for clients.claim() to work without a reload:
-      // clients.claim() matches the registration scope against the client's
-      // CREATION URL (the initial navigation that loaded the document), not
-      // the current SPA route (pushState). Since this app is always loaded
-      // from "/", only scope="/" can match and grant immediate control.
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((_registration) => {
-        swReady.value = true;
       });
     }
   }, []);
@@ -75,6 +73,7 @@ export function App() {
             <${Router}>
               <${lazy(() => import('../pages/Home.js'))} path="/" />
               <${lazy(() => import('../pages/Bookmarks.js'))} path="/bookmarks" />
+              <${lazy(() => import('../pages/Downloads.js'))} path="/downloads" />
               <${lazy(() => import('../pages/Login.js'))} path="/login" />
               <${lazy(() => import('../pages/Logout.js'))} path="/logout" />
               <${lazy(() => import('../pages/ResetPassword.js'))} path="/reset-password" />

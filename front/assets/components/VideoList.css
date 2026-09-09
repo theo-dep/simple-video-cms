@@ -22,6 +22,12 @@
   width: 100%;
 }
 
+.video-list-search-aside {
+  display: inline-flex;
+  align-items: center;
+  margin: 0.5em 0.5em 0.5em auto;
+}
+
 .video-list-filters {
   display: flex;
   flex-wrap: wrap;

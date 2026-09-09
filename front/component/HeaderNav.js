@@ -65,6 +65,7 @@ export function UserNav() {
     ? [
         ...(user.isAdmin.value ? [{ href: '/admin', label: 'Admin' }] : []),
         { href: '/bookmarks', label: 'Bookmarks' },
+        { href: '/downloads', label: 'Downloads' },
         { href: '/user-account', label: 'Account' },
         { href: '/logout', label: 'Logout' },
       ]

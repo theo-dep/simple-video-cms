@@ -889,6 +889,13 @@ namespace server
         const std::string referrer{ req.get_header_value("Referer") };
         return referrer.ends_with("/video/" + su::int_to_string(video_id));
     }
+
+    // block video if not from sw.js
+    inline bool request_from_sw(const httplib::Request& req)
+    {
+        const std::string referrer{ req.get_header_value("Referer") };
+        return referrer.ends_with("/sw.js");
+    }
 }
 
 inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
@@ -899,7 +906,7 @@ inline void server::video_playlist(const httplib::Request& req, httplib::Respons
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_video(req, video_id)) {
+    if (!request_from_video(req, video_id) && !request_from_sw(req)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
@@ -933,7 +940,7 @@ inline void server::video_segment(const httplib::Request& req, httplib::Response
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_video(req, video_id)) {
+    if (!request_from_video(req, video_id) && !request_from_sw(req)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
@@ -963,7 +970,7 @@ inline void server::add_video_session(const httplib::Request& req, httplib::Resp
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_video(req, video_id)) {
+    if (!request_from_video(req, video_id) && !request_from_sw(req)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
@@ -982,7 +989,7 @@ inline void server::start_video_session(const httplib::Request& req, httplib::Re
     }
 
     const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
-    if (!request_from_video(req, video_id)) {
+    if (!request_from_video(req, video_id) && !request_from_sw(req)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
