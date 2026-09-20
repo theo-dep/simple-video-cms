@@ -165,7 +165,8 @@ int server::start()
     });
 
     const std::filesystem::path source_dir{ std::filesystem::current_path() / "../../../" };
-    server.set_mount_point("/build", (source_dir / "build/").string());
+    const std::filesystem::path build_dir{ source_dir / "build/" };
+    server.set_mount_point("/build", build_dir.string());
     server.set_mount_point("/node_modules", (source_dir / "node_modules/").string());
 
     const std::filesystem::path bundle_dir{ source_dir / "front/" };
@@ -177,6 +178,10 @@ int server::start()
     set_exception_handler(server);
 
     server
+#ifdef _DEBUG
+        .Get("/sw.js", [&build_dir](const httplib::Request& /*req*/, httplib::Response& res) { res.set_file_content((build_dir / "sw.js").string()); })
+#endif
+
         .Get("/video/:id", sc::serve(video, std::cref(bundle_dir), std::cref(db)))
         .Get(R"(.*\/manifest\.json$)", sc::serve(manifest, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*\.[^/]+$)", sc::serve(static_file, std::cref(bundle_dir)))

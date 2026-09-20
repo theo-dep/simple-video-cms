@@ -18,11 +18,8 @@ export default function Logout() {
       user.name.value = '';
       user.id.value = null;
 
-      /* global __BUILD_ENV__ */
-      if (typeof __BUILD_ENV__ !== 'undefined' && __BUILD_ENV__ === 'production') {
-        if (swReady.value) {
-          postToServiceWorker('disableVideoCaching');
-        }
+      if (swReady.value) {
+        postToServiceWorker('disableVideoCaching');
       }
 
       refreshRequested.value = true; // update the user
