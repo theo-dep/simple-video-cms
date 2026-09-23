@@ -13,10 +13,16 @@ const BOOKMARK_ROUTE_PATTERN = /^\/api\/bookmark\/\d+$/;
 const REFRESH_ROUTE_PATTERN = /^\/api\/refresh$/;
 const API_ROUTE_PATTERN = /^\/api\/.*/;
 
+const VIDEOS_VERSION = 'v1';
+const CACHE_VIDEOS = `videos-${VIDEOS_VERSION}`;
+const API_VERSION = 'v1';
+const CACHE_API = `api-${API_VERSION}`;
 const OFFLINE_CACHE_VERSION = 'v1';
-const CACHE_VIDEOS = 'videos';
 const CACHE_OFFLINE_VIDEOS = `offline-videos-${OFFLINE_CACHE_VERSION}`;
 const CACHE_OFFLINE_META = `offline-videos-meta-${OFFLINE_CACHE_VERSION}`;
+
+// Caches kept across versions, all others are deleted on activation
+const EXPECTED_CACHES = [cacheNames.precache, CACHE_VIDEOS, CACHE_API, CACHE_OFFLINE_VIDEOS, CACHE_OFFLINE_META, 'thumbnails', 'index'];
 
 const isVideoRoute = (url) => VIDEO_ROUTE_PATTERN.some((p) => p.test(url.pathname));
 const isThumbnailRoute = (url) => THUMBNAIL_ROUTE_PATTERN.test(url.pathname);
@@ -411,6 +417,21 @@ clientsClaim();
   }
 })();
 
+// Delete caches left behind by a previous version (e.g. 'videos-v1' after a bump)
+async function cleanupObsoleteCaches() {
+  const expected = new Set(EXPECTED_CACHES);
+  for (const name of await caches.keys()) {
+    if (!expected.has(name)) {
+      await caches.delete(name);
+      await log('log', `Deleted obsolete cache: ${name}`);
+    }
+  }
+}
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(cleanupObsoleteCaches());
+});
+
 precache(self.__WB_MANIFEST);
 
 // assets: CacheOnly, on the precache cache workbox already filled
@@ -476,7 +497,7 @@ registerRoute(
 registerRoute(
   ({ url }) => isRefreshRoute(url),
   new NetworkFirst({
-    cacheName: 'api',
+    cacheName: CACHE_API,
     networkTimeoutSeconds: 3,
     plugins: [
       {
@@ -490,7 +511,7 @@ registerRoute(
 registerRoute(
   ({ url }) => isAPIRoute(url) && !isRefreshRoute(url) && !isVideoRoute(url) && !isThumbnailRoute(url),
   new NetworkFirst({
-    cacheName: 'api',
+    cacheName: CACHE_API,
     networkTimeoutSeconds: 7,
     plugins: [
       {
