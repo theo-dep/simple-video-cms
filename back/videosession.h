@@ -17,9 +17,11 @@ public:
     VideoSession(VideoSession&&) = delete;
     VideoSession& operator=(VideoSession&&) = delete;
 
-    void add_session(const std::string& session_id, const std::string& video_id);
+    // Creates a session and returns its id
+    const std::string& add_session(const std::string& video_id);
     void start_session(const std::string& session_id, const std::string& video_id);
     void reset_session(const std::string& session_id, const std::string& video_id);
+    void clear_session(const std::string& session_id, const std::string& video_id);
 
     bool validate_segment_access(const std::string& session_id, const std::string& video_id, const std::string& segment);
 

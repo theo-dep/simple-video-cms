@@ -1,5 +1,6 @@
 #include "videosession.h"
 
+#include "crypto.h"
 #include "logging.h"
 #include "stringutils.h"
 
@@ -27,17 +28,20 @@ struct std::formatter<VideoSession::State> : std::formatter<std::string>
     }
 };
 
-void VideoSession::add_session(const std::string& session_id, const std::string& video_id)
+const std::string& VideoSession::add_session(const std::string& video_id)
 {
     clean_expired_sessions({});
 
     const std::unique_lock lock(_mutex);
 
-    const Key key{ .session_id = session_id, .video_id = video_id };
+    // A fresh session per call
+    const Key key{ .session_id = crypto::random_string(), .video_id = video_id };
     State& state{ _sessions[key] };
     state = State{}; // reset
 
     logging::debug{ "new session created {} <=> {}", key, state };
+
+    return _sessions.find(key)->first.session_id;
 }
 
 void VideoSession::start_session(const std::string& session_id, const std::string& video_id)
@@ -70,6 +74,17 @@ void VideoSession::reset_session(const std::string& session_id, const std::strin
 
     session->second.sink_count = 0;
     session->second.last_segment = -1;
+}
+
+void VideoSession::clear_session(const std::string& session_id, const std::string& video_id)
+{
+    clean_expired_sessions({});
+
+    const std::unique_lock lock(_mutex);
+
+    const Key key{ .session_id = session_id, .video_id = video_id };
+    _sessions.erase(key);
+    logging::debug{ "session cleared {}", key };
 }
 
 bool VideoSession::validate_segment_access(const std::string& session_id, const std::string& video_id, const std::string& segment)

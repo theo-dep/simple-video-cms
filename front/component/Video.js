@@ -43,20 +43,30 @@ export default function Video({ videoId }) {
     // player.mobileUi();
     player.ytStyle();
 
-    player.src({
-      src: api.videoPlaylistPath(videoId),
-      type: 'application/x-mpegURL',
-    });
+    let videoSession = null;
+    async function ensureVideoSession() {
+      if (!videoSession) {
+        const response = await api.addVideoSession(videoId).catch((err) => console.error(err));
+        videoSession = response?.json?.session ?? null;
+      }
+      return videoSession;
+    }
 
-    player.on('ready', async () => {
-      await api.addVideoSession(videoId).catch((err) => console.error(err));
-    });
+    (async () => {
+      // the video session must exist before any segment request
+      await ensureVideoSession();
+      player.src({
+        src: api.videoPlaylistPath(videoId),
+        type: 'application/x-mpegURL',
+      });
+    })();
 
     let isSessionStarted = false;
     player.on('play', async () => {
       if (!isSessionStarted) {
         isSessionStarted = true;
-        await api.startVideoSession(videoId).catch((err) => console.error(err));
+        const session = await ensureVideoSession();
+        if (session) await api.startVideoSession(videoId, session).catch((err) => console.error(err));
       }
     });
 
@@ -73,6 +83,10 @@ export default function Video({ videoId }) {
       originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
 
       player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
+        if (videoSession) {
+          options.headers = { ...options.headers, 'X-Video-Session': videoSession };
+        }
+
         if (isSeeking && options.uri?.endsWith('.ts')) {
           lastBlocked = { options, callback };
           return {
@@ -86,7 +100,7 @@ export default function Video({ videoId }) {
     });
 
     async function onSeekEnd() {
-      await api.resetVideoSession(videoId).catch((err) => console.error(err));
+      if (videoSession) await api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
       isSeeking = false;
 
       if (lastBlocked && originalVhsXhr) {
@@ -96,7 +110,7 @@ export default function Video({ videoId }) {
     }
 
     player.on('seeking', () => {
-      if (videojs.browser.IS_IOS) api.resetVideoSession(videoId).catch((err) => console.error(err));
+      if (videojs.browser.IS_IOS && videoSession) api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
 
       isSeeking = true;
       clearTimeout(debounce);
@@ -104,6 +118,8 @@ export default function Video({ videoId }) {
     });
 
     return () => {
+      if (videoSession) api.clearVideoSession(videoId, videoSession).catch((err) => console.error(err));
+
       if (playerRef.current) {
         playerRef.current.dispose();
         playerRef.current = null;

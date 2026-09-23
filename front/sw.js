@@ -191,6 +191,7 @@ async function getStorageInfo() {
 
 // Add a video to the offline cache by downloading its playlist and all segments
 async function addVideoToOfflineCache({ id, title }) {
+  let session = null;
   try {
     const cache = await caches.open(CACHE_OFFLINE_VIDEOS);
     const metaCache = await caches.open(CACHE_OFFLINE_META);
@@ -225,12 +226,19 @@ async function addVideoToOfflineCache({ id, title }) {
     // 5. Estimate total size by downloading segments
     let totalSize = playlistContent.length;
 
-    // 6. Enable video session
-    await fetch(`/api/add-video-session/${id}`, { method: 'POST' });
-    await fetch(`/api/start-video-session/${id}`, { method: 'POST' });
+    // 6. Enable video session (distinct from the player session)
+    const sessionResponse = await fetch(`/api/add-video-session/${id}`, { method: 'POST' });
+    session = (await sessionResponse.json().catch(() => null))?.session;
+    if (!session) {
+      throw new Error('Failed to create video session');
+    }
+    await fetch(`/api/start-video-session/${id}`, {
+      method: 'POST',
+      body: new URLSearchParams({ session }),
+    });
 
     for (const segmentUrl of segmentUrls) {
-      const response = await fetch(segmentUrl, { method: 'HEAD' });
+      const response = await fetch(segmentUrl, { method: 'HEAD', headers: { 'X-Video-Session': session } });
       if (!response.ok) {
         throw new Error(`Segment HEAD request failed: ${segmentUrl}`);
       }
@@ -248,7 +256,7 @@ async function addVideoToOfflineCache({ id, title }) {
 
     // 9. Cache all segments
     for (const segmentUrl of segmentUrls) {
-      const response = await fetch(segmentUrl);
+      const response = await fetch(segmentUrl, { headers: { 'X-Video-Session': session } });
       if (!response.ok) {
         throw new Error(`Segment download failed: ${segmentUrl}`);
       }
@@ -272,6 +280,15 @@ async function addVideoToOfflineCache({ id, title }) {
   } catch (error) {
     await log('error', `Failed to add video ${id} to offline cache:`, error?.message);
     throw error;
+  } finally {
+    // Clear the server-side video session used for the download.
+    // Fire and forget: a failure here must not mask the download outcome.
+    if (session) {
+      fetch(`/api/clear-video-session/${id}`, {
+        method: 'POST',
+        body: new URLSearchParams({ session }),
+      }).catch(() => {});
+    }
   }
 }
 

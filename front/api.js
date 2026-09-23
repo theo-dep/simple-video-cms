@@ -91,8 +91,9 @@ export const api = {
   bookmark: (videoId, bookmarked) => fetchApi('POST', `/bookmark/${videoId}`, new URLSearchParams({ bookmarked })),
 
   addVideoSession: (videoId) => fetchApi('POST', `/add-video-session/${videoId}`),
-  startVideoSession: (videoId) => fetchApi('POST', `/start-video-session/${videoId}`),
-  resetVideoSession: (videoId) => fetchApi('POST', `/reset-video-session/${videoId}`),
+  startVideoSession: (videoId, session) => fetchApi('POST', `/start-video-session/${videoId}`, new URLSearchParams({ session })),
+  resetVideoSession: (videoId, session) => fetchApi('POST', `/reset-video-session/${videoId}`, new URLSearchParams({ session })),
+  clearVideoSession: (videoId, session) => fetchApi('POST', `/clear-video-session/${videoId}`, new URLSearchParams({ session })),
 
   adminStats: () => fetchApi('GET', '/admin/stats'),
 
