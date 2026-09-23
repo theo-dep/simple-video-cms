@@ -1,4 +1,4 @@
-import { BackgroundSyncPlugin } from 'workbox-background-sync';
+import { Queue } from 'workbox-background-sync';
 import { cacheNames, clientsClaim } from 'workbox-core';
 import { precache, getCacheKeyForURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
@@ -76,6 +76,14 @@ self.addEventListener('message', async (event) => {
         event.ports[0].postMessage({
           type: 'removeFromOfflineCacheResponse',
           data: { success: true, id: payload.id },
+        });
+        break;
+
+      case 'replayBookmarks':
+        await replayBookmarkQueue();
+        event.ports[0].postMessage({
+          type: 'replayBookmarksResponse',
+          data: { success: true },
         });
         break;
 
@@ -413,6 +421,35 @@ async function getAutoCachedVideos() {
   return videos;
 }
 
+// Handle on the queue because Background Sync can silently refuse to fire
+// ('sync' registration denied, or never triggered on simulated offline)
+const bookmarkQueue = new Queue('bookmarkQueue', {
+  maxRetentionTime: 24 * 60, // retry for max of 24 hours (specified in minutes)
+});
+
+const bookmarkSyncPlugin = {
+  fetchDidFail: async ({ request }) => {
+    await bookmarkQueue.pushRequest({ request });
+  },
+};
+
+let bookmarkReplayInProgress = false;
+
+async function replayBookmarkQueue() {
+  if (bookmarkReplayInProgress) return;
+  const size = await bookmarkQueue.size();
+  if (!size) return;
+  bookmarkReplayInProgress = true;
+  try {
+    await bookmarkQueue.replayRequests();
+    await log('log', `Replayed ${size} queued bookmark request(s)`);
+  } catch (error) {
+    await log('log', `Bookmark queue replay deferred:`, error?.message);
+  } finally {
+    bookmarkReplayInProgress = false;
+  }
+}
+
 // The user confirms the update, do not skipWaiting() automatically
 clientsClaim();
 
@@ -439,6 +476,9 @@ clientsClaim();
     await log('error', 'Failed to initialize offline cache:', error?.message);
   }
 })();
+
+// Drain the queue on SW cold start
+void replayBookmarkQueue();
 
 // Delete caches left behind by a previous version (e.g. 'videos-v1' after a bump)
 async function cleanupObsoleteCaches() {
@@ -530,9 +570,24 @@ registerRoute(
   })
 );
 
-// API (non video/thumbnail/refresh): NetworkFirst
+// bookmark POST: NetworkOnly, queued for replay on failure
 registerRoute(
-  ({ url }) => isAPIRoute(url) && !isRefreshRoute(url) && !isVideoRoute(url) && !isThumbnailRoute(url),
+  ({ url }) => isBookmarkRoute(url),
+  new NetworkOnly({
+    plugins: [
+      bookmarkSyncPlugin,
+      {
+        handlerDidError: logPlugin('bookmark').handlerDidError,
+      },
+    ],
+  }),
+  'POST'
+);
+
+// API: NetworkFirst (last API catch-all)
+registerRoute(
+  ({ url }) =>
+    isAPIRoute(url) && !isRefreshRoute(url) && !isVideoRoute(url) && !isThumbnailRoute(url) && !isBookmarkRoute(url),
   new NetworkFirst({
     cacheName: CACHE_API,
     networkTimeoutSeconds: 7,
@@ -542,22 +597,6 @@ registerRoute(
       },
     ],
   })
-);
-
-// API POST (bookmark): allow background sync
-registerRoute(
-  ({ url }) => isBookmarkRoute(url),
-  new NetworkOnly({
-    plugins: [
-      new BackgroundSyncPlugin('bookmarkQueue', {
-        maxRetentionTime: 24 * 60, // retry for max of 24 Hours (specified in minutes)
-      }),
-      {
-        handlerDidError: logPlugin('bookmark').handlerDidError,
-      },
-    ],
-  }),
-  'POST'
 );
 
 // SPA navigations: NetworkFirst with a bounded timeout, cached shell fallback.
