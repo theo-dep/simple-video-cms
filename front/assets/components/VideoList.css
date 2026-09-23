@@ -23,9 +23,12 @@
 }
 
 .video-list-search-aside {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  margin: 0.5em 0.5em 0.5em auto;
+  gap: 0.5em;
+  flex: 1 1 100%;
+  margin: 0.5em;
 }
 
 .video-list-filters {
@@ -55,6 +58,11 @@
 @media only screen and (min-width: 48em) {
   .video-list-search-input {
     flex: 0 0 auto;
+  }
+
+  .video-list-search-aside {
+    flex: 0 0 auto;
+    margin: 0.5em 0.5em 0.5em auto;
   }
 }
 
@@ -97,6 +105,20 @@
   aspect-ratio: 16 / 9;
   overflow: hidden;
   position: relative;
+}
+
+.video-card-badge {
+  position: absolute;
+  bottom: 0.5em;
+  left: 0.5em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--color-text);
+  background: var(--color-shadow-overlay);
+  pointer-events: none;
 }
 
 .video-card-thumb img,

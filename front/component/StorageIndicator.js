@@ -1,6 +1,7 @@
 import { html } from 'htm/preact';
 import { useEffect } from 'preact/hooks';
-import { refreshStorageInfo, formatBytes, cache } from '../store/cache.js';
+import { refreshStorageInfo, cache } from '../store/cache.js';
+import { formatBytes } from '../utils/formatBytes.js';
 import { swReady } from '../store/wb.js';
 import { Icon } from './Icon.js';
 

@@ -11,7 +11,6 @@ import { ShareButton } from '../component/ShareButton.js';
 import { BookmarkButton } from '../component/BookmarkButton.js';
 import { CacheVideoButton } from '../component/CacheVideoButton.js';
 import { Icon } from '../component/Icon.js';
-import { api } from '../api.js';
 
 // video.js can be long to load
 const Video = lazy(() => import('../component/Video.js'));
@@ -41,7 +40,7 @@ export default function WatchVideo({ videoId }) {
                   <${Video} videoId=${videoId} />
                   <div class="video-footer-content">
                     <div class="video-footer-right-content">
-                      <${CacheVideoButton} id=${video.id} url=${api.videoPlaylistPath(video.id)} title=${video.title} location="video" />
+                      <${CacheVideoButton} id=${video.id} title=${video.title} location="video" />
                       <${BookmarkButton} videoId=${video.id} isBookmarked=${video.bookmarked} location="video" />
                       <${ShareButton} />
                     </div>

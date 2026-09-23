@@ -3,6 +3,7 @@ import { swReady, messageSW } from './wb.js';
 
 // State for cached videos
 const cachedVideos = signal([]);
+const autoCachedVideos = signal([]);
 const storageInfo = signal(null);
 
 // Map for quick access
@@ -29,8 +30,12 @@ export async function refreshCachedVideos() {
   if (!swReady.value) return;
 
   try {
-    const response = await messageSW({ type: 'getAllCachedVideos' });
-    cachedVideos.value = response?.data?.videos || [];
+    const [offlineResponse, autoResponse] = await Promise.all([
+      messageSW({ type: 'getAllCachedVideos' }),
+      messageSW({ type: 'getAutoCachedVideos' }),
+    ]);
+    cachedVideos.value = offlineResponse?.data?.videos || [];
+    autoCachedVideos.value = autoResponse?.data?.videos || [];
   } catch (error) {
     console.error('Error refreshing cached videos:', error);
   }
@@ -42,7 +47,9 @@ export async function refreshStorageInfo() {
 
   try {
     const response = await messageSW({ type: 'getStorageInfo' });
-    storageInfo.value = response?.data?.storageInfo;
+    if (response?.data?.storageInfo) {
+      storageInfo.value = response.data.storageInfo;
+    }
   } catch (error) {
     console.error('Error refreshing storage info:', error);
   }
@@ -60,6 +67,7 @@ export async function addVideoToOfflineCache(id, title) {
 
     if (response?.data?.success) {
       await refreshCachedVideos();
+      await refreshStorageInfo();
     } else {
       throw new Error(response?.data?.error || 'Failed to add video');
     }
@@ -79,23 +87,50 @@ export async function removeVideoFromOfflineCache(id) {
       payload: { id },
     });
     await refreshCachedVideos();
+    await refreshStorageInfo();
   } catch (error) {
     console.error('Error removing video from cache:', error);
     throw error;
   }
 }
 
-// Format bytes size
-export function formatBytes(bytes) {
-  if (bytes === 0 || !bytes) return '0 bytes';
-  const k = 1024;
-  const sizes = ['bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+// Clear the video caches (cached videos)
+export async function clearCachedVideos() {
+  if (!swReady.value) return;
+
+  try {
+    const response = await messageSW({ type: 'clearCachedVideos' });
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.error || 'Failed to clear video cache');
+    }
+    await refreshCachedVideos();
+    await refreshStorageInfo();
+  } catch (error) {
+    console.error('Error clearing video cache:', error);
+    throw error;
+  }
+}
+
+// Clear the offline-video cache (downloaded videos)
+export async function clearDownloadedVideos() {
+  if (!swReady.value) return;
+
+  try {
+    const response = await messageSW({ type: 'clearDownloadedVideos' });
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.error || 'Failed to clear offline-video cache');
+    }
+    await refreshCachedVideos();
+    await refreshStorageInfo();
+  } catch (error) {
+    console.error('Error clearing offline-video cache:', error);
+    throw error;
+  }
 }
 
 // Exporter le state
 export const cache = {
   videos: cachedVideos,
+  autoVideos: autoCachedVideos,
   storageInfo,
 };

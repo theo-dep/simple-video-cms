@@ -3,6 +3,7 @@ import { cacheNames, clientsClaim } from 'workbox-core';
 import { precache, getCacheKeyForURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { CacheOnly, StaleWhileRevalidate, CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
+import { formatBytes } from './utils/formatBytes.js';
 
 const VIDEO_PLAYLIST_PATTERN = /^\/api\/video\/(\d+)\/playlist$/;
 const VIDEO_SEGMENT_PATTERN = /^\/api\/video\/(\d+)\/\d+_\d+\.ts$/;
@@ -13,6 +14,7 @@ const REFRESH_ROUTE_PATTERN = /^\/api\/refresh$/;
 const API_ROUTE_PATTERN = /^\/api\/.*/;
 
 const OFFLINE_CACHE_VERSION = 'v1';
+const CACHE_VIDEOS = 'videos';
 const CACHE_OFFLINE_VIDEOS = `offline-videos-${OFFLINE_CACHE_VERSION}`;
 const CACHE_OFFLINE_META = `offline-videos-meta-${OFFLINE_CACHE_VERSION}`;
 
@@ -75,6 +77,16 @@ self.addEventListener('message', async (event) => {
         }
         break;
 
+      case 'getAutoCachedVideos':
+        {
+          const videos = await getAutoCachedVideos();
+          event.ports[0].postMessage({
+            type: 'getAutoCachedVideosResponse',
+            data: { videos },
+          });
+        }
+        break;
+
       case 'getStorageInfo':
         {
           const storageInfo = await getStorageInfo();
@@ -83,6 +95,29 @@ self.addEventListener('message', async (event) => {
             data: { storageInfo },
           });
         }
+        break;
+
+      case 'clearCachedVideos':
+        await clearCachedVideos();
+        event.ports[0].postMessage({
+          type: 'clearCachedVideosResponse',
+          data: { success: true },
+        });
+        break;
+
+      case 'clearDownloadedVideos':
+        await clearDownloadedVideos();
+        event.ports[0].postMessage({
+          type: 'clearDownloadedVideosResponse',
+          data: { success: true },
+        });
+        break;
+
+      default:
+        event.ports[0].postMessage({
+          type: `${type}Response`,
+          data: { success: false, error: `Unknown message type: ${type}` },
+        });
         break;
     }
   } catch (error) {
@@ -122,21 +157,29 @@ function extractVideoIdFromUrl(url) {
   return null;
 }
 
-function formatBytes(bytes) {
-  if (bytes === 0) return '0 bytes';
-  const k = 1024;
-  const sizes = ['bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+// Exact cache usage: navigator.storage.estimate() updates asynchronously
+// after cache deletions, so sum the stored entries ourselves
+async function getCacheUsage() {
+  let usage = 0;
+  for (const name of await caches.keys()) {
+    const cache = await caches.open(name);
+    for (const request of await cache.keys()) {
+      const response = await cache.match(request);
+      if (!response) continue;
+      const length = parseInt(response.headers.get('content-length') || '0');
+      usage += length || (await response.arrayBuffer()).byteLength;
+    }
+  }
+  return usage;
 }
 
 async function getStorageInfo() {
-  const estimate = await navigator.storage.estimate();
+  const [estimate, usage] = await Promise.all([navigator.storage.estimate(), getCacheUsage()]);
   return {
     quota: estimate.quota,
-    usage: estimate.usage,
-    available: estimate.quota - estimate.usage,
-    percentageUsed: Math.round((estimate.usage / estimate.quota) * 100),
+    usage,
+    available: estimate.quota - usage,
+    percentageUsed: Math.round((usage / estimate.quota) * 100),
   };
 }
 
@@ -175,7 +218,6 @@ async function addVideoToOfflineCache({ id, title }) {
 
     // 5. Estimate total size by downloading segments
     let totalSize = playlistContent.length;
-    const segmentResponses = [];
 
     // 6. Enable video session
     await fetch(`/api/add-video-session/${id}`, { method: 'POST' });
@@ -205,7 +247,6 @@ async function addVideoToOfflineCache({ id, title }) {
         throw new Error(`Segment download failed: ${segmentUrl}`);
       }
       await cache.put(segmentUrl, response.clone());
-      segmentResponses.push(response);
     }
 
     // 10. Store metadata
@@ -258,6 +299,20 @@ async function removeVideoFromOfflineCache({ id }) {
   }
 }
 
+// Remove the video caches (cached videos)
+async function clearCachedVideos() {
+  await caches.delete(CACHE_VIDEOS);
+  await log('log', `Cleared video cache`);
+}
+
+// Remove the offline-video cache (downloaded videos)
+async function clearDownloadedVideos() {
+  offlineVideoIds.clear();
+  await caches.delete(CACHE_OFFLINE_VIDEOS);
+  await caches.delete(CACHE_OFFLINE_META);
+  await log('log', `Cleared offline-video cache`);
+}
+
 // Synchronous check if video is in offline cache
 function isVideoCachedSync(id) {
   return offlineVideoIds.has(id);
@@ -280,6 +335,52 @@ async function getAllCachedVideos() {
       }
     }
   }
+  return videos;
+}
+
+// Videos automatically cached by the videos CacheFirst strategy, derived from
+// the cached playlist and segment URLs (this cache stores no metadata)
+async function getAutoCachedVideos() {
+  const cache = await caches.open(CACHE_VIDEOS);
+  const requests = await cache.keys();
+
+  const segmentCountById = new Map();
+  const playlistUrlById = new Map();
+
+  for (const request of requests) {
+    const url = new URL(request.url);
+    if (!isVideoRoute(url)) continue;
+    const id = extractVideoIdFromUrl(url);
+    if (!id) continue;
+    if (VIDEO_PLAYLIST_PATTERN.test(url.pathname)) {
+      playlistUrlById.set(id, request.url);
+    } else {
+      segmentCountById.set(id, (segmentCountById.get(id) ?? 0) + 1);
+    }
+  }
+
+  const videos = [];
+  for (const [id, playlistUrl] of playlistUrlById) {
+    let totalSegments = null;
+    const playlistResponse = await cache.match(playlistUrl);
+    if (playlistResponse) {
+      const content = await playlistResponse.text();
+      totalSegments = content.split('\n').filter((line) => line.trim() && !line.startsWith('#')).length;
+    }
+    videos.push({
+      id,
+      cachedSegments: segmentCountById.get(id) ?? 0,
+      totalSegments,
+    });
+  }
+
+  // Segments without a cached playlist (should not happen, kept for robustness)
+  for (const [id, cachedSegments] of segmentCountById) {
+    if (!playlistUrlById.has(id)) {
+      videos.push({ id, cachedSegments, totalSegments: null });
+    }
+  }
+
   return videos;
 }
 
@@ -366,7 +467,7 @@ class GatedCacheFirst extends CacheFirst {
 registerRoute(
   ({ url }) => isVideoRoute(url),
   new GatedCacheFirst({
-    cacheName: 'videos',
+    cacheName: CACHE_VIDEOS,
     plugins: [logPlugin('video')],
   })
 );

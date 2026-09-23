@@ -12,16 +12,40 @@ import { VideoThumbnail } from '../component/VideoThumbnail.js';
 import { BookmarkButton } from '../component/BookmarkButton.js';
 import { CacheVideoButton } from '../component/CacheVideoButton.js';
 import { Icon } from '../component/Icon.js';
-import { api } from '../api.js';
+import { cache, refreshCachedVideos } from '../store/cache.js';
+import { swReady } from '../store/wb.js';
 
 function unique(items) {
   return [...new Set(items)].sort();
 }
 
+// Add a cache badge to videos present in the offline or auto video caches.
+// Offline downloads take priority when a video is in both caches.
+export function withCacheBadges(videos, offlineVideos, autoVideos) {
+  const offlineIds = new Set(offlineVideos.map((v) => v.id));
+  const autoIds = new Set(autoVideos.map((v) => v.id));
+  return videos.map((v) => {
+    if (offlineIds.has(v.id)) return { ...v, badge: 'downloaded', badgeLabel: 'Downloaded' };
+    if (autoIds.has(v.id)) return { ...v, badge: 'cached', badgeLabel: 'Cached' };
+    return v;
+  });
+}
+
 export function VideoList({ title, videos, searchAside }) {
   const { path, query, route } = useLocation();
 
-  const { results, search } = useSearch(videos, ['title', 'date', 'location', 'authors', 'tags']);
+  useEffect(() => {
+    if (swReady.value) {
+      refreshCachedVideos();
+    }
+  }, [swReady.value]);
+
+  const badgedVideos = useMemo(
+    () => withCacheBadges(videos, cache.videos.value, cache.autoVideos.value),
+    [videos, cache.videos.value, cache.autoVideos.value]
+  );
+
+  const { results, search } = useSearch(badgedVideos, ['title', 'date', 'location', 'authors', 'tags']);
 
   const [titles, setTitles] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -34,10 +58,10 @@ export function VideoList({ title, videos, searchAside }) {
   const authorFilterRef = useRef(null);
   const tagFilterRef = useRef(null);
 
-  const titleOptions = useMemo(() => unique(videos.map((v) => v.title).filter(Boolean)), [videos]);
-  const locationOptions = useMemo(() => unique(videos.map((v) => v.location).filter(Boolean)), [videos]);
-  const authorOptions = useMemo(() => unique(videos.flatMap((v) => v.authors ?? [])), [videos]);
-  const tagOptions = useMemo(() => unique(videos.flatMap((v) => v.tags ?? [])), [videos]);
+  const titleOptions = useMemo(() => unique(badgedVideos.map((v) => v.title).filter(Boolean)), [badgedVideos]);
+  const locationOptions = useMemo(() => unique(badgedVideos.map((v) => v.location).filter(Boolean)), [badgedVideos]);
+  const authorOptions = useMemo(() => unique(badgedVideos.flatMap((v) => v.authors ?? [])), [badgedVideos]);
+  const tagOptions = useMemo(() => unique(badgedVideos.flatMap((v) => v.tags ?? [])), [badgedVideos]);
 
   useEffect(() => {
     setTitles(query?.titles ? query.titles.split(';').filter((t) => titleOptions.includes(t)) : []);
@@ -179,12 +203,13 @@ export function VideoList({ title, videos, searchAside }) {
             <a key=${v.id} href=${'/video/' + v.id} class="video-card">
               <div class="video-card-thumb">
                 <${VideoThumbnail} id=${v.id} title=${v.title} priority=${i < 4} />
+                ${v.badge && html`<span class="video-card-badge">${v.badgeLabel}</span>`}
                 ${
                   user.isLogged.value &&
                   html`
                     <div class="video-card-actions">
                       <${BookmarkButton} videoId=${v.id} isBookmarked=${v.bookmarked} location="home" />
-                      <${CacheVideoButton} id=${v.id} url=${api.videoPlaylistPath(v.id)} title=${v.title} location="home" />
+                      <${CacheVideoButton} id=${v.id} title=${v.title} location="home" />
                     </div>
                   `
                 }

@@ -4,7 +4,7 @@ import { ToggleIconButton } from './ToggleIconButton.js';
 import { addVideoToOfflineCache, removeVideoFromOfflineCache, isVideoCached, cache } from '../store/cache.js';
 import { swReady } from '../store/wb.js';
 
-export function CacheVideoButton({ id, url, title, location }) {
+export function CacheVideoButton({ id, title, location }) {
   const [loading, setLoading] = useState(false);
   const [cached, setCached] = useState(false);
   const [error, setError] = useState(null);
