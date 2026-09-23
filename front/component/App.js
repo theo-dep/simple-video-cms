@@ -4,7 +4,7 @@ import { useEffect } from 'preact/hooks';
 import { LocationProvider, Router, lazy, useLocation } from 'preact-iso';
 import { firstRefreshed, user } from '../store/auth.js';
 import { previousRoute } from '../store/redirect.js';
-import { swReady, initWorkbox } from '../store/wb.js';
+import { swReady, swControllerVersion, initWorkbox } from '../store/wb.js';
 import { enableVideoCaching, disableVideoCaching, refreshCachedVideos } from '../store/cache.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
@@ -47,7 +47,8 @@ export function App() {
     };
 
     init();
-  }, [user.isLogged.value]);
+    // Re-run when a new service worker takes control mid-session
+  }, [user.isLogged.value, swControllerVersion.value]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {

@@ -16,7 +16,7 @@ export function ClearCacheButton() {
 
 export function ClearDownloadButton() {
   async function clear() {
-    const message = 'Remove all downloaded videos?';
+    const message = 'Clear all downloaded videos?';
     if (!(await confirm(message))) return;
 
     await clearDownloadedVideos();

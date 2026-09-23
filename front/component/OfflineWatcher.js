@@ -1,12 +1,23 @@
 import { html } from 'htm/preact';
 import { useEffect } from 'preact/hooks';
 import { apiOffline } from '../store/offline.js';
+import { messageSW } from '../store/wb.js';
+
+// Replay bookmark requests the SW queued while offline
+async function replayQueuedBookmarks() {
+  try {
+    await messageSW({ type: 'replayBookmarks' });
+  } catch {
+    // no reachable service worker: nothing to replay
+  }
+}
 
 export function OfflineWatcher() {
   useEffect(() => {
     const handleApiOnline = () => {
       apiOffline.value = false;
       dispatchEvent(new CustomEvent('retry-fetches'));
+      void replayQueuedBookmarks();
     };
 
     const handleApiOffline = () => {
@@ -18,6 +29,8 @@ export function OfflineWatcher() {
         apiOffline.value = true;
       }
     };
+
+    void replayQueuedBookmarks();
 
     addEventListener('api-offline', handleApiOffline);
     addEventListener('unhandledrejection', handleRejection);

@@ -21,13 +21,19 @@ function unique(items) {
 
 // Add a cache badge to videos present in the offline or auto video caches.
 // Offline downloads take priority when a video is in both caches.
+// Auto-cached videos missing some segments are badged as partially cached;
+// videos with an unknown segment total (playlist not cached) stay "Cached".
 export function withCacheBadges(videos, offlineVideos, autoVideos) {
   const offlineIds = new Set(offlineVideos.map((v) => v.id));
-  const autoIds = new Set(autoVideos.map((v) => v.id));
+  const autoById = new Map(autoVideos.map((v) => [v.id, v]));
   return videos.map((v) => {
     if (offlineIds.has(v.id)) return { ...v, badge: 'downloaded', badgeLabel: 'Downloaded' };
-    if (autoIds.has(v.id)) return { ...v, badge: 'cached', badgeLabel: 'Cached' };
-    return v;
+    const auto = autoById.get(v.id);
+    if (!auto) return v;
+    const partial = auto.totalSegments != null && (auto.cachedSegments ?? 0) < auto.totalSegments;
+    return partial
+      ? { ...v, badge: 'partial-cached', badgeLabel: 'Partially cached' }
+      : { ...v, badge: 'cached', badgeLabel: 'Cached' };
   });
 }
 

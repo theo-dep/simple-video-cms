@@ -1,4 +1,4 @@
-import { BackgroundSyncPlugin } from 'workbox-background-sync';
+import { Queue } from 'workbox-background-sync';
 import { cacheNames, clientsClaim } from 'workbox-core';
 import { precache, getCacheKeyForURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
@@ -41,6 +41,12 @@ let videoCachingEnabled = false;
 const offlineVideoIds = new Set();
 
 self.addEventListener('message', async (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    await log('log', 'Updated Service Worker skipping waiting');
+    self.skipWaiting();
+    return;
+  }
+
   if (!event.data?.type || !event.ports?.[0]) return;
 
   const { type, payload } = event.data;
@@ -70,6 +76,14 @@ self.addEventListener('message', async (event) => {
         event.ports[0].postMessage({
           type: 'removeFromOfflineCacheResponse',
           data: { success: true, id: payload.id },
+        });
+        break;
+
+      case 'replayBookmarks':
+        await replayBookmarkQueue();
+        event.ports[0].postMessage({
+          type: 'replayBookmarksResponse',
+          data: { success: true },
         });
         break;
 
@@ -407,7 +421,36 @@ async function getAutoCachedVideos() {
   return videos;
 }
 
-self.skipWaiting();
+// Handle on the queue because Background Sync can silently refuse to fire
+// ('sync' registration denied, or never triggered on simulated offline)
+const bookmarkQueue = new Queue('bookmarkQueue', {
+  maxRetentionTime: 24 * 60, // retry for max of 24 hours (specified in minutes)
+});
+
+const bookmarkSyncPlugin = {
+  fetchDidFail: async ({ request }) => {
+    await bookmarkQueue.pushRequest({ request });
+  },
+};
+
+let bookmarkReplayInProgress = false;
+
+async function replayBookmarkQueue() {
+  if (bookmarkReplayInProgress) return;
+  const size = await bookmarkQueue.size();
+  if (!size) return;
+  bookmarkReplayInProgress = true;
+  try {
+    await bookmarkQueue.replayRequests();
+    await log('log', `Replayed ${size} queued bookmark request(s)`);
+  } catch (error) {
+    await log('log', `Bookmark queue replay deferred:`, error?.message);
+  } finally {
+    bookmarkReplayInProgress = false;
+  }
+}
+
+// The user confirms the update, do not skipWaiting() automatically
 clientsClaim();
 
 // Initialize offline video IDs set from existing cache
@@ -433,6 +476,9 @@ clientsClaim();
     await log('error', 'Failed to initialize offline cache:', error?.message);
   }
 })();
+
+// Drain the queue on SW cold start
+void replayBookmarkQueue();
 
 // Delete caches left behind by a previous version (e.g. 'videos-v1' after a bump)
 async function cleanupObsoleteCaches() {
@@ -524,9 +570,24 @@ registerRoute(
   })
 );
 
-// API (non video/thumbnail/refresh): NetworkFirst
+// bookmark POST: NetworkOnly, queued for replay on failure
 registerRoute(
-  ({ url }) => isAPIRoute(url) && !isRefreshRoute(url) && !isVideoRoute(url) && !isThumbnailRoute(url),
+  ({ url }) => isBookmarkRoute(url),
+  new NetworkOnly({
+    plugins: [
+      bookmarkSyncPlugin,
+      {
+        handlerDidError: logPlugin('bookmark').handlerDidError,
+      },
+    ],
+  }),
+  'POST'
+);
+
+// API: NetworkFirst (last API catch-all)
+registerRoute(
+  ({ url }) =>
+    isAPIRoute(url) && !isRefreshRoute(url) && !isVideoRoute(url) && !isThumbnailRoute(url) && !isBookmarkRoute(url),
   new NetworkFirst({
     cacheName: CACHE_API,
     networkTimeoutSeconds: 7,
@@ -538,23 +599,32 @@ registerRoute(
   })
 );
 
-// API POST (bookmark): allow background sync
+// SPA navigations: NetworkFirst with a bounded timeout, cached shell fallback.
+// All routes share one shell, cached under '/'. Offline, the fallback must not
+// wait for a hanging fetch to die.
 registerRoute(
-  ({ url }) => isBookmarkRoute(url),
-  new NetworkOnly({
-    plugins: [
-      new BackgroundSyncPlugin('bookmarkQueue', {
-        maxRetentionTime: 24 * 60, // retry for max of 24 Hours (specified in minutes)
-      }),
-      {
-        handlerDidError: logPlugin('bookmark').handlerDidError,
-      },
-    ],
-  }),
-  'POST'
+  ({ request }) => request.mode === 'navigate',
+  async ({ request, event }) => {
+    const cache = await caches.open('index');
+
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('shell network timeout')), 3000);
+    });
+
+    try {
+      const response = await Promise.race([fetch(request), timeout]);
+      event.waitUntil(cache.put('/', response.clone()));
+      return response;
+    } catch (error) {
+      await log('error', `Failed to serve shell from network:`, request.url, error?.message ?? error);
+      const shell = await cache.match('/');
+      if (shell) await log('log', `Served shell from cache for:`, request.url);
+      return shell;
+    }
+  }
 );
 
-// index.html: NetworkFirst, never precached (must always fetch latest shell)
+// Non-precached, non-API files (icons, etc.): NetworkFirst, never precached
 registerRoute(
   ({ url }) => !isAPIRoute(url) && getCacheKeyForURL(url.href) == null,
   new NetworkFirst({

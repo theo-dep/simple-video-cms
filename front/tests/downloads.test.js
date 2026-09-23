@@ -99,15 +99,30 @@ describe('withCacheBadges', () => {
     { id: 3, title: 'Wedding' },
   ];
 
-  it('badges downloaded and cached videos, leaving others untouched', () => {
+  it('badges downloaded, partially cached and fully cached videos, leaving others untouched', () => {
     const offlineVideos = [{ id: 1, title: 'Holiday' }];
-    const autoVideos = [{ id: 2, cachedSegments: 4, totalSegments: 9 }];
+    const autoVideos = [
+      { id: 2, cachedSegments: 4, totalSegments: 9 },
+      { id: 3, cachedSegments: 9, totalSegments: 9 },
+    ];
 
     const badged = withCacheBadges(allVideos, offlineVideos, autoVideos);
 
     expect(badged[0]).toMatchObject({ badge: 'downloaded', badgeLabel: 'Downloaded' });
+    expect(badged[1]).toMatchObject({ badge: 'partial-cached', badgeLabel: 'Partially cached' });
+    expect(badged[2]).toMatchObject({ badge: 'cached', badgeLabel: 'Cached' });
+  });
+
+  it('keeps the cached badge when the segment total is unknown', () => {
+    const autoVideos = [
+      { id: 2, cachedSegments: 4, totalSegments: null },
+      { id: 3 },
+    ];
+
+    const badged = withCacheBadges(allVideos, [], autoVideos);
+
     expect(badged[1]).toMatchObject({ badge: 'cached', badgeLabel: 'Cached' });
-    expect(badged[2]).not.toHaveProperty('badge');
+    expect(badged[2]).toMatchObject({ badge: 'cached', badgeLabel: 'Cached' });
   });
 
   it('gives offline downloads priority when a video is in both caches', () => {

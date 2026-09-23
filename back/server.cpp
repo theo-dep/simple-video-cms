@@ -34,6 +34,7 @@ namespace server
     // Routes
     void video(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const Database& db);
     void static_file(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
+    void sw(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& sw_path);
     void index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
     void manifest(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir);
 
@@ -175,14 +176,17 @@ int server::start()
     const std::filesystem::path bundle_dir{ std::filesystem::current_path() };
 #endif
 
+#ifdef _DEBUG
+    const std::filesystem::path sw_path{ build_dir / "sw.js" };
+#else
+    const std::filesystem::path sw_path{ bundle_dir / "sw.js" };
+#endif
+
     set_logger(server);
     set_exception_handler(server);
 
     server
-#ifdef _DEBUG
-        .Get("/sw.js", [&build_dir](const httplib::Request& /*req*/, httplib::Response& res) { res.set_file_content((build_dir / "sw.js").string()); })
-#endif
-
+        .Get("/sw.js", sc::serve(sw, std::cref(sw_path)))
         .Get("/video/:id", sc::serve(video, std::cref(bundle_dir), std::cref(db)))
         .Get(R"(.*\/manifest\.json$)", sc::serve(manifest, std::cref(bundle_dir)))
         .Get(R"((?!\/api\/).*\.[^/]+$)", sc::serve(static_file, std::cref(bundle_dir)))
@@ -447,6 +451,13 @@ inline void server::static_file(const httplib::Request& req, httplib::Response& 
     }
 
     res.set_file_content(file.path);
+}
+
+inline void server::sw(const httplib::Request& /*req*/, httplib::Response& res, const std::filesystem::path& sw_path)
+{
+    // Always revalidate: a cached sw.js can hide a deploy for hours
+    res.set_header("Cache-Control", "no-cache");
+    res.set_file_content(sw_path.string());
 }
 
 inline void server::index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir)

@@ -1,13 +1,17 @@
 import { Workbox, messageSW as postMessageToSW } from 'workbox-window';
 import { signal } from '@preact/signals';
+import { confirm } from '../component/ConfirmDialog.js';
 
 export const wb = signal(null);
 export const swReady = signal(false);
+// Incremented when a service worker takes control of the page (mid-session update)
+export const swControllerVersion = signal(0);
 
 // Worker we can message. On a hard reload the page is not controlled by the
 // service worker, but the active worker still answers postMessage.
 let reachableSW = null;
 let initPromise = null;
+let updateAccepted = false;
 
 export function initWorkbox() {
   if (!initPromise) {
@@ -43,14 +47,25 @@ async function doInitWorkbox() {
     swReady.value = true;
   });
 
-  workboxInstance.addEventListener('waiting', (_event) => {
+  workboxInstance.addEventListener('waiting', async (_event) => {
     console.log('New Service Worker waiting');
+    updateAccepted = await confirm('A new version of the app is available. Reload now to update?', {
+      confirmText: 'Reload',
+      cancelText: 'Later',
+    });
+    if (updateAccepted) {
+      workboxInstance.messageSkipWaiting();
+    }
   });
 
   workboxInstance.addEventListener('controlling', (event) => {
     console.log('Service Worker now controls the page');
     reachableSW = event.sw;
     swReady.value = true;
+    swControllerVersion.value++;
+    if (updateAccepted) {
+      window.location.reload();
+    }
   });
 
   // Register the Service Worker
