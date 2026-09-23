@@ -38,6 +38,9 @@ Server can be run using VS Code and CMake extension or with commands `just start
 > Configure CMake with `-DNO_SECURE=ON` to define `NO_SECURE` cookie in Release mode.
 > This allow to test the production bundle in local environment (like with a phone).
 
+> [!NOTE]
+> Service Worker only works in Debug or in Release with Rollup production build from install folder.
+
 ## Container
 
 To build container images, install a release build in `dist`:

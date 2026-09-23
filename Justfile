@@ -1,7 +1,7 @@
 start-prod: build-back build-front
 	@./dist/back
 
-start-dev: build-debug
+start-dev: build-debug build-dev-sw
 	@./build/vcpkg/Debug/back
 
 build-debug: configure
@@ -9,6 +9,9 @@ build-debug: configure
 
 build-back: configure
 	@cmake --build --preset vcpkg-release --target install
+
+build-dev-sw:
+	@npx rollup -c front/rollup-sw-dev.config.js
 
 configure:
 	@cmake --preset vcpkg

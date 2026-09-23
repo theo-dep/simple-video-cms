@@ -3,26 +3,49 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { useSearch } from '../hook/useSearch.js';
 import { useTitle } from '../hook/useTitle.js';
-import { user, refreshed } from '../store/auth.js';
+import { user } from '../store/auth.js';
 import { Content } from '../component/Content.js';
 import { UserNav } from './HeaderNav.js';
 import { MultiSelectDropDown } from '../component/SelectDropDown.js';
 import { SearchInput } from '../component/SearchInput.js';
 import { VideoThumbnail } from '../component/VideoThumbnail.js';
-import { Loader } from '../component/Loader.js';
 import { BookmarkButton } from '../component/BookmarkButton.js';
+import { CacheVideoButton } from '../component/CacheVideoButton.js';
 import { Icon } from '../component/Icon.js';
+import { cache, refreshCachedVideos } from '../store/cache.js';
+import { swReady } from '../store/wb.js';
 
 function unique(items) {
   return [...new Set(items)].sort();
 }
 
-export function VideoList({ title, filterCondition }) {
+// Add a cache badge to videos present in the offline or auto video caches.
+// Offline downloads take priority when a video is in both caches.
+export function withCacheBadges(videos, offlineVideos, autoVideos) {
+  const offlineIds = new Set(offlineVideos.map((v) => v.id));
+  const autoIds = new Set(autoVideos.map((v) => v.id));
+  return videos.map((v) => {
+    if (offlineIds.has(v.id)) return { ...v, badge: 'downloaded', badgeLabel: 'Downloaded' };
+    if (autoIds.has(v.id)) return { ...v, badge: 'cached', badgeLabel: 'Cached' };
+    return v;
+  });
+}
+
+export function VideoList({ title, videos, searchAside }) {
   const { path, query, route } = useLocation();
 
-  const allVideos = useMemo(() => user.videos.value.filter(filterCondition), [user.videos.value, filterCondition]);
+  useEffect(() => {
+    if (swReady.value) {
+      refreshCachedVideos();
+    }
+  }, [swReady.value]);
 
-  const { results, search } = useSearch(allVideos, ['title', 'date', 'location', 'authors', 'tags']);
+  const badgedVideos = useMemo(
+    () => withCacheBadges(videos, cache.videos.value, cache.autoVideos.value),
+    [videos, cache.videos.value, cache.autoVideos.value]
+  );
+
+  const { results, search } = useSearch(badgedVideos, ['title', 'date', 'location', 'authors', 'tags']);
 
   const [titles, setTitles] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -35,10 +58,10 @@ export function VideoList({ title, filterCondition }) {
   const authorFilterRef = useRef(null);
   const tagFilterRef = useRef(null);
 
-  const titleOptions = useMemo(() => unique(allVideos.map((v) => v.title).filter(Boolean)), [allVideos]);
-  const locationOptions = useMemo(() => unique(allVideos.map((v) => v.location).filter(Boolean)), [allVideos]);
-  const authorOptions = useMemo(() => unique(allVideos.flatMap((v) => v.authors ?? [])), [allVideos]);
-  const tagOptions = useMemo(() => unique(allVideos.flatMap((v) => v.tags ?? [])), [allVideos]);
+  const titleOptions = useMemo(() => unique(badgedVideos.map((v) => v.title).filter(Boolean)), [badgedVideos]);
+  const locationOptions = useMemo(() => unique(badgedVideos.map((v) => v.location).filter(Boolean)), [badgedVideos]);
+  const authorOptions = useMemo(() => unique(badgedVideos.flatMap((v) => v.authors ?? [])), [badgedVideos]);
+  const tagOptions = useMemo(() => unique(badgedVideos.flatMap((v) => v.tags ?? [])), [badgedVideos]);
 
   useEffect(() => {
     setTitles(query?.titles ? query.titles.split(';').filter((t) => titleOptions.includes(t)) : []);
@@ -120,8 +143,6 @@ export function VideoList({ title, filterCondition }) {
     [results, titles, locations, authors, tags]
   );
 
-  const isLoading = !refreshed.value;
-
   useTitle(title);
 
   return html`
@@ -145,6 +166,7 @@ export function VideoList({ title, filterCondition }) {
               </button>
             `
           }
+          ${searchAside && html`<div class="video-list-search-aside">${searchAside}</div>`}
         </div>
         ${
           filtersOpen &&
@@ -175,38 +197,43 @@ export function VideoList({ title, filterCondition }) {
         }
       </div>
 
-      ${
-        isLoading
-          ? html`<${Loader} />`
-          : html`<div class="video-grid">
-              ${filtered.map(
-                (v, i) => html`
-                  <a key=${v.id} href=${'/video/' + v.id} class="video-card">
-                    <div class="video-card-thumb">
-                      <${VideoThumbnail} id=${v.id} title=${v.title} priority=${i < 4} />
-                      ${user.isLogged.value && html`<${BookmarkButton} videoId=${v.id} isBookmarked=${v.bookmarked} location="home" />`}
+      <div class="video-grid">
+        ${filtered.map(
+          (v, i) => html`
+            <a key=${v.id} href=${'/video/' + v.id} class="video-card">
+              <div class="video-card-thumb">
+                <${VideoThumbnail} id=${v.id} title=${v.title} priority=${i < 4} />
+                ${v.badge && html`<span class="video-card-badge">${v.badgeLabel}</span>`}
+                ${
+                  user.isLogged.value &&
+                  html`
+                    <div class="video-card-actions">
+                      <${BookmarkButton} videoId=${v.id} isBookmarked=${v.bookmarked} location="home" />
+                      <${CacheVideoButton} id=${v.id} title=${v.title} location="home" />
                     </div>
-                    <div class="video-info">
-                      <h4 class="video-title">${v.title}</h4>
-                      ${
-                        (v.date || v.location || !!v.authors?.length || !!v.tags?.length) &&
-                        html`
-                          <div class="video-meta">
-                            ${v.date && html`<span class="meta-item meta-date"><${Icon} name="calendar-date" /> ${v.date}</span>`}
-                            ${v.location && html`<span class="meta-item meta-location"><${Icon} name="geo" /> ${v.location}</span>`}
-                            ${!!v.authors?.length && html`<span class="meta-item meta-authors"><${Icon} name="pencil-square" /> ${v.authors.join(', ')}</span>`}
-                          </div>
-                          <div class="video-meta">
-                            ${!!v.tags?.length && v.tags.map((t) => html`<span class="meta-item meta-tag"><${Icon} name="tag" /> ${t}</span>`)}
-                          </div>
-                        `
-                      }
+                  `
+                }
+              </div>
+              <div class="video-info">
+                <h4 class="video-title">${v.title}</h4>
+                ${
+                  (v.date || v.location || !!v.authors?.length || !!v.tags?.length) &&
+                  html`
+                    <div class="video-meta">
+                      ${v.date && html`<span class="meta-item meta-date"><${Icon} name="calendar-date" /> ${v.date}</span>`}
+                      ${v.location && html`<span class="meta-item meta-location"><${Icon} name="geo" /> ${v.location}</span>`}
+                      ${!!v.authors?.length && html`<span class="meta-item meta-authors"><${Icon} name="pencil-square" /> ${v.authors.join(', ')}</span>`}
                     </div>
-                  </a>
-                `
-              )}
-            </div>`
-      }
+                    <div class="video-meta">
+                      ${!!v.tags?.length && v.tags.map((t) => html`<span class="meta-item meta-tag"><${Icon} name="tag" /> ${t}</span>`)}
+                    </div>
+                  `
+                }
+              </div>
+            </a>
+          `
+        )}
+      </div>
     <//>
   `;
 }

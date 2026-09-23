@@ -1,0 +1,48 @@
+.storage-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-size: var(--font-size-small);
+  line-height: var(--input-min-height);
+  color: var(--color-text-disable);
+  white-space: nowrap;
+}
+
+.storage-indicator .bi-hdd {
+  color: var(--color-primary);
+}
+
+.storage-used {
+  color: var(--color-primary);
+}
+
+.storage-bar {
+  display: inline-block;
+  width: 5em;
+  height: 0.25em;
+  background: var(--color-bg-hover);
+  border-radius: var(--checkbox-radius);
+  overflow: hidden;
+}
+
+.storage-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: inherit;
+  transition: width 0.5s ease;
+}
+
+.storage-indicator .spin {
+  display: inline-block;
+  animation: storage-indicator-spin 1s linear infinite;
+}
+
+@keyframes storage-indicator-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

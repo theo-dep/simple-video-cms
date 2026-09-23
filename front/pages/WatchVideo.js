@@ -9,6 +9,7 @@ import { Footer } from '../component/Footer.js';
 import { Loader } from '../component/Loader.js';
 import { ShareButton } from '../component/ShareButton.js';
 import { BookmarkButton } from '../component/BookmarkButton.js';
+import { CacheVideoButton } from '../component/CacheVideoButton.js';
 import { Icon } from '../component/Icon.js';
 
 // video.js can be long to load
@@ -39,6 +40,7 @@ export default function WatchVideo({ videoId }) {
                   <${Video} videoId=${videoId} />
                   <div class="video-footer-content">
                     <div class="video-footer-right-content">
+                      <${CacheVideoButton} id=${video.id} title=${video.title} location="video" />
                       <${BookmarkButton} videoId=${video.id} isBookmarked=${video.bookmarked} location="video" />
                       <${ShareButton} />
                     </div>

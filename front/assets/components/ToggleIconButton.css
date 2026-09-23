@@ -1,0 +1,83 @@
+.toggle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2em;
+  height: 2em;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1em;
+  line-height: 1;
+  color: var(--color-primary);
+  transition: color 0.2s ease;
+}
+
+.toggle-button.is-active {
+  color: var(--color-primary);
+}
+
+.toggle-button-tooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: var(--color-bg-input);
+  color: var(--text-color-dark);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  margin-top: 0.25rem;
+}
+
+.toggle-button.is-loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.toggle-button .spin {
+  animation: spin 1s linear infinite;
+}
+
+.toggle-button.has-error {
+  background: var(--color-alert);
+}
+
+.toggle-button[location='home'] {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: var(--color-shadow-overlay);
+  transition:
+    background-color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.toggle-button[location='home'].cache-video-button {
+  right: 2.75rem;
+}
+
+.toggle-button[location='home']:hover {
+  color: var(--color-text-white);
+  background-color: var(--color-primary-dark);
+  transform: scale(1.1);
+}
+
+.toggle-button[location='video'] {
+  position: relative;
+  display: inline-flex;
+  border: 1px solid var(--color-primary);
+}
+
+.toggle-button[location='video']:hover {
+  color: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

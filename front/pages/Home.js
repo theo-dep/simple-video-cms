@@ -1,12 +1,16 @@
 import { html } from 'htm/preact';
+import { useMemo } from 'preact/hooks';
+import { user, refreshed } from '../store/auth.js';
 import { VideoList } from '../component/VideoList.js';
 import { Footer } from '../component/Footer.js';
-
-const allVideosFilter = (_v) => true;
+import { Loader } from '../component/Loader.js';
 
 export default function Home() {
+  const videos = useMemo(() => user.videos.value, [user.videos.value]);
+  const isLoading = !refreshed.value;
+
   return html`
-    <${VideoList} title="Home" , filterCondition=${allVideosFilter} />
+    ${isLoading ? html`<${Loader} />` : html`<${VideoList} title="Bookmarks" videos=${videos} />`}
 
     <${Footer} />
   `;
