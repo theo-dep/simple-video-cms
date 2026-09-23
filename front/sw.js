@@ -41,6 +41,12 @@ let videoCachingEnabled = false;
 const offlineVideoIds = new Set();
 
 self.addEventListener('message', async (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    await log('log', 'Updated Service Worker skipping waiting');
+    self.skipWaiting();
+    return;
+  }
+
   if (!event.data?.type || !event.ports?.[0]) return;
 
   const { type, payload } = event.data;
@@ -407,7 +413,7 @@ async function getAutoCachedVideos() {
   return videos;
 }
 
-self.skipWaiting();
+// The user confirms the update, do not skipWaiting() automatically
 clientsClaim();
 
 // Initialize offline video IDs set from existing cache
