@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useEffect, useRef } from 'preact/hooks';
 import videojs from 'video.js';
 import { api } from '../api.js';
+import { isVideoCached } from '../store/cache.js';
 
 import 'videojs-yt-style';
 import 'videojs-mobile-ui';
@@ -53,8 +54,12 @@ export default function Video({ videoId }) {
     }
 
     (async () => {
-      // the video session must exist before any segment request
-      await ensureVideoSession();
+      // The server requires a session before any segment request, but a hanging
+      // request offline must not block playback. Cached videos are served by
+      // the service worker without a session.
+      if (!isVideoCached(Number(videoId))) {
+        await Promise.race([ensureVideoSession(), new Promise((resolve) => setTimeout(() => resolve(null), 3000))]);
+      }
       player.src({
         src: api.videoPlaylistPath(videoId),
         type: 'application/x-mpegURL',
