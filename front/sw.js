@@ -560,7 +560,32 @@ registerRoute(
   'POST'
 );
 
-// index.html: NetworkFirst, never precached (must always fetch latest shell)
+// SPA navigations: NetworkFirst with a bounded timeout, cached shell fallback.
+// All routes share one shell, cached under '/'. Offline, the fallback must not
+// wait for a hanging fetch to die.
+registerRoute(
+  ({ request }) => request.mode === 'navigate',
+  async ({ request, event }) => {
+    const cache = await caches.open('index');
+
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('shell network timeout')), 3000);
+    });
+
+    try {
+      const response = await Promise.race([fetch(request), timeout]);
+      event.waitUntil(cache.put('/', response.clone()));
+      return response;
+    } catch (error) {
+      await log('error', `Failed to serve shell from network:`, request.url, error?.message ?? error);
+      const shell = await cache.match('/');
+      if (shell) await log('log', `Served shell from cache for:`, request.url);
+      return shell;
+    }
+  }
+);
+
+// Non-precached, non-API files (icons, etc.): NetworkFirst, never precached
 registerRoute(
   ({ url }) => !isAPIRoute(url) && getCacheKeyForURL(url.href) == null,
   new NetworkFirst({
