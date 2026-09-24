@@ -1,12 +1,12 @@
 import { html } from 'htm/preact';
 import { useEffect } from 'preact/hooks';
 import { apiOffline } from '../store/offline.js';
-import { messageSW } from '../store/wb.js';
+import { swApi } from '../store/wb.js';
 
 // Replay bookmark requests the SW queued while offline
 async function replayQueuedBookmarks() {
   try {
-    await messageSW({ type: 'replayBookmarks' });
+    await swApi.replayBookmarks();
   } catch {
     // no reachable service worker: nothing to replay
   }

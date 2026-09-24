@@ -91,3 +91,23 @@ export async function messageSW(message) {
   }
   return postMessageToSW(reachableSW, message);
 }
+
+// One wrapper per Service Worker message: the single place that knows the
+// message shapes, so callers never build message objects themselves
+export const swApi = {
+  enableVideoCaching: () => messageSW({ type: 'enableVideoCaching' }),
+  disableVideoCaching: () => messageSW({ type: 'disableVideoCaching' }),
+
+  setVideoSession: (videoId, session) => messageSW({ type: 'setVideoSession', payload: { videoId, session } }),
+  clearVideoSession: (videoId) => messageSW({ type: 'clearVideoSession', payload: { videoId } }),
+
+  addVideoToOfflineCache: (id, title) => messageSW({ type: 'addVideoToOfflineCache', payload: { id, title } }),
+  removeVideoFromOfflineCache: (id) => messageSW({ type: 'removeVideoFromOfflineCache', payload: { id } }),
+  getAllCachedVideos: () => messageSW({ type: 'getAllCachedVideos' }),
+  getAutoCachedVideos: () => messageSW({ type: 'getAutoCachedVideos' }),
+  getStorageInfo: () => messageSW({ type: 'getStorageInfo' }),
+  clearCachedVideos: () => messageSW({ type: 'clearCachedVideos' }),
+  clearDownloadedVideos: () => messageSW({ type: 'clearDownloadedVideos' }),
+
+  replayBookmarks: () => messageSW({ type: 'replayBookmarks' }),
+};

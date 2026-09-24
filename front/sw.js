@@ -40,6 +40,11 @@ let videoCachingEnabled = false;
 // In-memory set of video IDs that are cached for offline viewing
 const offlineVideoIds = new Set();
 
+// Playback sessions per video id, set by the player page.
+// Native HLS players (e.g. iPhone Safari) fetch segments outside of video.js
+// and cannot attach the X-Video-Session header themselves, so the SW injects it.
+const videoSessions = new Map();
+
 self.addEventListener('message', async (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     await log('log', 'Updated Service Worker skipping waiting');
@@ -61,6 +66,14 @@ self.addEventListener('message', async (event) => {
       case 'disableVideoCaching':
         await log('log', 'Disabling video caching');
         videoCachingEnabled = false;
+        break;
+
+      case 'setVideoSession':
+        videoSessions.set(payload.videoId, payload.session);
+        break;
+
+      case 'clearVideoSession':
+        videoSessions.delete(payload.videoId);
         break;
 
       case 'addVideoToOfflineCache':
@@ -539,13 +552,32 @@ registerRoute(
 );
 
 // videos: gated CacheFirst by videoCachingEnabled
+// Native HLS segment requests carry no X-Video-Session header: add the one
+// registered by the player page so the backend accepts them.
+function withVideoSessionHeader(request) {
+  const url = new URL(request.url);
+  if (!VIDEO_SEGMENT_PATTERN.test(url.pathname) || request.headers.has('X-Video-Session')) {
+    return request;
+  }
+
+  const session = videoSessions.get(extractVideoIdFromUrl(url));
+  if (!session) {
+    return request;
+  }
+
+  const headers = new Headers(request.headers);
+  headers.set('X-Video-Session', session);
+  return new Request(request, { headers });
+}
+
 class GatedCacheFirst extends CacheFirst {
   async _handle(request, handler) {
+    const outgoingRequest = withVideoSessionHeader(request);
     if (!videoCachingEnabled) {
       await log('log', `Served video from network (caching disabled):`, request.url);
-      return fetch(request);
+      return fetch(outgoingRequest);
     }
-    return super._handle(request, handler);
+    return super._handle(outgoingRequest, handler);
   }
 }
 registerRoute(

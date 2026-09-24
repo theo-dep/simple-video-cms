@@ -1,5 +1,5 @@
 import { signal, computed } from '@preact/signals';
-import { swReady, messageSW } from './wb.js';
+import { swReady, swApi } from './wb.js';
 
 // State for cached videos
 const cachedVideos = signal([]);
@@ -17,12 +17,12 @@ export function isVideoCached(videoId) {
 // Enable/disable video caching
 export function enableVideoCaching() {
   if (!swReady.value) return;
-  messageSW({ type: 'enableVideoCaching' });
+  swApi.enableVideoCaching();
 }
 
 export function disableVideoCaching() {
   if (!swReady.value) return;
-  messageSW({ type: 'disableVideoCaching' });
+  swApi.disableVideoCaching();
 }
 
 // Refresh the list of cached videos
@@ -30,10 +30,7 @@ export async function refreshCachedVideos() {
   if (!swReady.value) return;
 
   try {
-    const [offlineResponse, autoResponse] = await Promise.all([
-      messageSW({ type: 'getAllCachedVideos' }),
-      messageSW({ type: 'getAutoCachedVideos' }),
-    ]);
+    const [offlineResponse, autoResponse] = await Promise.all([swApi.getAllCachedVideos(), swApi.getAutoCachedVideos()]);
     cachedVideos.value = offlineResponse?.data?.videos || [];
     autoCachedVideos.value = autoResponse?.data?.videos || [];
   } catch (error) {
@@ -46,7 +43,7 @@ export async function refreshStorageInfo() {
   if (!swReady.value) return;
 
   try {
-    const response = await messageSW({ type: 'getStorageInfo' });
+    const response = await swApi.getStorageInfo();
     if (response?.data?.storageInfo) {
       storageInfo.value = response.data.storageInfo;
     }
@@ -60,10 +57,7 @@ export async function addVideoToOfflineCache(id, title) {
   if (!swReady.value) return;
 
   try {
-    const response = await messageSW({
-      type: 'addVideoToOfflineCache',
-      payload: { id, title },
-    });
+    const response = await swApi.addVideoToOfflineCache(id, title);
 
     if (response?.data?.success) {
       await refreshCachedVideos();
@@ -82,10 +76,7 @@ export async function removeVideoFromOfflineCache(id) {
   if (!swReady.value) return;
 
   try {
-    await messageSW({
-      type: 'removeVideoFromOfflineCache',
-      payload: { id },
-    });
+    await swApi.removeVideoFromOfflineCache(id);
     await refreshCachedVideos();
     await refreshStorageInfo();
   } catch (error) {
@@ -99,7 +90,7 @@ export async function clearCachedVideos() {
   if (!swReady.value) return;
 
   try {
-    const response = await messageSW({ type: 'clearCachedVideos' });
+    const response = await swApi.clearCachedVideos();
     if (!response?.data?.success) {
       throw new Error(response?.data?.error || 'Failed to clear video cache');
     }
@@ -116,7 +107,7 @@ export async function clearDownloadedVideos() {
   if (!swReady.value) return;
 
   try {
-    const response = await messageSW({ type: 'clearDownloadedVideos' });
+    const response = await swApi.clearDownloadedVideos();
     if (!response?.data?.success) {
       throw new Error(response?.data?.error || 'Failed to clear offline-video cache');
     }
