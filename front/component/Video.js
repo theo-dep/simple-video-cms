@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'preact/hooks';
 import videojs from 'video.js';
 import { api } from '../api.js';
 import { isVideoCached } from '../store/cache.js';
-import { swApi } from '../store/wb.js';
 
 import 'videojs-yt-style';
 import 'videojs-mobile-ui';
@@ -50,12 +49,6 @@ export default function Video({ videoId }) {
       if (!videoSession) {
         const response = await api.addVideoSession(videoId).catch((err) => console.error(err));
         videoSession = response?.json?.session ?? null;
-
-        // Give the session to the service worker: native HLS players
-        // (e.g. iPhone Safari) fetch segments without it and get a 401.
-        if (videoSession) {
-          swApi.setVideoSession(Number(videoId), videoSession).catch(() => {});
-        }
       }
       return videoSession;
     }
@@ -67,26 +60,39 @@ export default function Video({ videoId }) {
       if (!isVideoCached(Number(videoId))) {
         await Promise.race([ensureVideoSession(), new Promise((resolve) => setTimeout(() => resolve(null), 3000))]);
       }
+
       player.src({
-        src: api.videoPlaylistPath(videoId),
+        src: api.videoPlaylistPath(videoId, videoSession),
         type: 'application/x-mpegURL',
       });
     })();
 
     let isSessionStarted = false;
-    player.on('play', async () => {
-      // Re-publish the session: the service worker may have been killed
-      // while playback was paused and lost its in-memory copy.
-      if (videoSession) {
-        swApi.setVideoSession(Number(videoId), videoSession).catch(() => {});
-      }
+    async function ensureSessionStarted() {
+      if (isSessionStarted) return;
+      const session = await ensureVideoSession();
+      if (!session) return;
+      isSessionStarted = true;
+      await api.startVideoSession(videoId, session).catch((err) => console.error(err));
+    }
 
-      if (!isSessionStarted) {
-        isSessionStarted = true;
-        const session = await ensureVideoSession();
-        if (session) await api.startVideoSession(videoId, session).catch((err) => console.error(err));
+    player.on('play', ensureSessionStarted);
+
+    // Playback started offline has no session: create it when the connection
+    // is back, the xhr hook below attaches it to the segment requests
+    async function recoverVideoSession() {
+      if (!videoSession && !isVideoCached(Number(videoId))) {
+        await ensureSessionStarted();
+        if (!videoSession) return;
+
+        // Native HLS playback (e.g. iPhone) has no xhr hook: the playlist must
+        // be loaded again for its segment uris to carry the session
+        if (!player.tech({ IWillNotUseThisInPlugins: true }).vhs) {
+          player.src({ src: api.videoPlaylistPath(videoId, videoSession), type: 'application/x-mpegURL' });
+        }
       }
-    });
+    }
+    window.addEventListener('online', recoverVideoSession);
 
     // patch video.js to stop fetching a hls segment during seeking
     // this is made to synchronise the reset session api with seeking
@@ -101,11 +107,18 @@ export default function Video({ videoId }) {
       originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
 
       player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
-        if (videoSession) {
-          options.headers = { ...options.headers, 'X-Video-Session': videoSession };
+        // Segments of a playlist loaded offline carry no session: attach the recovered one
+        let isSegment = false;
+        if (options.uri) {
+          const url = new URL(options.uri, location.href);
+          isSegment = url.pathname.endsWith('.ts');
+          if (isSegment && videoSession && !url.searchParams.has('session')) {
+            url.searchParams.set('session', videoSession);
+            options.uri = url.href;
+          }
         }
 
-        if (isSeeking && options.uri?.endsWith('.ts')) {
+        if (isSeeking && isSegment) {
           lastBlocked = { options, callback };
           return {
             abort: () => {},
@@ -136,9 +149,10 @@ export default function Video({ videoId }) {
     });
 
     return () => {
+      window.removeEventListener('online', recoverVideoSession);
+
       if (videoSession) {
         api.clearVideoSession(videoId, videoSession).catch((err) => console.error(err));
-        swApi.clearVideoSession(Number(videoId)).catch(() => {});
       }
 
       if (playerRef.current) {
