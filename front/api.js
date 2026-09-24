@@ -84,7 +84,8 @@ export const api = {
       })
     ),
 
-  videoPlaylistPath: (videoId) => BASE + `/video/${videoId}/playlist`,
+  // session is null when playlist is fetched in offline mode
+  videoPlaylistPath: (videoId, session) => BASE + `/video/${videoId}/playlist` + (session ? `?session=${session}` : ''),
   adminDownloadVideoPath: (videoId) => BASE + `/admin/download-video/${videoId}`,
   thumbnailPath: (videoId) => BASE + `/thumbnail/${videoId}`,
 

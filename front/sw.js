@@ -40,11 +40,6 @@ let videoCachingEnabled = false;
 // In-memory set of video IDs that are cached for offline viewing
 const offlineVideoIds = new Set();
 
-// Playback sessions per video id, set by the player page.
-// Native HLS players (e.g. iPhone Safari) fetch segments outside of video.js
-// and cannot attach the X-Video-Session header themselves, so the SW injects it.
-const videoSessions = new Map();
-
 self.addEventListener('message', async (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     await log('log', 'Updated Service Worker skipping waiting');
@@ -66,14 +61,6 @@ self.addEventListener('message', async (event) => {
       case 'disableVideoCaching':
         await log('log', 'Disabling video caching');
         videoCachingEnabled = false;
-        break;
-
-      case 'setVideoSession':
-        videoSessions.set(payload.videoId, payload.session);
-        break;
-
-      case 'clearVideoSession':
-        videoSessions.delete(payload.videoId);
         break;
 
       case 'addVideoToOfflineCache':
@@ -233,27 +220,7 @@ async function addVideoToOfflineCache({ id, title }) {
     // 2. Check storage space
     const storageInfo = await getStorageInfo();
 
-    // 3. Download playlist first to get segment list
-    const playlistUrl = `/api/video/${id}/playlist`;
-    const playlistResponse = await fetch(playlistUrl);
-    if (!playlistResponse.ok) {
-      throw new Error(`Playlist download failed: ${playlistResponse.status}`);
-    }
-    const playlistContent = await playlistResponse.text();
-
-    // 4. Parse playlist to get segment URLs
-    const segmentUrls = [];
-    const lines = playlistContent.split('\n');
-    for (const line of lines) {
-      if (line.trim() && !line.startsWith('#')) {
-        segmentUrls.push(`/api/video/${id}/${line.trim()}`);
-      }
-    }
-
-    // 5. Estimate total size by downloading segments
-    let totalSize = playlistContent.length;
-
-    // 6. Enable video session (distinct from the player session)
+    // 3. Video session authenticating the playlist and segments downloads
     const sessionResponse = await fetch(`/api/add-video-session/${id}`, { method: 'POST' });
     session = (await sessionResponse.json().catch(() => null))?.session;
     if (!session) {
@@ -264,10 +231,33 @@ async function addVideoToOfflineCache({ id, title }) {
       body: new URLSearchParams({ session }),
     });
 
-    for (const segmentUrl of segmentUrls) {
-      const response = await fetch(segmentUrl, { method: 'HEAD', headers: { 'X-Video-Session': session } });
+    // 4. Download playlist with the session
+    const playlistUrl = `/api/video/${id}/playlist`;
+    const playlistResponse = await fetch(`${playlistUrl}?session=${session}`);
+    if (!playlistResponse.ok) {
+      throw new Error(`Playlist download failed: ${playlistResponse.status}`);
+    }
+    const playlistContent = await playlistResponse.text();
+
+    // 5. Parse playlist to get segment URLs: sessioned for download, canonical for cache keys
+    const segmentUrls = [];
+    const downloadUrls = [];
+    const lines = playlistContent.split('\n');
+    for (const line of lines) {
+      const uri = line.trim();
+      if (uri && !uri.startsWith('#')) {
+        downloadUrls.push(`/api/video/${id}/${uri}`);
+        segmentUrls.push(`/api/video/${id}/${uriWithoutSession(uri)}`);
+      }
+    }
+
+    // 6. Estimate total size by downloading segments
+    let totalSize = playlistContent.length;
+
+    for (const downloadUrl of downloadUrls) {
+      const response = await fetch(downloadUrl, { method: 'HEAD' });
       if (!response.ok) {
-        throw new Error(`Segment HEAD request failed: ${segmentUrl}`);
+        throw new Error(`Segment HEAD request failed: ${downloadUrl}`);
       }
       const segmentSize = parseInt(response.headers.get('content-length') || '0');
       totalSize += segmentSize;
@@ -279,15 +269,15 @@ async function addVideoToOfflineCache({ id, title }) {
     }
 
     // 8. Cache playlist
-    await cache.put(playlistUrl, new Response(playlistContent));
+    await cache.put(playlistUrl, new Response(playlistWithoutSession(playlistContent)));
 
     // 9. Cache all segments
-    for (const segmentUrl of segmentUrls) {
-      const response = await fetch(segmentUrl, { headers: { 'X-Video-Session': session } });
+    for (let i = 0; i < downloadUrls.length; i++) {
+      const response = await fetch(downloadUrls[i]);
       if (!response.ok) {
-        throw new Error(`Segment download failed: ${segmentUrl}`);
+        throw new Error(`Segment download failed: ${segmentUrls[i]}`);
       }
-      await cache.put(segmentUrl, response.clone());
+      await cache.put(segmentUrls[i], response.clone());
     }
 
     // 10. Store metadata
@@ -552,39 +542,78 @@ registerRoute(
 );
 
 // videos: gated CacheFirst by videoCachingEnabled
-// Native HLS segment requests carry no X-Video-Session header: add the one
-// registered by the player page so the backend accepts them.
-function withVideoSessionHeader(request) {
-  const url = new URL(request.url);
-  if (!VIDEO_SEGMENT_PATTERN.test(url.pathname) || request.headers.has('X-Video-Session')) {
-    return request;
-  }
+// The video session lives only in transit: never in cache keys nor in cached playlist content
+const videoCachePlugin = {
+  cacheKeyWillBeUsed: async ({ request }) => {
+    const url = new URL(request.url);
+    url.searchParams.delete('session');
+    return url.href;
+  },
 
-  const session = videoSessions.get(extractVideoIdFromUrl(url));
-  if (!session) {
-    return request;
-  }
+  // A cacheWillUpdate disables workbox's 200-only caching rule
+  cacheWillUpdate: async ({ request, response }) => {
+    if (response.status !== 200) {
+      return undefined;
+    }
+    if (!VIDEO_PLAYLIST_PATTERN.test(new URL(request.url).pathname)) {
+      return response;
+    }
+    return new Response(playlistWithoutSession(await response.text()), response);
+  },
+};
 
-  const headers = new Headers(request.headers);
-  headers.set('X-Video-Session', session);
-  return new Request(request, { headers });
+// Appends the video session on each segment line of a playlist
+function playlistWithSession(content, session) {
+  return content
+    .split('\n')
+    .map((uri) => {
+      if (!uri || uri.startsWith('#')) return uri;
+      return `${uri}?session=${session}`;
+    })
+    .join('\n');
+}
+
+// Removes the video session from a segment uri
+function uriWithoutSession(uri) {
+  return uri.replace(/\?session=[^&]*$/, '');
+}
+
+// Removes the video session from each segment line of a playlist
+function playlistWithoutSession(content) {
+  return content.split('\n').map(uriWithoutSession).join('\n');
 }
 
 class GatedCacheFirst extends CacheFirst {
   async _handle(request, handler) {
-    const outgoingRequest = withVideoSessionHeader(request);
     if (!videoCachingEnabled) {
       await log('log', `Served video from network (caching disabled):`, request.url);
-      return fetch(outgoingRequest);
+      return fetch(request);
     }
-    return super._handle(outgoingRequest, handler);
+
+    // Playlists: cached canonically without session
+    const url = new URL(request.url);
+    const session = url.searchParams.get('session');
+    if (VIDEO_PLAYLIST_PATTERN.test(url.pathname) && session) {
+      url.searchParams.delete('session');
+
+      const cache = await caches.open(CACHE_VIDEOS);
+      const cached = await cache.match(url.href);
+      if (cached) {
+        await log('log', `Served video from cache:`, request.url);
+        return new Response(playlistWithSession(await cached.text(), session), {
+          headers: { 'Content-Type': 'application/vnd.apple.mpegurl' },
+        });
+      }
+    }
+
+    return super._handle(request, handler);
   }
 }
 registerRoute(
   ({ url }) => isVideoRoute(url),
   new GatedCacheFirst({
     cacheName: CACHE_VIDEOS,
-    plugins: [logPlugin('video')],
+    plugins: [logPlugin('video'), videoCachePlugin],
   })
 );
 
@@ -618,8 +647,7 @@ registerRoute(
 
 // API: NetworkFirst (last API catch-all)
 registerRoute(
-  ({ url }) =>
-    isAPIRoute(url) && !isRefreshRoute(url) && !isVideoRoute(url) && !isThumbnailRoute(url) && !isBookmarkRoute(url),
+  ({ url }) => isAPIRoute(url) && !isRefreshRoute(url) && !isVideoRoute(url) && !isThumbnailRoute(url) && !isBookmarkRoute(url),
   new NetworkFirst({
     cacheName: CACHE_API,
     networkTimeoutSeconds: 7,

@@ -17,6 +17,7 @@
 
 #include <regex>
 #include <stacktrace>
+#include <string_view>
 
 #ifdef _DEBUG // debug, allow reload of static files
 #define STATIC
@@ -529,12 +530,6 @@ namespace server
         return Session::extract_session_id_from_cookie(req.get_header_value("Cookie"));
     }
 
-    // Returns the video session id from the X-Video-Session header
-    inline std::string video_session_id_from_req(const httplib::Request& req)
-    {
-        return req.get_header_value("X-Video-Session");
-    }
-
     // Returns user_id or Session::invalid_user_id() if not authenticated
     inline int authenticated_user(const httplib::Request& req, const Session& session)
     {
@@ -915,6 +910,33 @@ namespace server
         const std::string referrer{ req.get_header_value("Referer") };
         return referrer.ends_with("/sw.js");
     }
+
+    // Appends the video session to each segment uri of the playlist
+    // see https://github.com/video-dev/hls.js/issues/2152
+    inline std::string playlist_with_session(const std::string& playlist, const std::string& session)
+    {
+        std::string result;
+        result.reserve(playlist.size());
+
+        const std::string_view input{ playlist };
+        std::string_view::size_type start{ 0 };
+        while (start < input.size()) {
+            const std::string_view::size_type end{ input.find('\n', start) };
+            const std::string_view line{ input.substr(start, (end == std::string_view::npos ? input.size() : end) - start) };
+
+            result.append(line);
+            if (!session.empty() && !line.empty() && !line.starts_with('#')) {
+                result.append("?session=").append(session);
+            }
+            if (end == std::string_view::npos) {
+                break;
+            }
+            result.push_back('\n');
+            start = end + 1;
+        }
+
+        return result;
+    }
 }
 
 inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
@@ -936,7 +958,8 @@ inline void server::video_playlist(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    res.set_content(playlist, "application/vnd.apple.mpegurl");
+    const std::string video_session{ req.get_param_value("session") };
+    res.set_content(playlist_with_session(playlist, video_session), "application/vnd.apple.mpegurl");
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db)
@@ -965,7 +988,7 @@ inline void server::video_segment(const httplib::Request& req, httplib::Response
     }
 
     const std::string segment{ req.path_params.at("segment") };
-    const std::string video_session_id{ video_session_id_from_req(req) };
+    const std::string video_session_id{ req.get_param_value("session") };
 
     if (!video_session.validate_segment_access(video_session_id, su::int_to_string(video_id), segment)) {
         res.status = httplib::StatusCode::Unauthorized_401;
