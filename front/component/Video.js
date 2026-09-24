@@ -2,7 +2,6 @@ import { html } from 'htm/preact';
 import { useEffect, useRef } from 'preact/hooks';
 import videojs from 'video.js';
 import { api } from '../api.js';
-import { isVideoCached } from '../store/cache.js';
 
 import 'videojs-yt-style';
 import 'videojs-mobile-ui';
@@ -54,12 +53,8 @@ export default function Video({ videoId }) {
     }
 
     (async () => {
-      // The server requires a session before any segment request, but a hanging
-      // request offline must not block playback. Cached videos are served by
-      // the service worker without a session.
-      if (!isVideoCached(Number(videoId))) {
-        await Promise.race([ensureVideoSession(), new Promise((resolve) => setTimeout(() => resolve(null), 3000))]);
-      }
+      // The server requires a session before any segment request, but a hanging request offline must not block playback.
+      await Promise.race([ensureVideoSession(), new Promise((resolve) => setTimeout(() => resolve(null), 3000))]);
 
       player.src({
         src: api.videoPlaylistPath(videoId, videoSession),
@@ -69,8 +64,6 @@ export default function Video({ videoId }) {
 
     let isSessionStarted = false;
     async function ensureSessionStarted() {
-      // Cached videos are served by the service worker without a session.
-      if (isVideoCached(Number(videoId))) return;
       if (isSessionStarted) return;
       const session = await ensureVideoSession();
       if (!session) return;
@@ -83,7 +76,7 @@ export default function Video({ videoId }) {
     // Playback started offline has no session: create it when the connection
     // is back, the xhr hook below attaches it to the segment requests
     async function recoverVideoSession() {
-      if (!videoSession && !isVideoCached(Number(videoId))) {
+      if (!videoSession) {
         await ensureSessionStarted();
         if (!videoSession) return;
 

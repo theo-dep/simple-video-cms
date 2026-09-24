@@ -518,6 +518,15 @@ registerRoute(
   })
 );
 
+// The video session lives only in transit: never in cache keys nor in cached playlist content.
+const sessionlessCacheKey = {
+  cacheKeyWillBeUsed: async ({ request }) => {
+    const url = new URL(request.url);
+    url.searchParams.delete('session');
+    return url.href;
+  },
+};
+
 // Offline videos: CacheOnly for videos marked as offline
 // MUST BE BEFORE the normal video route to have priority
 registerRoute(
@@ -536,20 +545,12 @@ registerRoute(
   },
   new CacheOnly({
     cacheName: CACHE_OFFLINE_VIDEOS,
-    plugins: [logPlugin('offline-video')],
+    plugins: [logPlugin('offline-video'), sessionlessCacheKey],
   }),
   'GET'
 );
 
-// videos: gated CacheFirst by videoCachingEnabled
-// The video session lives only in transit: never in cache keys nor in cached playlist content
-const videoCachePlugin = {
-  cacheKeyWillBeUsed: async ({ request }) => {
-    const url = new URL(request.url);
-    url.searchParams.delete('session');
-    return url.href;
-  },
-
+const playlistSessionlessCacheKey = {
   // A cacheWillUpdate disables workbox's 200-only caching rule
   cacheWillUpdate: async ({ request, response }) => {
     if (response.status !== 200) {
@@ -586,7 +587,7 @@ registerRoute(
   ({ url }) => isVideoRoute(url),
   new GatedCacheFirst({
     cacheName: CACHE_VIDEOS,
-    plugins: [logPlugin('video'), videoCachePlugin],
+    plugins: [logPlugin('video'), playlistSessionlessCacheKey, sessionlessCacheKey],
   })
 );
 
