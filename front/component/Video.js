@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import videojs from 'video.js';
 import { api } from '../api.js';
 import { isVideoCached } from '../store/cache.js';
+import { messageSW } from '../store/wb.js';
 
 import 'videojs-yt-style';
 import 'videojs-mobile-ui';
@@ -49,6 +50,12 @@ export default function Video({ videoId }) {
       if (!videoSession) {
         const response = await api.addVideoSession(videoId).catch((err) => console.error(err));
         videoSession = response?.json?.session ?? null;
+
+        // Give the session to the service worker: native HLS players
+        // (e.g. iPhone Safari) fetch segments without it and get a 401.
+        if (videoSession) {
+          messageSW({ type: 'setVideoSession', payload: { videoId: Number(videoId), session: videoSession } }).catch(() => {});
+        }
       }
       return videoSession;
     }
@@ -68,6 +75,12 @@ export default function Video({ videoId }) {
 
     let isSessionStarted = false;
     player.on('play', async () => {
+      // Re-publish the session: the service worker may have been killed
+      // while playback was paused and lost its in-memory copy.
+      if (videoSession) {
+        messageSW({ type: 'setVideoSession', payload: { videoId: Number(videoId), session: videoSession } }).catch(() => {});
+      }
+
       if (!isSessionStarted) {
         isSessionStarted = true;
         const session = await ensureVideoSession();
@@ -123,7 +136,10 @@ export default function Video({ videoId }) {
     });
 
     return () => {
-      if (videoSession) api.clearVideoSession(videoId, videoSession).catch((err) => console.error(err));
+      if (videoSession) {
+        api.clearVideoSession(videoId, videoSession).catch((err) => console.error(err));
+        messageSW({ type: 'clearVideoSession', payload: { videoId: Number(videoId) } }).catch(() => {});
+      }
 
       if (playerRef.current) {
         playerRef.current.dispose();
