@@ -9,17 +9,20 @@ vi.mock('../store/wb.js', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
-    messageSW: vi.fn(),
+    swApi: {
+      getAllCachedVideos: vi.fn(),
+      getAutoCachedVideos: vi.fn(),
+    },
   };
 });
 
-import { messageSW } from '../store/wb.js';
+import { swApi } from '../store/wb.js';
 
 beforeEach(() => {
   swReady.value = true;
   cache.videos.value = [];
   cache.autoVideos.value = [];
-  messageSW.mockReset();
+  Object.values(swApi).forEach((mock) => mock.mockReset());
 });
 
 describe('refreshCachedVideos', () => {
@@ -27,22 +30,20 @@ describe('refreshCachedVideos', () => {
     const offlineVideos = [{ id: 1, title: 'Downloaded video', playlistUrl: '/api/video/1/playlist', segmentUrls: [] }];
     const autoVideos = [{ id: 2, cachedSegments: 3, totalSegments: 10 }];
 
-    messageSW
-      .mockResolvedValueOnce({ type: 'getAllCachedVideosResponse', data: { videos: offlineVideos } })
-      .mockResolvedValueOnce({ type: 'getAutoCachedVideosResponse', data: { videos: autoVideos } });
+    swApi.getAllCachedVideos.mockResolvedValueOnce({ type: 'getAllCachedVideosResponse', data: { videos: offlineVideos } });
+    swApi.getAutoCachedVideos.mockResolvedValueOnce({ type: 'getAutoCachedVideosResponse', data: { videos: autoVideos } });
 
     await refreshCachedVideos();
 
-    expect(messageSW).toHaveBeenNthCalledWith(1, { type: 'getAllCachedVideos' });
-    expect(messageSW).toHaveBeenNthCalledWith(2, { type: 'getAutoCachedVideos' });
+    expect(swApi.getAllCachedVideos).toHaveBeenCalledTimes(1);
+    expect(swApi.getAutoCachedVideos).toHaveBeenCalledTimes(1);
     expect(cache.videos.value).toEqual(offlineVideos);
     expect(cache.autoVideos.value).toEqual(autoVideos);
   });
 
   it('keeps empty lists when the service worker does not know the message', async () => {
-    messageSW
-      .mockResolvedValueOnce({ type: 'getAllCachedVideosResponse', data: { videos: [] } })
-      .mockResolvedValueOnce({ type: 'getAutoCachedVideosResponse', data: { success: false, error: 'Unknown message type' } });
+    swApi.getAllCachedVideos.mockResolvedValueOnce({ type: 'getAllCachedVideosResponse', data: { videos: [] } });
+    swApi.getAutoCachedVideos.mockResolvedValueOnce({ type: 'getAutoCachedVideosResponse', data: { success: false, error: 'Unknown message type' } });
 
     await refreshCachedVideos();
 
@@ -114,10 +115,7 @@ describe('withCacheBadges', () => {
   });
 
   it('keeps the cached badge when the segment total is unknown', () => {
-    const autoVideos = [
-      { id: 2, cachedSegments: 4, totalSegments: null },
-      { id: 3 },
-    ];
+    const autoVideos = [{ id: 2, cachedSegments: 4, totalSegments: null }, { id: 3 }];
 
     const badged = withCacheBadges(allVideos, [], autoVideos);
 
