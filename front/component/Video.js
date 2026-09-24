@@ -69,6 +69,8 @@ export default function Video({ videoId }) {
 
     let isSessionStarted = false;
     async function ensureSessionStarted() {
+      // Cached videos are served by the service worker without a session.
+      if (isVideoCached(Number(videoId))) return;
       if (isSessionStarted) return;
       const session = await ensureVideoSession();
       if (!session) return;
