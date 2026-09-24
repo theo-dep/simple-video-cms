@@ -562,17 +562,6 @@ const videoCachePlugin = {
   },
 };
 
-// Appends the video session on each segment line of a playlist
-function playlistWithSession(content, session) {
-  return content
-    .split('\n')
-    .map((uri) => {
-      if (!uri || uri.startsWith('#')) return uri;
-      return `${uri}?session=${session}`;
-    })
-    .join('\n');
-}
-
 // Removes the video session from a segment uri
 function uriWithoutSession(uri) {
   return uri.replace(/\?session=[^&]*$/, '');
@@ -588,22 +577,6 @@ class GatedCacheFirst extends CacheFirst {
     if (!videoCachingEnabled) {
       await log('log', `Served video from network (caching disabled):`, request.url);
       return fetch(request);
-    }
-
-    // Playlists: cached canonically without session
-    const url = new URL(request.url);
-    const session = url.searchParams.get('session');
-    if (VIDEO_PLAYLIST_PATTERN.test(url.pathname) && session) {
-      url.searchParams.delete('session');
-
-      const cache = await caches.open(CACHE_VIDEOS);
-      const cached = await cache.match(url.href);
-      if (cached) {
-        await log('log', `Served video from cache:`, request.url);
-        return new Response(playlistWithSession(await cached.text(), session), {
-          headers: { 'Content-Type': 'application/vnd.apple.mpegurl' },
-        });
-      }
     }
 
     return super._handle(request, handler);
