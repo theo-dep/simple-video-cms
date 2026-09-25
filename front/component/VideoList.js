@@ -31,9 +31,7 @@ export function withCacheBadges(videos, offlineVideos, autoVideos) {
     const auto = autoById.get(v.id);
     if (!auto) return v;
     const partial = auto.totalSegments != null && (auto.cachedSegments ?? 0) < auto.totalSegments;
-    return partial
-      ? { ...v, badge: 'partial-cached', badgeLabel: 'Partially cached' }
-      : { ...v, badge: 'cached', badgeLabel: 'Cached' };
+    return partial ? { ...v, badge: 'partial-cached', badgeLabel: 'Partially cached' } : { ...v, badge: 'cached', badgeLabel: 'Cached' };
   });
 }
 
