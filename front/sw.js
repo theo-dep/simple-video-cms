@@ -518,6 +518,15 @@ registerRoute(
   })
 );
 
+// The video session lives only in transit: never in cache keys nor in cached playlist content.
+const sessionlessCacheKey = {
+  cacheKeyWillBeUsed: async ({ request }) => {
+    const url = new URL(request.url);
+    url.searchParams.delete('session');
+    return url.href;
+  },
+};
+
 // Offline videos: CacheOnly for videos marked as offline
 // MUST BE BEFORE the normal video route to have priority
 registerRoute(
@@ -536,20 +545,12 @@ registerRoute(
   },
   new CacheOnly({
     cacheName: CACHE_OFFLINE_VIDEOS,
-    plugins: [logPlugin('offline-video')],
+    plugins: [logPlugin('offline-video'), sessionlessCacheKey],
   }),
   'GET'
 );
 
-// videos: gated CacheFirst by videoCachingEnabled
-// The video session lives only in transit: never in cache keys nor in cached playlist content
-const videoCachePlugin = {
-  cacheKeyWillBeUsed: async ({ request }) => {
-    const url = new URL(request.url);
-    url.searchParams.delete('session');
-    return url.href;
-  },
-
+const playlistSessionlessCacheKey = {
   // A cacheWillUpdate disables workbox's 200-only caching rule
   cacheWillUpdate: async ({ request, response }) => {
     if (response.status !== 200) {
@@ -561,17 +562,6 @@ const videoCachePlugin = {
     return new Response(playlistWithoutSession(await response.text()), response);
   },
 };
-
-// Appends the video session on each segment line of a playlist
-function playlistWithSession(content, session) {
-  return content
-    .split('\n')
-    .map((uri) => {
-      if (!uri || uri.startsWith('#')) return uri;
-      return `${uri}?session=${session}`;
-    })
-    .join('\n');
-}
 
 // Removes the video session from a segment uri
 function uriWithoutSession(uri) {
@@ -590,22 +580,6 @@ class GatedCacheFirst extends CacheFirst {
       return fetch(request);
     }
 
-    // Playlists: cached canonically without session
-    const url = new URL(request.url);
-    const session = url.searchParams.get('session');
-    if (VIDEO_PLAYLIST_PATTERN.test(url.pathname) && session) {
-      url.searchParams.delete('session');
-
-      const cache = await caches.open(CACHE_VIDEOS);
-      const cached = await cache.match(url.href);
-      if (cached) {
-        await log('log', `Served video from cache:`, request.url);
-        return new Response(playlistWithSession(await cached.text(), session), {
-          headers: { 'Content-Type': 'application/vnd.apple.mpegurl' },
-        });
-      }
-    }
-
     return super._handle(request, handler);
   }
 }
@@ -613,7 +587,7 @@ registerRoute(
   ({ url }) => isVideoRoute(url),
   new GatedCacheFirst({
     cacheName: CACHE_VIDEOS,
-    plugins: [logPlugin('video'), videoCachePlugin],
+    plugins: [logPlugin('video'), playlistSessionlessCacheKey, sessionlessCacheKey],
   })
 );
 
