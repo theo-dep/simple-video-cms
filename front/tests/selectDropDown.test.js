@@ -2,17 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { h } from 'preact';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-import {
-  MultiSelectDropDown,
-  SingleSelectEditableDropDown,
-  MultiSelectEditableDropDown,
-} from '../component/SelectDropDown.js';
+import { MultiSelectDropDown, SingleSelectEditableDropDown, MultiSelectEditableDropDown } from '../component/SelectDropDown.js';
 
 // Helper to create option elements
 function createOptions(options) {
-  return options.map((opt) =>
-    h('option', { value: opt.value, selected: opt.selected }, opt.label || opt.value)
-  );
+  return options.map((opt) => h('option', { value: opt.value, selected: opt.selected }, opt.label || opt.value));
 }
 
 // Helper to open dropdown by clicking header
@@ -46,7 +40,7 @@ const testOptions = [
 
 // Wait for next event loop tick to allow state updates
 function tick() {
-  return new Promise(resolve => setTimeout(resolve, 0));
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 describe('MultiSelectDropDown', () => {
@@ -337,7 +331,6 @@ describe('MultiSelectDropDown', () => {
       expect(onChange).toHaveBeenLastCalledWith(['3']);
     });
   });
-
 });
 
 describe('SingleSelectEditableDropDown', () => {
@@ -453,10 +446,10 @@ describe('SingleSelectEditableDropDown', () => {
 
       openDropdown();
       await tick();
-      
+
       const option1 = getOptionByValue('1');
       expect(option1).toBeTruthy();
-      
+
       // Click on the option div directly
       fireEvent.click(option1);
 
@@ -487,7 +480,7 @@ describe('SingleSelectEditableDropDown', () => {
       openDropdown();
       await tick();
       fireEvent.click(getOptionByValue('1'));
-      
+
       openDropdown();
       await tick();
       fireEvent.click(getOptionByValue('2'));
@@ -538,10 +531,12 @@ describe('SingleSelectEditableDropDown', () => {
       await tick();
 
       // Re-render with the new option added to children
-      rerender(h(SingleSelectEditableDropDown, { name: 'test', onChange, onAddedOption }, [
-        ...createOptions(testOptions),
-        h('option', { value: 'new-value' }, 'New Option')
-      ]));
+      rerender(
+        h(SingleSelectEditableDropDown, { name: 'test', onChange, onAddedOption }, [
+          ...createOptions(testOptions),
+          h('option', { value: 'new-value' }, 'New Option'),
+        ])
+      );
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(['new-value']);
@@ -659,7 +654,7 @@ describe('SingleSelectEditableDropDown', () => {
       const deleteButtons = document.querySelectorAll('.select-dropdown-option-delete');
       fireEvent.click(deleteButtons[0]);
 
-      options = options.filter(o => o.value !== '1');
+      options = options.filter((o) => o.value !== '1');
       rerender(h(SingleSelectEditableDropDown, { name: 'test', onChange, onDeletedOption }, createOptions(options)));
 
       expect(onDeletedOption).toHaveBeenCalledWith('1');
@@ -930,7 +925,7 @@ describe('MultiSelectEditableDropDown', () => {
       await tick();
       fireEvent.click(getOptionByValue('1'));
       fireEvent.click(getOptionByValue('2'));
-      
+
       const deleteButtons = document.querySelectorAll('.select-dropdown-option-delete');
       fireEvent.click(deleteButtons[0]);
 
@@ -1020,7 +1015,7 @@ describe('MultiSelectEditableDropDown', () => {
       const deleteButtons = document.querySelectorAll('.select-dropdown-option-delete');
       fireEvent.click(deleteButtons[1]);
 
-      options = options.filter(o => o.value !== '2');
+      options = options.filter((o) => o.value !== '2');
       rerender(h(MultiSelectEditableDropDown, { name: 'test', onChange, onDeletedOption }, createOptions(options)));
 
       expect(onDeletedOption).toHaveBeenCalledWith('2');
@@ -1080,7 +1075,7 @@ describe('MultiSelectEditableDropDown', () => {
 
       await tick();
 
-      options = options.filter(o => o.value !== '1');
+      options = options.filter((o) => o.value !== '1');
       options.push({ value: '4', label: 'New Option' });
       rerender(h(MultiSelectEditableDropDown, { name: 'test', onChange, onDeletedOption, onAddedOption }, createOptions(options)));
 
@@ -1099,9 +1094,7 @@ describe('MultiSelectEditableDropDown', () => {
         { value: '3', label: 'Option 3' },
       ];
 
-      const { rerender } = render(
-        h(MultiSelectDropDown, { name: 'test', onChange }, createOptions(options))
-      );
+      const { rerender } = render(h(MultiSelectDropDown, { name: 'test', onChange }, createOptions(options)));
 
       expect(onChange).toHaveBeenCalledWith(['1', '2']);
 
