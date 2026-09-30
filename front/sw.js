@@ -54,6 +54,10 @@ let videoCachingEnabled = false;
 // In-memory set of video IDs that are cached for offline viewing
 const offlineVideoIds = new Set();
 
+// In-memory map video id -> session id of the playing page. Never persisted to
+// a cache: the session lives only in transit (server, SW, page).
+const videoSessions = new Map();
+
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     event.waitUntil(
@@ -90,6 +94,15 @@ async function handleMessage(event) {
         await log('log', 'Disabling video caching');
         videoCachingEnabled = false;
         break;
+
+      case 'setVideoSession': {
+        setVideoSession(payload);
+        event.ports[0].postMessage({
+          type: 'setVideoSessionResponse',
+          data: { success: true, id: payload.id },
+        });
+        break;
+      }
 
       case 'addVideoToOfflineCache':
         await addVideoToOfflineCache(payload);
@@ -219,6 +232,19 @@ async function getCacheUsage() {
     }
   }
   return usage;
+}
+
+// Populate the videoSessions map with video id and session
+function setVideoSession(payload) {
+  // payload.id is a route param (string), the url lookup gives a number
+  const id = parseInt(payload.id, 10);
+  if (!Number.isNaN(id)) {
+    if (payload.session) {
+      videoSessions.set(id, payload.session);
+    } else {
+      videoSessions.delete(id);
+    }
+  }
 }
 
 async function getStorageInfo() {
@@ -654,14 +680,31 @@ function playlistWithoutSession(content) {
   return content.split('\n').map(uriWithoutSession).join('\n');
 }
 
+// iOS native HLS drops the ?session= query of playlist and segment requests:
+// re-attach the session of the playing page before the request goes to the
+// network (the cache key stays sessionless either way)
+function withVideoSession(request) {
+  const url = new URL(request.url);
+  if (url.searchParams.has('session')) {
+    return request;
+  }
+  const id = extractVideoIdFromUrl(url);
+  const session = id === null ? undefined : videoSessions.get(id);
+  if (!session) {
+    return request;
+  }
+  url.searchParams.set('session', session);
+  return new Request(url.href, { method: request.method, headers: request.headers, credentials: 'same-origin' });
+}
+
 class GatedCacheFirst extends CacheFirst {
   async _handle(request, handler) {
     if (!videoCachingEnabled) {
       await log('log', `Served video from network (caching disabled):`, request.url);
-      return fetch(request);
+      return fetch(withVideoSession(request));
     }
 
-    return super._handle(request, handler);
+    return super._handle(withVideoSession(request), handler);
   }
 }
 registerRoute(

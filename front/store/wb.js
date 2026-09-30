@@ -149,6 +149,9 @@ export async function messageSW(message) {
 export const swApi = {
   enableVideoCaching: () => messageSW({ type: 'enableVideoCaching' }),
   disableVideoCaching: () => messageSW({ type: 'disableVideoCaching' }),
+  // iOS native HLS drops the ?session= query: the worker re-attaches the
+  // session it received here to sessionless video requests
+  setVideoSession: (id, session) => messageSW({ type: 'setVideoSession', payload: { id, session } }),
 
   addVideoToOfflineCache: (id, title) => messageSW({ type: 'addVideoToOfflineCache', payload: { id, title } }),
   removeVideoFromOfflineCache: (id) => messageSW({ type: 'removeVideoFromOfflineCache', payload: { id } }),

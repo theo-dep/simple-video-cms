@@ -2,9 +2,15 @@ import { html } from 'htm/preact';
 import { useEffect, useRef } from 'preact/hooks';
 import videojs from 'video.js';
 import { api } from '../api.js';
+import { swApi } from '../store/wb.js';
 
 import 'videojs-yt-style';
 import 'videojs-mobile-ui';
+
+function notifyVideoSession(videoId, session) {
+  if (!session) return;
+  swApi.setVideoSession(videoId, session).catch((err) => console.error(err));
+}
 
 export default function Video({ videoId }) {
   const videoRef = useRef(null);
@@ -56,9 +62,13 @@ export default function Video({ videoId }) {
         const response = await api.addVideoSession(videoId).catch((err) => console.error(err));
         videoSession = response?.json?.session ?? null;
         sessionApiAt = Date.now();
+        notifyVideoSession(videoId, videoSession);
       }
       return videoSession;
     }
+
+    // iOS native HLS drops the ?session= query: the worker re-attaches the
+    // session, so it must know it before any segment request
 
     (async () => {
       // The server requires a session before any segment request, but a hanging request offline must not block playback.
@@ -83,6 +93,7 @@ export default function Video({ videoId }) {
       if (!session) return;
 
       videoSession = session;
+      notifyVideoSession(videoId, session);
       await api.startVideoSession(videoId, session).catch((err) => console.error(err));
       sessionApiAt = Date.now();
     }
@@ -93,6 +104,9 @@ export default function Video({ videoId }) {
 
       const session = await ensureVideoSession();
       if (!session) return;
+      // Safari may have killed the worker since page load: send the session
+      // again so it survives restarts
+      notifyVideoSession(videoId, session);
       if (isSessionStarted) return;
       isSessionStarted = true;
       await api.startVideoSession(videoId, session).catch((err) => console.error(err));
@@ -186,6 +200,7 @@ export default function Video({ videoId }) {
 
       if (videoSession) {
         api.clearVideoSession(videoId, videoSession).catch((err) => console.error(err));
+        swApi.setVideoSession(videoId, null).catch((err) => console.error(err));
       }
 
       if (playerRef.current) {
