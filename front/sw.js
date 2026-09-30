@@ -306,6 +306,12 @@ async function addVideoToOfflineCache({ id, title }) {
     }
 
     // 8. Cache playlist
+    await cache.put(
+      playlistUrl,
+      new Response(playlistWithoutSession(playlistContent), {
+        headers: { 'Content-Type': 'application/vnd.apple.mpegurl' },
+      })
+    );
     putKeys.push(playlistUrl);
 
     // 9. Cache all segments
