@@ -1,7 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { clearCachedVideos, clearDownloadedVideos, addVideoToOfflineCache, removeVideoFromOfflineCache, cache } from '../store/cache.js';
-import { swReady } from '../store/wb.js';
 
 vi.mock('../store/wb.js', async (importOriginal) => {
   const actual = await importOriginal();
@@ -25,7 +24,6 @@ const storageInfo = { quota: 1000, usage: 500, available: 500, percentageUsed: 5
 const storageInfoResponse = { type: 'getStorageInfoResponse', data: { storageInfo } };
 
 beforeEach(() => {
-  swReady.value = true;
   cache.storageInfo.value = null;
   cache.videos.value = [];
   cache.autoVideos.value = [];

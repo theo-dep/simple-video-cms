@@ -4,7 +4,7 @@ import { useEffect } from 'preact/hooks';
 import { LocationProvider, Router, lazy, useLocation } from 'preact-iso';
 import { firstRefreshed, user } from '../store/auth.js';
 import { previousRoute } from '../store/redirect.js';
-import { swReady, swControllerVersion, initWorkbox } from '../store/wb.js';
+import { swControllerVersion, initWorkbox } from '../store/wb.js';
 import { enableVideoCaching, disableVideoCaching, refreshCachedVideos } from '../store/cache.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
@@ -28,7 +28,9 @@ function RedirectUpdater() {
 }
 
 export function App() {
-  const isLoading = !firstRefreshed.value || !swReady.value;
+  // Don't waste first render on swReady : SW activation and offline features
+  // will be activated alone.
+  const isLoading = !firstRefreshed.value;
 
   useEffect(() => {
     if (!isLoading) document.getElementById('boot-loader')?.remove();

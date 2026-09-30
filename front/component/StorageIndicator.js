@@ -20,9 +20,19 @@ export function StorageIndicator() {
     `;
   }
 
-  const percentageUsed = Math.round(info.percentageUsed || 0);
+  // percentageUsed is null when navigator.storage.estimate() is unavailable (iOS < 15)
+  const percentageUsed = info.percentageUsed == null ? null : Math.round(info.percentageUsed);
   const used = formatBytes(info.usage || 0);
   const available = formatBytes(info.available || 0);
+
+  if (percentageUsed == null) {
+    return html`
+      <div class="storage-indicator" title=${`${used} used, quota unknown on this browser`}>
+        <${Icon} name="hdd" />
+        <span class="storage-used">${used}</span>
+      </div>
+    `;
+  }
 
   return html`
     <div class="storage-indicator" title=${`${used} used, ${available} available (${percentageUsed}% used)`}>

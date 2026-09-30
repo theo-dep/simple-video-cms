@@ -6,7 +6,7 @@ import { rollupPluginHTML as html } from '@web/rollup-plugin-html';
 import babel from '@rollup/plugin-babel';
 import replace from '@rollup/plugin-replace';
 import { injectManifest } from 'rollup-plugin-workbox';
-import { videojsEntries } from './rollup.shared.js';
+import { videojsEntries, babelTargets, excludeCoreJs, onwarn } from './rollup.shared.js';
 
 const SRC_HTML_FILE = 'index.html';
 const SRC_HTML = `front/${SRC_HTML_FILE}`;
@@ -63,7 +63,7 @@ function deleteProdHtmlFile() {
 }
 
 const terserOptions = {
-  ecma: 2020,
+  ecma: 2017,
   warnings: true,
   compress: { passes: 2 },
 };
@@ -98,6 +98,7 @@ function hashPathsPlugin() {
 export default [
   ...videojsEntries.map((entry) => ({
     ...entry,
+    onwarn,
     plugins: [...entry.plugins, hashPathsPlugin(), terser({ ...terserOptions, module: true })],
     output: {
       dir: `${DIST_DIR}`,
@@ -109,6 +110,7 @@ export default [
   // Main Bundle
   {
     input: PROD_HTML,
+    onwarn,
     output: {
       dir: DIST_DIR,
       format: 'es',
@@ -141,9 +143,17 @@ export default [
         preventAssignment: true,
         objectGuards: true,
       }),
+      nodeResolve({
+        browser: true,
+        extensions: ['.js', '.mjs'],
+      }),
+      commonjs(),
+      // After nodeResolve/commonjs, so bundled dependencies are transpiled too
       babel({
         babelHelpers: 'bundled',
-        exclude: ['**/node_modules/**'],
+        compact: true,
+        exclude: excludeCoreJs,
+        presets: [['@babel/preset-env', { ...babelTargets, useBuiltIns: 'usage', corejs: 3 }]],
         plugins: [
           [
             'babel-plugin-htm',
@@ -154,24 +164,25 @@ export default [
           ],
         ],
       }),
-      nodeResolve({
-        browser: true,
-        extensions: ['.js', '.mjs'],
-      }),
-      commonjs(),
       terser({
         ...terserOptions,
         module: true,
       }),
       // Workbox plugin: must be last, after asset-emitting plugins
-      injectManifest({
-        swSrc: 'front/sw.js',
-        swDest: `${DIST_DIR}/sw.js`,
-        globDirectory: DIST_DIR,
-        globPatterns: ['**/*.{js,css,svg,png,woff,woff2}'],
-        globIgnores: ['sw.js', 'assets/**'],
-        dontCacheBustURLsMatching: /-[a-zA-Z0-9_-]{8,}\./,
-      }),
+      // sw.js is bundled by esbuild, not the pipeline above: keep it parseable
+      // on Safari 11.1 (oldest with SW support). esbuild's "safari*" targets
+      // wrongly reject destructuring, hence es2017.
+      injectManifest(
+        {
+          swSrc: 'front/sw.js',
+          swDest: `${DIST_DIR}/sw.js`,
+          globDirectory: DIST_DIR,
+          globPatterns: ['**/*.{js,css,svg,png,woff,woff2}'],
+          globIgnores: ['sw.js', 'assets/**'],
+          dontCacheBustURLsMatching: /-[a-zA-Z0-9_-]{8,}\./,
+        },
+        { esbuild: { target: 'es2017' } }
+      ),
     ],
   },
 ];
