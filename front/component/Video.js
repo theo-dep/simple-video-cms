@@ -47,10 +47,15 @@ export default function Video({ videoId }) {
     player.ytStyle();
 
     let videoSession = null;
+    // Timestamp of the last api call that refreshed the session server side
+    // (add, start, reset): the server expires a session after 60 s of inactivity
+    let sessionApiAt = 0;
+
     async function ensureVideoSession() {
       if (!videoSession) {
         const response = await api.addVideoSession(videoId).catch((err) => console.error(err));
         videoSession = response?.json?.session ?? null;
+        sessionApiAt = Date.now();
       }
       return videoSession;
     }
@@ -65,13 +70,33 @@ export default function Video({ videoId }) {
       });
     })();
 
+    // After a pause longer than the server session duration, the session is
+    // expired: request a fresh one. The xhr hook and the worker send it with
+    // the next segment requests, no player reload needed.
+    const SESSION_RENEW_AFTER_MS = 50000;
+
+    async function renewExpiredSession() {
+      if (!videoSession || Date.now() - sessionApiAt < SESSION_RENEW_AFTER_MS) return;
+
+      const response = await api.addVideoSession(videoId).catch((err) => console.error(err));
+      const session = response?.json?.session ?? null;
+      if (!session) return;
+
+      videoSession = session;
+      await api.startVideoSession(videoId, session).catch((err) => console.error(err));
+      sessionApiAt = Date.now();
+    }
+
     let isSessionStarted = false;
     async function ensureSessionStarted() {
-      if (isSessionStarted) return;
+      await renewExpiredSession();
+
       const session = await ensureVideoSession();
       if (!session) return;
+      if (isSessionStarted) return;
       isSessionStarted = true;
       await api.startVideoSession(videoId, session).catch((err) => console.error(err));
+      sessionApiAt = Date.now();
     }
 
     player.on('play', ensureSessionStarted);
@@ -105,12 +130,13 @@ export default function Video({ videoId }) {
       originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
 
       player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
-        // Segments of a playlist loaded offline carry no session: attach the recovered one
+        // The playlist may carry an expired session (long pause): always send
+        // the current one with segment requests
         let isSegment = false;
         if (options.uri) {
           const url = new URL(options.uri, location.href);
           isSegment = url.pathname.endsWith('.ts');
-          if (isSegment && videoSession && !url.searchParams.has('session')) {
+          if (isSegment && videoSession) {
             url.searchParams.set('session', videoSession);
             options.uri = url.href;
           }
@@ -129,7 +155,10 @@ export default function Video({ videoId }) {
     });
 
     async function onSeekEnd() {
-      if (videoSession) await api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+      if (videoSession) {
+        await api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+        sessionApiAt = Date.now();
+      }
       isSeeking = false;
 
       if (lastBlocked && originalVhsXhr) {
@@ -144,6 +173,7 @@ export default function Video({ videoId }) {
       // request at the seek target
       if (!player.tech({ IWillNotUseThisInPlugins: true }).vhs && videoSession) {
         api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+        sessionApiAt = Date.now();
       }
 
       isSeeking = true;
