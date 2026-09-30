@@ -27,7 +27,10 @@ export default function Video({ videoId }) {
     playerRef.current = videojs(videoRef.current, {
       html5: {
         vhs: {
-          overrideNative: true,
+          // Safari 11.1 MSE playback stalls after the initial buffer: let
+          // Safari use its native HLS stack, the worker re-attaches the
+          // video session on sessionless requests (same path as iPhone)
+          overrideNative: !videojs.browser.IS_SAFARI,
           withCredentials: false,
         },
         nativeVideoTracks: false,
@@ -136,7 +139,12 @@ export default function Video({ videoId }) {
     }
 
     player.on('seeking', () => {
-      if (videojs.browser.IS_IOS && videoSession) api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+      // Native HLS (iPhone, old Safari) has no blocked-xhr sync with the
+      // reset api: fire the reset right away to stay ahead of the segment
+      // request at the seek target
+      if (!player.tech({ IWillNotUseThisInPlugins: true }).vhs && videoSession) {
+        api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+      }
 
       isSeeking = true;
       clearTimeout(debounce);
