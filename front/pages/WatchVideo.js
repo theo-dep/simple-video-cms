@@ -40,8 +40,13 @@ export default function WatchVideo({ videoId }) {
                   <${Video} videoId=${videoId} />
                   <div class="video-footer-content">
                     <div class="video-footer-right-content">
-                      <${CacheVideoButton} id=${video.id} title=${video.title} location="video" />
-                      <${BookmarkButton} videoId=${video.id} isBookmarked=${video.bookmarked} location="video" />
+                      ${
+                        user.isLogged.value &&
+                        html`
+                          <${CacheVideoButton} id=${video.id} title=${video.title} location="video" />
+                          <${BookmarkButton} videoId=${video.id} isBookmarked=${video.bookmarked} location="video" />
+                        `
+                      }
                       <${ShareButton} />
                     </div>
                     <div class="video-footer-left-content">
