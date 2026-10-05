@@ -23,10 +23,20 @@ struct std::formatter<VideoSession::State> : std::formatter<std::string>
     FmtContext::iterator format(const VideoSession::State& state, FmtContext& ctx) const
     {
         return std::format_to(ctx.out(),
-                              "[ started={}, banned={}, last_segment={}, sink_count={}, create_at={} ]",
-                              state.started, state.banned, state.last_segment, state.sink_count, state.created_at);
+                              "[ started={}, banned={}, last_segment={}, sink_count={}, create_at={}, last_activity={} ]",
+                              state.started,
+                              state.banned,
+                              state.last_segment,
+                              state.sink_count,
+                              state.created_at,
+                              state.last_activity);
     }
 };
+
+VideoSession::VideoSession(Clock clock)
+    : _clock{ std::move(clock) }
+{
+}
 
 const std::string& VideoSession::add_session(const std::string& video_id)
 {
@@ -38,6 +48,8 @@ const std::string& VideoSession::add_session(const std::string& video_id)
     const Key key{ .session_id = crypto::random_string(), .video_id = video_id };
     State& state{ _sessions[key] };
     state = State{}; // reset
+    state.created_at = _clock();
+    state.last_activity = state.created_at;
 
     logging::debug{ "new session created {} <=> {}", key, state };
 
@@ -57,6 +69,7 @@ void VideoSession::start_session(const std::string& session_id, const std::strin
     }
 
     session->second.started = true;
+    session->second.last_activity = _clock();
     logging::debug{ "session started {} <=> {}", session->first, session->second };
 }
 
@@ -74,6 +87,7 @@ void VideoSession::reset_session(const std::string& session_id, const std::strin
 
     session->second.sink_count = 0;
     session->second.last_segment = -1;
+    session->second.last_activity = _clock();
 }
 
 void VideoSession::clear_session(const std::string& session_id, const std::string& video_id)
@@ -101,7 +115,8 @@ bool VideoSession::validate_segment_access(const std::string& session_id, const 
 
     const int segment_number{ su::string_to_int(segment.substr(underscore + 1, dot - underscore - 1)) };
 
-    const std::shared_lock lock(_mutex);
+    // last_activity is written on success: an exclusive lock is required
+    const std::unique_lock lock(_mutex);
 
     const Key key{ .session_id = session_id, .video_id = video_id };
     const auto session{ _sessions.find(key) };
@@ -116,10 +131,10 @@ bool VideoSession::validate_segment_access(const std::string& session_id, const 
         return false;
     }
 
-    // reload needed if hang more than duration
-    if (is_expired(session->second.created_at)) {
+    // idle for longer than the session duration: reload needed
+    if (is_expired(session->second.last_activity)) {
         session->second.banned = true;
-        logging::info{ "session expired (now={}) {} <=> {}", std::chrono::system_clock::now(), session->first, session->second };
+        logging::info{ "session expired (now={}) {} <=> {}", _clock(), session->first, session->second };
         return false;
     }
 
@@ -153,12 +168,13 @@ bool VideoSession::validate_segment_access(const std::string& session_id, const 
     }
 
     session->second.last_segment = segment_number;
+    session->second.last_activity = _clock();
     return true;
 }
 
-bool VideoSession::is_expired(const std::chrono::system_clock::time_point& time)
+bool VideoSession::is_expired(const std::chrono::system_clock::time_point& time) const
 {
-    const std::chrono::system_clock::time_point now{ std::chrono::system_clock::now() };
+    const std::chrono::system_clock::time_point now{ _clock() };
     return (now - time > duration);
 }
 
@@ -166,8 +182,8 @@ void VideoSession::clean_expired_sessions(const std::string& except_session_id)
 {
     const std::unique_lock lock(_mutex);
     std::erase_if(_sessions,
-                  [&except_session_id](const decltype(_sessions)::value_type& session) {
-                      return except_session_id != session.first.session_id && is_expired(session.second.created_at);
+                  [this, &except_session_id](const decltype(_sessions)::value_type& session) {
+                      return except_session_id != session.first.session_id && is_expired(session.second.last_activity);
                   });
 }
 

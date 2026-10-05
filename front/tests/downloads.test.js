@@ -3,7 +3,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { mergeDownloads } from '../pages/Downloads.js';
 import { withCacheBadges } from '../component/VideoList.js';
 import { refreshCachedVideos, cache } from '../store/cache.js';
-import { swReady } from '../store/wb.js';
 
 vi.mock('../store/wb.js', async (importOriginal) => {
   const actual = await importOriginal();
@@ -19,7 +18,6 @@ vi.mock('../store/wb.js', async (importOriginal) => {
 import { swApi } from '../store/wb.js';
 
 beforeEach(() => {
-  swReady.value = true;
   cache.videos.value = [];
   cache.autoVideos.value = [];
   Object.values(swApi).forEach((mock) => mock.mockReset());

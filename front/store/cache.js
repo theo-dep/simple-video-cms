@@ -1,5 +1,5 @@
 import { signal, computed } from '@preact/signals';
-import { swReady, swApi } from './wb.js';
+import { swApi } from './wb.js';
 
 // State for cached videos
 const cachedVideos = signal([]);
@@ -16,19 +16,15 @@ export function isVideoCached(videoId) {
 
 // Enable/disable video caching
 export function enableVideoCaching() {
-  if (!swReady.value) return;
   swApi.enableVideoCaching();
 }
 
 export function disableVideoCaching() {
-  if (!swReady.value) return;
   swApi.disableVideoCaching();
 }
 
 // Refresh the list of cached videos
 export async function refreshCachedVideos() {
-  if (!swReady.value) return;
-
   try {
     const [offlineResponse, autoResponse] = await Promise.all([swApi.getAllCachedVideos(), swApi.getAutoCachedVideos()]);
     cachedVideos.value = offlineResponse?.data?.videos || [];
@@ -40,8 +36,6 @@ export async function refreshCachedVideos() {
 
 // Refresh storage info
 export async function refreshStorageInfo() {
-  if (!swReady.value) return;
-
   try {
     const response = await swApi.getStorageInfo();
     if (response?.data?.storageInfo) {
@@ -54,8 +48,6 @@ export async function refreshStorageInfo() {
 
 // Add a video to offline cache
 export async function addVideoToOfflineCache(id, title) {
-  if (!swReady.value) return;
-
   try {
     const response = await swApi.addVideoToOfflineCache(id, title);
 
@@ -73,8 +65,6 @@ export async function addVideoToOfflineCache(id, title) {
 
 // Remove a video from offline cache
 export async function removeVideoFromOfflineCache(id) {
-  if (!swReady.value) return;
-
   try {
     await swApi.removeVideoFromOfflineCache(id);
     await refreshCachedVideos();
@@ -87,8 +77,6 @@ export async function removeVideoFromOfflineCache(id) {
 
 // Clear the video caches (cached videos)
 export async function clearCachedVideos() {
-  if (!swReady.value) return;
-
   try {
     const response = await swApi.clearCachedVideos();
     if (!response?.data?.success) {
@@ -104,8 +92,6 @@ export async function clearCachedVideos() {
 
 // Clear the offline-video cache (downloaded videos)
 export async function clearDownloadedVideos() {
-  if (!swReady.value) return;
-
   try {
     const response = await swApi.clearDownloadedVideos();
     if (!response?.data?.success) {

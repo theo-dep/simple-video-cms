@@ -51,8 +51,8 @@ export function CacheVideoButton({ id, title, location }) {
       onClick=${handleCacheToggle}
       activeIcon="save-fill"
       inactiveIcon="save"
-      activeTitle="Remove from download"
-      inactiveTitle="Add to download"
+      activeTitle="Remove from downloads"
+      inactiveTitle="Add to downloads"
       loading=${loading}
       error=${error}
       location=${location}

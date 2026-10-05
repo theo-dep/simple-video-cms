@@ -335,6 +335,10 @@ namespace server
 
     inline void serve_index(const httplib::Request& req, httplib::Response& res, const std::filesystem::path& bundle_dir, const IndexMetaData& metadata)
     {
+        // Always revalidate: index.html references hashed bundles, a cached
+        // copy would request bundles that no longer exist after a deploy
+        res.set_header("Cache-Control", "no-cache");
+
         const std::string user_agent{ req.get_header_value("User-Agent") };
 
         if (is_bot(user_agent)) {

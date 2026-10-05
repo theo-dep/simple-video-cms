@@ -2,6 +2,7 @@ import { html } from 'htm/preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { signal } from '@preact/signals';
 import { Icon } from './Icon.js';
+import { requestFormSubmit } from '../utils/requestSubmit.js';
 
 const visibleField = signal(null);
 
@@ -19,7 +20,7 @@ export function PasswordInput({ name, placeholder, autofocus, onKeydown }) {
   function handleKeydown(e) {
     if (e.key === 'Enter') {
       const form = inputRef.current?.closest('form');
-      if (form) form.requestSubmit();
+      if (form) requestFormSubmit(form);
     }
     onKeydown?.(e);
   }

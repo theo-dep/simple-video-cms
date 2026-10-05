@@ -1,4 +1,5 @@
 import { html } from 'htm/preact';
+import { requestFormSubmit } from '../utils/requestSubmit.js';
 
 const spinnerSvg = html`
   <svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -53,7 +54,7 @@ const spinnerSvg = html`
 export function SubmitButton({ label, loading, id = 'submit-btn' }) {
   function handleClick(e) {
     const form = e.target.closest('form');
-    if (form) form.requestSubmit();
+    if (form) requestFormSubmit(form);
   }
 
   return html`

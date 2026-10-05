@@ -2,9 +2,15 @@ import { html } from 'htm/preact';
 import { useEffect, useRef } from 'preact/hooks';
 import videojs from 'video.js';
 import { api } from '../api.js';
+import { swApi } from '../store/wb.js';
 
 import 'videojs-yt-style';
 import 'videojs-mobile-ui';
+
+function notifyVideoSession(videoId, session) {
+  if (!session) return;
+  swApi.setVideoSession(videoId, session).catch((err) => console.error(err));
+}
 
 export default function Video({ videoId }) {
   const videoRef = useRef(null);
@@ -27,7 +33,10 @@ export default function Video({ videoId }) {
     playerRef.current = videojs(videoRef.current, {
       html5: {
         vhs: {
-          overrideNative: true,
+          // Safari 11.1 MSE playback stalls after the initial buffer: let
+          // Safari use its native HLS stack, the worker re-attaches the
+          // video session on sessionless requests (same path as iPhone)
+          overrideNative: !videojs.browser.IS_SAFARI,
           withCredentials: false,
         },
         nativeVideoTracks: false,
@@ -44,13 +53,22 @@ export default function Video({ videoId }) {
     player.ytStyle();
 
     let videoSession = null;
+    // Timestamp of the last api call that refreshed the session server side
+    // (add, start, reset): the server expires a session after 60 s of inactivity
+    let sessionApiAt = 0;
+
     async function ensureVideoSession() {
       if (!videoSession) {
         const response = await api.addVideoSession(videoId).catch((err) => console.error(err));
         videoSession = response?.json?.session ?? null;
+        sessionApiAt = Date.now();
+        notifyVideoSession(videoId, videoSession);
       }
       return videoSession;
     }
+
+    // iOS native HLS drops the ?session= query: the worker re-attaches the
+    // session, so it must know it before any segment request
 
     (async () => {
       // The server requires a session before any segment request, but a hanging request offline must not block playback.
@@ -62,13 +80,37 @@ export default function Video({ videoId }) {
       });
     })();
 
+    // After a pause longer than the server session duration, the session is
+    // expired: request a fresh one. The xhr hook and the worker send it with
+    // the next segment requests, no player reload needed.
+    const SESSION_RENEW_AFTER_MS = 50000;
+
+    async function renewExpiredSession() {
+      if (!videoSession || Date.now() - sessionApiAt < SESSION_RENEW_AFTER_MS) return;
+
+      const response = await api.addVideoSession(videoId).catch((err) => console.error(err));
+      const session = response?.json?.session ?? null;
+      if (!session) return;
+
+      videoSession = session;
+      notifyVideoSession(videoId, session);
+      await api.startVideoSession(videoId, session).catch((err) => console.error(err));
+      sessionApiAt = Date.now();
+    }
+
     let isSessionStarted = false;
     async function ensureSessionStarted() {
-      if (isSessionStarted) return;
+      await renewExpiredSession();
+
       const session = await ensureVideoSession();
       if (!session) return;
+      // Safari may have killed the worker since page load: send the session
+      // again so it survives restarts
+      notifyVideoSession(videoId, session);
+      if (isSessionStarted) return;
       isSessionStarted = true;
       await api.startVideoSession(videoId, session).catch((err) => console.error(err));
+      sessionApiAt = Date.now();
     }
 
     player.on('play', ensureSessionStarted);
@@ -102,12 +144,13 @@ export default function Video({ videoId }) {
       originalVhsXhr = player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr;
 
       player.tech({ IWillNotUseThisInPlugins: true }).vhs.xhr = function (options, callback) {
-        // Segments of a playlist loaded offline carry no session: attach the recovered one
+        // The playlist may carry an expired session (long pause): always send
+        // the current one with segment requests
         let isSegment = false;
         if (options.uri) {
           const url = new URL(options.uri, location.href);
           isSegment = url.pathname.endsWith('.ts');
-          if (isSegment && videoSession && !url.searchParams.has('session')) {
+          if (isSegment && videoSession) {
             url.searchParams.set('session', videoSession);
             options.uri = url.href;
           }
@@ -126,7 +169,10 @@ export default function Video({ videoId }) {
     });
 
     async function onSeekEnd() {
-      if (videoSession) await api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+      if (videoSession) {
+        await api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+        sessionApiAt = Date.now();
+      }
       isSeeking = false;
 
       if (lastBlocked && originalVhsXhr) {
@@ -136,7 +182,13 @@ export default function Video({ videoId }) {
     }
 
     player.on('seeking', () => {
-      if (videojs.browser.IS_IOS && videoSession) api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+      // Native HLS (iPhone, old Safari) has no blocked-xhr sync with the
+      // reset api: fire the reset right away to stay ahead of the segment
+      // request at the seek target
+      if (!player.tech({ IWillNotUseThisInPlugins: true }).vhs && videoSession) {
+        api.resetVideoSession(videoId, videoSession).catch((err) => console.error(err));
+        sessionApiAt = Date.now();
+      }
 
       isSeeking = true;
       clearTimeout(debounce);
@@ -148,6 +200,7 @@ export default function Video({ videoId }) {
 
       if (videoSession) {
         api.clearVideoSession(videoId, videoSession).catch((err) => console.error(err));
+        swApi.setVideoSession(videoId, null).catch((err) => console.error(err));
       }
 
       if (playerRef.current) {

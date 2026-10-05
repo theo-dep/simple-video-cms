@@ -5,6 +5,20 @@ import { registerRoute } from 'workbox-routing';
 import { CacheOnly, StaleWhileRevalidate, CacheFirst, NetworkFirst, NetworkOnly } from 'workbox-strategies';
 import { formatBytes } from './utils/formatBytes.js';
 
+// Bundled by esbuild (syntax-only): polyfill the runtime APIs missing on
+// Safari 11/12 - Promise.allSettled is used by workbox (Safari 13+)
+if (!Promise.allSettled) {
+  Promise.allSettled = (promises) =>
+    Promise.all(
+      Array.from(promises, (promise) =>
+        Promise.resolve(promise).then(
+          (value) => ({ status: 'fulfilled', value }),
+          (reason) => ({ status: 'rejected', reason })
+        )
+      )
+    );
+}
+
 const VIDEO_PLAYLIST_PATTERN = /^\/api\/video\/(\d+)\/playlist$/;
 const VIDEO_SEGMENT_PATTERN = /^\/api\/video\/(\d+)\/\d+_\d+\.ts$/;
 const VIDEO_ROUTE_PATTERN = [VIDEO_PLAYLIST_PATTERN, VIDEO_SEGMENT_PATTERN];
@@ -40,15 +54,33 @@ let videoCachingEnabled = false;
 // In-memory set of video IDs that are cached for offline viewing
 const offlineVideoIds = new Set();
 
-self.addEventListener('message', async (event) => {
+// In-memory map video id -> session id of the playing page. Never persisted to
+// a cache: the session lives only in transit (server, SW, page).
+const videoSessions = new Map();
+
+self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
-    await log('log', 'Updated Service Worker skipping waiting');
-    self.skipWaiting();
+    event.waitUntil(
+      log('log', 'Updated Service Worker skipping waiting').then(() => {
+        self.skipWaiting();
+      })
+    );
     return;
   }
 
-  if (!event.data?.type || !event.ports?.[0]) return;
+  if (!event.data?.type || !event.ports?.[0]) {
+    // Diagnostic: if ports are missing, the postMessage port transfer failed
+    event.waitUntil(log('log', `Message ${event.data?.type}: no port (${event.ports?.length ?? 0} ports)`));
+    return;
+  }
 
+  // Safari 11.1 kills the worker as soon as the event dispatch ends:
+  // without waitUntil, async work started in a message handler never resumes
+  event.waitUntil(log('log', `Message received: ${event.data?.type} (${event.ports?.length ?? 0} ports)`));
+  event.waitUntil(handleMessage(event));
+});
+
+async function handleMessage(event) {
   const { type, payload } = event.data;
 
   try {
@@ -62,6 +94,15 @@ self.addEventListener('message', async (event) => {
         await log('log', 'Disabling video caching');
         videoCachingEnabled = false;
         break;
+
+      case 'setVideoSession': {
+        setVideoSession(payload);
+        event.ports[0].postMessage({
+          type: 'setVideoSessionResponse',
+          data: { success: true, id: payload.id },
+        });
+        break;
+      }
 
       case 'addVideoToOfflineCache':
         await addVideoToOfflineCache(payload);
@@ -150,7 +191,7 @@ self.addEventListener('message', async (event) => {
     }
     await log('error', `Error in message handler for ${type}:`, error?.message);
   }
-});
+}
 
 // shared logging plugin, works for every strategy (CacheOnly included)
 function logPlugin(label) {
@@ -193,8 +234,26 @@ async function getCacheUsage() {
   return usage;
 }
 
+// Populate the videoSessions map with video id and session
+function setVideoSession(payload) {
+  // payload.id is a route param (string), the url lookup gives a number
+  const id = parseInt(payload.id, 10);
+  if (!Number.isNaN(id)) {
+    if (payload.session) {
+      videoSessions.set(id, payload.session);
+    } else {
+      videoSessions.delete(id);
+    }
+  }
+}
+
 async function getStorageInfo() {
-  const [estimate, usage] = await Promise.all([navigator.storage.estimate(), getCacheUsage()]);
+  // navigator.storage.estimate() does not exist before Safari 15 / iOS 15
+  const estimate = typeof navigator.storage?.estimate === 'function' ? await navigator.storage.estimate() : null;
+  const usage = await getCacheUsage();
+  if (!estimate) {
+    return { quota: null, usage, available: null, percentageUsed: null };
+  }
   return {
     quota: estimate.quota,
     usage,
@@ -206,6 +265,9 @@ async function getStorageInfo() {
 // Add a video to the offline cache by downloading its playlist and all segments
 async function addVideoToOfflineCache({ id, title }) {
   let session = null;
+  // Entries successfully cached before a failure: removed in the catch so
+  // partial downloads don't accumulate and exhaust the browser quota
+  const putKeys = [];
   try {
     const cache = await caches.open(CACHE_OFFLINE_VIDEOS);
     const metaCache = await caches.open(CACHE_OFFLINE_META);
@@ -263,13 +325,20 @@ async function addVideoToOfflineCache({ id, title }) {
       totalSize += segmentSize;
     }
 
-    // 7. Check available space (with 10% buffer)
-    if (storageInfo.available < totalSize * 1.1) {
+    // 7. Check available space (with 10% buffer). Skipped when the quota API
+    // is unavailable (iOS < 15): cache.put throws QuotaExceededError when full
+    if (storageInfo.available != null && storageInfo.available < totalSize * 1.1) {
       throw new Error('Insufficient storage space');
     }
 
     // 8. Cache playlist
-    await cache.put(playlistUrl, new Response(playlistWithoutSession(playlistContent)));
+    await cache.put(
+      playlistUrl,
+      new Response(playlistWithoutSession(playlistContent), {
+        headers: { 'Content-Type': 'application/vnd.apple.mpegurl' },
+      })
+    );
+    putKeys.push(playlistUrl);
 
     // 9. Cache all segments
     for (let i = 0; i < downloadUrls.length; i++) {
@@ -278,6 +347,7 @@ async function addVideoToOfflineCache({ id, title }) {
         throw new Error(`Segment download failed: ${segmentUrls[i]}`);
       }
       await cache.put(segmentUrls[i], response.clone());
+      putKeys.push(segmentUrls[i]);
     }
 
     // 10. Store metadata
@@ -295,7 +365,17 @@ async function addVideoToOfflineCache({ id, title }) {
     await log('log', `Added video ${id} (${formatBytes(totalSize)}) to offline cache with ${segmentUrls.length} segments`);
     return { success: true };
   } catch (error) {
+    if (putKeys.length) {
+      const cache = await caches.open(CACHE_OFFLINE_VIDEOS);
+      for (const key of putKeys) {
+        await cache.delete(key);
+      }
+      await log('log', `Cleaned ${putKeys.length} partial entries of video ${id}`);
+    }
     await log('error', `Failed to add video ${id} to offline cache:`, error?.message);
+    if (error?.name === 'QuotaExceededError' || /quota/i.test(error?.message ?? '')) {
+      throw new Error('Browser storage quota exceeded - remove downloaded videos and retry', { cause: error });
+    }
     throw error;
   } finally {
     // Clear the server-side video session used for the download.
@@ -494,8 +574,35 @@ async function cleanupObsoleteCaches() {
   }
 }
 
+// Delete offline-video entries referenced by no metadata: they are partial
+// downloads left behind by failed adds, and they eat the browser quota
+async function purgeOrphanOfflineEntries() {
+  const metaCache = await caches.open(CACHE_OFFLINE_META);
+  const cache = await caches.open(CACHE_OFFLINE_VIDEOS);
+
+  const referenced = new Set();
+  for (const request of await metaCache.keys()) {
+    if (!request.url.includes('meta-')) continue;
+    const metaResponse = await metaCache.match(request);
+    if (!metaResponse) continue;
+    const meta = await metaResponse.json().catch(() => null);
+    if (!meta) continue;
+    if (meta.playlistUrl) referenced.add(new URL(meta.playlistUrl, self.location.href).href);
+    for (const url of meta.segmentUrls ?? []) referenced.add(new URL(url, self.location.href).href);
+  }
+
+  let deleted = 0;
+  for (const request of await cache.keys()) {
+    if (!referenced.has(request.url)) {
+      await cache.delete(request);
+      deleted++;
+    }
+  }
+  if (deleted) await log('log', `Purged ${deleted} orphan offline-video entries`);
+}
+
 self.addEventListener('activate', (event) => {
-  event.waitUntil(cleanupObsoleteCaches());
+  event.waitUntil(cleanupObsoleteCaches().then(purgeOrphanOfflineEntries));
 });
 
 precache(self.__WB_MANIFEST);
@@ -573,14 +680,31 @@ function playlistWithoutSession(content) {
   return content.split('\n').map(uriWithoutSession).join('\n');
 }
 
+// iOS native HLS drops the ?session= query of playlist and segment requests:
+// re-attach the session of the playing page before the request goes to the
+// network (the cache key stays sessionless either way)
+function withVideoSession(request) {
+  const url = new URL(request.url);
+  if (url.searchParams.has('session')) {
+    return request;
+  }
+  const id = extractVideoIdFromUrl(url);
+  const session = id === null ? undefined : videoSessions.get(id);
+  if (!session) {
+    return request;
+  }
+  url.searchParams.set('session', session);
+  return new Request(url.href, { method: request.method, headers: request.headers, credentials: 'same-origin' });
+}
+
 class GatedCacheFirst extends CacheFirst {
   async _handle(request, handler) {
     if (!videoCachingEnabled) {
       await log('log', `Served video from network (caching disabled):`, request.url);
-      return fetch(request);
+      return fetch(withVideoSession(request));
     }
 
-    return super._handle(request, handler);
+    return super._handle(withVideoSession(request), handler);
   }
 }
 registerRoute(
