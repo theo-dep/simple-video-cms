@@ -141,6 +141,11 @@
   flex: 2;
 }
 
+.list-row-user-deactivated {
+  font-size: 0.9em;
+  font-style: italic;
+}
+
 .list-row-chevron {
   flex-shrink: 0;
   margin-left: auto;

@@ -11,6 +11,10 @@ import { Loader } from '../component/Loader.js';
 import { Icon } from '../component/Icon.js';
 import { confirm } from '../component/ConfirmDialog.js';
 
+function renderStatus(u) {
+  return u.isDeactivated && html`<span class="list-row-user-deactivated">Deactivated</span>`;
+}
+
 export default function AdminUserList() {
   const { route } = useLocation();
   const { isLoading } = useLoader(loadUsers, Array.isArray(users.value));
@@ -55,7 +59,10 @@ export default function AdminUserList() {
               title="List of users"
               addContent="${html`<${Icon} name="person-add" class="svg-button" /> New user`}"
               addLink="/admin/new-user"
-              columns="${[{ key: 'name', label: 'Username', sortValue: (u) => u.name }]}"
+              columns="${[
+                { key: 'name', label: 'Username', sortValue: (u) => u.name },
+                { key: 'isDeactivated', label: 'Status', sortValue: (u) => (u.isDeactivated ? 1 : 0), render: renderStatus },
+              ]}"
               items="${users.value}"
               searchKeys="${['name']}"
               renderExpanded="${(u) => html`
