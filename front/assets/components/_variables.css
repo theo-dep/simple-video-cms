@@ -17,7 +17,6 @@
   --color-bg-dark: rgba(0, 0, 0, 0.9);
   --color-bg-card: #323232;
   --color-bg-hover: #464646;
-  --color-bg-drawer: #464646cc;
   --color-bg-input: white;
 
   /* Border/Shadow colors */
@@ -53,8 +52,6 @@
   --input-min-height: 2.5rem;
   --options-height: 40dvh;
   --border-radius: 0.5rem;
-  --icon-size: 0.75rem;
-  --icon-space: 2rem;
   --checkbox-size: 1rem;
   --checkbox-radius: 0.25rem;
   --checkbox-thickness: 0.1rem;
