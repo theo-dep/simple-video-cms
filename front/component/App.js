@@ -8,6 +8,7 @@ import { swControllerVersion, initWorkbox } from '../store/wb.js';
 import { enableVideoCaching, disableVideoCaching, refreshCachedVideos } from '../store/cache.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { adminLazy, adminLazyNamed } from '../utils/adminLazy.js';
+import { userLazy } from '../utils/userLazy.js';
 import { Redirect } from './Redirect.js';
 import { OfflineWatcher } from './OfflineWatcher.js';
 
@@ -75,13 +76,13 @@ export function App() {
             <${RedirectUpdater} />
             <${Router}>
               <${lazy(() => import('../pages/Home.js'))} path="/" />
-              <${lazy(() => import('../pages/Bookmarks.js'))} path="/bookmarks" />
-              <${lazy(() => import('../pages/Downloads.js'))} path="/downloads" />
               <${lazy(() => import('../pages/Login.js'))} path="/login" />
-              <${lazy(() => import('../pages/Logout.js'))} path="/logout" />
+              <${userLazy(() => import('../pages/Bookmarks.js'))} path="/bookmarks" />
+              <${userLazy(() => import('../pages/Downloads.js'))} path="/downloads" />
+              <${userLazy(() => import('../pages/UserAccount.js'))} path="/user-account" />
+              <${userLazy(() => import('../pages/Logout.js'))} path="/logout" />
               <${lazy(() => import('../pages/ResetPassword.js'))} path="/reset-password" />
               <${lazy(() => import('../pages/ResetPassword.js'))} path="/reset-password/:username" />
-              <${lazy(() => import('../pages/UserAccount.js'))} path="/user-account" />
               <${Redirect} path="/watch-video/:videoId" to="/video/:videoId" />
               <${lazy(() => import('../pages/WatchVideo.js'))} path="/video/:videoId" />
               <${lazy(() => import('../pages/Forbidden.js'))} path="/403" />
