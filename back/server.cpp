@@ -469,7 +469,7 @@ inline void server::index(const httplib::Request& req, httplib::Response& res, c
 {
     const std::string title{ env::website_name };
     const std::string description{ "Welcome to " + env::website_name + " home" };
-    const std::string icon_url{ "/assets/icons/icon.png" };
+    const std::string icon_url{ "/assets/icons/preview.png" };
     const std::string website_url{ "/" };
     serve_index(req, res, bundle_dir,
                 { .title = title,
