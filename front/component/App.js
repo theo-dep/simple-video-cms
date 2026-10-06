@@ -7,7 +7,7 @@ import { previousRoute } from '../store/redirect.js';
 import { swControllerVersion, initWorkbox } from '../store/wb.js';
 import { enableVideoCaching, disableVideoCaching, refreshCachedVideos } from '../store/cache.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
-import { adminLazy, adminLazyNamed } from '../utils/lazy.js';
+import { adminLazy, adminLazyNamed } from '../utils/adminLazy.js';
 import { Redirect } from './Redirect.js';
 import { OfflineWatcher } from './OfflineWatcher.js';
 
