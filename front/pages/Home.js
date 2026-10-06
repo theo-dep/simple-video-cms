@@ -10,7 +10,7 @@ export default function Home() {
   const isLoading = !refreshed.value;
 
   return html`
-    ${isLoading ? html`<${Loader} />` : html`<${VideoList} title="Bookmarks" videos=${videos} />`}
+    ${isLoading ? html`<${Loader} />` : html`<${VideoList} title="Home" videos=${videos} />`}
 
     <${Footer} />
   `;
