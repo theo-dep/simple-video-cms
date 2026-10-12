@@ -1003,6 +1003,12 @@ inline void server::video_segment(const httplib::Request& req, httplib::Response
         return;
     }
 
+    // A player never sends Range on a hls segment, downloaders do
+    if (req.has_header("Range")) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
     if (!req.has_param("session")) {
         res.status = httplib::StatusCode::BadRequest_400;
         return;
