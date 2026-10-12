@@ -88,11 +88,19 @@ async function handleMessage(event) {
       case 'enableVideoCaching':
         await log('log', 'Enabling video caching');
         videoCachingEnabled = true;
+        event.ports[0].postMessage({
+          type: 'enableVideoCachingResponse',
+          data: { success: true },
+        });
         break;
 
       case 'disableVideoCaching':
         await log('log', 'Disabling video caching');
         videoCachingEnabled = false;
+        event.ports[0].postMessage({
+          type: 'disableVideoCachingResponse',
+          data: { success: true },
+        });
         break;
 
       case 'setVideoSession': {
@@ -666,7 +674,11 @@ const playlistSessionlessCacheKey = {
     if (!VIDEO_PLAYLIST_PATTERN.test(new URL(request.url).pathname)) {
       return response;
     }
-    return new Response(playlistWithoutSession(await response.text()), response);
+    // The sessionless body is shorter: rebuild the headers without the stale
+    // Content-Length of the sessioned response
+    const headers = new Headers(response.headers);
+    headers.delete('Content-Length');
+    return new Response(playlistWithoutSession(await response.text()), { status: response.status, headers });
   },
 };
 
