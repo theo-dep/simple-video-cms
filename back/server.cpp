@@ -895,7 +895,7 @@ namespace server
         const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
         if (user_id != Session::invalid_user_id()) {
-            return db.is_admin(user_id) || db.has_video_right(video_id, user_id);
+            return db.is_admin(user_id) || db.has_video_right(video_id, user_id) || db.has_video_right(video_id);
         }
 
         return db.has_video_right(video_id);
