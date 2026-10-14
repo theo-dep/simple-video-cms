@@ -56,6 +56,15 @@ const std::string& VideoSession::add_session(const std::string& video_id)
     return _sessions.find(key)->first.session_id;
 }
 
+bool VideoSession::has_session(const std::string& session_id, const std::string& video_id) const
+{
+    const std::unique_lock lock(_mutex);
+
+    const Key key{ .session_id = session_id, .video_id = video_id };
+    const auto session{ _sessions.find(key) };
+    return session != _sessions.end();
+}
+
 void VideoSession::start_session(const std::string& session_id, const std::string& video_id)
 {
     clean_expired_sessions({});

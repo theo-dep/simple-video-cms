@@ -23,6 +23,7 @@ public:
 
     // Creates a session and returns its id
     const std::string& add_session(const std::string& video_id);
+    bool has_session(const std::string& session_id, const std::string& video_id) const;
     void start_session(const std::string& session_id, const std::string& video_id);
     void reset_session(const std::string& session_id, const std::string& video_id);
     void clear_session(const std::string& session_id, const std::string& video_id);

@@ -53,7 +53,7 @@ namespace server
     // Video (user)
     void bookmark(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
 
-    void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db);
+    void video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, const VideoSession& video_session);
     void video_segment(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
     void thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db);
     void add_video_session(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, VideoSession& video_session);
@@ -205,7 +205,7 @@ int server::start()
         .Post("/api/bookmark/:video_id", sc::serve(bookmark, std::cref(session), std::cref(db)))
 
         .Get("/api/thumbnail/:video_id", sc::serve(thumbnail, std::cref(db)))
-        .Get("/api/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::cref(db)))
+        .Get("/api/video/:video_id/playlist", sc::serve(video_playlist, std::cref(session), std::cref(db), std::cref(video_session)))
         .Get("/api/video/:video_id/:segment", sc::serve(video_segment, std::cref(session), std::cref(db), std::ref(video_session)))
         .Post("/api/add-video-session/:video_id", sc::serve(add_video_session, std::cref(session), std::cref(db), std::ref(video_session)))
         .Post("/api/start-video-session/:video_id", sc::serve(start_video_session, std::cref(session), std::cref(db), std::ref(video_session)))
@@ -895,7 +895,7 @@ namespace server
         const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
 
         if (user_id != Session::invalid_user_id()) {
-            return db.is_admin(user_id) || db.has_video_right(video_id, user_id);
+            return db.is_admin(user_id) || db.has_video_right(video_id, user_id) || db.has_video_right(video_id);
         }
 
         return db.has_video_right(video_id);
@@ -943,14 +943,15 @@ namespace server
     }
 }
 
-inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db)
+inline void server::video_playlist(const httplib::Request& req, httplib::Response& res, const Session& session, const Database& db, const VideoSession& video_session)
 {
     if (!has_video_right(req, session, db)) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
 
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const int video_id{ su::string_to_int(video_id_str) };
     if (!request_from_video(req, video_id) && !request_from_sw(req)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
@@ -962,8 +963,18 @@ inline void server::video_playlist(const httplib::Request& req, httplib::Respons
         return;
     }
 
-    const std::string video_session{ req.get_param_value("session") };
-    res.set_content(playlist_with_session(playlist, video_session), "application/vnd.apple.mpegurl");
+    if (!req.has_param("session")) {
+        res.status = httplib::StatusCode::BadRequest_400;
+        return;
+    }
+
+    const std::string video_session_id{ req.get_param_value("session") };
+    if (video_session_id.empty() || !video_session.has_session(video_session_id, video_id_str)) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    res.set_content(playlist_with_session(playlist, video_session_id), "application/vnd.apple.mpegurl");
 }
 
 inline void server::thumbnail(const httplib::Request& req, httplib::Response& res, const Database& db)
@@ -985,16 +996,28 @@ inline void server::video_segment(const httplib::Request& req, httplib::Response
         return;
     }
 
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const int video_id{ su::string_to_int(video_id_str) };
     if (!request_from_video(req, video_id) && !request_from_sw(req)) {
         res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
+    // A player never sends Range on a hls segment, downloaders do
+    if (req.has_header("Range")) {
+        res.status = httplib::StatusCode::Forbidden_403;
+        return;
+    }
+
+    if (!req.has_param("session")) {
+        res.status = httplib::StatusCode::BadRequest_400;
         return;
     }
 
     const std::string segment{ req.path_params.at("segment") };
     const std::string video_session_id{ req.get_param_value("session") };
 
-    if (!video_session.validate_segment_access(video_session_id, su::int_to_string(video_id), segment)) {
+    if (!video_session.validate_segment_access(video_session_id, video_id_str, segment)) {
         res.status = httplib::StatusCode::Unauthorized_401;
         return;
     }
@@ -1015,13 +1038,14 @@ inline void server::add_video_session(const httplib::Request& req, httplib::Resp
         return;
     }
 
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const int video_id{ su::string_to_int(video_id_str) };
     if (!request_from_video(req, video_id) && !request_from_sw(req)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
     }
 
-    const std::string video_session_id{ video_session.add_session(su::int_to_string(video_id)) };
+    const std::string video_session_id{ video_session.add_session(video_id_str) };
     res.set_content(nlohmann::json({ { "session", video_session_id } }).dump(), "application/json");
     res.status = httplib::StatusCode::OK_200;
 }
@@ -1033,7 +1057,8 @@ inline void server::start_video_session(const httplib::Request& req, httplib::Re
         return;
     }
 
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const int video_id{ su::string_to_int(video_id_str) };
     if (!request_from_video(req, video_id) && !request_from_sw(req)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
@@ -1045,7 +1070,12 @@ inline void server::start_video_session(const httplib::Request& req, httplib::Re
     }
 
     const std::string video_session_id{ req.get_param_value("session") };
-    video_session.start_session(video_session_id, su::int_to_string(video_id));
+    if (video_session_id.empty()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    video_session.start_session(video_session_id, video_id_str);
     res.status = httplib::StatusCode::OK_200;
 }
 
@@ -1056,7 +1086,8 @@ inline void server::reset_video_session(const httplib::Request& req, httplib::Re
         return;
     }
 
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_id_str{ req.path_params.at("video_id") };
+    const int video_id{ su::string_to_int(video_id_str) };
     if (!request_from_video(req, video_id)) {
         res.status = httplib::StatusCode::Forbidden_403;
         return;
@@ -1068,7 +1099,12 @@ inline void server::reset_video_session(const httplib::Request& req, httplib::Re
     }
 
     const std::string video_session_id{ req.get_param_value("session") };
-    video_session.reset_session(video_session_id, su::int_to_string(video_id));
+    if (video_session_id.empty()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    video_session.reset_session(video_session_id, video_id_str);
     res.status = httplib::StatusCode::OK_200;
 }
 
@@ -1080,14 +1116,19 @@ inline void server::clear_video_session(const httplib::Request& req, httplib::Re
     }
 
     // no referer check here: this request is sent when leaving the video page
-    const int video_id{ su::string_to_int(req.path_params.at("video_id")) };
+    const std::string video_id_str{ req.path_params.at("video_id") };
     if (!req.has_param("session")) {
         res.status = httplib::StatusCode::BadRequest_400;
         return;
     }
 
     const std::string video_session_id{ req.get_param_value("session") };
-    video_session.clear_session(video_session_id, su::int_to_string(video_id));
+    if (video_session_id.empty()) {
+        res.status = httplib::StatusCode::Unauthorized_401;
+        return;
+    }
+
+    video_session.clear_session(video_session_id, video_id_str);
     res.status = httplib::StatusCode::OK_200;
 }
 

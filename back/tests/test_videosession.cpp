@@ -17,6 +17,36 @@ TEST_CASE("VideoSession::add_session")
     }
 }
 
+TEST_CASE("VideoSession::has_session")
+{
+    VideoSession video_session;
+
+    SECTION("is true for an existing session of the right video")
+    {
+        const std::string session{ video_session.add_session("v1") };
+        REQUIRE(video_session.has_session(session, "v1"));
+    }
+
+    SECTION("is false for an unknown session")
+    {
+        video_session.add_session("v1");
+        REQUIRE_FALSE(video_session.has_session("unknown", "v1"));
+    }
+
+    SECTION("is false for the session of another video")
+    {
+        const std::string session{ video_session.add_session("v1") };
+        REQUIRE_FALSE(video_session.has_session(session, "v2"));
+    }
+
+    SECTION("is false after the session is cleared")
+    {
+        const std::string session{ video_session.add_session("v1") };
+        video_session.clear_session(session, "v1");
+        REQUIRE_FALSE(video_session.has_session(session, "v1"));
+    }
+}
+
 TEST_CASE("VideoSession::validate_segment_access")
 {
     SECTION("rejects access when session does not exist")
