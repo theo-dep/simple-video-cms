@@ -16,7 +16,7 @@
     "@rollup/plugin-terser": "^1.0.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/preact": "^3.2.4",
-    "@vitest/coverage-v8": "^5.0.2",
+    "@vitest/coverage-v8": "^5.0.5",
     "@web/rollup-plugin-html": "^4.0.0",
     "babel-plugin-htm": "^3.0.0",
     "core-js": "^3.50.0",
